@@ -1,0 +1,20 @@
+{
+  "name": "backend",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.975.0",
+    "@aws-sdk/s3-request-presigner": "^3.975.0",
+    "@convex-dev/aggregate": "^0.2.1",
+    "@convex-dev/workos-authkit": "^0.1.5",
+    "convex": "^1.31.6",
+    "convex-helpers": "^0.1.111"
+  }
+}
