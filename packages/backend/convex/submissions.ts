@@ -72,6 +72,14 @@ export const createSubmission = mutation({
             updated_at: now,
         });
 
+        // Increment campaign submissions count
+        const campaign = await ctx.db.get(application.campaign_id);
+        if (campaign) {
+            await ctx.db.patch(application.campaign_id, {
+                submissions: (campaign.submissions || 0) + 1,
+            });
+        }
+
         return submissionId;
     },
 });

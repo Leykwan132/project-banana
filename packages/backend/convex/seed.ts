@@ -37,6 +37,7 @@ export const seedData = mutation({
             cover_photo_url: "https://example.com/cover.png",
             total_budget: 5000,
             budget_claimed: 0,
+            submissions: 0,
             status: "active",
             asset_links: "https://example.com/logo.png",
             maximum_payout: 100,

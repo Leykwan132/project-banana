@@ -116,6 +116,7 @@ export const createCampaign = mutation({
             payout_thresholds: args.payout_thresholds,
             requirements: args.requirements,
             scripts: args.scripts,
+            submissions: 0,
             created_at: now,
             updated_at: now,
         });

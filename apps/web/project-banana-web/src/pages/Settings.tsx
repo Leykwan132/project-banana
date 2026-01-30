@@ -3,39 +3,40 @@ import { Plus, User, Mail, Building } from 'lucide-react';
 import { useQuery, useAction } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
+import { BUSINESS_INFO_KEY } from '../lib/constants';
 
 export default function Settings() {
     const business = useQuery(api.businesses.getMyBusiness);
     const generateLogoUrl = useAction(api.businesses.generateLogoAccessUrl);
 
     // Cache key for the visible fields on this page
-    const CACHE_KEY_DETAILS = 'settings_business_details';
 
     // Initialize state from sessionStorage if available
+
     const [businessName, setBusinessName] = useState(() => {
         try {
-            const cached = sessionStorage.getItem(CACHE_KEY_DETAILS);
+            const cached = sessionStorage.getItem(BUSINESS_INFO_KEY);
             return cached ? JSON.parse(cached).name : '';
         } catch { return ''; }
     });
     const [businessSize, setBusinessSize] = useState(() => {
         try {
-            const cached = sessionStorage.getItem(CACHE_KEY_DETAILS);
+            const cached = sessionStorage.getItem(BUSINESS_INFO_KEY);
             return cached ? JSON.parse(cached).size : '';
         } catch { return ''; }
     });
     const [logo, setLogo] = useState<string | null>(() => {
         try {
-            const cached = sessionStorage.getItem(CACHE_KEY_DETAILS);
+            const cached = sessionStorage.getItem(BUSINESS_INFO_KEY);
             return cached ? JSON.parse(cached).logo : null;
         } catch { return null; }
     });
 
     // Helper to update cache
-    const updateCache = (updates: Partial<{ name: string; size: string; logo: string | null }>) => {
+    const updateCache = (updates: Partial<{ id: string; name: string; size: string; logo: string | null }>) => {
         try {
-            const current = JSON.parse(sessionStorage.getItem(CACHE_KEY_DETAILS) || '{}');
-            sessionStorage.setItem(CACHE_KEY_DETAILS, JSON.stringify({ ...current, ...updates }));
+            const current = JSON.parse(sessionStorage.getItem(BUSINESS_INFO_KEY) || '{}');
+            sessionStorage.setItem(BUSINESS_INFO_KEY, JSON.stringify({ ...current, ...updates }));
         } catch (e) {
             console.error("Failed to update session storage", e);
         }
@@ -44,12 +45,13 @@ export default function Settings() {
     // Sync state with fetched business data & handle Logo logic
     useEffect(() => {
         if (business) {
+
             setBusinessName(business.name);
             setBusinessSize(business.size || '');
 
             // Base update for name/size
             let newLogo = logo; // preserve current logo by default
-            const updates: any = { name: business.name, size: business.size || '' };
+            const updates: any = { id: business._id, name: business.name, size: business.size || '' };
 
             // 1. If we have a stored logo URL (external), use it.
             if (business.logo_url) {

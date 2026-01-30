@@ -26,6 +26,7 @@ export default defineSchema({
         cover_photo_url: v.optional(v.string()),
         total_budget: v.number(),
         budget_claimed: v.number(),
+        submissions: v.number(),
         status: v.string(), // "draft" | "active" | "paused" | "completed"
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),

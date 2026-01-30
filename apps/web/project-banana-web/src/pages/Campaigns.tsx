@@ -1,30 +1,33 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { BUSINESS_INFO_KEY, CAMPAIGNS_LIST_KEY } from '../lib/constants';
 
-import { Layers, FilePlus, AlertCircle, ShoppingBag, Radio, Coffee, Music, Video, ChevronLeft, Plus, X, Check, Eye, DollarSign, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Layers, ChevronLeft, Plus, X, Check, Loader2, ArrowUp, ArrowDown, Rocket, Radio, Eye, DollarSign } from 'lucide-react';
 
 import { Chip } from "@heroui/chip";
 import { CheckIcon, ActiveIcon, PausedIcon } from '../components/Icons';
 
-const ongoingCampaigns = [
-    { id: '1', name: 'Chakra Soft UI Version', submissions: 2344, budget: 'Rm 2000', claimed: 'Rm 1200', status: 'active', icon: Layers, iconColor: 'text-purple-600', iconBg: 'bg-purple-100', createdDate: 'Oct 24, 2025' },
-    { id: '2', name: 'Add Progress Track', submissions: 2344, budget: 'Rm 2000', claimed: 'Rm 200', status: 'paused', icon: FilePlus, iconColor: 'text-blue-600', iconBg: 'bg-blue-100', createdDate: 'Oct 25, 2025' },
-    { id: '3', name: 'Fix Platform Errors', submissions: 2344, budget: 'Not set', claimed: 'Rm 0', status: 'active', icon: AlertCircle, iconColor: 'text-red-500', iconBg: 'bg-red-100', createdDate: 'Oct 26, 2025' },
-    { id: '4', name: 'Add the New Pricing Page', submissions: 2344, budget: 'Rm 2000', claimed: 'Rm 500', status: 'active', icon: Layers, iconColor: 'text-blue-500', iconBg: 'bg-blue-100', createdDate: 'Oct 28, 2025' },
-    { id: '5', name: 'Redesign New Online Shop', submissions: 2344, budget: 'Rm 2000', claimed: 'Rm 800', status: 'paused', icon: ShoppingBag, iconColor: 'text-red-500', iconBg: 'bg-red-100', createdDate: 'Oct 29, 2025' },
-];
-
-const pastCampaigns = [
-    { id: '6', name: 'Summer Marketing Blitz', submissions: 5102, budget: 'Rm 15000', claimed: 'Rm 15000', status: 'completed', icon: Coffee, iconColor: 'text-orange-600', iconBg: 'bg-orange-100', createdDate: 'Jun 15, 2025' },
-    { id: '7', name: 'Q3 Product Refresh', submissions: 3200, budget: 'Rm 8000', claimed: 'Rm 8000', status: 'completed', icon: ShoppingBag, iconColor: 'text-pink-600', iconBg: 'bg-pink-100', createdDate: 'Aug 01, 2025' },
-    { id: '8', name: 'Influencer Outreach', submissions: 1205, budget: 'Rm 5000', claimed: 'Rm 5000', status: 'completed', icon: Video, iconColor: 'text-indigo-600', iconBg: 'bg-indigo-100', createdDate: 'Sep 10, 2025' },
-    { id: '9', name: 'Holiday Special', submissions: 8500, budget: 'Rm 20000', claimed: 'Rm 20000', status: 'completed', icon: Music, iconColor: 'text-teal-600', iconBg: 'bg-teal-100', createdDate: 'Dec 01, 2025' },
-];
-
-
+// Empty State Component
+const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
+    <div className="flex flex-col items-center justify-center p-20 bg-[#F9FAFB] rounded-3xl text-center animate-fadeIn">
+        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
+            <Rocket className="w-10 h-10 text-gray-900" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">No campaigns yet</h3>
+        <p className="text-gray-500 mb-8 max-w-sm">
+            Create your first campaign to start receiving user-generated content for your brand.
+        </p>
+        <button
+            onClick={onCreate}
+            className="bg-[#1C1C1C] text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-lg shadow-black/20"
+        >
+            Create Campaign
+        </button>
+    </div>
+);
 
 export interface Threshold {
     views: string;
@@ -1004,9 +1007,97 @@ const CreateCampaign = ({ onBack }: { onBack: () => void }) => {
     );
 };
 
+// ... types
+interface CampaignData {
+    _id: string; // Using string to avoid Id import complexity, will cast if needed or just treat as accessible
+    name: string;
+    status: string;
+    total_budget: number;
+    budget_claimed: number;
+    submissions: number;
+    created_at: number;
+    // Add other fields if strictly necessary for the UI
+    [key: string]: any; // Allow loose typing to prevent other errors easily
+}
+
 export default function Campaigns() {
     const [view, setView] = useState<'list' | 'create'>('list');
     const navigate = useNavigate();
+
+    // Data Fetching
+    const business = useQuery(api.businesses.getMyBusiness);
+    const [businessId, setBusinessId] = useState<string | null>(() => {
+        try {
+            const cached = sessionStorage.getItem(BUSINESS_INFO_KEY);
+            return cached ? JSON.parse(cached).id : null;
+        } catch { return null; }
+    });
+
+    // Update businessId when business query resolves
+    useEffect(() => {
+        if (business?._id) {
+            setBusinessId(business._id);
+        }
+    }, [business]);
+
+    // Fetch campaigns
+    const { results, status } = usePaginatedQuery(
+        api.campaigns.getCampaignsByBusiness,
+        businessId ? { businessId: businessId as any } : "skip",
+        { initialNumItems: 50 }
+    );
+
+    // Caching campaigns
+    const [cachedCampaigns, setCachedCampaigns] = useState<CampaignData[]>(() => {
+        try {
+            if (businessId) {
+                const cached = sessionStorage.getItem(`${CAMPAIGNS_LIST_KEY}_${businessId}`);
+                return cached ? JSON.parse(cached) : [];
+            }
+            return [];
+        } catch { return []; }
+    });
+
+    useEffect(() => {
+        if (results !== undefined && businessId) {
+            setCachedCampaigns(results as unknown as CampaignData[]);
+            sessionStorage.setItem(`${CAMPAIGNS_LIST_KEY}_${businessId}`, JSON.stringify(results));
+        }
+    }, [results, businessId]);
+
+    // Use cached data while loading, or fresh data if available
+    const campaigns = (results || cachedCampaigns) as CampaignData[];
+
+    // Filter campaigns
+    const ongoingCampaigns = campaigns.filter((c) =>
+        ['active', 'paused'].includes(c.status)
+    ).map((c) => ({
+        id: c._id,
+        name: c.name,
+        submissions: c.submissions || 0,
+        budget: `Rm ${c.total_budget}`,
+        claimed: `Rm ${c.budget_claimed}`,
+        status: c.status,
+        icon: Layers, // Default icon for now
+        iconColor: 'text-gray-600',
+        iconBg: 'bg-gray-100',
+        createdDate: new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    }));
+
+    const pastCampaigns = campaigns.filter((c) =>
+        c.status === 'completed'
+    ).map((c) => ({
+        id: c._id,
+        name: c.name,
+        submissions: c.submissions || 0,
+        budget: `Rm ${c.total_budget}`,
+        claimed: `Rm ${c.budget_claimed}`,
+        status: c.status,
+        icon: Check, // Default icon for completed
+        iconColor: 'text-green-600',
+        iconBg: 'bg-green-100',
+        createdDate: new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    }));
 
     // Sorting State
     const [ongoingSort, setOngoingSort] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
@@ -1047,8 +1138,8 @@ export default function Campaigns() {
         });
     };
 
-    const sortedOngoing = useMemo(() => sortDisplayData(ongoingCampaigns, ongoingSort), [ongoingSort]);
-    const sortedPast = useMemo(() => sortDisplayData(pastCampaigns, pastSort), [pastSort]);
+    const sortedOngoing = useMemo(() => sortDisplayData(ongoingCampaigns, ongoingSort), [ongoingCampaigns, ongoingSort]);
+    const sortedPast = useMemo(() => sortDisplayData(pastCampaigns, pastSort), [pastCampaigns, pastSort]);
 
     const requestSort = (key: string, isPast: boolean = false) => {
         const currentSort = isPast ? pastSort : ongoingSort;
@@ -1074,6 +1165,20 @@ export default function Campaigns() {
         return <div className="p-8 font-sans text-gray-900"><CreateCampaign onBack={() => setView('list')} /></div>;
     }
 
+    if (campaigns.length === 0 && (status === "LoadingFirstPage" || status === "LoadingMore") && !businessId) {
+        // Loading state or initializing
+        return <div className="flex justify-center items-center h-screen"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
+    }
+
+    if (ongoingCampaigns.length === 0 && pastCampaigns.length === 0 && results !== undefined) {
+        return (
+            <div className="p-8 font-sans text-gray-900 animate-fadeIn">
+                <h1 className="text-2xl font-bold mb-6">Campaigns</h1>
+                <EmptyState onCreate={() => setView('create')} />
+            </div>
+        )
+    }
+
     return (
         <div className="p-8 font-sans text-gray-900 animate-fadeIn">
             <h1 className="text-2xl font-bold mb-6">Campaigns</h1>
@@ -1090,62 +1195,68 @@ export default function Campaigns() {
                     </button>
                 </div>
 
-                <div className="bg-white overflow-hidden">
-                    <div className="bg-[#F4F6F8] rounded-sm mt-2  grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name')}>
-                            Campaigns <SortIcon sortConfig={ongoingSort} columnKey="name" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate')}>
-                            Date Created <SortIcon sortConfig={ongoingSort} columnKey="createdDate" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions')}>
-                            Submissions <SortIcon sortConfig={ongoingSort} columnKey="submissions" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget')}>
-                            Budget <SortIcon sortConfig={ongoingSort} columnKey="budget" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('claimed')}>
-                            Claimed <SortIcon sortConfig={ongoingSort} columnKey="claimed" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status')}>
-                            Status <SortIcon sortConfig={ongoingSort} columnKey="status" />
-                        </div>
-                    </div>
-
-                    <div className="divide-y divide-[#F4F6F8]">
-                        {sortedOngoing.map((campaign, index) => (
-                            <div
-                                key={index}
-                                onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                                className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors "
-                            >
-                                <div className="col-span-5 flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${campaign.iconBg} ${campaign.iconColor}`}>
-                                        <campaign.icon className="w-5 h-5" />
-                                    </div>
-                                    <span className="font-semibold text-gray-900">{campaign.name}</span>
-                                </div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.budget}</div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.claimed}</div>
-                                <div className="col-span-1 flex items-center justify-center">
-                                    <Chip
-                                        color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
-                                        startContent={
-                                            campaign.status === 'active' ? <ActiveIcon size={20} /> :
-                                                campaign.status === 'paused' ? <PausedIcon size={20} /> :
-                                                    <CheckIcon size={20} />
-                                        }
-                                        variant="flat"
-                                    >
-                                        {campaign.status}
-                                    </Chip>
-                                </div>
+                {sortedOngoing.length > 0 ? (
+                    <div className="bg-white overflow-hidden">
+                        <div className="bg-[#F4F6F8] rounded-sm mt-2  grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name')}>
+                                Campaigns <SortIcon sortConfig={ongoingSort} columnKey="name" />
                             </div>
-                        ))}
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate')}>
+                                Date Created <SortIcon sortConfig={ongoingSort} columnKey="createdDate" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions')}>
+                                Submissions <SortIcon sortConfig={ongoingSort} columnKey="submissions" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget')}>
+                                Budget <SortIcon sortConfig={ongoingSort} columnKey="budget" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('claimed')}>
+                                Claimed <SortIcon sortConfig={ongoingSort} columnKey="claimed" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status')}>
+                                Status <SortIcon sortConfig={ongoingSort} columnKey="status" />
+                            </div>
+                        </div>
+
+                        <div className="divide-y divide-[#F4F6F8]">
+                            {sortedOngoing.map((campaign: any, index: number) => (
+                                <div
+                                    key={index}
+                                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                                    className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                    <div className="col-span-5 flex items-center gap-3">
+                                        <div className={`p-2 rounded-lg ${campaign.iconBg} ${campaign.iconColor}`}>
+                                            <campaign.icon className="w-5 h-5" />
+                                        </div>
+                                        <span className="font-semibold text-gray-900">{campaign.name}</span>
+                                    </div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.budget}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.claimed}</div>
+                                    <div className="col-span-1 flex items-center justify-center">
+                                        <Chip
+                                            color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
+                                            startContent={
+                                                campaign.status === 'active' ? <ActiveIcon size={20} /> :
+                                                    campaign.status === 'paused' ? <PausedIcon size={20} /> :
+                                                        <CheckIcon size={20} />
+                                            }
+                                            variant="flat"
+                                        >
+                                            {campaign.status}
+                                        </Chip>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="p-8 text-center text-gray-500 bg-[#F9FAFB] rounded-3xl">
+                        No ongoing campaigns found.
+                    </div>
+                )}
             </div>
 
             {/* Completed Campaigns */}
@@ -1154,62 +1265,68 @@ export default function Campaigns() {
                     <h2 className="text-lg font-semibold">Completed Campaigns</h2>
                 </div>
 
-                <div className="bg-white overflow-hidden">
-                    <div className="bg-[#F4F6F8] rounded-sm mt-2 grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name', true)}>
-                            Campaigns <SortIcon sortConfig={pastSort} columnKey="name" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate', true)}>
-                            Date Created <SortIcon sortConfig={pastSort} columnKey="createdDate" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions', true)}>
-                            Submissions <SortIcon sortConfig={pastSort} columnKey="submissions" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget', true)}>
-                            Budget <SortIcon sortConfig={pastSort} columnKey="budget" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('claimed', true)}>
-                            Claimed <SortIcon sortConfig={pastSort} columnKey="claimed" />
-                        </div>
-                        <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status', true)}>
-                            Status <SortIcon sortConfig={pastSort} columnKey="status" />
-                        </div>
-                    </div>
-
-                    <div className="divide-y divide-[#F4F6F8]">
-                        {sortedPast.map((campaign, index) => (
-                            <div
-                                key={index}
-                                onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                                className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors"
-                            >
-                                <div className="col-span-5 flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${campaign.iconBg} ${campaign.iconColor}`}>
-                                        <campaign.icon className="w-5 h-5" />
-                                    </div>
-                                    <span className="font-semibold text-gray-900">{campaign.name}</span>
-                                </div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.budget}</div>
-                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.claimed}</div>
-                                <div className="col-span-1 flex items-center justify-center">
-                                    <Chip
-                                        color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
-                                        startContent={
-                                            campaign.status === 'active' ? <ActiveIcon size={20} /> :
-                                                campaign.status === 'paused' ? <PausedIcon size={20} /> :
-                                                    <CheckIcon size={20} />
-                                        }
-                                        variant="flat"
-                                    >
-                                        {campaign.status}
-                                    </Chip>
-                                </div>
+                {sortedPast.length > 0 ? (
+                    <div className="bg-white overflow-hidden">
+                        <div className="bg-[#F4F6F8] rounded-sm mt-2 grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name', true)}>
+                                Campaigns <SortIcon sortConfig={pastSort} columnKey="name" />
                             </div>
-                        ))}
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate', true)}>
+                                Date Created <SortIcon sortConfig={pastSort} columnKey="createdDate" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions', true)}>
+                                Submissions <SortIcon sortConfig={pastSort} columnKey="submissions" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget', true)}>
+                                Budget <SortIcon sortConfig={pastSort} columnKey="budget" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('claimed', true)}>
+                                Claimed <SortIcon sortConfig={pastSort} columnKey="claimed" />
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status', true)}>
+                                Status <SortIcon sortConfig={pastSort} columnKey="status" />
+                            </div>
+                        </div>
+
+                        <div className="divide-y divide-[#F4F6F8]">
+                            {sortedPast.map((campaign: any, index: number) => (
+                                <div
+                                    key={index}
+                                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                                    className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                    <div className="col-span-5 flex items-center gap-3">
+                                        <div className={`p-2 rounded-lg ${campaign.iconBg} ${campaign.iconColor}`}>
+                                            <campaign.icon className="w-5 h-5" />
+                                        </div>
+                                        <span className="font-semibold text-gray-900">{campaign.name}</span>
+                                    </div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.budget}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.claimed}</div>
+                                    <div className="col-span-1 flex items-center justify-center">
+                                        <Chip
+                                            color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
+                                            startContent={
+                                                campaign.status === 'active' ? <ActiveIcon size={20} /> :
+                                                    campaign.status === 'paused' ? <PausedIcon size={20} /> :
+                                                        <CheckIcon size={20} />
+                                            }
+                                            variant="flat"
+                                        >
+                                            {campaign.status}
+                                        </Chip>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="p-8 text-center text-gray-500 bg-[#F9FAFB] rounded-3xl">
+                        No completed campaigns found.
+                    </div>
+                )}
             </div>
 
             <style>{`
