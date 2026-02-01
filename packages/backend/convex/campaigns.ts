@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { ConvexError } from "convex/values";
+import { ERROR_CODES } from "./errors";
 
 // ============================================================
 // QUERIES
@@ -9,7 +11,19 @@ import { paginationOptsValidator } from "convex/server";
 export const getCampaign = query({
     args: { campaignId: v.id("campaigns") },
     handler: async (ctx, args) => {
-        return await ctx.db.get(args.campaignId);
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) return null;
+
+        const pendingApprovals = (await ctx.db
+            .query("applications")
+            .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
+            .filter((q) => q.eq(q.field("status"), "reviewing"))
+            .collect()).length;
+
+        return {
+            ...campaign,
+            pendingApprovals,
+        };
     },
 });
 
@@ -42,6 +56,25 @@ export const getActiveCampaigns = query({
 // MUTATIONS
 // ============================================================
 
+export const getCampaignsByFilter = query({
+    args: {
+        businessId: v.id("businesses"),
+        status: v.optional(v.string()), // "active", "paused", "completed", "draft", or "all"
+        paginationOpts: paginationOptsValidator,
+    },
+    handler: async (ctx, args) => {
+        let q = ctx.db
+            .query("campaigns")
+            .withIndex("by_business", (q) => q.eq("business_id", args.businessId));
+
+        if (args.status && args.status !== "All") {
+            q = q.filter((q) => q.eq(q.field("status"), args.status));
+        }
+
+        return await q.order("desc").paginate(args.paginationOpts);
+    },
+});
+
 export const createCampaign = mutation({
     args: {
         businessId: v.id("businesses"),
@@ -57,9 +90,7 @@ export const createCampaign = mutation({
             views: v.number(),
             payout: v.number(),
         })),
-        requirements: v.array(v.object({
-            description: v.string(),
-        })),
+        requirements: v.array(v.string()),
         scripts: v.optional(v.array(v.object({
             type: v.string(),
             description: v.string(),
@@ -81,7 +112,12 @@ export const createCampaign = mutation({
         // Only deduct credits if the campaign is active (not draft)
         if (args.status === "active") {
             if (business.credit_balance < args.total_budget) {
-                throw new Error("Insufficient credit balance to launch campaign");
+                throw new ConvexError({
+                    code: ERROR_CODES.INSUFFICIENT_CREDITS.code,
+                    message: ERROR_CODES.INSUFFICIENT_CREDITS.message,
+                    currentBalance: business.credit_balance,
+                    required: args.total_budget
+                });
             }
 
             // Deduct credits immediately? Or reserve them?
@@ -145,7 +181,12 @@ export const updateCampaignStatus = mutation({
             if (!business) throw new Error("Business not found");
 
             if (business.credit_balance < campaign.total_budget) {
-                throw new Error("Insufficient credit balance to launch campaign");
+                throw new ConvexError({
+                    code: ERROR_CODES.INSUFFICIENT_CREDITS.code,
+                    message: ERROR_CODES.INSUFFICIENT_CREDITS.message,
+                    currentBalance: business.credit_balance,
+                    required: campaign.total_budget
+                });
             }
 
             const now = Date.now();
@@ -172,3 +213,87 @@ export const updateCampaignStatus = mutation({
         });
     }
 });
+
+export const updateCampaign = mutation({
+    args: {
+        campaignId: v.id("campaigns"),
+        name: v.string(),
+        total_budget: v.number(),
+        asset_links: v.optional(v.string()),
+        maximum_payout: v.number(),
+        payout_thresholds: v.array(v.object({
+            views: v.number(),
+            payout: v.number(),
+        })),
+        requirements: v.array(v.string()),
+        scripts: v.optional(v.array(v.object({
+            type: v.string(),
+            description: v.string(),
+        }))),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+            throw new Error("Unauthenticated call to mutation");
+        }
+
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) {
+            throw new Error("Campaign not found");
+        }
+
+        const business = await ctx.db.get(campaign.business_id);
+        if (!business) {
+            throw new Error("Business not found");
+        }
+
+        // Check if budget is being increased
+        if (args.total_budget > campaign.total_budget) {
+            const additionalBudget = args.total_budget - campaign.total_budget;
+
+            if (business.credit_balance < additionalBudget) {
+                throw new ConvexError({
+                    code: ERROR_CODES.INSUFFICIENT_CREDITS.code,
+                    message: ERROR_CODES.INSUFFICIENT_CREDITS.message,
+                    currentBalance: business.credit_balance,
+                    required: additionalBudget
+                });
+            }
+
+            const now = Date.now();
+
+            // Deduct credits for the budget increase
+            await ctx.db.patch(business._id, {
+                credit_balance: business.credit_balance - additionalBudget,
+                updated_at: now,
+            });
+
+            await ctx.db.insert("credits", {
+                business_id: business._id,
+                amount: -additionalBudget,
+                status: "completed",
+                type: "campaign_spend",
+                created_at: now,
+                reference: `campaign_update:${args.name}`,
+            });
+        }
+
+        // Logic for refunding credits if budget is decreased could go here
+        // For now, we only handle increases as requested
+
+        await ctx.db.patch(args.campaignId, {
+            name: args.name,
+            total_budget: args.total_budget,
+            asset_links: args.asset_links,
+            maximum_payout: args.maximum_payout,
+            payout_thresholds: args.payout_thresholds,
+            requirements: args.requirements,
+            scripts: args.scripts,
+            updated_at: Date.now(),
+        });
+
+        return args.campaignId;
+    },
+});
+
+

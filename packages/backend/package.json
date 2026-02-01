@@ -14,6 +14,7 @@
     "@aws-sdk/s3-request-presigner": "^3.975.0",
     "@convex-dev/aggregate": "^0.2.1",
     "@convex-dev/workos-authkit": "^0.1.5",
+    "apify-client": "^2.22.0",
     "convex": "^1.31.6",
     "convex-helpers": "^0.1.111"
   }

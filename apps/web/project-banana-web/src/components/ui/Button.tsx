@@ -16,7 +16,7 @@ const Button: React.FC<ButtonProps> = ({
     disabled,
     ...props
 }) => {
-    const baseStyles = "rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2";
+    const baseStyles = "rounded-xl font-bold transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2";
 
     const variants = {
         primary: "bg-[#1C1C1C] text-white px-8 py-3 hover:bg-gray-800 shadow-lg shadow-black/20",

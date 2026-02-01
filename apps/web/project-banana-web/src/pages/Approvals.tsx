@@ -2,36 +2,45 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from "@heroui/card";
 import { Image } from "@heroui/image";
 import { ArrowRight } from 'lucide-react';
-
-const approvalCampaigns = [
-    {
-        id: '1',
-        name: 'Chakra Soft UI Version',
-        pendingApprovals: 42,
-        image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2071&auto=format&fit=crop'
-    },
-    {
-        id: '2',
-        name: 'Add Progress Track',
-        pendingApprovals: 15,
-        image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop'
-    },
-    {
-        id: '3',
-        name: 'Fix Platform Errors',
-        pendingApprovals: 8,
-        image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=2070&auto=format&fit=crop'
-    },
-    {
-        id: '6',
-        name: 'Q4 Marketing Push',
-        pendingApprovals: 12,
-        image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop'
-    }
-];
+import { usePaginatedQuery, useQuery } from "convex/react";
+import { Skeleton } from "@heroui/skeleton";
+import { api } from "../../../../../packages/backend/convex/_generated/api";
 
 export default function Approvals() {
     const navigate = useNavigate();
+    const business = useQuery(api.businesses.getMyBusiness);
+
+    const { results, status } = usePaginatedQuery(
+        api.campaigns.getCampaignsByFilter,
+        business ? { businessId: business._id, status: "active" } : "skip",
+        { initialNumItems: 10 }
+    );
+
+    console.log(results);
+    if (!business || status === "LoadingFirstPage") {
+        return (
+            <div className="p-8 font-sans">
+                <div className="flex items-center gap-3 mb-6">
+                    <h1 className="text-2xl font-bold">Approvals</h1>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <Card key={i} className="flex flex-col w-full bg-[#F4F6F8] border-none rounded-md p-6 shadow-none h-[400px]">
+                            <div className="flex flex-col items-start w-full space-y-4">
+                                <Skeleton className="rounded-lg w-3/4 h-7" />
+                                <div className="flex items-center gap-3 mt-3 w-full">
+                                    <Skeleton className="rounded-full w-10 h-6" />
+                                    <Skeleton className="rounded-lg w-32 h-4" />
+                                </div>
+                                <Skeleton className="rounded-lg w-24 h-4 mt-8" />
+                            </div>
+                            <Skeleton className="rounded-sm mt-6 w-full h-48" />
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 font-sans text-gray-900 animate-fadeIn">
@@ -40,11 +49,11 @@ export default function Approvals() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {approvalCampaigns.map((campaign) => (
+                {results?.map((campaign) => (
                     <Card
-                        key={campaign.id}
+                        key={campaign._id}
                         isPressable
-                        onPress={() => navigate(`/approvals/${campaign.id}`)}
+                        onPress={() => navigate(`/approvals/${campaign._id}`)}
                         className="flex flex-col w-full bg-[#F4F6F8] border-none rounded-md p-6 hover:bg-gray-200 transition-colors duration-200 group shadow-none"
                     >
                         {/* Text Content Section (Top) */}
@@ -53,10 +62,16 @@ export default function Approvals() {
                                 {campaign.name}
                             </h4>
                             <div className="flex items-center gap-3 mt-3">
-                                <span className="px-3 bg-white py-1 rounded-full border border-gray-400 text-sm font-semibold text-gray-700">
-                                    {campaign.pendingApprovals}
-                                </span>
-                                <span className="text-gray-500 text-sm font-medium">pending submissions</span>
+                                {campaign.pending_approvals && campaign.pending_approvals > 0 ? (
+                                    <>
+                                        <span className="px-3 bg-white py-1 rounded-full border border-gray-400 text-sm font-semibold text-gray-700">
+                                            {campaign.pending_approvals}
+                                        </span>
+                                        <span className="text-gray-500 text-sm font-medium">pending submissions</span>
+                                    </>
+                                ) : (
+                                    <span className="text-gray-400 text-sm font-medium">No pending approvals</span>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-1 pt-8 text-orange-500 font-semibold text-sm mt-4 transition-all">
@@ -69,7 +84,7 @@ export default function Approvals() {
                         <Image
                             alt={campaign.name}
                             className="object-cover rounded-sm mt-6"
-                            src={campaign.image}
+                            src={campaign.cover_photo_url || "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2071&auto=format&fit=crop"}
                         />
                     </Card>
                 ))}

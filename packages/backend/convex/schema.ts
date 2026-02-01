@@ -14,6 +14,7 @@ export default defineSchema({
         industry: v.optional(v.string()),
         size: v.optional(v.string()),
         credit_balance: v.number(),
+        pending_approvals: v.optional(v.number()),
         created_at: v.number(),
         updated_at: v.number(),
     })
@@ -34,18 +35,27 @@ export default defineSchema({
             views: v.number(),
             payout: v.number(),
         })),
-        requirements: v.array(v.object({
-            description: v.string(),
-        })),
+        requirements: v.array(v.string()),
         scripts: v.optional(v.array(v.object({
             type: v.string(),
             description: v.string(),
         }))),
+        pending_approvals: v.optional(v.number()),
         created_at: v.number(),
         updated_at: v.number(),
     })
         .index("by_business", ["business_id"])
         .index("by_status", ["status"]),
+
+    user_campaign_status: defineTable({
+        user_id: v.id("users"),
+        campaign_id: v.id("campaigns"),
+        maximum_payout: v.number(),
+        total_earnings: v.number(),
+        created_at: v.number(),
+        updated_at: v.number(),
+    })
+        .index("by_user", ["user_id"]),
 
     credits: defineTable({
         business_id: v.id("businesses"),
@@ -87,6 +97,7 @@ export default defineSchema({
         tiktok_post_url: v.optional(v.string()),
         tracking_tag: v.optional(v.string()),
         posted_at: v.optional(v.number()),
+        earning: v.optional(v.number()),
         approved_submission_id: v.optional(v.id("submissions")),
         created_at: v.number(),
         updated_at: v.number(),
@@ -98,15 +109,19 @@ export default defineSchema({
 
     submissions: defineTable({
         application_id: v.id("applications"),
+        user_id: v.id("users"),
         campaign_id: v.id("campaigns"),
         video_url: v.optional(v.string()),
         s3_key: v.optional(v.string()),
-        status: v.string(), // "pending_submission" | "reviewing" | "changes_requested" | "ready_to_post" | "earning"
+        status: v.string(), // "pending_submission" | "pending_review" | "changes_requested" | "ready_to_post" | "earning"
         created_at: v.number(),
+        type: v.string(), // "video" | "image" | "carousel"
         updated_at: v.number(),
+        attempt_number: v.number(),
     })
         .index("by_application", ["application_id"])
         .index("by_campaign", ["campaign_id"])
+        .index("by_user", ["user_id"])
         .index("by_status", ["status"]),
 
     submission_reviews: defineTable({

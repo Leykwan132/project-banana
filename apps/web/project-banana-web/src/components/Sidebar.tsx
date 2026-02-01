@@ -1,6 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut } from 'lucide-react';
 import { useAuth } from '@workos-inc/authkit-react';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
+
 const navigation = [
     { name: 'Overview', href: '/overview', icon: LayoutDashboard },
     { name: 'Campaigns', href: '/campaigns', icon: Megaphone },
@@ -14,6 +17,7 @@ const account = [
 
 export function Sidebar() {
     const { signOut } = useAuth();
+    const business = useQuery(api.businesses.getMyBusiness);
 
     return (
         <div className="flex h-screen w-64 flex-col border-r border-[#F4F6F8] bg-white">
@@ -43,11 +47,11 @@ export function Sidebar() {
                             >
                                 <item.icon className="h-4 w-4" />
                                 {item.name}
-                                {item.name === 'Approvals' && (
+                                {item.name === 'Approvals' && business?.pending_approvals ? (
                                     <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                        12
+                                        {business.pending_approvals}
                                     </span>
-                                )}
+                                ) : null}
                             </NavLink>
                         ))}
                     </nav>

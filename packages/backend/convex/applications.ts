@@ -78,6 +78,7 @@ export const createApplication = mutation({
             status: "pending_submission",
             created_at: now,
             updated_at: now,
+            earning: 0,
         });
 
         return applicationId;

@@ -23,6 +23,22 @@ export const getSubmissionsByApplication = query({
     },
 });
 
+export const getSubmissionsByCampaignId = query({
+    args: { campaignId: v.id("campaigns") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+            return [];
+        }
+        return await ctx.db
+            .query("submissions")
+            .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
+            .filter((q) => q.eq(q.field("status"), "pending_review"))
+            .order("desc")
+            .collect();
+    },
+});
+
 export const getSubmission = query({
     args: { submissionId: v.id("submissions") },
     handler: async (ctx, args) => {
@@ -50,20 +66,38 @@ export const createSubmission = mutation({
             throw new Error("Unauthenticated call to mutation");
         }
 
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
+            .unique();
+
+        if (!user) throw new Error("User not found");
+
         const application = await ctx.db.get(args.applicationId);
         if (!application) throw new Error("Application not found");
 
         const now = Date.now();
 
-        // Create submission
+        // Calculate attempt number
+        const existingSubmissions = await ctx.db
+            .query("submissions")
+            .withIndex("by_application", (q) => q.eq("application_id", args.applicationId))
+            .collect();
+
+        const attemptNumber = existingSubmissions.length + 1;
+
+        // TODO: default create video for now
         const submissionId = await ctx.db.insert("submissions", {
             application_id: args.applicationId,
             campaign_id: application.campaign_id,
-            video_url: args.video_url, // Might be empty/undefined if s3_key used
+            user_id: user._id,
+            video_url: args.video_url,
             s3_key: args.s3_key,
-            status: "reviewing", // Starts in review
+            status: "pending_review",
             created_at: now,
             updated_at: now,
+            type: "video",
+            attempt_number: attemptNumber,
         });
 
         // Update application status
@@ -72,69 +106,160 @@ export const createSubmission = mutation({
             updated_at: now,
         });
 
-        // Increment campaign submissions count
+        // Increment campaign submissions and pending approvals
         const campaign = await ctx.db.get(application.campaign_id);
         if (campaign) {
             await ctx.db.patch(application.campaign_id, {
                 submissions: (campaign.submissions || 0) + 1,
+                pending_approvals: (campaign.pending_approvals || 0) + 1,
             });
+
+            // Increment business pending approvals
+            const business = await ctx.db.get(campaign.business_id);
+            if (business) {
+                await ctx.db.patch(campaign.business_id, {
+                    pending_approvals: (business.pending_approvals || 0) + 1,
+                });
+            }
         }
 
         return submissionId;
     },
 });
 
-export const reviewSubmission = mutation({
+// 2. Approve Submission
+export const approveSubmission = mutation({
     args: {
         submissionId: v.id("submissions"),
-        reviewerId: v.id("users"), // Should be authenticated user in real app
-        action: v.string(), // "approved", "rejected", "changes_requested"
         feedback: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
-            throw new Error("Unauthenticated call to mutation");
-        }
+        if (identity === null) throw new Error("Unauthenticated call");
+
+        const reviewer = await ctx.db
+            .query("users")
+            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
+            .unique();
+
+        if (!reviewer) throw new Error("Reviewer not found");
 
         const submission = await ctx.db.get(args.submissionId);
         if (!submission) throw new Error("Submission not found");
 
+        // Only process if status is pending_review to avoid double decrement
+        if (submission.status !== "pending_review") {
+            // Idempotency check: if already approved, maybe just return
+            if (submission.status === "ready_to_post") return;
+            throw new Error("Submission is not under review");
+        }
+
         const now = Date.now();
 
-        // 1. Update Submission Status
-        const newStatus = args.action === "approved" ? "ready_to_post" :
-            args.action === "changes_requested" ? "changes_requested" :
-                "rejected"; // or just "rejected"
-
+        // Update Submission
         await ctx.db.patch(args.submissionId, {
-            status: newStatus,
+            status: "ready_to_post",
             updated_at: now,
         });
 
-        // 2. Create Review Record
+        // Create Review Record
         await ctx.db.insert("submission_reviews", {
             submission_id: args.submissionId,
-            reviewer_id: args.reviewerId,
+            reviewer_id: reviewer._id,
             feedback: args.feedback,
-            action: args.action,
+            action: "approved",
             reviewed_at: now,
             created_at: now,
         });
 
-        // 3. Update Application if Approved
-        if (args.action === "approved") {
-            await ctx.db.patch(submission.application_id, {
-                status: "ready_to_post",
-                approved_submission_id: args.submissionId,
-                updated_at: now,
+        // Update Application
+        await ctx.db.patch(submission.application_id, {
+            status: "ready_to_post",
+            approved_submission_id: args.submissionId,
+            updated_at: now,
+        });
+
+        // Decrement Campaign Pending Approvals
+        const campaign = await ctx.db.get(submission.campaign_id);
+        if (campaign && (campaign.pending_approvals ?? 0) > 0) {
+            await ctx.db.patch(submission.campaign_id, {
+                pending_approvals: (campaign.pending_approvals ?? 1) - 1,
             });
-        } else {
-            // If changes requested, application status reflects that
-            await ctx.db.patch(submission.application_id, {
-                status: "changes_requested", // User needs to submit again
-                updated_at: now,
+
+            // Decrement Business Pending Approvals
+            const business = await ctx.db.get(campaign.business_id);
+            if (business && (business.pending_approvals ?? 0) > 0) {
+                await ctx.db.patch(campaign.business_id, {
+                    pending_approvals: (business.pending_approvals ?? 1) - 1,
+                });
+            }
+        }
+    },
+});
+
+// 3. Request Changes
+export const requestChanges = mutation({
+    args: {
+        submissionId: v.id("submissions"),
+        feedback: v.string(), // Required for changes request
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) throw new Error("Unauthenticated call");
+
+        const reviewer = await ctx.db
+            .query("users")
+            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
+            .unique();
+
+        if (!reviewer) throw new Error("Reviewer not found");
+
+        const submission = await ctx.db.get(args.submissionId);
+        if (!submission) throw new Error("Submission not found");
+
+        if (submission.status !== "pending_review") {
+            if (submission.status === "changes_requested") return;
+            throw new Error("Submission is not under review");
+        }
+
+        const now = Date.now();
+
+        // Update Submission
+        await ctx.db.patch(args.submissionId, {
+            status: "changes_requested",
+            updated_at: now,
+        });
+
+        // Create Review Record
+        await ctx.db.insert("submission_reviews", {
+            submission_id: args.submissionId,
+            reviewer_id: reviewer._id,
+            feedback: args.feedback,
+            action: "changes_requested",
+            reviewed_at: now,
+            created_at: now,
+        });
+
+        // Update Application
+        await ctx.db.patch(submission.application_id, {
+            status: "changes_requested",
+            updated_at: now,
+        });
+
+        // Decrement Campaign Pending Approvals
+        const campaign = await ctx.db.get(submission.campaign_id);
+        if (campaign && (campaign.pending_approvals ?? 0) > 0) {
+            await ctx.db.patch(submission.campaign_id, {
+                pending_approvals: (campaign.pending_approvals ?? 1) - 1,
             });
+
+            // Decrement Business Pending Approvals
+            const business = await ctx.db.get(campaign.business_id);
+            if (business && (business.pending_approvals ?? 0) > 0) {
+                await ctx.db.patch(campaign.business_id, {
+                    pending_approvals: (business.pending_approvals ?? 1) - 1,
+                });
+            }
         }
     },
 });

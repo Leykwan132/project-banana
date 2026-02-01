@@ -42,7 +42,7 @@ export const seedData = mutation({
             asset_links: "https://example.com/logo.png",
             maximum_payout: 100,
             payout_thresholds: [{ views: 1000, payout: 10 }],
-            requirements: [{ description: "Must be 30s long" }],
+            requirements: ["Must be 30s long"],
             scripts: [{ type: "intro", description: "Hey guys!" }],
             created_at: now,
             updated_at: now,

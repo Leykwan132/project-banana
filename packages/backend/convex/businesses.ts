@@ -90,6 +90,7 @@ export const createBusiness = mutation({
             industry: args.industry,
             size: args.size,
             credit_balance: 0,
+            pending_approvals: 0,
             created_at: now,
             updated_at: now,
         });
