@@ -23,6 +23,7 @@ import type * as seed from "../seed.js";
 import type * as submissions from "../submissions.js";
 import type * as testFunctions from "../testFunctions.js";
 import type * as tiktok from "../tiktok.js";
+import type * as topup from "../topup.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   submissions: typeof submissions;
   testFunctions: typeof testFunctions;
   tiktok: typeof tiktok;
+  topup: typeof topup;
   users: typeof users;
   utils: typeof utils;
 }>;

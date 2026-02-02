@@ -52,10 +52,12 @@ export default defineSchema({
         campaign_id: v.id("campaigns"),
         maximum_payout: v.number(),
         total_earnings: v.number(),
+        status: v.string(), // "pending_review" | "ready_to_post" | "earning" | "maxed_out"
         created_at: v.number(),
         updated_at: v.number(),
     })
-        .index("by_user", ["user_id"]),
+        .index("by_user", ["user_id"])
+        .index("by_status", ["status"]),
 
     credits: defineTable({
         business_id: v.id("businesses"),
@@ -66,6 +68,23 @@ export default defineSchema({
         created_at: v.number(),
     })
         .index("by_business", ["business_id"])
+        .index("by_status", ["status"]),
+
+    topup_orders: defineTable({
+        business_id: v.id("businesses"),
+        amount: v.number(), // Amount in display currency (MYR)
+        amount_paise: v.number(), // Amount in smallest unit (sen) for Razorpay
+        currency: v.string(), // "MYR"
+        order_id: v.string(), // Order ID returned from Razorpay Create Order API
+        razorpay_payment_id: v.optional(v.string()), // From checkout verification
+        razorpay_signature: v.optional(v.string()), // From checkout verification
+        receipt: v.string(), // Internal receipt number
+        status: v.string(), // "created" | "paid" | "failed"
+        created_at: v.number(),
+        updated_at: v.number(),
+    })
+        .index("by_business", ["business_id"])
+        .index("by_order_id", ["order_id"])
         .index("by_status", ["status"]),
 
     // ============================================================

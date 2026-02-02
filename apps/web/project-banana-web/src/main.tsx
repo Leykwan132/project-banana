@@ -17,6 +17,7 @@ import ApprovalDetails from './pages/ApprovalDetails'
 import ReviewSubmission from './pages/ReviewSubmission'
 import Settings from './pages/Settings'
 import Credits from './pages/Credits'
+import TopUp from './pages/TopUp'
 import { DashboardLayout } from './components/DashboardLayout'
 import { HeroUIProvider } from "@heroui/react";
 
@@ -45,6 +46,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/approvals/:id/submission/:submissionId" element={<ReviewSubmission />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/credits" element={<Credits />} />
+                <Route path="/credits/topup" element={<TopUp />} />
               </Route>
             </Routes>
           </BrowserRouter>
