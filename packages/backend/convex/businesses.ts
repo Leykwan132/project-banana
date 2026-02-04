@@ -1,4 +1,4 @@
-import { mutation, query, action } from "./_generated/server";
+import { mutation, query, action, internalMutation } from "./_generated/server";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
@@ -40,6 +40,16 @@ export const getMyBusiness = query({
         return await ctx.db
             .query("businesses")
             .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .unique();
+    },
+});
+
+export const getBusinessByUserId = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("businesses")
+            .withIndex("by_user", (q) => q.eq("user_id", args.userId))
             .unique();
     },
 });
@@ -157,18 +167,13 @@ export const updateBusiness = mutation({
 });
 
 // Internal/Admin mutation to add credits
-export const addCredits = mutation({
+export const addCredits = internalMutation({
     args: {
         businessId: v.id("businesses"),
         amount: v.number(),
         reference: v.optional(v.string()), // e.g. Stripe payment ID
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
-            throw new Error("Unauthenticated call to mutation");
-        }
-
         const business = await ctx.db.get(args.businessId);
         if (!business) {
             throw new Error("Business not found");

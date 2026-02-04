@@ -1,11 +1,28 @@
 import { useAuth } from '@workos-inc/authkit-react';
 import { Navigate } from 'react-router-dom';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../packages/backend/convex/_generated/api';
 
 export default function App() {
     const { user, signIn } = useAuth();
+    const onboardingStatus = useQuery(api.users.getOnboardingStatus);
 
+    console.log(user);
     if (user) {
-        return <Navigate to="/overview" />;
+        // Wait for onboarding status to load
+        if (onboardingStatus === undefined) {
+            return (
+                <div className="min-h-screen flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+            );
+        }
+
+        if (onboardingStatus.isOnboarded) {
+            return <Navigate to="/overview" />;
+        } else {
+            return <Navigate to="/onboarding" />;
+        }
     }
 
     return (

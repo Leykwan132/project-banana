@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Authenticated, useQuery } from 'convex/react'; // Added useQuery
 import { api } from '../../../../../packages/backend/convex/_generated/api'; // Uncommented
-import OnboardingModal from '../components/OnboardingModal'; // Added Modal
+import { Skeleton } from '@heroui/react';
 import {
     LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -53,14 +53,13 @@ export default function Overview() {
 
     // Check if user has a business
     const business = useQuery(api.businesses.getMyBusiness);
+    const subscription = useQuery(api.stripe.getSubscriptionDetails);
+
+    // Loading state for charts
+    const isLoading = business === undefined || subscription === undefined;
 
     return (
         <div className="p-8 font-sans text-gray-900">
-            {/* Onboarding Modal - Shows if business is fully loaded (not undefined) and is null */}
-            {business !== undefined && (
-                <OnboardingModal isOpen={business === null} />
-            )}
-
             <h1 className="text-2xl font-bold mb-6">Overview</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -102,35 +101,47 @@ export default function Overview() {
                         </div>
                     </div>
                     <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={data}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis
-                                    dataKey="name"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                                />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    cursor={{ stroke: '#F4F6F8', strokeWidth: 2 }}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="value"
-                                    stroke="#1C1C1C"
-                                    strokeWidth={2}
-                                    dot={false}
-                                    activeDot={{ r: 6, fill: '#1C1C1C', strokeWidth: 0 }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                        {isLoading ? (
+                            <div className="space-y-4 h-full flex flex-col justify-end">
+                                <Skeleton className="h-4 w-3/5 rounded-lg" />
+                                <Skeleton className="h-4 w-4/5 rounded-lg" />
+                                <Skeleton className="h-4 w-2/5 rounded-lg" />
+                                <Skeleton className="h-4 w-3/4 rounded-lg" />
+                                <Skeleton className="h-4 w-1/2 rounded-lg" />
+                                <Skeleton className="h-4 w-4/5 rounded-lg" />
+                                <Skeleton className="h-4 w-3/5 rounded-lg" />
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={data}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        cursor={{ stroke: '#F4F6F8', strokeWidth: 2 }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="value"
+                                        stroke="#1C1C1C"
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{ r: 6, fill: '#1C1C1C', strokeWidth: 0 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
 

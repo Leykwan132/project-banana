@@ -15,11 +15,21 @@ export default defineSchema({
         size: v.optional(v.string()),
         credit_balance: v.number(),
         pending_approvals: v.optional(v.number()),
+        // Stripe subscription fields
+        stripe_customer_id: v.optional(v.string()),
+        stripe_subscription_id: v.optional(v.string()),
+        subscription_status: v.optional(v.string()), // "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "incomplete" | "incomplete_expired" | "paused"
+        subscription_plan_type: v.optional(v.string()), // "starter" | "growth"
+        subscription_billing_cycle: v.optional(v.string()), // "monthly" | "annual"
+        subscription_amount: v.optional(v.number()),
+
         created_at: v.number(),
         updated_at: v.number(),
     })
         .index("by_name", ["name"])
-        .index("by_user", ["user_id"]),
+        .index("by_user", ["user_id"])
+        .index("by_stripe_subscription", ["stripe_subscription_id"])
+        .index("by_stripe_customer", ["stripe_customer_id"]),
 
     campaigns: defineTable({
         business_id: v.id("businesses"),
@@ -75,16 +85,24 @@ export default defineSchema({
         amount: v.number(), // Amount in display currency (MYR)
         amount_paise: v.number(), // Amount in smallest unit (sen) for Razorpay
         currency: v.string(), // "MYR"
-        order_id: v.string(), // Order ID returned from Razorpay Create Order API
+        order_id: v.optional(v.string()), // Order ID returned from Razorpay Create Order API
+        // Razorpay specific
         razorpay_payment_id: v.optional(v.string()), // From checkout verification
         razorpay_signature: v.optional(v.string()), // From checkout verification
+
+        // Billplz specific
+        provider: v.optional(v.string()), // "razorpay" | "billplz"
+        billplz_id: v.optional(v.string()),
+        billplz_url: v.optional(v.string()),
+
         receipt: v.string(), // Internal receipt number
-        status: v.string(), // "created" | "paid" | "failed"
+        status: v.string(), // "created" | "paid" | "failed" // For Billplz: "pending" | "paid"
         created_at: v.number(),
         updated_at: v.number(),
     })
         .index("by_business", ["business_id"])
-        .index("by_order_id", ["order_id"])
+        .index("by_order_id", ["order_id"]) // For Razorpay
+        .index("by_billplz_id", ["billplz_id"]) // For Billplz
         .index("by_status", ["status"]),
 
     // ============================================================
@@ -93,6 +111,7 @@ export default defineSchema({
 
     users: defineTable({
         isDeleted: v.optional(v.boolean()), // Soft delete
+        isOnboarded: v.optional(v.boolean()), // Set to true after first subscription
         profile_pic_url: v.optional(v.string()), // New
         total_views: v.optional(v.number()),
         total_earnings: v.optional(v.number()),

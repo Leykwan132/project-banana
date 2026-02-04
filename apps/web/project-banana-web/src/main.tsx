@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastProvider } from "@heroui/toast";
 
 import App from './App'
+import Onboarding from './pages/Onboarding'
 import Overview from './pages/Overview'
 import Campaigns from './pages/Campaigns'
 import CreateCampaign from './pages/CreateCampaign'
@@ -18,6 +19,7 @@ import ReviewSubmission from './pages/ReviewSubmission'
 import Settings from './pages/Settings'
 import Credits from './pages/Credits'
 import TopUp from './pages/TopUp'
+import Subscription from './pages/Subscription'
 import { DashboardLayout } from './components/DashboardLayout'
 import { HeroUIProvider } from "@heroui/react";
 
@@ -36,6 +38,7 @@ createRoot(document.getElementById('root')!).render(
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<App />} />
+              <Route path="/onboarding" element={<Onboarding />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/overview" element={<Overview />} />
                 <Route path="/campaigns" element={<Campaigns />} />
@@ -47,6 +50,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/credits" element={<Credits />} />
                 <Route path="/credits/topup" element={<TopUp />} />
+                <Route path="/subscription" element={<Subscription />} />
               </Route>
             </Routes>
           </BrowserRouter>

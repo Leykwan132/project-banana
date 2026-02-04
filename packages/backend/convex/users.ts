@@ -29,6 +29,16 @@ export const getUserById = query({
     },
 });
 
+export const getUserByAuthId = query({
+    args: { authId: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("users")
+            .withIndex("by_authId", (q) => q.eq("authId", args.authId))
+            .unique();
+    },
+});
+
 
 
 // ============================================================
@@ -109,5 +119,55 @@ export const updateUser = mutation({
         });
 
         return user._id;
+    },
+});
+
+// Get onboarding status for the current user
+export const getOnboardingStatus = query({
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            return { isOnboarded: false };
+        }
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
+            .unique();
+
+        if (!user) {
+            return { isOnboarded: false };
+        }
+
+        return { isOnboarded: user.isOnboarded ?? false };
+    },
+});
+
+// Set user as onboarded (called from webhook after first subscription)
+export const setUserOnboarded = mutation({
+    args: {
+        authId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_authId", (q) => q.eq("authId", args.authId))
+            .unique();
+
+        if (!user) {
+            console.error(`User not found for authId: ${args.authId}`);
+            return { success: false, error: "User not found" };
+        }
+
+        // Only set if not already onboarded
+        if (!user.isOnboarded) {
+            await ctx.db.patch(user._id, {
+                isOnboarded: true,
+                updated_at: Date.now(),
+            });
+        }
+
+        return { success: true };
     },
 });

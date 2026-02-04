@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut } from 'lucide-react';
+import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap } from 'lucide-react';
 import { useAuth } from '@workos-inc/authkit-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -12,6 +12,7 @@ const navigation = [
 
 const account = [
     { name: 'Credits', href: '/credits', icon: CreditCard },
+    { name: 'Subscription', href: '/subscription', icon: Zap },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -22,9 +23,9 @@ export function Sidebar() {
     return (
         <div className="flex h-screen w-64 flex-col border-r border-[#F4F6F8] bg-white">
             <div className="flex h-16 items-center px-6">
-                <div className="flex items-center gap-2 font-semibold">
-                    <div className="bg-blue-600 rounded-full h-2 w-2"></div>
-                    <span className="text-gray-900 tracking-tight">ByeWind</span>
+                <div className="flex items-center gap-1 font-semibold">
+                    <img src="/banana-icon.png" alt="Banana" className="w-10 h-10 object-contain" />
+                    <span className="text-gray-900 tracking-tight">Youniq</span>
                 </div>
             </div>
 

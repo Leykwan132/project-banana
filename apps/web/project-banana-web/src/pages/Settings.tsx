@@ -3,105 +3,37 @@ import { Plus, User, Mail, Building } from 'lucide-react';
 import { useQuery, useAction } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
-import { BUSINESS_INFO_KEY } from '../lib/constants';
 
 export default function Settings() {
     const business = useQuery(api.businesses.getMyBusiness);
     const generateLogoUrl = useAction(api.businesses.generateLogoAccessUrl);
 
-    // Cache key for the visible fields on this page
-
-    // Initialize state from sessionStorage if available
-
-    const [businessName, setBusinessName] = useState(() => {
-        try {
-            const cached = sessionStorage.getItem(BUSINESS_INFO_KEY);
-            return cached ? JSON.parse(cached).name : '';
-        } catch { return ''; }
-    });
-    const [businessSize, setBusinessSize] = useState(() => {
-        try {
-            const cached = sessionStorage.getItem(BUSINESS_INFO_KEY);
-            return cached ? JSON.parse(cached).size : '';
-        } catch { return ''; }
-    });
-    const [logo, setLogo] = useState<string | null>(() => {
-        try {
-            const cached = sessionStorage.getItem(BUSINESS_INFO_KEY);
-            return cached ? JSON.parse(cached).logo : null;
-        } catch { return null; }
-    });
-
-    // Helper to update cache
-    const updateCache = (updates: Partial<{ id: string; name: string; size: string; logo: string | null }>) => {
-        try {
-            const current = JSON.parse(sessionStorage.getItem(BUSINESS_INFO_KEY) || '{}');
-            sessionStorage.setItem(BUSINESS_INFO_KEY, JSON.stringify({ ...current, ...updates }));
-        } catch (e) {
-            console.error("Failed to update session storage", e);
-        }
-    };
+    const [businessName, setBusinessName] = useState('');
+    const [businessSize, setBusinessSize] = useState('');
+    const [logo, setLogo] = useState<string | null>(null);
 
     // Sync state with fetched business data & handle Logo logic
     useEffect(() => {
         if (business) {
-
             setBusinessName(business.name);
             setBusinessSize(business.size || '');
 
-            // Base update for name/size
-            let newLogo = logo; // preserve current logo by default
-            const updates: any = { id: business._id, name: business.name, size: business.size || '' };
-
             // 1. If we have a stored logo URL (external), use it.
             if (business.logo_url) {
-                newLogo = business.logo_url;
-                setLogo(newLogo);
-                updates.logo = newLogo;
-                updateCache(updates);
+                setLogo(business.logo_url);
                 return;
             }
 
-            // 2. If we have an S3 key, try to use a cached presigned URL or fetch a new one.
+            // 2. If we have an S3 key, fetch a new presigned URL.
             if (business.logo_s3_key) {
-                // Secondary cache for the specific presigned URL validity
-                const LOGO_CACHE_KEY = `logo_url_${business._id}`;
-                const CACHE_DURATION = 50 * 60 * 1000; // 50 minutes
-
-                const cachedLogo = sessionStorage.getItem(LOGO_CACHE_KEY);
-                let foundValidLogo = false;
-
-                if (cachedLogo) {
-                    try {
-                        const { url, expiresAt } = JSON.parse(cachedLogo);
-                        if (Date.now() < expiresAt) {
+                generateLogoUrl({ businessId: business._id })
+                    .then((url) => {
+                        if (url) {
                             setLogo(url);
-                            updates.logo = url;
-                            foundValidLogo = true;
                         }
-                    } catch (e) { }
-                }
-
-                if (!foundValidLogo) {
-                    generateLogoUrl({ businessId: business._id })
-                        .then((url) => {
-                            if (url) {
-                                setLogo(url);
-                                // Save to specific expiring cache
-                                sessionStorage.setItem(LOGO_CACHE_KEY, JSON.stringify({
-                                    url,
-                                    expiresAt: Date.now() + CACHE_DURATION
-                                }));
-                                // Also update the main display cache so it shows instantly next time
-                                updateCache({ logo: url });
-                            }
-                        })
-                        .catch((err) => console.error("Failed to fetch logo URL:", err));
-                }
+                    })
+                    .catch((err) => console.error("Failed to fetch logo URL:", err));
             }
-
-            // Save textual updates
-            updateCache(updates);
         }
     }, [business, generateLogoUrl]);
 
@@ -223,7 +155,7 @@ export default function Settings() {
                         Save Changes
                     </Button>
                 </div>
-            </div>
+            </div >
             <style>{`
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(10px); }
@@ -233,6 +165,6 @@ export default function Settings() {
                     animation: fadeIn 0.2s ease-out forwards;
                 }
             `}</style>
-        </div>
+        </div >
     );
 }
