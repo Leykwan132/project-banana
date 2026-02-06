@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
         fontFamily: 'GoogleSans_700Bold',
     },
     section: {
-        // marginBottom: 12,
+        marginBottom: 8,
     },
     sectionTitle: {
         fontSize: 18,
