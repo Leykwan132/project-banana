@@ -90,6 +90,6 @@ const styles = StyleSheet.create({
     },
     listSection: {
         paddingHorizontal: 16,
-        gap: 12, // Gap between items
+        gap: 24, // Gap between items
     },
 });

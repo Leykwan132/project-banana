@@ -36,7 +36,7 @@ const mockCampaign = {
     name: 'Campaign Name',
     company: 'by xxx company',
     logoLetter: 'a',
-    status: 'Posted' as ApplicationStatus,
+    status: 'Ready to Post' as ApplicationStatus,
     mySubmissions: [
         { id: '1', status: 'Under Review' as ApplicationStatus, date: '17/11/2025 5.46pm' },
         { id: '2', status: 'Changes Required' as ApplicationStatus, date: '17/11/2025 5.46pm' },
@@ -252,7 +252,7 @@ export default function ApplicationDetailScreen() {
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
@@ -394,7 +394,7 @@ export default function ApplicationDetailScreen() {
 
                 {/* My Submissions */}
                 <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>My submissions</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginBottom: 24 }]}>My submissions</ThemedText>
                     <View style={styles.submissionsList}>
                         {mockCampaign.mySubmissions.map((sub, index) => (
                             <ApplicationListItem
@@ -407,7 +407,7 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider]} />
 
                 {/* Requirements Accordion */}
                 <View style={styles.accordionSection}>
@@ -756,11 +756,11 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </ActionSheet>
 
-                <View style={{ height: 100 }} />
+
             </ScrollView>
 
             {mockCampaign.status !== 'Posted' && (
-                <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                <View style={[styles.footer, { paddingBottom: 30 }]}>
                     <Pressable
                         style={[
                             styles.actionButton,
@@ -802,7 +802,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
-        paddingBottom: 20
     },
     header: {
         flexDirection: 'row',
@@ -827,7 +826,7 @@ const styles = StyleSheet.create({
     campaignInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 32,
+        marginBottom: 24,
     },
     logoContainer: {
         marginRight: 16,
@@ -876,7 +875,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontFamily: 'GoogleSans_700Bold',
-        marginBottom: 8,
+        marginBottom: 2,
     },
     sectionSubtitle: {
         fontSize: 14,
@@ -885,7 +884,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     submissionsList: {
-        gap: 0,
+        gap: 24,
     },
     divider: {
         height: 1,
@@ -946,6 +945,7 @@ const styles = StyleSheet.create({
     },
     creatorList: {
         gap: 0,
+        paddingBottom: 24,
     },
     footer: {
         position: 'absolute',

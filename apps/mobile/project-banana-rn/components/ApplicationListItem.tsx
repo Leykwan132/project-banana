@@ -108,20 +108,19 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12, // Minimal vertical padding as per screenshot
     },
     logoContainer: {
         marginRight: 12,
     },
     logo: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 100,
     },
     logoPlaceholder: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 100,
         backgroundColor: '#FFFFFF', // White background for logo circle
         alignItems: 'center',
         justifyContent: 'center',

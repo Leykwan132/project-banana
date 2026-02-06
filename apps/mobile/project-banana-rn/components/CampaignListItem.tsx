@@ -57,9 +57,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 4,
-        paddingVertical: 12,
+        paddingBottom: 24, // Minimal vertical padding as per screenshot
         borderRadius: 20,
-        marginBottom: 12,
     },
     logoContainer: {
         marginRight: 16,
