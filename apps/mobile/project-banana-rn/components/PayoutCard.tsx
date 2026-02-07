@@ -8,9 +8,13 @@ interface PayoutCardProps {
     onWithdraw?: () => void;
 }
 
-export function PayoutCard({ amount, onWithdraw }: PayoutCardProps) {
+export function PayoutCard({ amount, onWithdraw, showButton = true, onPress }: { amount: string, onWithdraw?: () => void, showButton?: boolean, onPress?: () => void }) {
     return (
-        <View style={styles.container}>
+        <Pressable
+            style={styles.container}
+            onPress={onPress}
+            disabled={!onPress}
+        >
             <View style={styles.iconContainer}>
                 <Flower size={24} color="#000" />
             </View>
@@ -21,13 +25,20 @@ export function PayoutCard({ amount, onWithdraw }: PayoutCardProps) {
                 <View style={styles.row}>
                     <ThemedText style={styles.amount}>{amount}</ThemedText>
 
-                    <Pressable style={styles.withdrawButton} onPress={onWithdraw}>
-                        <ThemedText style={styles.withdrawText}>Withdraw</ThemedText>
-                        <ArrowRight size={16} color="#000" />
-                    </Pressable>
+                    {showButton ? (
+                        <Pressable style={styles.withdrawButton} onPress={onWithdraw}>
+                            <ThemedText style={styles.withdrawText}>Withdraw</ThemedText>
+                            <ArrowRight size={16} color="#000" />
+                        </Pressable>
+                    ) : (
+                        // If no button and is pressable, maybe show a small indicator or nothing?
+                        // Screenshot shows a small arrow in a box possibly.
+                        // For now I will just hide the button.
+                        null
+                    )}
                 </View>
             </View>
-        </View>
+        </Pressable>
     );
 }
 

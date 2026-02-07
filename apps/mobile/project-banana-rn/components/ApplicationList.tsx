@@ -43,9 +43,9 @@ export function ApplicationList() {
             <View style={styles.listSection}>
                 {applicationList.map((app) => (
                     <ApplicationListItem
+                        status={app.status}
                         key={app.id}
                         campaignName={app.campaignName}
-                        status={app.status}
                         submittedOn={app.submittedOn}
                         logoUrl={app.logoUrl} // Will fallback to placeholder
                         onPress={() => router.push(`/application/${app.id}`)}

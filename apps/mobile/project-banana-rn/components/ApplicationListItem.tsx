@@ -11,12 +11,12 @@ interface ApplicationListItemProps {
     logoUrl?: string;
     campaignName: string;
     submittedOn?: string;
-    status: ApplicationStatus;
+    status?: ApplicationStatus;
     onPress?: () => void;
     style?: StyleProp<ViewStyle>;
 }
 
-export const getStatusStyle = (status: ApplicationStatus) => {
+export const getStatusStyle = (status?: ApplicationStatus) => {
     switch (status) {
         case 'Ready to Post':
             return {
@@ -83,11 +83,13 @@ export function ApplicationListItem({
             <View style={styles.content}>
                 <ThemedText style={styles.name}>{campaignName}</ThemedText>
                 <View style={styles.metaRow}>
-                    <View style={[styles.statusBadge, { backgroundColor: bg, borderColor: border }]}>
-                        <ThemedText style={[styles.statusText, { color: text }]}>
-                            {status}
-                        </ThemedText>
-                    </View>
+                    {status && (
+                        <View style={[styles.statusBadge, { backgroundColor: bg, borderColor: border }]}>
+                            <ThemedText style={[styles.statusText, { color: text }]}>
+                                {status}
+                            </ThemedText>
+                        </View>
+                    )}
 
                     {
                         submittedOn && (

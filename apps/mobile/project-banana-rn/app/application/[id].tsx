@@ -12,9 +12,6 @@ import Animated, {
     SlideInRight,
     SlideOutLeft,
     FadeIn,
-    withTiming,
-    interpolate,
-    Extrapolation,
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,6 +26,7 @@ import { Timeline, Text, Assets, Checkbox } from 'react-native-ui-lib';
 import { ApplicationListItem, ApplicationStatus, getStatusStyle } from '@/components/ApplicationListItem';
 import { CreatorListItem } from '@/components/CreatorListItem';
 import { AccordionItem } from '@/components/AccordionItem';
+import { FlippableEarningsCard } from '@/components/FlippableEarningsCard';
 
 // Reuse mock data structure for now
 const mockCampaign = {
@@ -36,7 +34,7 @@ const mockCampaign = {
     name: 'Campaign Name',
     company: 'by xxx company',
     logoLetter: 'a',
-    status: 'Ready to Post' as ApplicationStatus,
+    status: 'Posted' as ApplicationStatus,
     mySubmissions: [
         { id: '1', status: 'Under Review' as ApplicationStatus, date: '17/11/2025 5.46pm' },
         { id: '2', status: 'Changes Required' as ApplicationStatus, date: '17/11/2025 5.46pm' },
@@ -102,7 +100,7 @@ export default function ApplicationDetailScreen() {
     const [reviewStep, setReviewStep] = useState<'requirements' | 'preview' | 'uploading' | 'done'>('requirements');
 
     // Flip card animation
-    const flipProgress = useSharedValue(0);
+
 
     // Video player for preview - autoplay
     const videoPlayer = useVideoPlayer(selectedVideoUri || '', player => {
@@ -198,26 +196,7 @@ export default function ApplicationDetailScreen() {
         );
     };
 
-    // Flip card animation
-    const toggleCardFlip = () => {
-        flipProgress.value = withTiming(flipProgress.value === 0 ? 1 : 0, { duration: 400 });
-    };
-
-    const frontCardStyle = useAnimatedStyle(() => {
-        const rotateY = interpolate(flipProgress.value, [0, 1], [0, 180], Extrapolation.CLAMP);
-        return {
-            transform: [{ perspective: 1000 }, { rotateY: `${rotateY}deg` }],
-            backfaceVisibility: 'hidden' as const,
-        };
-    });
-
-    const backCardStyle = useAnimatedStyle(() => {
-        const rotateY = interpolate(flipProgress.value, [0, 1], [180, 360], Extrapolation.CLAMP);
-        return {
-            transform: [{ perspective: 1000 }, { rotateY: `${rotateY}deg` }],
-            backfaceVisibility: 'hidden' as const,
-        };
-    });
+    // Flip card animation removed (moved to component)
 
     const statusStyle = getStatusStyle(mockCampaign.status);
 
@@ -272,32 +251,15 @@ export default function ApplicationDetailScreen() {
 
                 {/* Flippable Earnings Card - only shown when Posted */}
                 {mockCampaign.status === 'Posted' && mockCampaign.postMetrics && (
-                    <Pressable onPress={toggleCardFlip} style={styles.flipCardContainer}>
-                        {/* Front Side: Winner (White) */}
-                        <Animated.View style={[styles.cardBase, styles.winnerCard, frontCardStyle]}>
-                            <LottieView
-                                source={require('../../assets/lotties/wallet.json')}
-                                autoPlay
-                                loop
-                                style={styles.walletAnimation}
-                            />
-                            <ThemedText style={styles.earningsText}>
-                                Your post has made <ThemedText style={styles.earningsHighlight}>{mockCampaign.postMetrics.totalEarned}</ThemedText>
-                            </ThemedText>
-                        </Animated.View>
-
-                        {/* Back Side: Earnings (Dark) */}
-                        <Animated.View style={[styles.cardBase, styles.earningsCard, backCardStyle]}>
-                            <LottieView
-                                source={require('../../assets/lotties/winner.json')}
-                                autoPlay
-                                style={styles.winnerAnimation}
-                            />
-                            <ThemedText style={styles.topEarnerText}>
-                                You are the top <ThemedText style={styles.topEarnerHighlight}>{mockCampaign.postMetrics.topEarnerPercent}%</ThemedText> earners!
-                            </ThemedText>
-                        </Animated.View>
-                    </Pressable>
+                    <FlippableEarningsCard
+                        style={{ marginBottom: 24 }}
+                        topEarnerPercent={mockCampaign.postMetrics.topEarnerPercent}
+                        frontContent={
+                            <>
+                                Your post has made <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>{mockCampaign.postMetrics.totalEarned}</ThemedText>
+                            </>
+                        }
+                    />
                 )}
 
                 <View style={styles.timelineSection}>
@@ -398,9 +360,9 @@ export default function ApplicationDetailScreen() {
                     <View style={styles.submissionsList}>
                         {mockCampaign.mySubmissions.map((sub, index) => (
                             <ApplicationListItem
+                                status={sub.status}
                                 key={sub.id}
                                 campaignName={sub.date}
-                                status={sub.status}
                                 onPress={() => router.push(`/submission/${sub.id}`)}
                             />
                         ))}
@@ -1188,62 +1150,5 @@ const styles = StyleSheet.create({
         paddingLeft: 4,
     },
     // Flippable Earnings Card Styles
-    flipCardContainer: {
-        marginBottom: 24,
-        height: 240,
-    },
-    cardBase: {
-        height: 240,
-        borderRadius: 20,
-        padding: 24,
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        width: '100%',
-        backfaceVisibility: 'hidden',
-    },
-    winnerCard: {
-        backgroundColor: '#1A1A1A',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-    },
-    earningsCard: {
-        backgroundColor: '#1A1A1A',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-    },
-    winnerAnimation: {
-        width: 120,
-        height: 120,
-        transform: [{ scale: 1.5 }],
-    },
-    walletAnimation: {
-        width: 120,
-        height: 120,
-        transform: [{ scale: 1.3 }],
-    },
-    topEarnerText: {
-        fontSize: 18,
-        fontFamily: 'GoogleSans_700Bold',
-        textAlign: 'center',
-        color: '#FFF',
-    },
-    topEarnerHighlight: {
-        color: '#FFD700', // Gold color
-        fontSize: 22,
-    },
-    earningsText: {
-        fontSize: 18,
-        fontFamily: 'GoogleSans_700Bold',
-        textAlign: 'center',
-        color: '#FFF',
-    },
-    earningsHighlight: {
-        color: '#4CAF50', // Green for earnings? Or Gold? I'll stick to a nice Green or mimic Gold. User didn't specify. I'll use Gold for consistency or Green. Typical pattern: Money = Green.
-        // Actually, user said "same thing like front". Front uses Gold. I'll use Green #4CAF50 to differentiate "Earned" from "Winner".
-        fontSize: 22,
-    },
+
 });

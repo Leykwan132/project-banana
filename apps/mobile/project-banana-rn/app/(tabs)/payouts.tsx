@@ -1,6 +1,9 @@
-import { useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, View, Pressable, RefreshControl } from 'react-native';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { ScrollView, StyleSheet, View, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SegmentedControl } from 'react-native-ui-lib';
+import { useRouter } from 'expo-router';
+import { ActionSheetRef } from "react-native-actions-sheet";
 
 import { Header } from '@/components/Header';
 import { Banner } from '@/components/Banner';
@@ -9,19 +12,38 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { PastPayoutListItem } from '@/components/PastPayoutListItem';
+import { TransactionDetailsSheet, DetailItem } from '@/components/TransactionDetailsSheet';
 
-const pastPayouts = [
+interface Transaction {
+    id: string;
+    campaignName: string;
+    date: string;
+    amount: string;
+    status?: string;
+    bankName?: string;
+    accountNumber?: string;
+}
+
+const pastPayouts: Transaction[] = [
     { id: '1', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
     { id: '2', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
     { id: '3', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
     { id: '4', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
 ];
 
+const withdrawals: Transaction[] = [
+    { id: '1', campaignName: 'Withdraw', date: '12/2/26', amount: '- Rm 500', status: 'Pending', bankName: 'Public Bank Berhad', accountNumber: '6558********' },
+    { id: '2', campaignName: 'Withdraw', date: '10/2/26', amount: '- Rm 1.0k', status: 'Paid', bankName: 'Public Bank Berhad', accountNumber: '6558********' },
+];
+
 export default function PayoutsScreen() {
+    const router = useRouter();
     const colorScheme = useColorScheme();
     const insets = useSafeAreaInsets();
-    const [selectedTab, setSelectedTab] = useState<'payouts' | 'withdrawals'>('payouts');
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const actionSheetRef = useRef<ActionSheetRef>(null);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -29,6 +51,67 @@ export default function PayoutsScreen() {
             setRefreshing(false);
         }, 2000);
     }, []);
+
+    const handleItemPress = (item: Transaction) => {
+        setSelectedTransaction(item);
+        actionSheetRef.current?.show();
+    };
+
+    const handleCancelWithdrawal = async () => {
+        if (!selectedTransaction) return;
+        return new Promise<void>((resolve) => {
+            setTimeout(() => {
+                // In a real app, call API here
+                resolve();
+            }, 2000);
+        });
+    };
+
+    const renderList = () => {
+        const data = selectedIndex === 0 ? pastPayouts : withdrawals;
+        return data.map((item) => (
+            <PastPayoutListItem
+                key={item.id}
+                campaignName={item.campaignName}
+                date={item.date}
+                amount={item.amount}
+                status={item.status}
+                onPress={() => handleItemPress(item)}
+            />
+        ));
+    };
+
+    const sheetDetails = useMemo((): DetailItem[] => {
+        if (!selectedTransaction) return [];
+
+        const details: DetailItem[] = [];
+
+        if (selectedTransaction.campaignName !== 'Withdraw') {
+            // Payout: Campaign, Date, Amount
+            details.push({ label: 'Campaign', value: selectedTransaction.campaignName });
+            details.push({ label: 'Date', value: selectedTransaction.date });
+            details.push({ label: 'Amount', value: selectedTransaction.amount });
+        } else {
+            // Withdrawal: Date, Amount, Bank, Account Number, Status
+            details.push({ label: 'Date', value: selectedTransaction.date });
+            details.push({ label: 'Amount', value: selectedTransaction.amount });
+            if (selectedTransaction.bankName) details.push({ label: 'Bank', value: selectedTransaction.bankName });
+            if (selectedTransaction.accountNumber) details.push({ label: 'Account Number', value: selectedTransaction.accountNumber });
+            if (selectedTransaction.status) {
+                details.push({
+                    label: 'Status',
+                    value: selectedTransaction.status,
+                    valueStyle: {
+                        color: selectedTransaction.status === 'Pending' ? '#F57C00' : '#2E7D32'
+                    }
+                });
+            }
+        }
+
+        return details;
+    }, [selectedTransaction]);
+
+    const showCancelButton = selectedTransaction?.campaignName === 'Withdraw' && selectedTransaction?.status === 'Pending';
 
     return (
         <View
@@ -51,54 +134,32 @@ export default function PayoutsScreen() {
                 }
             >
                 <View style={styles.section}>
-                    <PayoutCard amount="Rm 453" />
+                    <PayoutCard
+                        amount="Rm 453"
+                        onWithdraw={() => router.push('/withdraw')}
+                    />
                 </View>
 
                 {/* Segmented Control */}
                 <View style={styles.section}>
-                    <View style={styles.segmentedControl}>
-                        <Pressable
-                            style={[
-                                styles.segmentButton,
-                                selectedTab === 'payouts' && styles.selectedSegment
-                            ]}
-                            onPress={() => setSelectedTab('payouts')}
-                        >
-                            <ThemedText style={[
-                                styles.segmentText,
-                                selectedTab === 'payouts' && styles.selectedSegmentText
-                            ]}>Payouts</ThemedText>
-                        </Pressable>
-                        <Pressable
-                            style={[
-                                styles.segmentButton,
-                                selectedTab === 'withdrawals' && styles.selectedSegment
-                            ]}
-                            onPress={() => setSelectedTab('withdrawals')}
-                        >
-                            <ThemedText style={[
-                                styles.segmentText,
-                                selectedTab === 'withdrawals' && styles.selectedSegmentText
-                            ]}>Withdrawals</ThemedText>
-                        </Pressable>
-                    </View>
+                    <SegmentedControl
+                        segments={[{ label: 'Payouts' }, { label: 'Withdrawals' }]}
+                        onChangeIndex={(index: number) => setSelectedIndex(index)}
+                        backgroundColor={Colors[colorScheme ?? 'light'].background}
+                        activeBackgroundColor={Colors[colorScheme ?? 'light'].tint}
+                        activeColor={Colors[colorScheme ?? 'light'].background}
+                        style={{ height: 45 }}
+                    />
                 </View>
 
-                {/* Past Payouts List */}
+                {/* List */}
                 <View style={styles.section}>
                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                        Past Payouts
+                        {selectedIndex === 0 ? 'Past Payouts' : 'Withdrawal History'}
                     </ThemedText>
 
                     <View style={styles.list}>
-                        {pastPayouts.map((item) => (
-                            <PastPayoutListItem
-                                key={item.id}
-                                campaignName={item.campaignName}
-                                date={item.date}
-                                amount={item.amount}
-                            />
-                        ))}
+                        {renderList()}
                     </View>
                 </View>
 
@@ -107,6 +168,13 @@ export default function PayoutsScreen() {
                     <Banner type="cashback" />
                 </View>
             </ScrollView>
+
+            <TransactionDetailsSheet
+                actionSheetRef={actionSheetRef}
+                title={selectedTransaction?.campaignName === 'Withdraw' ? "Withdrawal Details" : "Payout Details"}
+                details={sheetDetails}
+                onCancel={showCancelButton ? handleCancelWithdrawal : undefined}
+            />
         </View>
     );
 }
@@ -124,35 +192,6 @@ const styles = StyleSheet.create({
     section: {
         paddingHorizontal: 16,
         marginBottom: 24,
-    },
-    segmentedControl: {
-        flexDirection: 'row',
-        backgroundColor: '#F0F0F0',
-        borderRadius: 12,
-        padding: 4,
-    },
-    segmentButton: {
-        flex: 1,
-        paddingVertical: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 8,
-    },
-    selectedSegment: {
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    segmentText: {
-        fontSize: 14,
-        fontFamily: 'GoogleSans_700Bold',
-        color: '#666666',
-    },
-    selectedSegmentText: {
-        color: '#000000',
     },
     sectionTitle: {
         fontSize: 16,
