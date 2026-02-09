@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import Animated, { useAnimatedProps, useDerivedValue, useSharedValue, withTiming, runOnJS, SharedValue, useAnimatedReaction, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { View, StyleSheet, ScrollView, Pressable, Dimensions, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Dimensions, TextInput, Image } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Share, MessageCircle, Heart, Eye, Wallet } from 'lucide-react-native';
+import { ArrowLeft, Share, MessageCircle, Heart, Eye, Wallet, Calendar } from 'lucide-react-native';
 import { LineChart, useLineChart } from 'react-native-wagmi-charts';
 import * as Haptics from 'expo-haptics';
 
@@ -55,7 +55,7 @@ const generateDailyData = (baseValue: number): GraphDataPoint[] => {
 const mockApplicationAnalytics = {
     id: '1',
     name: 'Application 1',
-    image: 'https://placeholder.com/150',
+    image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400',
     startDate: '15/11/2025',
     status: 'Top 20% performer',
     metrics: {
@@ -127,7 +127,7 @@ export default function ApplicationAnalyticsScreen() {
 
     const application = mockApplicationAnalytics;
     const currentMetricData = application.metrics[selectedMetric];
-    const graphColor = '#000'; // IOS System Purple-ish Blue matching reference
+    const graphColor = '#FF4500'; // IOS System Purple-ish Blue matching reference
     const graphData = currentMetricData.data;
 
     // Formatting functions for wagmi-charts
@@ -214,28 +214,21 @@ export default function ApplicationAnalyticsScreen() {
                 >
                     {/* Application Info */}
                     <View style={styles.appInfoContainer}>
-                        <View style={styles.appThumbnail} />
-                        <View style={styles.appDetails}>
-                            <View style={styles.appTitleRow}>
-                                <ThemedText style={styles.appName}>{application.name}</ThemedText>
-                                <ArrowLeft size={16} color="#000" style={{ transform: [{ rotate: '135deg' }] }} />
+                        {application.image ? (
+                            <Image source={{ uri: application.image }} style={styles.appThumbnail} />
+                        ) : (
+                            <View style={styles.appThumbnailPlaceholder}>
+                                <ThemedText style={styles.placeholderText}>📹</ThemedText>
                             </View>
-                            <ThemedText style={styles.appDate}>Earning since {application.startDate}</ThemedText>
-                        </View>
-                    </View>
-
-                    {/* Metrics Grid */}
-                    <View style={styles.metricsGrid}>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('earnings')}
-                        </View>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('views')}
-                            {renderMetricCard('shares')}
-                        </View>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('likes')}
-                            {renderMetricCard('comments')}
+                        )}
+                        <View style={styles.appDetails}>
+                            <ThemedText type="defaultSemiBold" style={styles.appName}>
+                                {application.name}
+                            </ThemedText>
+                            <View style={styles.dateRow}>
+                                <Calendar size={14} color="#6B7280" />
+                                <ThemedText style={styles.appDate}>{application.startDate}</ThemedText>
+                            </View>
                         </View>
                     </View>
 
@@ -260,17 +253,6 @@ export default function ApplicationAnalyticsScreen() {
                                 <InteractiveGraphDate defaultText="Last 30 Days" />
                             </View>
 
-
-                            {/* Sticky Header with Date and Price */}
-                            {/* <View style={styles.graphHeader}>
-                                <View style={localStyles.graphTitleContainer}>
-                                    <StickyDateText format={formatDate} />
-                                </View>
-                                <View style={localStyles.scrubValueContainer}>
-                                    <StickyPriceText format={({ value }) => `${Math.round(parseFloat(value))}`} />
-                                </View>
-                            </View> */}
-
                             <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>
                                 <LineChart.Path color={graphColor} width={1} >
                                     <LineChart.Gradient color={graphColor} />
@@ -279,17 +261,6 @@ export default function ApplicationAnalyticsScreen() {
                                 <LineChart.CursorCrosshair snapToPoint={true} />
                                 {/* <LineChart.CursorLine /> */}
                                 <LineChart.HoverTrap />
-
-                                {/* <LineChart.CursorLine /> */}
-
-                                {/* <LineChart.CursorLine /> */}
-                                {/* <LineChart.CursorCrosshair snapToPoint={true}>
-                                    <LineChart.Tooltip />
-
-
-                                </LineChart.CursorCrosshair> */}
-                                {/* <LineChart.PriceText /> */}
-                                {/* <LineChart.DatetimeText /> */}
 
                             </LineChart>
 
@@ -330,7 +301,20 @@ export default function ApplicationAnalyticsScreen() {
                         </LineChart.Provider>
                     </View>
 
-
+                    {/* Metrics Grid */}
+                    <View style={styles.metricsGrid}>
+                        <View style={styles.gridRow}>
+                            {renderMetricCard('earnings')}
+                        </View>
+                        <View style={styles.gridRow}>
+                            {renderMetricCard('views')}
+                            {renderMetricCard('shares')}
+                        </View>
+                        <View style={styles.gridRow}>
+                            {renderMetricCard('likes')}
+                            {renderMetricCard('comments')}
+                        </View>
+                    </View>
 
                 </ScrollView>
             </View >
@@ -514,32 +498,43 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginBottom: 16,
         gap: 12,
+        alignItems: 'center',
     },
     appThumbnail: {
         width: 60,
         height: 60,
-        borderRadius: 12,
-        backgroundColor: '#E0E0E0',
+        borderRadius: 8,
+        resizeMode: 'cover',
+    },
+    appThumbnailPlaceholder: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    placeholderText: {
+        fontSize: 28,
     },
     appDetails: {
         flex: 1,
         justifyContent: 'center',
     },
-    appTitleRow: {
+    dateRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 4,
+        gap: 6,
     },
     appName: {
         fontSize: 20,
         fontFamily: 'GoogleSans_700Bold',
+        marginBottom: 6,
     },
     appDate: {
         fontSize: 14,
-        color: '#666',
+        color: '#6B7280',
         fontFamily: 'GoogleSans_400Regular',
-        marginBottom: 8,
     },
     statusBadge: {
         backgroundColor: '#FFD700', // Gold/Yellow matches screenshot
@@ -597,6 +592,7 @@ const styles = StyleSheet.create({
     graphContainer: {
         // height: GRAPH_HEIGHT + 60, // wagmi specific height management
         backgroundColor: '#F5F5F5',
+        marginBottom: 18,
         borderRadius: 12,
         padding: 16,
         paddingBottom: 0, // Curve touches bottom often in designs

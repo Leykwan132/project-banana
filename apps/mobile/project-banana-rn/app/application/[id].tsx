@@ -23,8 +23,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import ActionSheet from "react-native-actions-sheet";
 import { Timeline, Text, Assets, Checkbox } from 'react-native-ui-lib';
-import { ApplicationListItem, ApplicationStatus, getStatusStyle } from '@/components/ApplicationListItem';
+import { ApplicationStatus, getStatusConfig, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 import { CreatorListItem } from '@/components/CreatorListItem';
+import { SubmissionListItem } from '@/components/SubmissionListItem';
 import { AccordionItem } from '@/components/AccordionItem';
 import { FlippableEarningsCard } from '@/components/FlippableEarningsCard';
 
@@ -198,7 +199,7 @@ export default function ApplicationDetailScreen() {
 
     // Flip card animation removed (moved to component)
 
-    const statusStyle = getStatusStyle(mockCampaign.status);
+    const statusStyle = getStatusConfig(mockCampaign.status);
 
     const getTimelineStep = (status: ApplicationStatus) => {
         switch (status) {
@@ -265,9 +266,7 @@ export default function ApplicationDetailScreen() {
                 <View style={styles.timelineSection}>
                     <View style={styles.sectionHeaderRow}>
                         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Application Status</ThemedText>
-                        <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg, borderColor: statusStyle.border, transform: [{ translateY: -4 }] }]}>
-                            <ThemedText style={[styles.statusText, { color: statusStyle.text }]}>{mockCampaign.status}</ThemedText>
-                        </View>
+                        <ApplicationStatusBadge status={mockCampaign.status} />
                     </View>
 
                     {/* Step 1: Application Created - Always Success */}
@@ -352,22 +351,27 @@ export default function ApplicationDetailScreen() {
                     </Timeline>
                 </View>
 
-                <View style={styles.divider} />
+                {mockCampaign.mySubmissions && mockCampaign.mySubmissions.length > 0 && (
+                    <>
+                        <View style={styles.divider} />
 
-                {/* My Submissions */}
-                <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginBottom: 24 }]}>My submissions</ThemedText>
-                    <View style={styles.submissionsList}>
-                        {mockCampaign.mySubmissions.map((sub, index) => (
-                            <ApplicationListItem
-                                status={sub.status}
-                                key={sub.id}
-                                campaignName={sub.date}
-                                onPress={() => router.push(`/submission/${sub.id}`)}
-                            />
-                        ))}
-                    </View>
-                </View>
+                        {/* My Submissions */}
+                        <View style={styles.section}>
+                            <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginBottom: 24 }]}>My submissions</ThemedText>
+                            <View style={styles.submissionsList}>
+                                {mockCampaign.mySubmissions.map((sub, index) => (
+                                    <SubmissionListItem
+                                        key={sub.id}
+                                        attemptNumber={index + 1}
+                                        date={sub.date}
+                                        status={sub.status}
+                                        onPress={() => router.push(`/submission/${sub.id}`)}
+                                    />
+                                ))}
+                            </View>
+                        </View>
+                    </>
+                )}
 
                 <View style={[styles.divider]} />
 
@@ -846,7 +850,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     submissionsList: {
-        gap: 24,
+        gap: 12,
     },
     divider: {
         height: 1,

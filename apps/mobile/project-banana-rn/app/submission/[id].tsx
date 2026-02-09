@@ -5,12 +5,12 @@ import { ArrowLeft } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import { ThemedText } from '@/components/themed-text';
-import { ApplicationStatus } from '@/components/ApplicationListItem';
+import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 
 // Mock Data for a single submission
 const mockSubmission = {
     id: '1',
-    status: 'Reviewing' as ApplicationStatus,
+    status: 'Changes Required' as ApplicationStatus,
     videoStatus: 'Earning', // The badge on the video
     submittedDate: '11/5/2025 6pm',
     feedback: '2 things to change, 1 is the xxx has to be xxx. 2 is the xxx has to be xxx.',
@@ -64,9 +64,7 @@ export default function SubmissionDetailScreen() {
                 {/* Status */}
                 <View style={styles.section}>
                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Status</ThemedText>
-                    <View style={styles.statusBadge}>
-                        <ThemedText style={styles.statusText}>{mockSubmission.status}</ThemedText>
-                    </View>
+                    <ApplicationStatusBadge status={mockSubmission.status} style={{ alignSelf: 'flex-start' }} />
                 </View>
 
             </ScrollView>

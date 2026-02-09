@@ -38,7 +38,8 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Banner type="referral" />
+        <Banner type="how_it_works" />
+        {/* <Banner type="referral" /> */}
         <CampaignList />
       </ScrollView>
     </View>

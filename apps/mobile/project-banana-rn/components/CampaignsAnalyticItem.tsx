@@ -1,46 +1,38 @@
-import { View, StyleSheet, Image, Pressable } from 'react-native';
-import { Users, Eye, CircleDollarSign, Flame } from 'lucide-react-native';
+import { View, StyleSheet, Image } from 'react-native';
+import { Eye, Heart, MessageCircle, Share, Wallet } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-interface CampaignListItemProps {
+interface CampaignsAnalyticListProps {
     logoUrl?: string;
     name: string;
     companyName?: string;
-    claimed: number;
-    viewCount: string;
-    payout: string;
-    maxPayout?: string;
-    isTrending?: boolean;
-    onPress?: () => void;
+    views: string;
+    likes: string;
+    comments: string;
+    shares: string;
+    earnings: string;
 }
 
-export function CampaignListItem({
+export function CampaignsAnalyticItem({
     logoUrl,
     name,
-    companyName = 'Company Name', // Default for now
-    claimed,
-    viewCount,
-    payout,
-    maxPayout = '5000', // Default for now
-    isTrending,
-    onPress,
-}: CampaignListItemProps) {
+    companyName = 'Company Name',
+    views,
+    likes,
+    comments,
+    shares,
+    earnings,
+}: CampaignsAnalyticListProps) {
     const colorScheme = useColorScheme();
     const iconColor = Colors[colorScheme ?? 'light'].icon;
     const textColor = Colors[colorScheme ?? 'light'].text;
 
     return (
-        <Pressable
-            onPress={onPress}
-            style={[
-                styles.container,
-                { backgroundColor: Colors[colorScheme ?? 'light'].background },
-            ]}
-        >
-            {/* Top Part */}
+        <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+            {/* Top Section */}
             <View style={styles.topSection}>
                 <View style={styles.logoContainer}>
                     {logoUrl ? (
@@ -53,6 +45,7 @@ export function CampaignListItem({
                         </View>
                     )}
                 </View>
+
                 <View style={styles.titleContainer}>
                     <View style={styles.textColumn}>
                         <ThemedText style={styles.companyName}>
@@ -62,45 +55,48 @@ export function CampaignListItem({
                             {name}
                         </ThemedText>
                     </View>
-                    {isTrending && (
-                        <View style={styles.trendingBadge}>
-                            <Flame size={12} color="#FF4500" fill="#FF4500" />
-                            <ThemedText style={styles.trendingText}>Trending</ThemedText>
-                        </View>
-                    )}
                 </View>
             </View>
 
-            {/* Bottom Part */}
+            {/* Bottom Section - Metrics */}
             <View style={styles.bottomSection}>
                 <View style={styles.statItem}>
-                    <Users size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{claimed} claimed</ThemedText>
-                </View>
-
-                <View style={styles.statItem}>
                     <Eye size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>
-                        RM {payout} / {viewCount} view
-                    </ThemedText>
+                    <ThemedText style={styles.statText}>{views}</ThemedText>
                 </View>
 
                 <View style={styles.statItem}>
-                    <CircleDollarSign size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>RM {maxPayout}</ThemedText>
+                    <Heart size={16} color={iconColor} style={styles.icon} />
+                    <ThemedText style={styles.statText}>{likes}</ThemedText>
+                </View>
+
+                <View style={styles.statItem}>
+                    <MessageCircle size={16} color={iconColor} style={styles.icon} />
+                    <ThemedText style={styles.statText}>{comments}</ThemedText>
+                </View>
+
+                <View style={styles.statItem}>
+                    <Share size={16} color={iconColor} style={styles.icon} />
+                    <ThemedText style={styles.statText}>{shares}</ThemedText>
+                </View>
+
+                <View style={styles.statItem}>
+                    <Wallet size={16} color={iconColor} style={styles.icon} />
+                    <ThemedText style={styles.statText}>{earnings}</ThemedText>
                 </View>
             </View>
-        </Pressable>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: 'column',
         paddingVertical: 16,
+        // paddingHorizontal: 16, // Added padding to match card look inside
         marginBottom: 12,
         borderRadius: 12,
-        // Add shadow or border if needed, user didn't specify but card look is good.
+        backgroundColor: '#FFFFFF',
+        // Optional: Add shadow if desired to match CampaignListItem exactly, assuming it had one in context
     },
     topSection: {
         flexDirection: 'row',
@@ -113,8 +109,8 @@ const styles = StyleSheet.create({
     logo: {
         width: 48,
         height: 48,
+        borderRadius: 100,
         resizeMode: 'contain',
-        borderRadius: 100, // Square with radius looks modern
     },
     logoPlaceholder: {
         width: 48,
@@ -148,53 +144,25 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontFamily: 'GoogleSans_400Regular',
     },
-    trendingBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        backgroundColor: '#FFF0E6',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#FFD6C0',
-    },
-    trendingText: {
-        fontSize: 10,
-        color: '#FF4500',
-        fontFamily: 'GoogleSans_700Bold',
-    },
     bottomSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'space-between', // Distribute evenly
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#F3F4F6', // Light divider
+        borderTopColor: '#F3F4F6',
     },
     statItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 4,
     },
     icon: {
         opacity: 0.7,
     },
     statText: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#4B5563',
         fontFamily: 'GoogleSans_500Medium',
     },
-    divider: {
-        width: 1,
-        height: 16,
-        backgroundColor: '#E5E7EB',
-        marginHorizontal: 8,
-        display: 'none', // Hiding vertical dividers to correct spacing if use space-between or space-evenly. Let's see. 
-        // With "justifyContent: space-between", items will spread. 
-        // If we want dividers, we can keep them. But user design description just said "row with...". 
-        // I will omit dividers for now to keep it clean, or keep them if it feels too crowded.
-        // Let's remove dividers from JSX if I set display none.
-        // Actually, I won't render dividers in JSX if I use display none. I'll remove them to be cleaner.
-    }
 });

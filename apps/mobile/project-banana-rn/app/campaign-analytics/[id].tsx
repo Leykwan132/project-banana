@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Flower } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ApplicationListItem } from '@/components/ApplicationListItem';
+import { ApplicationAnalyticItem } from '@/components/ApplicationAnalyticItem';
 import { FlippableEarningsCard } from '@/components/FlippableEarningsCard';
 
 // Mock Data for the campaign analytics
@@ -23,18 +23,24 @@ const mockCampaignAnalytics = {
         {
             id: '1',
             name: 'Application 1',
-            campaignName: 'Campaign A',
             submittedOn: '15/11/2025',
-            status: 'Top 20% performer' as any, // Using 'any' to bypass strict status types for this mock tailored to the design
-            logoUrl: null, // use placeholder
+            thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400',
+            views: '12K',
+            likes: '1.2K',
+            comments: '85',
+            shares: '420',
+            earnings: 'RM 45'
         },
         {
             id: '2',
             name: 'Application 2',
-            campaignName: 'Campaign A',
             submittedOn: '15/11/2025',
-            status: 'Top 20% performer' as any,
-            logoUrl: null,
+            thumbnailUrl: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=400',
+            views: '8.5K',
+            likes: '890',
+            comments: '52',
+            shares: '310',
+            earnings: 'RM 32'
         }
     ]
 };
@@ -96,13 +102,17 @@ export default function CampaignAnalyticsScreen() {
 
                     <View style={styles.list}>
                         {campaign.applications.map((app) => (
-                            <ApplicationListItem
+                            <ApplicationAnalyticItem
                                 key={app.id}
-                                campaignName={app.name}
+                                applicationName={app.name}
                                 submittedOn={app.submittedOn}
-                                onPress={() => router.push(`/application-analytics/${app.id}`)} // Navigate to application details if needed
-                                // Customizing the display to match design more closely if needed
-                                style={styles.listItem}
+                                thumbnailUrl={app.thumbnailUrl}
+                                views={app.views}
+                                likes={app.likes}
+                                comments={app.comments}
+                                shares={app.shares}
+                                earnings={app.earnings}
+                                onPress={() => router.push(`/application-analytics/${app.id}`)}
                             />
                         ))}
                     </View>
@@ -183,7 +193,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     list: {
-        gap: 24,
+        // gap: 12,
     },
     listItem: {
         // Override styles if needed

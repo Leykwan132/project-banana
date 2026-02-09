@@ -1,167 +1,158 @@
+
 import { View, StyleSheet, Image, Pressable, StyleProp, ViewStyle } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
+import {
+    Calendar,
+} from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Posted';
+import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 
 interface ApplicationListItemProps {
     logoUrl?: string;
     campaignName: string;
-    submittedOn?: string;
+    companyName?: string;
+    createdOn?: string;
     status?: ApplicationStatus;
     onPress?: () => void;
     style?: StyleProp<ViewStyle>;
 }
 
-export const getStatusStyle = (status?: ApplicationStatus) => {
-    switch (status) {
-        case 'Ready to Post':
-            return {
-                bg: '#E6F4EA', // Light green bg
-                text: '#1E8E3E', // Dark green text
-                border: '#E6F4EA',
-            };
-        case 'Pending Submission':
-            return {
-                bg: '#E3F2FD', // Light blue bg
-                text: '#1976D2', // Blue text
-                border: '#E3F2FD',
-            };
-        case 'Under Review':
-            return {
-                bg: '#FEF7E0', // Light yellow bg
-                text: '#B08800', // Dark yellow text
-                border: '#FEF7E0',
-            };
-        case 'Changes Required':
-            return {
-                bg: '#FCE8E6', // Light red bg
-                text: '#D93025', // Dark red text
-                border: '#FCE8E6',
-            };
-        default:
-            return {
-                bg: '#F3F4F6', // Light grey bg
-                text: '#4B5563', // Dark grey text
-                border: '#F3F4F6',
-            };
-    }
-};
-
 export function ApplicationListItem({
     logoUrl,
     campaignName,
+    companyName = 'Company Name',
     status,
-    submittedOn,
+    createdOn,
     onPress,
     style,
 }: ApplicationListItemProps) {
     const colorScheme = useColorScheme();
-    const { bg, text, border } = getStatusStyle(status);
 
     return (
         <Pressable
             onPress={onPress}
-            style={[styles.container, style]}
+            style={[
+                styles.container,
+                { backgroundColor: Colors[colorScheme ?? 'light'].background },
+                style
+            ]}
         >
-            <View style={styles.logoContainer}>
-                {logoUrl ? (
-                    <Image source={{ uri: logoUrl }} style={styles.logo} />
-                ) : (
-                    <View style={styles.logoPlaceholder}>
-                        <Image
-                            source={{ uri: 'https://picsum.photos/200' }}
-                            style={styles.logo}
-                        />
-                    </View>
-                )}
-            </View>
-
-            <View style={styles.content}>
-                <ThemedText style={styles.name}>{campaignName}</ThemedText>
-                <View style={styles.metaRow}>
-                    {status && (
-                        <View style={[styles.statusBadge, { backgroundColor: bg, borderColor: border }]}>
-                            <ThemedText style={[styles.statusText, { color: text }]}>
-                                {status}
+            {/* Top Part */}
+            <View style={styles.topSection}>
+                <View style={styles.logoContainer}>
+                    {logoUrl ? (
+                        <Image source={{ uri: logoUrl }} style={styles.logo} />
+                    ) : (
+                        <View style={[styles.logoPlaceholder, { backgroundColor: '#FF9900' }]}>
+                            <ThemedText style={styles.logoText}>
+                                {campaignName.charAt(0).toUpperCase()}
                             </ThemedText>
                         </View>
                     )}
-
-                    {
-                        submittedOn && (
-                            <ThemedText style={styles.dateText}>
-                                submitted on <ThemedText type='title' style={styles.dateText}>{submittedOn}</ThemedText>
-                            </ThemedText>
-                        )
-                    }
+                </View>
+                <View style={styles.titleContainer}>
+                    <View style={styles.textColumn}>
+                        <ThemedText style={styles.companyName}>
+                            {companyName}
+                        </ThemedText>
+                        <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
+                            {campaignName}
+                        </ThemedText>
+                    </View>
                 </View>
             </View>
 
-            <ChevronRight size={20} color={Colors[colorScheme ?? 'light'].icon} />
+            {/* Bottom Part */}
+            <View style={styles.bottomSection}>
+                <ApplicationStatusBadge status={status} />
+
+                {createdOn && (
+                    <View style={styles.statItem}>
+                        <Calendar size={16} color={Colors[colorScheme ?? 'light'].icon} style={styles.icon} />
+                        <ThemedText style={styles.statText}>
+                            Created on {createdOn}
+                        </ThemedText>
+                    </View>
+                )}
+            </View>
         </Pressable>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+        flexDirection: 'column',
+        paddingVertical: 16,
+        marginBottom: 12,
+        borderRadius: 12,
+    },
+    topSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 16,
     },
     logoContainer: {
         marginRight: 12,
     },
     logo: {
-        width: 56,
-        height: 56,
+        width: 48,
+        height: 48,
+        resizeMode: 'contain',
         borderRadius: 100,
     },
     logoPlaceholder: {
-        width: 56,
-        height: 56,
+        width: 48,
+        height: 48,
         borderRadius: 100,
-        backgroundColor: '#FFFFFF', // White background for logo circle
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#EEEEEE',
     },
     logoText: {
-        color: '#000000',
+        color: '#FFFFFF',
         fontSize: 24,
         fontFamily: 'GoogleSans_700Bold',
     },
-    content: {
+    titleContainer: {
         flex: 1,
-        justifyContent: 'center',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    textColumn: {
+        flex: 1,
+        marginRight: 8,
     },
     name: {
         fontSize: 16,
-        fontFamily: 'GoogleSans_700Bold', // Bold title
-        marginBottom: 4,
+        lineHeight: 22,
+        marginBottom: 2,
     },
-    metaRow: {
+    companyName: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontFamily: 'GoogleSans_400Regular',
+    },
+    bottomSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+    },
+    statItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
     },
-    statusBadge: {
-        paddingHorizontal: 12,
-        // paddingVertical: 1,
-        borderRadius: 100, // Slightly rounded
-        borderWidth: 1,
+    icon: {
+        opacity: 0.7,
     },
-    statusText: {
-        fontSize: 10,
-        fontFamily: 'GoogleSans_700Bold',
-        letterSpacing: 0.2, // Make it look like a badge label
-    },
-    dateText: {
-        fontSize: 12,
-        color: '#9E9E9E',
-        fontFamily: 'GoogleSans_400Regular',
+    statText: {
+        fontSize: 13,
+        color: '#4B5563',
+        fontFamily: 'GoogleSans_500Medium',
     },
 });

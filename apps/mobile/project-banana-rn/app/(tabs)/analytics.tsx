@@ -1,22 +1,23 @@
-import { useState, useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, Pressable, RefreshControl, Dimensions, TextInput } from 'react-native';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { ScrollView, StyleSheet, View, RefreshControl, Dimensions, TextInput, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDown, Share, MessageCircle, Heart, Eye, Wallet } from 'lucide-react-native';
+import { Wallet, ChevronDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LineChart, useLineChart } from 'react-native-wagmi-charts';
 import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ActionSheetRef } from 'react-native-actions-sheet';
 
 import { Header } from '@/components/Header';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
-import { TopCampaignListItem } from '@/components/TopCampaignListItem';
+import { CampaignsAnalyticItem } from '@/components/CampaignsAnalyticItem';
+import { SelectionSheet } from '@/components/SelectionSheet';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-// Types
-type MetricType = 'views' | 'shares' | 'likes' | 'comments' | 'earnings';
+
 
 interface GraphDataPoint {
     timestamp: number;
@@ -51,6 +52,14 @@ const generateDailyData = (baseValue: number): GraphDataPoint[] => {
     return data;
 };
 
+// Campaign data (same as home page)
+const mockCampaigns = [
+    { id: '2', name: 'Shopee 9.9 Super Sale', companyName: 'Shopee Malaysia', views: '98K', likes: '60K', comments: '320', shares: '1.2K', earnings: 'RM 600', logoUrl: 'https://static.vecteezy.com/system/resources/thumbnails/028/766/353/small/shopee-icon-symbol-free-png.png' },
+    { id: '3', name: 'Merdeka Special: Makan Lokal', companyName: 'GrabFood', views: '45K', likes: '24', comments: '150', shares: '890', earnings: 'RM 180', logoUrl: 'https://images.seeklogo.com/logo-png/62/2/grab-logo-png_seeklogo-622162.png' },
+    { id: '1', name: 'Zus Coffee: New Frappe Launch', companyName: 'Zus Coffee', views: '125K', likes: '12K', comments: '850', shares: '4.2K', earnings: 'RM 450', logoUrl: 'https://zuscoffee.com/wp-content/uploads/2025/07/app-logo-resize-256x256-1.png' },
+    { id: '4', name: 'Watsons K-Beauty Review', companyName: 'Watsons', views: '78K', likes: '9.2K', comments: '540', shares: '9.1K', earnings: 'RM 380', logoUrl: 'https://www.watsonsasia.com/assets/images/logo_watsons_mobile.png' },
+];
+
 // Mock Overview Data
 const mockOverviewAnalytics = {
     metrics: {
@@ -58,57 +67,21 @@ const mockOverviewAnalytics = {
             value: 'RM 1,250',
             total: 1250,
             data: generateDailyData(45)
-        },
-        views: {
-            value: '850K',
-            total: 850000,
-            data: generateDailyData(850000)
-        },
-        shares: {
-            value: '1.2K',
-            total: 1200,
-            data: generateDailyData(40)
-        },
-        likes: {
-            value: '125K',
-            total: 125000,
-            data: generateDailyData(4200)
-        },
-        comments: {
-            value: '8.5K',
-            total: 8500,
-            data: generateDailyData(280)
-        },
-    } as Record<MetricType, MetricData>,
-    topCampaigns: [
-        { id: '1', name: 'Campaign Name', value: '1.8k', progress: 0.7 },
-        { id: '2', name: 'Campaign Name', value: '1.8k', progress: 0.5 },
-        { id: '3', name: 'Campaign Name', value: '1.8k', progress: 0.3 },
-    ]
+        }
+    } as Record<string, MetricData>,
+    topCampaigns: mockCampaigns
 };
 
 const TERMS_MAPPING = {
     earnings: 'Earnings',
-    views: 'Views',
-    shares: 'Shares',
-    likes: 'Likes',
-    comments: 'Comments'
 };
 
 const ICON_MAPPING = {
     earnings: Wallet,
-    views: Eye,
-    shares: Share,
-    likes: Heart,
-    comments: MessageCircle
 };
 
 const COLOR_MAPPING = {
     earnings: '#FFD700',
-    views: '#2196F3',
-    shares: '#F44336',
-    likes: '#E91E63',
-    comments: '#4CAF50'
 };
 
 const GRAPH_HEIGHT = 120;
@@ -120,12 +93,70 @@ export default function AnalyticsScreen() {
     const colorScheme = useColorScheme();
     const insets = useSafeAreaInsets();
 
-    const [selectedMetric, setSelectedMetric] = useState<MetricType>('earnings');
     const [refreshing, setRefreshing] = useState(false);
+    const [sortBy, setSortBy] = useState<string>('shares');
+    const sortSheetRef = useRef<ActionSheetRef>(null);
+
+    const sortOptions = [
+        { label: 'Views', value: 'views' },
+        { label: 'Likes', value: 'likes' },
+        { label: 'Comments', value: 'comments' },
+        { label: 'Shares', value: 'shares' },
+        { label: 'Earnings', value: 'earnings' },
+    ];
 
     const overview = mockOverviewAnalytics;
-    const currentMetricData = overview.metrics[selectedMetric];
-    const graphColor = '#000';
+
+    // Sort campaigns based on selected option
+    const sortedCampaigns = useMemo(() => {
+        const campaigns = [...overview.topCampaigns];
+
+        const parseValue = (value: string): number => {
+            // Remove 'K', 'RM', and any spaces, then convert to number
+            const cleanValue = value.replace(/[KRM\s]/g, '');
+            const numValue = parseFloat(cleanValue);
+            // If value had 'K', multiply by 1000
+            return value.includes('K') ? numValue * 1000 : numValue;
+        };
+
+        campaigns.sort((a, b) => {
+            let aValue: number, bValue: number;
+
+            switch (sortBy) {
+                case 'views':
+                    aValue = parseValue(a.views);
+                    bValue = parseValue(b.views);
+                    break;
+                case 'likes':
+                    aValue = parseValue(a.likes);
+                    bValue = parseValue(b.likes);
+                    break;
+                case 'comments':
+                    aValue = parseValue(a.comments);
+                    bValue = parseValue(b.comments);
+                    break;
+                case 'shares':
+                    aValue = parseValue(a.shares);
+                    bValue = parseValue(b.shares);
+                    break;
+                case 'earnings':
+                    aValue = parseValue(a.earnings);
+                    bValue = parseValue(b.earnings);
+                    break;
+                default:
+                    return 0;
+            }
+
+            // Sort in descending order (highest first)
+            return bValue - aValue;
+        });
+
+        return campaigns;
+    }, [overview.topCampaigns, sortBy]);
+
+    // Hardcode to earnings
+    const currentMetricData = overview.metrics.earnings;
+    const graphColor = '#FF4500'; // Gold for earnings
     const graphData = currentMetricData.data;
 
     const onRefresh = useCallback(() => {
@@ -156,31 +187,6 @@ export default function AnalyticsScreen() {
         return labels;
     }, [graphData]);
 
-    const renderMetricCard = (type: MetricType) => {
-        const isSelected = selectedMetric === type;
-        const metric = overview.metrics[type];
-        const Icon = ICON_MAPPING[type];
-        const color = COLOR_MAPPING[type];
-
-        return (
-            <Pressable
-                style={[
-                    styles.metricCard,
-                    isSelected && styles.selectedCard
-                ]}
-                onPress={() => setSelectedMetric(type)}
-            >
-                <View style={[styles.iconContainer, { backgroundColor: isSelected ? color + '20' : '#F5F5F5' }]}>
-                    <Icon size={16} color={isSelected ? color : '#666'} />
-                </View>
-                <View>
-                    <ThemedText style={styles.cardLabel}>{TERMS_MAPPING[type]}</ThemedText>
-                    <ThemedText style={styles.cardValue}>{metric.value}</ThemedText>
-                </View>
-            </Pressable>
-        );
-    };
-
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <View
@@ -201,39 +207,21 @@ export default function AnalyticsScreen() {
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                     }
                 >
-                    {/* Metrics Grid */}
-                    <View style={styles.metricsContainer}>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('earnings')}
-                        </View>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('views')}
-                            {renderMetricCard('shares')}
-                        </View>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('likes')}
-                            {renderMetricCard('comments')}
-                        </View>
-                    </View>
-
                     {/* Graph Section */}
                     <View style={styles.graphWrapper}>
                         <View style={styles.graphContainer}>
                             <LineChart.Provider data={graphData}>
-                                <View style={{ marginBottom: 20 }}>
+                                <View >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                        {(() => {
-                                            const Icon = ICON_MAPPING[selectedMetric];
-                                            return <Icon size={16} color="#666" />;
-                                        })()}
+                                        <Wallet size={16} color="#666" />
                                         <ThemedText style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_500Medium' }}>
-                                            {TERMS_MAPPING[selectedMetric]}
+                                            Earnings
                                         </ThemedText>
                                     </View>
                                     <InteractiveGraphValue
-                                        key={selectedMetric}
+                                        key="earnings"
                                         totalValue={currentMetricData.value}
-                                        showCurrency={selectedMetric === 'earnings'}
+                                        showCurrency={true}
                                     />
                                     <InteractiveGraphDate defaultText="Last 30 Days" />
                                 </View>
@@ -284,30 +272,49 @@ export default function AnalyticsScreen() {
                     <View style={styles.campaignsSection}>
                         <View style={styles.sectionHeader}>
                             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                                Your top campaigns
+                                My campaigns
                             </ThemedText>
-                            <Pressable style={styles.filterButton}>
-                                <ThemedText style={styles.filterButtonText}>Share</ThemedText>
+                            <Pressable
+                                style={styles.filterButton}
+                                onPress={() => sortSheetRef.current?.show()}
+                            >
+                                <ThemedText style={styles.filterButtonText}>
+                                    {sortOptions.find(opt => opt.value === sortBy)?.label}
+                                </ThemedText>
                                 <ChevronDown size={16} color={Colors[colorScheme ?? 'light'].text} />
                             </Pressable>
                         </View>
 
                         <View style={styles.campaignList}>
-                            {overview.topCampaigns.map((campaign) => (
+                            {sortedCampaigns.map((campaign) => (
                                 <Pressable
                                     key={campaign.id}
                                     onPress={() => router.push(`/campaign-analytics/${campaign.id}`)}
                                 >
-                                    <TopCampaignListItem
+                                    <CampaignsAnalyticItem
                                         name={campaign.name}
-                                        value={campaign.value}
-                                        progress={campaign.progress}
+                                        companyName={campaign.companyName}
+                                        logoUrl={campaign.logoUrl}
+                                        views={campaign.views}
+                                        likes={campaign.likes}
+                                        comments={campaign.comments}
+                                        shares={campaign.shares}
+                                        earnings={campaign.earnings}
                                     />
                                 </Pressable>
                             ))}
                         </View>
                     </View>
                 </ScrollView>
+
+                <SelectionSheet
+                    actionSheetRef={sortSheetRef}
+                    title="Sort by"
+                    options={sortOptions}
+                    selectedOption={sortBy}
+                    onSelect={setSortBy}
+                    type="sort"
+                />
             </View>
         </GestureHandlerRootView>
     );
@@ -398,51 +405,9 @@ const styles = StyleSheet.create({
     contentContainer: {
         paddingBottom: 24,
     },
-    metricsContainer: {
-        paddingHorizontal: 16,
-        paddingTop: 4,
-        gap: 8,
-        marginBottom: 16,
-    },
-    gridRow: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    metricCard: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        minHeight: 80,
-        justifyContent: 'space-between',
-    },
-    selectedCard: {
-        borderColor: '#000000',
-        borderWidth: 1.5,
-    },
-    iconContainer: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    cardLabel: {
-        fontSize: 12,
-        color: '#666',
-        fontFamily: 'GoogleSans_400Regular',
-        marginBottom: 2,
-    },
-    cardValue: {
-        fontSize: 18,
-        fontFamily: 'GoogleSans_700Bold',
-        color: '#000',
-    },
     graphWrapper: {
         paddingHorizontal: 16,
+        // paddingTop: 16, // Added padding top since metrics are gone
         marginBottom: 24,
     },
     graphContainer: {
@@ -481,6 +446,6 @@ const styles = StyleSheet.create({
         fontFamily: 'GoogleSans_500Medium',
     },
     campaignList: {
-        gap: 16,
+        // gap: 16,
     },
 });

@@ -9,7 +9,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { CreatorListItem } from '@/components/CreatorListItem';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import ActionSheet from "react-native-actions-sheet";
-import { SuccessCard } from '@/components/SuccessCard';
+import { Timeline, Text, Assets } from 'react-native-ui-lib';
+
 
 // Mock Data
 const mockCampaign = {
@@ -46,6 +47,7 @@ const mockCampaign = {
 export default function CampaignDetailsScreen() {
     const requirementsSheetRef = useRef<ActionSheetRef>(null);
     const payoutsSheetRef = useRef<ActionSheetRef>(null);
+    const successSheetRef = useRef<ActionSheetRef>(null);
 
     const { id } = useLocalSearchParams();
     const router = useRouter();
@@ -53,7 +55,6 @@ export default function CampaignDetailsScreen() {
     const colorScheme = useColorScheme();
 
     const [isJoining, setIsJoining] = useState(false);
-    const [hasJoined, setHasJoined] = useState(false);
     const [hasApplication, setHasApplication] = useState(false);
 
     // Logic for join flow
@@ -62,14 +63,10 @@ export default function CampaignDetailsScreen() {
         // Simulate API call
         setTimeout(() => {
             setIsJoining(false);
-            setHasJoined(true);
             setHasApplication(true);
+            successSheetRef.current?.show();
         }, 2000);
     };
-
-    const handleDismiss = () => {
-        setHasJoined(false);
-    }
 
 
     return (
@@ -97,8 +94,9 @@ export default function CampaignDetailsScreen() {
 
             {/* Content Sheet */}
             <View style={styles.sheetContainer}>
-                <View
-                    style={styles.scrollContent}
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
                 >
                     {/* Campaign Info Header */}
                     <View style={styles.campaignHeader}>
@@ -235,9 +233,88 @@ export default function CampaignDetailsScreen() {
                             </Pressable>
                         </View>
                     </ActionSheet>
+
+                    {/* Success Sheet */}
+                    <ActionSheet ref={successSheetRef}
+                        disableElevation={true}
+                        gestureEnabled
+                        indicatorStyle={{
+                            display: 'none',
+                        }}
+                        containerStyle={{
+                            paddingHorizontal: 24,
+                            backgroundColor: 'transparent',
+                            paddingBottom: 30,
+                        }}
+                    >
+                        <View style={styles.sheetContent}>
+                            <View style={styles.sheetHeader}>
+                                <ThemedText style={styles.sheetTitle}>You're in!</ThemedText>
+                                <ThemedText style={styles.sheetSubtitle}>Read the requirements and start filming!</ThemedText>
+                            </View>
+
+                            <View style={{ paddingHorizontal: 0, marginBottom: 24 }}>
+                                <Timeline
+                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
+                                    point={{
+                                        icon: Assets.internal.icons.checkSmall,
+                                        state: Timeline.states.SUCCESS,
+                                    }}
+                                >
+                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16, marginBottom: 0 }}>
+                                        <Text text70BO>Application Created</Text>
+                                    </View>
+                                </Timeline>
+                                <Timeline
+                                    topLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
+                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
+                                    point={{ type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }}
+                                >
+                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16 }}>
+                                        <Text text70BO color="#666">Submit Video</Text>
+                                    </View>
+                                </Timeline>
+                                <Timeline
+                                    topLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
+                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
+                                    point={{ type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }}
+                                >
+                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16 }}>
+                                        <Text text70BO color="#666">Business Approval</Text>
+                                    </View>
+                                </Timeline>
+                                <Timeline
+                                    topLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
+                                    point={{ type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }}
+                                >
+                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16 }}>
+                                        <Text text70BO color="#666">Post and Start Earning!</Text>
+                                    </View>
+                                </Timeline>
+                            </View>
+
+                            <Pressable
+                                style={styles.joinButton}
+                                onPress={() => {
+                                    successSheetRef.current?.hide();
+                                    router.replace(`/application/${id}`);
+                                }}
+                            >
+                                <ThemedText style={styles.joinButtonText}>View Application</ThemedText>
+                            </Pressable>
+
+                            <Pressable
+                                style={[styles.joinButton, { backgroundColor: 'transparent', marginTop: 8 }]}
+                                onPress={() => successSheetRef.current?.hide()}
+                            >
+                                <ThemedText style={[styles.joinButtonText, { color: '#000' }]}>Dismiss</ThemedText>
+                            </Pressable>
+                        </View>
+                    </ActionSheet>
+
                     {/* Bottom Padding for Footer */}
                     <View style={{ height: 100 }} />
-                </View>
+                </ScrollView>
             </View>
 
             {/* Sticky Footer */}
@@ -254,15 +331,6 @@ export default function CampaignDetailsScreen() {
                     )}
                 </Pressable>
             </View>
-
-            <SuccessCard
-                visible={hasJoined}
-                onViewApplication={() => router.push(`/application/${id}`)}
-                onDismiss={handleDismiss}
-                imageSource={require('@/assets/images/success-card-image.png')}
-                title="You're in!"
-                description="Read the requirements and start filming!"
-            />
         </View>
     );
 }
@@ -427,14 +495,14 @@ const styles = StyleSheet.create({
     },
     sheetContent: {
         padding: 24,
+        paddingTop: 36,
         paddingBottom: 12,
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderRadius: 24
     },
     sheetHeader: {
         alignItems: 'center',
-        marginBottom: 32,
+        marginBottom: 24,
         gap: 4,
     },
     sheetTitle: {
@@ -503,25 +571,5 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
-    },
-    successContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 32,
-        gap: 16,
-    },
-    successImage: {
-        width: 200,
-        height: 200,
-        marginBottom: 16,
-    },
-    successTitle: {
-        textAlign: 'center',
-    },
-    successSubtitle: {
-        textAlign: 'center',
-        color: '#666',
-        marginBottom: 32,
     },
 });
