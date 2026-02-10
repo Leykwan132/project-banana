@@ -1,10 +1,18 @@
-import { View, StyleSheet, Pressable, Image } from 'react-native';
+import { View, StyleSheet, Pressable, Image, Alert, ActivityIndicator } from 'react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
-import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { AntDesign } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
+import { useAction } from "convex/react";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
+import { storage } from "@/lib/storage";
+import { api } from "../../../../packages/backend/convex/_generated/api"
+
+
+// import { api } from "@/convex/_generated/api";
 
 interface LoginActionSheetProps {
     actionSheetRef: React.RefObject<ActionSheetRef | null>;
@@ -16,10 +24,71 @@ export function LoginActionSheet({
     onLogin,
 }: LoginActionSheetProps) {
     const colorScheme = useColorScheme();
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+    const [isAppleLoading, setIsAppleLoading] = useState(false);
 
+    // Use the auth actions from the backend
+    const getAuthorisationUrl = useAction(api.auth.getAuthorisationUrl);
+    const authenticateWithCode = useAction(api.auth.authenticateWithCode);
+
+    console.log("getAuthorisationUrl", getAuthorisationUrl);
+    console.log("authenticateWithCode", authenticateWithCode);
     const handleLoginPress = () => {
-        actionSheetRef.current?.hide();
-        onLogin();
+        setIsAppleLoading(true);
+        // Simulate async operation or replace with actual Apple login logic
+        setTimeout(() => {
+            setIsAppleLoading(false);
+            actionSheetRef.current?.hide();
+            onLogin();
+        }, 1000);
+    };
+
+    const handleGoogleLogin = async () => {
+        setIsGoogleLoading(true);
+        try {
+            // The redirectUri must be added to the sign-in callback in the workos dashboard
+            const redirectUri = AuthSession.makeRedirectUri().toString();
+
+            console.log('redirectUri', redirectUri);
+            const authorisationUrl = await getAuthorisationUrl({
+                provider: "GoogleOAuth",
+                redirectUri,
+            });
+
+            const result = await WebBrowser.openAuthSessionAsync(
+                authorisationUrl,
+                redirectUri
+            );
+
+            if (result.type !== "success" || !result.url) {
+                // User cancelled or failed
+                setIsGoogleLoading(false);
+                return;
+            }
+
+            const params = new URL(result.url).searchParams;
+            const code = params.get("code");
+
+            if (!code) throw new Error("No code returned");
+
+            const { accessToken, refreshToken, user } = await authenticateWithCode({
+                code,
+            });
+
+            await storage.setItem("refreshToken", refreshToken);
+            await storage.setItem("accessToken", accessToken);
+            await storage.setItem("user", JSON.stringify(user));
+
+            // Proceed after successful login
+            setIsGoogleLoading(false);
+            actionSheetRef.current?.hide();
+            onLogin();
+
+        } catch (error) {
+            setIsGoogleLoading(false);
+            console.error("Google login error:", error);
+            Alert.alert("Login Failed", "There was an error signing in with Google.");
+        }
     };
 
     return (
@@ -46,14 +115,34 @@ export function LoginActionSheet({
                 <ThemedText style={styles.subtitle}>Sign in to start earning from your content.</ThemedText>
 
                 <View style={styles.buttonContainer}>
-                    <Pressable style={[styles.loginButton, styles.appleButton]} onPress={handleLoginPress}>
-                        <AntDesign name="apple" size={20} color="#FFFFFF" style={styles.buttonIcon} />
-                        <ThemedText style={styles.appleButtonText}>Continue with Apple</ThemedText>
+                    <Pressable
+                        style={[styles.loginButton, styles.appleButton, isAppleLoading && styles.disabledButton]}
+                        onPress={handleLoginPress}
+                        disabled={isAppleLoading}
+                    >
+                        {isAppleLoading ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <>
+                                <AntDesign name="apple" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+                                <ThemedText style={styles.appleButtonText}>Continue with Apple</ThemedText>
+                            </>
+                        )}
                     </Pressable>
 
-                    <Pressable style={[styles.loginButton, styles.googleButton]} onPress={handleLoginPress}>
-                        <AntDesign name="google" size={20} color="#000000" style={styles.buttonIcon} />
-                        <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
+                    <Pressable
+                        style={[styles.loginButton, styles.googleButton, isGoogleLoading && styles.disabledButton]}
+                        onPress={handleGoogleLogin}
+                        disabled={isGoogleLoading}
+                    >
+                        {isGoogleLoading ? (
+                            <ActivityIndicator color="#000000" />
+                        ) : (
+                            <>
+                                <AntDesign name="google" size={20} color="#000000" style={styles.buttonIcon} />
+                                <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
+                            </>
+                        )}
                     </Pressable>
                 </View>
 
@@ -110,6 +199,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
+    },
+    disabledButton: {
+        opacity: 0.7,
     },
     buttonIcon: {
         fontSize: 20,
