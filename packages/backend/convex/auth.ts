@@ -1,7 +1,9 @@
-import { query } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import { AuthKit, type AuthFunctions } from "@convex-dev/workos-authkit";
 import type { DataModel } from "./_generated/dataModel";
+import { WorkOS } from "@workos-inc/node";
+import { v } from "convex/values";
 
 const authFunctions: AuthFunctions = internal.auth;
 
@@ -59,5 +61,37 @@ export const getCurrentUser = query({
     handler: async (ctx, _args) => {
         const user = await authKit.getAuthUser(ctx);
         return user;
+    },
+});
+
+export const getAuthorisationUrl = action({
+    args: {
+        provider: v.string(),
+        redirectUri: v.string(),
+    },
+    async handler(_ctx, args) {
+        const workos = new WorkOS(process.env.WORKOS_API_KEY);
+        const url = workos.userManagement.getAuthorizationUrl({
+            clientId: process.env.WORKOS_CLIENT_ID,
+            provider: args.provider,
+            redirectUri: args.redirectUri,
+        });
+
+        return url;
+    },
+});
+
+export const authenticateWithCode = action({
+    args: {
+        code: v.string(),
+    },
+    async handler(_ctx, { code }) {
+        const workos = new WorkOS(process.env.WORKOS_API_KEY);
+        const response = await workos.userManagement.authenticateWithCode({
+            clientId: process.env.WORKOS_CLIENT_ID,
+            code,
+        });
+
+        return response;
     },
 });
