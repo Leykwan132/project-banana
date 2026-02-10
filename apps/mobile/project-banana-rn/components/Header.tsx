@@ -42,7 +42,7 @@ export function Header({ title }: HeaderProps) {
                     <View style={styles.iconButton}>
                         <Bell size={22} color={Colors[colorScheme ?? 'light'].text} />
                         <Badge
-                            label={'999'}
+                            label={'1'}
                             size={16}
                             backgroundColor="red"
                             labelStyle={{ color: 'white' }}
