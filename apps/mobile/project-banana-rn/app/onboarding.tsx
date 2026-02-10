@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
     Dimensions,
     ImageBackground,
@@ -12,9 +12,15 @@ import {
     Carousel, PageControlPosition
 } from 'react-native-ui-lib';
 
+import { ActionSheetRef } from 'react-native-actions-sheet';
+
 import { ThemedText } from '@/components/themed-text';
+import { LoginActionSheet } from '@/components/LoginActionSheet';
+
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const IS_SMALL_DEVICE = SCREEN_HEIGHT < 750; // Threshold for smaller/shorter devices
+
 
 const CARD_IMAGES = [
     require('@/assets/images/ob-earns.png'),
@@ -69,20 +75,17 @@ function Slide({ item }: SlideProps) {
         <View style={styles.slide}>
             {/* Card + Title Section - positioned to overlap */}
             <View style={styles.overlayContainer}>
-                {/* <View style={styles.screenshotCard}>
-                    <View style={styles.cardContent}> */}
+
                 <Image
                     source={item.cardImage}
                     style={styles.cardImage}
                     // width={200}
                     // height={200}
-                    borderRadius={16}
+                    borderRadius={24}
                     resizeMode="contain"
                 />
-                {/* </View>
-                </View> */}
 
-                <ThemedText style={styles.cardTitle} >{item.title}</ThemedText>
+                <ThemedText style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.title}</ThemedText>
                 <ThemedText style={styles.cardSubtitle} >{item.subtitle}</ThemedText>
 
             </View>
@@ -94,9 +97,16 @@ export default function OnboardingScreen() {
     const insets = useSafeAreaInsets();
     const [currentPage, setCurrentPage] = useState(0);
 
+    const loginActionSheetRef = useRef<ActionSheetRef>(null);
+
     const handleLogin = useCallback(() => {
+        loginActionSheetRef.current?.show();
+    }, []);
+
+    const onActualLogin = useCallback(() => {
         router.replace('/(tabs)');
     }, []);
+
 
     const onChangePage = useCallback((page: number) => {
         setCurrentPage(page);
@@ -137,6 +147,11 @@ export default function OnboardingScreen() {
                 </Pressable>
 
             </View>
+
+            <LoginActionSheet
+                actionSheetRef={loginActionSheetRef}
+                onLogin={onActualLogin}
+            />
         </View>
     );
 }
@@ -179,11 +194,11 @@ const styles = StyleSheet.create({
     },
     overlayContainer: {
         position: 'absolute',
-        top: 20,
+        top: 30,
         left: 0,
         right: 0,
         alignItems: 'center',
-        paddingHorizontal: 60,
+        paddingHorizontal: 40,
     },
     screenshotCard: {
         width: '90%',
@@ -228,9 +243,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8F8F8',
     },
     cardImage: {
-        borderRadius: 16,
-        width: SCREEN_WIDTH * 0.6,
-        height: SCREEN_HEIGHT * 0.6,
+        borderRadius: 24,
+        width: SCREEN_WIDTH * 0.65,
+        maxWidth: SCREEN_WIDTH * 0.62,
+        aspectRatio: 8 / 16,
+        maxHeight: SCREEN_HEIGHT * (IS_SMALL_DEVICE ? 0.5 : 0.6),
         backgroundColor: 'white',
         borderColor: '#E0E0E0',
         borderWidth: 1,
