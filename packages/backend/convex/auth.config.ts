@@ -1,3 +1,6 @@
+import { getAuthConfigProvider } from "@convex-dev/better-auth/auth-config";
+import type { AuthConfig } from "convex/server";
+
 const clientId = process.env.WORKOS_CLIENT_ID;
 
 const authConfig = {
@@ -15,7 +18,8 @@ const authConfig = {
             algorithm: 'RS256',
             jwks: `https://api.workos.com/sso/jwks/${clientId}`,
         },
+        getAuthConfigProvider()
     ],
-};
+} satisfies AuthConfig;
 
 export default authConfig;

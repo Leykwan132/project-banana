@@ -4,6 +4,11 @@ import { AuthKit, type AuthFunctions } from "@convex-dev/workos-authkit";
 import type { DataModel } from "./_generated/dataModel";
 import { WorkOS } from "@workos-inc/node";
 import { v } from "convex/values";
+import { createClient, type GenericCtx } from "@convex-dev/better-auth";
+import { convex } from "@convex-dev/better-auth/plugins";
+import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
+import { expo } from '@better-auth/expo'
+import authConfig from "./auth.config";
 
 const authFunctions: AuthFunctions = internal.auth;
 
@@ -95,3 +100,35 @@ export const authenticateWithCode = action({
         return response;
     },
 });
+
+export const authComponent = createClient<DataModel>(components.betterAuth);
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+    return betterAuth({
+        trustedOrigins: [
+            "myapp://",
+            "projectbananarn://",
+            // Development mode - Expo's exp:// scheme with local IP ranges
+            "exp://",                      // Trust all Expo URLs (prefix matching)
+            "exp://**",                    // Trust all Expo URLs (wildcard matching)
+            "exp://[IP_ADDRESS]/**",      // Trust 192.168.x.x IP range with any port and path
+            "exp://192.168.100.250:8081"
+        ],
+        socialProviders: {
+            google: {
+                clientId: process.env.GOOGLE_CLIENT_ID!,
+                clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            }
+        },
+        database: authComponent.adapter(ctx),
+        // Configure simple, non-verified email/password to get started
+        emailAndPassword: {
+            enabled: true,
+            requireEmailVerification: false,
+        },
+        plugins: [
+            // The Expo and Convex plugins are required
+            expo(),
+            convex({ authConfig }),
+        ],
+    })
+}
