@@ -4,6 +4,7 @@ import { api, components, internal } from "./_generated/api";
 import { authKit } from "./auth";
 import { registerRoutes } from "@convex-dev/stripe";
 import type Stripe from "stripe";
+import { authComponent, createAuth } from "./auth";
 
 const priceIdToPlan: Record<string, string> = {};
 
@@ -12,13 +13,15 @@ if (process.env.STRIPE_PRICE_STARTER_ANNUAL) priceIdToPlan[process.env.STRIPE_PR
 if (process.env.STRIPE_PRICE_GROWTH_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_GROWTH_MONTHLY] = "growth";
 if (process.env.STRIPE_PRICE_GROWTH_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_GROWTH_ANNUAL] = "growth";
 
-
 const http = httpRouter();
 authKit.registerRoutes(http);
 
 // ============================================================
 // RAZORPAY WEBHOOK (For Top-up/Credits only)
 // ============================================================
+
+authComponent.registerRoutes(http, createAuth);
+
 
 http.route({
     path: "/webhooks/razorpay",
