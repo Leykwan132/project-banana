@@ -2,6 +2,7 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
+import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -27,13 +28,7 @@ export const getBusinessByName = query({
 export const getMyBusiness = query({
     args: {},
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return null;
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return null;
 
@@ -45,7 +40,7 @@ export const getMyBusiness = query({
 });
 
 export const getBusinessByUserId = query({
-    args: { userId: v.id("users") },
+    args: { userId: v.id("user") },
     handler: async (ctx, args) => {
         return await ctx.db
             .query("businesses")
@@ -67,10 +62,8 @@ export const createBusiness = mutation({
         size: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
-            throw new Error("Unauthenticated call to mutation");
-        }
+        const user = await authComponent.getAuthUser(ctx);
+        if (!user) throw new Error("Unauthenticated call to mutation");
 
         // Check if name exists
         const existing = await ctx.db
@@ -80,15 +73,6 @@ export const createBusiness = mutation({
 
         if (existing) {
             throw new Error("Business name already exists");
-        }
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
-        if (!user) {
-            throw new Error("User not found");
         }
 
         const now = Date.now();
@@ -119,23 +103,12 @@ export const updateBusiness = mutation({
         size: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
-            throw new Error("Unauthenticated call to mutation");
-        }
+        const user = await authComponent.getAuthUser(ctx);
+        if (!user) throw new Error("Unauthenticated call to mutation");
 
         const business = await ctx.db.get(args.businessId);
         if (!business) {
             throw new Error("Business not found");
-        }
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
-        if (!user) {
-            throw new Error("User not found");
         }
 
         if (business.user_id !== user._id) {

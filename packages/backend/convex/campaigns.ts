@@ -44,11 +44,26 @@ export const getCampaignsByBusiness = query({
 export const getActiveCampaigns = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        return await ctx.db
+        const result = await ctx.db
             .query("campaigns")
             .withIndex("by_status", (q) => q.eq("status", "active"))
             .order("desc")
             .paginate(args.paginationOpts);
+
+        return {
+            isDone: result.isDone,
+            continueCursor: result.continueCursor,
+            page: result.page.map((campaign) => ({
+                campaignId: campaign._id,
+                name: campaign.name,
+                cover_photo_url: campaign.cover_photo_url,
+                payout_threshold: campaign.payout_thresholds[0],
+                maximum_payout: campaign.maximum_payout,
+                submissions: campaign.submissions,
+                category: campaign.category,
+                business_name: campaign.business_name,
+            })),
+        };
     },
 });
 
@@ -84,7 +99,8 @@ export const createCampaign = mutation({
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),
-
+        business_name: v.string(),
+        category: v.optional(v.array(v.string())),
         // Complex objects
         payout_thresholds: v.array(v.object({
             views: v.number(),
@@ -155,6 +171,8 @@ export const createCampaign = mutation({
             submissions: 0,
             created_at: now,
             updated_at: now,
+            business_name: args.business_name,
+            category: args.category,
         });
 
         return campaignId;

@@ -18,19 +18,10 @@ export const authKit = new AuthKit<DataModel>(components.workOSAuthKit, {
 });
 
 export const { authKitEvent } = authKit.events({
-    "user.created": async (ctx, event) => {
+    "user.created": async (_ctx, event) => {
+        // Better Auth component persists users in the `user` table.
+        // Keep this for side effects/logging only.
         console.log('onCreateUser', event);
-        await ctx.db.insert("users", {
-            authId: event.data.id,
-            email: event.data.email,
-            name: `${event.data.firstName} ${event.data.lastName}`,
-            profile_pic_url: event.data.profilePictureUrl ?? undefined, // Handle null
-            total_views: 0,
-            total_earnings: 0,
-            joined_at: Date.now(),
-            created_at: Date.now(),
-            updated_at: Date.now(),
-        });
     },
 
     // Handle any event type
@@ -41,14 +32,9 @@ export const { authKitEvent } = authKit.events({
         console.log("onUpdateUser", event);
     },
     "user.deleted": async (ctx, event) => {
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", event.data.id))
-            .unique();
-
-        if (user) {
-            await ctx.db.patch(user._id, { isDeleted: true });
-        }
+        // Better Auth owns the user record lifecycle.
+        // Keep this hook for side effects if needed.
+        console.log("onDeleteUser", event.data.id);
     },
 });
 
@@ -130,5 +116,15 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
             expo(),
             convex({ authConfig }),
         ],
+        user: {
+            additionalFields: {
+                isDeleted: { type: "boolean", required: false },
+                isOnboarded: { type: "boolean", required: false },
+                profile_pic_url: { type: "string", required: false },
+                total_views: { type: "number", required: false },
+                total_earnings: { type: "number", required: false },
+                balance: { type: "number", required: false },
+            }
+        }
     })
 }

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { api } from "./_generated/api";
+import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -61,17 +62,8 @@ export const createSubmission = mutation({
         s3_key: v.optional(v.string()),    // New
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
-            throw new Error("Unauthenticated call to mutation");
-        }
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
-        if (!user) throw new Error("User not found");
+        const user = await authComponent.getAuthUser(ctx);
+        if (!user) throw new Error("Unauthenticated call to mutation");
 
         const application = await ctx.db.get(args.applicationId);
         if (!application) throw new Error("Application not found");
@@ -134,15 +126,8 @@ export const approveSubmission = mutation({
         feedback: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) throw new Error("Unauthenticated call");
-
-        const reviewer = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
-        if (!reviewer) throw new Error("Reviewer not found");
+        const reviewer = await authComponent.getAuthUser(ctx);
+        if (!reviewer) throw new Error("Unauthenticated call");
 
         const submission = await ctx.db.get(args.submissionId);
         if (!submission) throw new Error("Submission not found");
@@ -204,15 +189,8 @@ export const requestChanges = mutation({
         feedback: v.string(), // Required for changes request
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) throw new Error("Unauthenticated call");
-
-        const reviewer = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
-        if (!reviewer) throw new Error("Reviewer not found");
+        const reviewer = await authComponent.getAuthUser(ctx);
+        if (!reviewer) throw new Error("Unauthenticated call");
 
         const submission = await ctx.db.get(args.submissionId);
         if (!submission) throw new Error("Submission not found");

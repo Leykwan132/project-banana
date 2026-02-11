@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -10,13 +11,7 @@ import { v } from "convex/values";
  */
 export const getUserCampaignStatuses = query({
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return [];
 
@@ -35,13 +30,7 @@ export const getUserCampaignStatus = query({
         campaignId: v.id("campaigns"),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return null;
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return null;
 
@@ -66,13 +55,7 @@ export const createUserCampaignStatus = mutation({
         maximumPayout: v.number(),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) throw new Error("User not found");
 
@@ -116,19 +99,14 @@ export const updateUserCampaignStatus = mutation({
         totalEarnings: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
+        const user = await authComponent.getAuthUser(ctx);
+        if (!user) throw new Error("Unauthenticated");
 
         const existingStatus = await ctx.db.get(args.statusId);
         if (!existingStatus) throw new Error("Status not found");
 
         // Verify ownership
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
-        if (!user || existingStatus.user_id !== user._id) {
+        if (existingStatus.user_id !== user._id) {
             throw new Error("Unauthorized");
         }
 

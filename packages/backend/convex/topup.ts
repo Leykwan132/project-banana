@@ -2,6 +2,7 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { api, internal } from "./_generated/api";
+import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -10,13 +11,7 @@ import { api, internal } from "./_generated/api";
 export const getTopUpHistory = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return { page: [], isDone: true, continueCursor: "" };
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return { page: [], isDone: true, continueCursor: "" };
 
@@ -43,19 +38,7 @@ export const getPastTopUpPayments = query({
         status: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) {
-            return {
-                page: [],
-                isDone: true,
-                continueCursor: "",
-            };
-        }
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) {
             return {
@@ -100,13 +83,7 @@ export const getTopUpCount = query({
         status: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return 0;
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return 0;
 
@@ -591,13 +568,7 @@ export const deleteTopupOrder = mutation({
         orderId: v.id("topup_orders"),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) throw new Error("User not found");
 
@@ -619,5 +590,4 @@ export const deleteTopupOrder = mutation({
         await ctx.db.delete(args.orderId);
     },
 });
-
 

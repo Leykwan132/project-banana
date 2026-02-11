@@ -3,6 +3,7 @@ import { components, api } from "./_generated/api";
 import { StripeSubscriptions, } from "@convex-dev/stripe";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { authComponent } from "./auth";
 
 const stripeClient = new StripeSubscriptions(components.stripe, {});
 
@@ -50,13 +51,7 @@ function getStripeCredentials(): { secretKey: string } {
 export const getMySubscription = query({
     args: {},
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return null;
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return null;
 

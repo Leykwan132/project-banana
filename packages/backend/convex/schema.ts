@@ -7,7 +7,7 @@ export default defineSchema({
     // ============================================================
 
     businesses: defineTable({
-        user_id: v.id("users"), // Owner
+        user_id: v.string(), // Owner
         name: v.string(),
         logo_url: v.optional(v.string()), // Legacy/External URL
         logo_s3_key: v.optional(v.string()), // S3 Key
@@ -45,6 +45,7 @@ export default defineSchema({
             views: v.number(),
             payout: v.number(),
         })),
+        business_name: v.optional(v.string()),
         requirements: v.array(v.string()),
         scripts: v.optional(v.array(v.object({
             type: v.string(),
@@ -59,7 +60,7 @@ export default defineSchema({
         .index("by_status", ["status"]),
 
     user_campaign_status: defineTable({
-        user_id: v.id("users"),
+        user_id: v.string(),
         campaign_id: v.id("campaigns"),
         maximum_payout: v.number(),
         total_earnings: v.number(),
@@ -67,12 +68,13 @@ export default defineSchema({
         comments: v.optional(v.number()),
         shares: v.optional(v.number()),
         views: v.optional(v.number()),
-        status: v.string(), // "pending_review" | "ready_to_post" | "earning" | "maxed_out"
+        status: v.string(), // "earning" | "maxed_out"
         created_at: v.number(),
         updated_at: v.number(),
     })
         .index("by_user", ["user_id"])
-        .index("by_status", ["status"]),
+        .index("by_status", ["status"])
+        .index("by_campaign_earnings", ["campaign_id", "total_earnings"]),
 
     credits: defineTable({
         business_id: v.id("businesses"),
@@ -111,37 +113,17 @@ export default defineSchema({
         .index("by_status", ["status"]),
 
     // ============================================================
-    // USERS & APPLICATIONS
+    // user & APPLICATIONS
     // ============================================================
 
-    users: defineTable({
-        isDeleted: v.optional(v.boolean()), // Soft delete
-        isOnboarded: v.optional(v.boolean()), // Set to true after first subscription
-        profile_pic_url: v.optional(v.string()), // New
-        total_views: v.optional(v.number()),
-        total_earnings: v.optional(v.number()),
-        joined_at: v.optional(v.number()),
-        bank_account: v.optional(v.string()),
-        bank_name: v.optional(v.string()), // Restored
-        created_at: v.optional(v.number()), // Restored
-        updated_at: v.optional(v.number()), // Restored
-        balance: v.optional(v.number()),
-        // AuthKit fields
-        authId: v.optional(v.string()),
-        email: v.optional(v.string()),
-        name: v.optional(v.string()), // Added back since user might need it, or user removed it?
-    })
-        .index("by_authId", ["authId"]),
-
     applications: defineTable({
-        user_id: v.id("users"),
+        user_id: v.string(),
         campaign_id: v.id("campaigns"),
         status: v.string(), // "pending_submission" | "reviewing" | "changes_requested" | "ready_to_post" | "earning"
         ig_post_url: v.optional(v.string()),
         tiktok_post_url: v.optional(v.string()),
         tracking_tag: v.optional(v.string()),
         posted_at: v.optional(v.number()),
-        earning: v.optional(v.number()),
         approved_submission_id: v.optional(v.id("submissions")),
         created_at: v.number(),
         updated_at: v.number(),
@@ -153,7 +135,7 @@ export default defineSchema({
 
     submissions: defineTable({
         application_id: v.id("applications"),
-        user_id: v.id("users"),
+        user_id: v.string(),
         campaign_id: v.id("campaigns"),
         video_url: v.optional(v.string()),
         s3_key: v.optional(v.string()),
@@ -170,7 +152,7 @@ export default defineSchema({
 
     submission_reviews: defineTable({
         submission_id: v.id("submissions"),
-        reviewer_id: v.id("users"),
+        reviewer_id: v.string(),
         feedback: v.optional(v.string()),
         action: v.string(), // "approved" | "changes_requested"
         reviewed_at: v.number(),
@@ -184,7 +166,7 @@ export default defineSchema({
     // ============================================================
 
     payouts: defineTable({
-        user_id: v.id("users"),
+        user_id: v.string(),
         application_id: v.optional(v.id("applications")),
         amount: v.number(),
         status: v.string(), // "pending" | "processing" | "completed" | "failed"
@@ -195,7 +177,7 @@ export default defineSchema({
         .index("by_status", ["status"]),
 
     withdrawals: defineTable({
-        user_id: v.id("users"),
+        user_id: v.string(),
         amount: v.number(),
         status: v.string(), // "pending" | "processing" | "completed" | "failed"
         bank_account: v.string(),
@@ -208,7 +190,7 @@ export default defineSchema({
         .index("by_status", ["status"]),
 
     bank_accounts: defineTable({
-        user_id: v.id("users"),
+        user_id: v.string(),
         bank_name: v.string(),
         account_number: v.string(),
         status: v.string(), // "pending_review" | "verified" | "rejected"
@@ -224,7 +206,7 @@ export default defineSchema({
     // ============================================================
 
     notifications: defineTable({
-        user_id: v.optional(v.id("users")),
+        user_id: v.optional(v.string()),
         business_id: v.optional(v.id("businesses")),
         title: v.string(),
         description: v.string(),
@@ -266,7 +248,7 @@ export default defineSchema({
     }).index("by_business_date", ["business_id", "date"]),
 
     app_analytics_daily: defineTable({
-        user_id: v.id("users"), // Owner of the content
+        user_id: v.string(), // Owner of the content
         application_id: v.id("applications"),
         date: v.string(), // "YYYY-MM-DD" format
         views: v.number(),

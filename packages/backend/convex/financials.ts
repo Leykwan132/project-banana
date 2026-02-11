@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -9,13 +10,7 @@ import { paginationOptsValidator } from "convex/server";
 export const getPayouts = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return { page: [], isDone: true, continueCursor: "" };
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return { page: [], isDone: true, continueCursor: "" };
 
@@ -30,13 +25,7 @@ export const getPayouts = query({
 export const getWithdrawals = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return { page: [], isDone: true, continueCursor: "" };
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return { page: [], isDone: true, continueCursor: "" };
 
@@ -51,13 +40,7 @@ export const getWithdrawals = query({
 export const getBalance = query({
     args: {},
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return 0;
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return 0;
 
@@ -77,7 +60,8 @@ export const getBalance = query({
             return sum;
         }, 0);
 
-        return (user.total_earnings ?? 0) - totalWithdrawn;
+        const totalEarnings = (user as any).total_earnings ?? 0;
+        return totalEarnings - totalWithdrawn;
     }
 });
 
@@ -90,17 +74,13 @@ export const createWithdrawal = mutation({
         amount: v.number(),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) throw new Error("User not found");
 
-        if (!user.bank_account || !user.bank_name) {
+        const bankAccount = (user as any).bank_account;
+        const bankName = (user as any).bank_name;
+        if (!bankAccount || !bankName) {
             throw new Error("Please add bank details to your profile first");
         }
 
@@ -118,7 +98,7 @@ export const createWithdrawal = mutation({
             return sum;
         }, 0);
 
-        const currentBalance = (user.total_earnings ?? 0) - totalWithdrawn;
+        const currentBalance = ((user as any).total_earnings ?? 0) - totalWithdrawn;
 
         if (args.amount > currentBalance) {
             throw new Error("Insufficient balance");
@@ -129,8 +109,8 @@ export const createWithdrawal = mutation({
             user_id: user._id,
             amount: args.amount,
             status: "pending",
-            bank_account: user.bank_account,
-            bank_name: user.bank_name,
+            bank_account: bankAccount,
+            bank_name: bankName,
             requested_at: now,
             created_at: now,
         });

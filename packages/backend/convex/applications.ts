@@ -1,7 +1,7 @@
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-
+import { authComponent } from "./auth";
 // ============================================================
 // QUERIES
 // ============================================================
@@ -9,21 +9,79 @@ import { paginationOptsValidator } from "convex/server";
 export const getMyApplications = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return { page: [], isDone: true, continueCursor: "" };
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
+        const user = await authComponent.getAuthUser(ctx);
         if (!user) return { page: [], isDone: true, continueCursor: "" };
 
-        return await ctx.db
+        const applications = await ctx.db
             .query("applications")
             .withIndex("by_user", (q) => q.eq("user_id", user._id))
             .order("desc")
             .paginate(args.paginationOpts);
+
+        const pageWithDetails = await Promise.all(
+            applications.page.map(async (app) => {
+                const campaign = await ctx.db.get(app.campaign_id);
+                let businessName = campaign?.business_name;
+
+                // Fallback to fetching business if name not denormalized
+                if (!businessName && campaign?.business_id) {
+                    const business = await ctx.db.get(campaign.business_id);
+                    businessName = business?.name;
+                }
+
+                return {
+                    ...app,
+                    campaignName: campaign?.name,
+                    businessName,
+                    campaignCoverPhotoUrl: campaign?.cover_photo_url,
+                };
+            })
+        );
+
+        return {
+            ...applications,
+            page: pageWithDetails
+        };
+    },
+});
+
+export const getTopApplicationsByCampaign = query({
+    args: {
+        campaignId: v.id("campaigns"),
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const limit = args.limit ?? 3;
+
+        // 1. Fetch top earning statuses for the campaign efficiently using the index
+        const topStatuses = await ctx.db
+            .query("user_campaign_status")
+            .withIndex("by_campaign_earnings", (q) => q.eq("campaign_id", args.campaignId))
+            .order("desc")
+            .take(limit);
+
+        // 2. Fetch user details in parallel
+        // 3. Enhance with application details
+        const results = await Promise.all(
+            topStatuses.map(async (status) => {
+                // Fetch the application to get the post URL
+                const application = await ctx.db
+                    .query("applications")
+                    .withIndex("by_user_campaign", (q) => q.eq("user_id", status.user_id).eq("campaign_id", args.campaignId))
+                    .unique();
+
+                return {
+                    id: status._id, // Using status ID as unique key for list
+                    name: "Unknown Creator",
+                    views: "1.5M", // Placeholder/Mock for now
+                    amount: `Rm ${(status.total_earnings || 0).toLocaleString()}`,
+                    logoUrl: undefined,
+                    postUrl: application?.ig_post_url || application?.tiktok_post_url,
+                };
+            })
+        );
+
+        return results;
     },
 });
 
@@ -32,6 +90,21 @@ export const getApplication = query({
     handler: async (ctx, args) => {
         return await ctx.db.get(args.applicationId);
     }
+});
+
+export const getApplicationByCampaignId = query({
+    args: { campaignId: v.id("campaigns") },
+    handler: async (ctx, args) => {
+        const user = await authComponent.getAuthUser(ctx);
+        if (!user) return null;
+
+        return await ctx.db
+            .query("applications")
+            .withIndex("by_user_campaign", (q) =>
+                q.eq("user_id", user._id).eq("campaign_id", args.campaignId)
+            )
+            .unique();
+    },
 });
 
 export const getApplicationsForEarningCheck = internalQuery({
@@ -84,23 +157,8 @@ export const createApplication = mutation({
         campaignId: v.id("campaigns"),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
-
-        if (!user) throw new Error("User not found");
-
-        // Check if already applied
-        const existing = await ctx.db
-            .query("applications")
-            .withIndex("by_user_campaign", (q) => q.eq("user_id", user._id).eq("campaign_id", args.campaignId))
-            .unique();
-
-        if (existing) throw new Error("Already applied to this campaign");
+        const user = await authComponent.getAuthUser(ctx);
+        if (!user) throw new Error("Unauthenticated");
 
         const now = Date.now();
         const applicationId = await ctx.db.insert("applications", {
@@ -109,7 +167,6 @@ export const createApplication = mutation({
             status: "pending_submission",
             created_at: now,
             updated_at: now,
-            earning: 0,
         });
 
         return applicationId;
@@ -154,9 +211,11 @@ export const updateApplicationEarning = internalMutation({
         userCampaignMaxPayout: v.number(),
     },
     handler: async (ctx, args) => {
-        // 1. Get current application earning
-        const app = await ctx.db.get(args.applicationId);
-        const existingEarning = app?.earning ?? 0;
+        // 1. Get current status to know existing earning
+        const status = await ctx.db.get(args.userCampaignStatusId);
+        if (!status) return;
+
+        const existingEarning = status.total_earnings;
 
         // 2. Calculate delta (only positive deltas to prevent rollback)
         const earningDelta = Math.max(0, args.newEarning - existingEarning);
@@ -174,34 +233,22 @@ export const updateApplicationEarning = internalMutation({
 
         if (cappedDelta <= 0) return; // No budget left
 
-        // Calculate the actual new earning based on capped delta
-        const actualNewEarning = existingEarning + cappedDelta;
-
-        // 4. Update application earning (with capped amount)
-        await ctx.db.patch(args.applicationId, {
-            earning: actualNewEarning,
-            updated_at: Date.now(),
-        });
-
-        // 5. Update campaign budget_claimed
+        // 4. Update campaign budget_claimed
         await ctx.db.patch(args.campaignId, {
             budget_claimed: campaign.budget_claimed + cappedDelta,
             updated_at: Date.now(),
         });
 
-        // 6. Update user_campaign_status
-        const status = await ctx.db.get(args.userCampaignStatusId);
-        if (status) {
-            const newTotalEarnings = status.total_earnings + cappedDelta;
-            const newStatus = newTotalEarnings >= args.userCampaignMaxPayout
-                ? "maxed_out"
-                : status.status;
+        // 5. Update user_campaign_status
+        const newTotalEarnings = status.total_earnings + cappedDelta;
+        const newStatus = newTotalEarnings >= args.userCampaignMaxPayout
+            ? "maxed_out"
+            : status.status;
 
-            await ctx.db.patch(args.userCampaignStatusId, {
-                total_earnings: newTotalEarnings,
-                status: newStatus,
-                updated_at: Date.now(),
-            });
-        }
+        await ctx.db.patch(args.userCampaignStatusId, {
+            total_earnings: newTotalEarnings,
+            status: newStatus,
+            updated_at: Date.now(),
+        });
     },
 });

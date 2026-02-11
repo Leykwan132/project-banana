@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { authComponent } from "./auth";
 
 // ============================================================
 // BANK ACCOUNT QUERIES
@@ -10,13 +11,7 @@ import { v } from "convex/values";
  */
 export const getUserBankAccounts = query({
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return [];
 
@@ -33,13 +28,7 @@ export const getUserBankAccounts = query({
  */
 export const getActiveBankAccounts = query({
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) return [];
 
@@ -66,13 +55,7 @@ export const createBankAccount = mutation({
         proofDocumentUrl: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthenticated");
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
-            .unique();
+        const user = await authComponent.getAuthUser(ctx);
 
         if (!user) throw new Error("User not found");
 
