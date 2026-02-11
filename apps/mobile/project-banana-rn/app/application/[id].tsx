@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Image, Pressable, RefreshControl } from 'react-native';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Check, Copy, Play } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Check, Copy } from 'lucide-react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { TextInput, ActivityIndicator, Alert } from 'react-native';
 import Animated, {
@@ -12,10 +12,14 @@ import Animated, {
     SlideInRight,
     SlideOutLeft,
     FadeIn,
+    withRepeat,
+    withSequence,
+    withTiming,
 } from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useQuery } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
@@ -23,67 +27,68 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import ActionSheet from "react-native-actions-sheet";
 import { Timeline, Text, Assets, Checkbox } from 'react-native-ui-lib';
-import { ApplicationStatus, getStatusConfig, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
+import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 import { CreatorListItem } from '@/components/CreatorListItem';
 import { SubmissionListItem } from '@/components/SubmissionListItem';
 import { AccordionItem } from '@/components/AccordionItem';
 import { FlippableEarningsCard } from '@/components/FlippableEarningsCard';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
-// Reuse mock data structure for now
-const mockCampaign = {
-    id: '1',
-    name: 'Campaign Name',
-    company: 'by xxx company',
-    logoLetter: 'a',
-    status: 'Posted' as ApplicationStatus,
-    mySubmissions: [
-        { id: '1', status: 'Under Review' as ApplicationStatus, date: '17/11/2025 5.46pm' },
-        { id: '2', status: 'Changes Required' as ApplicationStatus, date: '17/11/2025 5.46pm' },
-    ],
-    requirements: [
-        'No AI generated',
-        'Submit for approval before posting',
-        'Follow Script',
-        'Use provided assets in video',
-        'Speak Mandarin'
-    ],
-    payouts: [
-        { views: '10k', amount: 'Rm 50' },
-        { views: '500k', amount: 'Rm 50' },
-        { views: '3M', amount: 'Rm 50' },
-    ],
-    maxPayout: 'Rm 2000',
-    creators: [
-        { id: '1', name: 'Creator name', views: '1.5M', amount: 'Rm 3,400' },
-        { id: '2', name: 'Creator name', views: '1.5M', amount: 'Rm 3,400' },
-        { id: '3', name: 'Creator name', views: '1.5M', amount: 'Rm 3,400' },
-    ],
-    // Optional Scripts
-    scripts: [
-        { title: 'Start of video', description: '2 things to change, 1 is the xxx has to be xxx. 2 is the xxx has to be xxx.' },
-        { title: 'Product', description: '2 things to change, 1 is the xxx has to be xxx. 2 is the xxx has to be xxx.' },
-        { title: 'End of video', description: '2 things to change, 1 is the xxx has to be xxx. 2 is the xxx has to be xxx.' },
-    ],
-    // Optional Assets Link
-    assets: 'https://example.com/assets',
-    // Post metrics (shown when status is 'Posted')
-    postMetrics: {
-        totalEarned: 'Rm 453',
-        views: '1.2M',
-        likes: '45.2K',
-        comments: '2.3K',
-        shares: '1.1K',
-        avgWatchTime: '12s',
-        engagementRate: '4.2%',
-        topEarnerPercent: 5,
-    },
+const formatCurrency = (amount: number) => `Rm ${amount.toLocaleString()}`;
+
+const formatViews = (views: number) => {
+    if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
+    if (views >= 1000) return `${Math.round(views / 1000)}k`;
+    return `${views}`;
+};
+
+const formatSubmissionDate = (timestamp: number) =>
+    new Date(timestamp).toLocaleString("en-MY", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+
+const mapBackendStatusToUiStatus = (status?: string): ApplicationStatus => {
+    switch (status) {
+        case "pending_submission":
+            return "Pending Submission";
+        case "reviewing":
+        case "pending_review":
+            return "Under Review";
+        case "changes_requested":
+            return "Changes Required";
+        case "ready_to_post":
+            return "Ready to Post";
+        case "earning":
+            return "Posted";
+        default:
+            return "Pending Submission";
+    }
 };
 
 export default function ApplicationDetailScreen() {
-    const { id } = useLocalSearchParams();
+    const { id, campaignId } = useLocalSearchParams();
+    const applicationId = id as Id<"applications">;
+    const routeCampaignId = campaignId as Id<"campaigns"> | undefined;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
+
+    const application = useQuery(api.applications.getApplication, { applicationId });
+    const submissions = useQuery(api.submissions.getSubmissionsByApplication, { applicationId });
+    const resolvedCampaignId = application?.campaign_id ?? routeCampaignId;
+    const campaign = useQuery(
+        api.campaigns.getCampaign,
+        resolvedCampaignId ? { campaignId: resolvedCampaignId } : "skip"
+    );
+    const topApplications = useQuery(
+        api.applications.getTopApplicationsByCampaign,
+        resolvedCampaignId ? { campaignId: resolvedCampaignId } : "skip"
+    );
 
     const scriptsSheetRef = useRef<ActionSheetRef>(null);
     const submissionSheetRef = useRef<ActionSheetRef>(null);
@@ -99,6 +104,11 @@ export default function ApplicationDetailScreen() {
     // Video upload state - single sheet with steps
     const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
     const [reviewStep, setReviewStep] = useState<'requirements' | 'preview' | 'uploading' | 'done'>('requirements');
+
+    const isLoading =
+        application === undefined ||
+        submissions === undefined ||
+        (resolvedCampaignId ? campaign === undefined || topApplications === undefined : false);
 
     // Flip card animation
 
@@ -199,7 +209,7 @@ export default function ApplicationDetailScreen() {
 
     // Flip card animation removed (moved to component)
 
-    const statusStyle = getStatusConfig(mockCampaign.status);
+    const applicationStatus = mapBackendStatusToUiStatus(application?.status);
 
     const getTimelineStep = (status: ApplicationStatus) => {
         switch (status) {
@@ -217,7 +227,75 @@ export default function ApplicationDetailScreen() {
                 return 1;
         }
     };
-    const currentStep = getTimelineStep(mockCampaign.status);
+    const currentStep = getTimelineStep(applicationStatus);
+
+    if (application === null) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <ThemedText>Application not found</ThemedText>
+                <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
+                    <ThemedText style={{ color: 'blue' }}>Go Back</ThemedText>
+                </Pressable>
+            </View>
+        );
+    }
+
+    // Skeleton Component
+    const ApplicationDetailSkeleton = () => {
+        const opacity = useSharedValue(0.3);
+
+        useEffect(() => {
+            opacity.value = withRepeat(
+                withSequence(
+                    withTiming(0.7, { duration: 800 }),
+                    withTiming(0.3, { duration: 800 })
+                ),
+                -1,
+                true
+            );
+        }, []);
+
+        const animatedStyle = useAnimatedStyle(() => ({
+            opacity: opacity.value,
+        }));
+
+        return (
+            <View style={{ flex: 1 }}>
+                <View style={styles.campaignInfo}>
+                    <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: 64, height: 64, borderRadius: 32, marginRight: 16 }]} />
+                    <View style={{ flex: 1, gap: 8 }}>
+                        <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '70%', height: 20, borderRadius: 8 }]} />
+                        <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '45%', height: 14, borderRadius: 8 }]} />
+                    </View>
+                </View>
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 180, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 110, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 130, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 130, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 130, borderRadius: 16 }]} />
+            </View>
+        );
+    };
+
+    if (isLoading) {
+        return (
+            <View style={[styles.container, { paddingTop: insets.top }]}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <View style={styles.header}>
+                    <Pressable onPress={() => router.back()} style={styles.backButton}>
+                        <ArrowLeft size={20} color="#000" />
+                    </Pressable>
+                </View>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+                >
+                    <ApplicationDetailSkeleton />
+                </ScrollView>
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -241,23 +319,25 @@ export default function ApplicationDetailScreen() {
                 <View style={styles.campaignInfo}>
                     <View style={styles.logoContainer}>
                         <View style={styles.logoPlaceholder}>
-                            <ThemedText style={styles.logoText}>{mockCampaign.logoLetter}</ThemedText>
+                            <ThemedText style={styles.logoText}>
+                                {(campaign?.business_name ?? "C").charAt(0).toUpperCase()}
+                            </ThemedText>
                         </View>
                     </View>
                     <View style={styles.campaignText}>
-                        <ThemedText style={styles.campaignName}>{mockCampaign.name}</ThemedText>
-                        <ThemedText style={styles.companyName}>{mockCampaign.company}</ThemedText>
+                        <ThemedText style={styles.campaignName}>{campaign?.name ?? "Campaign"}</ThemedText>
+                        <ThemedText style={styles.companyName}>{campaign?.business_name ?? "Company"}</ThemedText>
                     </View>
                 </View>
 
                 {/* Flippable Earnings Card - only shown when Posted */}
-                {mockCampaign.status === 'Posted' && mockCampaign.postMetrics && (
+                {applicationStatus === 'Posted' && (
                     <FlippableEarningsCard
                         style={{ marginBottom: 24 }}
-                        topEarnerPercent={mockCampaign.postMetrics.topEarnerPercent}
+                        topEarnerPercent={5}
                         frontContent={
                             <>
-                                Your post has made <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>{mockCampaign.postMetrics.totalEarned}</ThemedText>
+                                Your post has made <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>Rm 0</ThemedText>
                             </>
                         }
                     />
@@ -266,7 +346,7 @@ export default function ApplicationDetailScreen() {
                 <View style={styles.timelineSection}>
                     <View style={styles.sectionHeaderRow}>
                         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Application Status</ThemedText>
-                        <ApplicationStatusBadge status={mockCampaign.status} />
+                        <ApplicationStatusBadge status={applicationStatus} />
                     </View>
 
                     {/* Step 1: Application Created - Always Success */}
@@ -351,27 +431,37 @@ export default function ApplicationDetailScreen() {
                     </Timeline>
                 </View>
 
-                {mockCampaign.mySubmissions && mockCampaign.mySubmissions.length > 0 && (
-                    <>
-                        <View style={styles.divider} />
+                <View style={styles.divider} />
 
-                        {/* My Submissions */}
-                        <View style={styles.section}>
-                            <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginBottom: 24 }]}>My submissions</ThemedText>
-                            <View style={styles.submissionsList}>
-                                {mockCampaign.mySubmissions.map((sub, index) => (
-                                    <SubmissionListItem
-                                        key={sub.id}
-                                        attemptNumber={index + 1}
-                                        date={sub.date}
-                                        status={sub.status}
-                                        onPress={() => router.push(`/submission/${sub.id}`)}
-                                    />
-                                ))}
+                {/* My Submissions */}
+                <View style={styles.section}>
+                    <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { marginBottom: 24 }]}>My submissions</ThemedText>
+                    <View style={styles.submissionsList}>
+                        {submissions && submissions.length > 0 ? (
+                            submissions.map((sub, index) => (
+                                <SubmissionListItem
+                                    key={sub._id}
+                                    attemptNumber={index + 1}
+                                    date={formatSubmissionDate(sub.created_at)}
+                                    status={mapBackendStatusToUiStatus(sub.status)}
+                                    onPress={() => router.push(`/submission/${sub._id}`)}
+                                />
+                            ))
+                        ) : (
+                            <View style={styles.emptyStateContainer}>
+                                <LottieView
+                                    source={require('@/assets/lotties/not-found.json')}
+                                    autoPlay
+                                    loop
+                                    style={styles.lottie}
+                                />
+                                <ThemedText style={{ color: '#666', marginTop: 8 }}>
+                                    No submissions yet
+                                </ThemedText>
                             </View>
-                        </View>
-                    </>
-                )}
+                        )}
+                    </View>
+                </View>
 
                 <View style={[styles.divider]} />
 
@@ -386,7 +476,7 @@ export default function ApplicationDetailScreen() {
                     </Pressable>
                     <AccordionItem isExpanded={requirementsOpen}>
                         <View style={styles.requirementsList}>
-                            {mockCampaign.requirements.map((req, index) => (
+                            {(campaign?.requirements ?? []).map((req, index) => (
                                 <View key={index} style={styles.requirementItem}>
                                     <Check size={20} color="#000" strokeWidth={3} />
                                     <ThemedText style={styles.requirementText}>{req}</ThemedText>
@@ -395,9 +485,9 @@ export default function ApplicationDetailScreen() {
                         </View>
 
                         {/* Scripts & Assets Cards */}
-                        {(mockCampaign.scripts || mockCampaign.assets) && (
+                        {(campaign?.scripts || campaign?.asset_links) && (
                             <View style={styles.cardsGrid}>
-                                {mockCampaign.scripts && (
+                                {campaign?.scripts && (
                                     <Pressable style={styles.infoCard} onPress={() => scriptsSheetRef.current?.show()}>
                                         <View style={styles.infoIconContainer}>
                                             <ThemedText style={styles.infoIconText}>S</ThemedText>
@@ -409,7 +499,7 @@ export default function ApplicationDetailScreen() {
                                     </Pressable>
                                 )}
 
-                                {mockCampaign.assets && (
+                                {campaign?.asset_links && (
                                     <Pressable style={styles.infoCard} onPress={() => { }}>
                                         <View style={styles.infoIconContainer}>
                                             <ThemedText style={styles.infoIconText}>A</ThemedText>
@@ -444,16 +534,18 @@ export default function ApplicationDetailScreen() {
                                 <ThemedText type="defaultSemiBold" style={{ textAlign: 'left' }}>Views</ThemedText>
                                 <ThemedText type="defaultSemiBold" style={{ textAlign: 'right' }}>Amount</ThemedText>
                             </View>
-                            {mockCampaign.payouts.map((payout, index) => (
+                            {(campaign?.payout_thresholds ?? []).map((payout, index) => (
                                 <View key={index} style={styles.payoutRow}>
-                                    <ThemedText style={styles.payoutCell}>{payout.views}</ThemedText>
-                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{payout.amount}</ThemedText>
+                                    <ThemedText style={styles.payoutCell}>{formatViews(payout.views)} views</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(payout.payout)}</ThemedText>
                                 </View>
                             ))}
                             <View style={styles.payoutDivider} />
                             <View style={styles.payoutRow}>
                                 <ThemedText style={styles.payoutCell}>You can earn maximum</ThemedText>
-                                <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{mockCampaign.maxPayout}</ThemedText>
+                                <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>
+                                    {formatCurrency(campaign?.maximum_payout ?? 0)}
+                                </ThemedText>
                             </View>
                         </View>
                     </AccordionItem>
@@ -467,14 +559,29 @@ export default function ApplicationDetailScreen() {
                     <ThemedText style={styles.sectionSubtitle}>Learn from how others get more views</ThemedText>
 
                     <View style={styles.creatorList}>
-                        {mockCampaign.creators.map((creator) => (
-                            <CreatorListItem
-                                key={creator.id}
-                                name={creator.name}
-                                views={creator.views}
-                                amount={creator.amount}
-                            />
-                        ))}
+                        {topApplications && topApplications.length > 0 ? (
+                            topApplications.map((creator) => (
+                                <CreatorListItem
+                                    key={creator.id}
+                                    name={creator.name}
+                                    views={creator.views}
+                                    amount={creator.amount}
+                                    logoUrl={creator.logoUrl}
+                                />
+                            ))
+                        ) : (
+                            <View style={styles.emptyStateContainer}>
+                                <LottieView
+                                    source={require('@/assets/lotties/not-found.json')}
+                                    autoPlay
+                                    loop
+                                    style={styles.lottie}
+                                />
+                                <ThemedText style={{ color: '#666', marginTop: 8 }}>
+                                    No inspirations yet
+                                </ThemedText>
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -489,9 +596,9 @@ export default function ApplicationDetailScreen() {
 
                         {/* Script Sections */}
                         <View style={{ gap: 24, marginBottom: 32 }}>
-                            {mockCampaign.scripts?.map((script, index) => (
+                            {campaign?.scripts?.map((script, index) => (
                                 <View key={index}>
-                                    <ThemedText type="defaultSemiBold" style={{ marginBottom: 8, fontSize: 16 }}>{script.title}</ThemedText>
+                                    <ThemedText type="defaultSemiBold" style={{ marginBottom: 8, fontSize: 16 }}>{script.type}</ThemedText>
                                     <View style={styles.scriptBox}>
                                         <ThemedText style={styles.scriptText}>{script.description}</ThemedText>
                                     </View>
@@ -619,7 +726,7 @@ export default function ApplicationDetailScreen() {
                                 </View>
 
                                 <View style={styles.requirementsList}>
-                                    {mockCampaign.requirements.map((req, index) => (
+                                    {(campaign?.requirements ?? []).map((req, index) => (
                                         <View key={index} style={styles.requirementItem}>
                                             <Check size={20} color="#000" strokeWidth={3} />
                                             <ThemedText style={styles.requirementText}>{req}</ThemedText>
@@ -725,16 +832,16 @@ export default function ApplicationDetailScreen() {
 
             </ScrollView>
 
-            {mockCampaign.status !== 'Posted' && (
+            {applicationStatus !== 'Posted' && (
                 <View style={[styles.footer, { paddingBottom: 30 }]}>
                     <Pressable
                         style={[
                             styles.actionButton,
-                            mockCampaign.status === 'Under Review' && { backgroundColor: '#E0E0E0', opacity: 1 }
+                            applicationStatus === 'Under Review' && { backgroundColor: '#E0E0E0', opacity: 1 }
                         ]}
-                        disabled={mockCampaign.status === 'Under Review'}
+                        disabled={applicationStatus === 'Under Review'}
                         onPress={() => {
-                            if (mockCampaign.status === 'Ready to Post') {
+                            if (applicationStatus === 'Ready to Post') {
                                 setShowSuccess(false);
                                 setInstagramLink('');
                                 setTikTokLink('');
@@ -749,11 +856,11 @@ export default function ApplicationDetailScreen() {
                     >
                         <ThemedText style={[
                             styles.actionButtonText,
-                            mockCampaign.status === 'Under Review' && { color: '#666' }
+                            applicationStatus === 'Under Review' && { color: '#666' }
                         ]}>
-                            {mockCampaign.status === 'Ready to Post'
+                            {applicationStatus === 'Ready to Post'
                                 ? 'Start Earning'
-                                : mockCampaign.status === 'Under Review'
+                                : applicationStatus === 'Under Review'
                                     ? 'Under Review'
                                     : 'Review & Upload'}
                         </ThemedText>
@@ -1154,5 +1261,17 @@ const styles = StyleSheet.create({
         paddingLeft: 4,
     },
     // Flippable Earnings Card Styles
+    skeletonBlock: {
+        backgroundColor: '#E0E0E0',
+    },
+    emptyStateContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 24,
+    },
+    lottie: {
+        width: 150,
+        height: 150,
+    },
 
 });

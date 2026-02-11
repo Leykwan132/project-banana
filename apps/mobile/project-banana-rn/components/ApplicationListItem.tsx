@@ -12,7 +12,7 @@ import { ApplicationStatus, ApplicationStatusBadge } from '@/components/Applicat
 interface ApplicationListItemProps {
     logoUrl?: string;
     campaignName: string;
-    companyName?: string;
+    businessName?: string;
     createdOn?: string;
     status?: ApplicationStatus;
     onPress?: () => void;
@@ -22,7 +22,7 @@ interface ApplicationListItemProps {
 export function ApplicationListItem({
     logoUrl,
     campaignName,
-    companyName = 'Company Name',
+    businessName = 'Company Name',
     status,
     createdOn,
     onPress,
@@ -55,7 +55,7 @@ export function ApplicationListItem({
                 <View style={styles.titleContainer}>
                     <View style={styles.textColumn}>
                         <ThemedText style={styles.companyName}>
-                            {companyName}
+                            {businessName}
                         </ThemedText>
                         <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
                             {campaignName}

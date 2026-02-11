@@ -1,8 +1,16 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Share2, ArrowUpRight, Check } from 'lucide-react-native';
-import { useState, useRef } from 'react';
+import { ArrowLeft, Heart, ArrowUpRight, Check } from 'lucide-react-native';
+import { useState, useRef, useEffect } from 'react';
+import { useQuery, useMutation } from 'convex/react';
+import Animated, {
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+    useAnimatedStyle,
+} from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -10,39 +18,49 @@ import { CreatorListItem } from '@/components/CreatorListItem';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import ActionSheet from "react-native-actions-sheet";
 import { Timeline, Text, Assets } from 'react-native-ui-lib';
+import LottieView from 'lottie-react-native';
 
+import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
-// Mock Data
-const mockCampaign = {
-    id: '1',
-    name: 'Campaign Name',
-    company: 'by xxx company',
-    logoLetter: 'a',
-    coverImage: require('@/assets/images/bg-onboard.webp'),
-    stats: {
-        claimed: 'Rm 35,000 claimed',
-        total: 'Rm 40,000',
-        progress: 0.87,
-    },
-    requirements: [
-        'No AI generated',
-        'Submit for approval before posting',
-        'Follow Script',
-        'Use provided assets in video',
-        'Speak Mandarin'
-    ],
-    payouts: [
-        { views: '10k views', amount: 'Rm 50' },
-        { views: '500k views', amount: 'Rm 50' },
-        { views: '3M views', amount: 'Rm 50' },
-    ],
-    maxPayout: 'Rm 2000',
-    creators: [
-        { id: '1', name: 'Creator name', views: '1.5M', amount: 'Rm 3,400' },
-        { id: '2', name: 'Creator name', views: '1.5M', amount: 'Rm 3,400' },
-        { id: '3', name: 'Creator name', views: '1.5M', amount: 'Rm 3,400' },
-    ]
+// Helper to format currency
+const formatCurrency = (amount: number) => {
+    return `Rm ${amount.toLocaleString()}`;
 };
+
+// Helper to format views
+const formatViews = (views: number) => {
+    if (views >= 1000000) {
+        return `${(views / 1000000).toFixed(1)}M views`;
+    }
+    if (views >= 1000) {
+        return `${(views / 1000).toFixed(0)}k views`;
+    }
+    return `${views} views`;
+};
+
+const SkeletonBlock = ({ style }: { style: any }) => {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(0.7, { duration: 800 }),
+                withTiming(0.3, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return <Animated.View style={[styles.skeletonBlock, animatedStyle, style]} />;
+};
+
+
 
 export default function CampaignDetailsScreen() {
     const requirementsSheetRef = useRef<ActionSheetRef>(null);
@@ -50,24 +68,58 @@ export default function CampaignDetailsScreen() {
     const successSheetRef = useRef<ActionSheetRef>(null);
 
     const { id } = useLocalSearchParams();
+    const campaignId = id as Id<"campaigns">;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
 
+    const campaign = useQuery(api.campaigns.getCampaign, { campaignId });
+    const topApps = useQuery(api.applications.getTopApplicationsByCampaign, { campaignId });
+    const existingApplication = useQuery(api.applications.getApplicationByCampaignId, { campaignId });
+    const createApplication = useMutation(api.applications.createApplication);
+
+    const isLoading = campaign === undefined || topApps === undefined || existingApplication === undefined;
+
     const [isJoining, setIsJoining] = useState(false);
-    const [hasApplication, setHasApplication] = useState(false);
+    const [createdApplicationId, setCreatedApplicationId] = useState<Id<"applications"> | null>(null);
+    const [isFavorite, setIsFavorite] = useState(false);
+    const hasExistingNonEarningApplication = !!existingApplication && existingApplication.status !== "earning";
 
     // Logic for join flow
-    const handleJoin = () => {
+    const handleJoin = async () => {
+        if (hasExistingNonEarningApplication && existingApplication) {
+            router.push(`/application/${existingApplication._id}`);
+            return;
+        }
+
         setIsJoining(true);
-        // Simulate API call
-        setTimeout(() => {
-            setIsJoining(false);
-            setHasApplication(true);
+        try {
+            const applicationId = await createApplication({ campaignId });
+            setCreatedApplicationId(applicationId);
             successSheetRef.current?.show();
-        }, 2000);
+        } catch (error) {
+            console.error("Error joining campaign", error);
+        } finally {
+            setIsJoining(false);
+        }
     };
 
+
+
+    if (campaign === null) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <ThemedText>Campaign not found</ThemedText>
+                <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
+                    <ThemedText style={{ color: 'blue' }}>Go Back</ThemedText>
+                </Pressable>
+            </View>
+        );
+    }
+
+    const progress = campaign && campaign.total_budget > 0 ? campaign.budget_claimed / campaign.total_budget : 0;
+    const logoLetter = campaign?.business_name ? campaign.business_name.charAt(0).toUpperCase() : 'C';
 
     return (
         <View style={styles.container}>
@@ -76,7 +128,7 @@ export default function CampaignDetailsScreen() {
             {/* Header / Cover Image Area */}
             <View style={styles.coverContainer}>
                 <Image
-                    source={mockCampaign.coverImage}
+                    source={campaign?.cover_photo_url ? { uri: campaign.cover_photo_url } : require('@/assets/images/bg-onboard.webp')}
                     style={styles.coverImage}
                     resizeMode="cover"
                 />
@@ -86,8 +138,8 @@ export default function CampaignDetailsScreen() {
                     <Pressable style={styles.iconButton} onPress={() => router.back()}>
                         <ArrowLeft size={20} color="#000" />
                     </Pressable>
-                    <Pressable style={styles.iconButton}>
-                        <Share2 size={20} color="#000" />
+                    <Pressable style={styles.iconButton} onPress={() => setIsFavorite(!isFavorite)}>
+                        <Heart size={20} color={isFavorite ? "#E11D48" : "#000"} fill={isFavorite ? "#E11D48" : "transparent"} />
                     </Pressable>
                 </View>
             </View>
@@ -100,66 +152,137 @@ export default function CampaignDetailsScreen() {
                 >
                     {/* Campaign Info Header */}
                     <View style={styles.campaignHeader}>
-                        <View style={styles.logoContainer}>
-                            <View style={styles.logoPlaceholder}>
-                                <ThemedText style={styles.logoText}>{mockCampaign.logoLetter}</ThemedText>
-                            </View>
-                        </View>
-                        <View style={styles.headerText}>
-                            <ThemedText style={styles.campaignName}>{mockCampaign.name}</ThemedText>
-                            <ThemedText style={styles.companyName}>{mockCampaign.company}</ThemedText>
-                        </View>
+                        {!isLoading && campaign ? (
+                            <>
+                                <View style={styles.logoContainer}>
+                                    <View style={styles.logoPlaceholder}>
+                                        <ThemedText style={styles.logoText}>{logoLetter}</ThemedText>
+                                    </View>
+                                </View>
+                                <View style={styles.headerText}>
+                                    <ThemedText style={styles.campaignName}>{campaign.name}</ThemedText>
+                                    <ThemedText style={styles.companyName}>{campaign.business_name}</ThemedText>
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <SkeletonBlock style={{ width: 64, height: 64, borderRadius: 32 }} />
+                                <View style={{ gap: 8 }}>
+                                    <SkeletonBlock style={{ width: 200, height: 24, borderRadius: 4 }} />
+                                    <SkeletonBlock style={{ width: 120, height: 16, borderRadius: 4 }} />
+                                </View>
+                            </>
+                        )}
                     </View>
 
                     {/* Available Payouts */}
                     <View style={styles.section}>
-                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Available Payouts</ThemedText>
+                        {!isLoading && campaign ? (
+                            <>
+                                <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Available Payouts</ThemedText>
 
-                        <View style={styles.progressContainer}>
-                            <View style={[styles.progressBar, { width: `${mockCampaign.stats.progress * 100}%` }]} />
-                        </View>
+                                <View style={styles.progressContainer}>
+                                    <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+                                </View>
 
-                        <View style={styles.payoutStats}>
-                            <ThemedText style={styles.payoutText}>{mockCampaign.stats.claimed}</ThemedText>
-                            <ThemedText style={styles.payoutText}>{mockCampaign.stats.total}</ThemedText>
-                        </View>
+                                <View style={styles.payoutStats}>
+                                    <ThemedText style={styles.payoutText}>{formatCurrency(campaign.budget_claimed)} claimed</ThemedText>
+                                    <ThemedText style={styles.payoutText}>{formatCurrency(campaign.total_budget)}</ThemedText>
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <SkeletonBlock style={{ width: 150, height: 20, marginBottom: 12, borderRadius: 4 }} />
+                                <SkeletonBlock style={{ width: '100%', height: 6, marginBottom: 8, borderRadius: 3 }} />
+                                <View style={styles.payoutStats}>
+                                    <SkeletonBlock style={{ width: 100, height: 16, borderRadius: 4 }} />
+                                    <SkeletonBlock style={{ width: 80, height: 16, borderRadius: 4 }} />
+                                </View>
+                            </>
+                        )}
                     </View>
 
                     {/* Info Cards Grid */}
                     <View style={styles.cardsGrid}>
-                        <Pressable style={styles.infoCard} onPress={() => requirementsSheetRef.current?.show()}>
-                            <View style={styles.infoIconContainer}>
-                                <ThemedText style={styles.infoIconText}>N</ThemedText>
-                            </View>
-                            <View>
-                                <ThemedText style={styles.infoTitle}>Requirements</ThemedText>
-                                <ThemedText style={styles.infoSubtitle}>How do i participate?</ThemedText>
-                            </View>
-                        </Pressable>
+                        {!isLoading && campaign ? (
+                            <>
+                                <Pressable style={styles.infoCard} onPress={() => requirementsSheetRef.current?.show()}>
+                                    <View style={styles.infoIconContainer}>
+                                        <ThemedText style={styles.infoIconText}>N</ThemedText>
+                                    </View>
+                                    <View>
+                                        <ThemedText style={styles.infoTitle}>Requirements</ThemedText>
+                                        <ThemedText style={styles.infoSubtitle}>How do i participate?</ThemedText>
+                                    </View>
+                                </Pressable>
 
-                        <Pressable style={styles.infoCard} onPress={() => payoutsSheetRef.current?.show()}>
-                            <View style={styles.infoIconContainer}>
-                                <ThemedText style={styles.infoIconText}>N</ThemedText>
-                            </View>
-                            <View>
-                                <ThemedText style={styles.infoTitle}>Payout Rates</ThemedText>
-                                <ThemedText style={styles.infoSubtitle}>How much do i get paid?</ThemedText>
-                            </View>
-                        </Pressable>
+                                <Pressable style={styles.infoCard} onPress={() => payoutsSheetRef.current?.show()}>
+                                    <View style={styles.infoIconContainer}>
+                                        <ThemedText style={styles.infoIconText}>N</ThemedText>
+                                    </View>
+                                    <View>
+                                        <ThemedText style={styles.infoTitle}>Payout Rates</ThemedText>
+                                        <ThemedText style={styles.infoSubtitle}>How much do i get paid?</ThemedText>
+                                    </View>
+                                </Pressable>
+                            </>
+                        ) : (
+                            <>
+                                <View style={[styles.infoCard, { gap: 16 }]}>
+                                    <SkeletonBlock style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                    <View style={{ gap: 8 }}>
+                                        <SkeletonBlock style={{ width: 100, height: 20, borderRadius: 4 }} />
+                                        <SkeletonBlock style={{ width: '80%', height: 16, borderRadius: 4 }} />
+                                    </View>
+                                </View>
+
+                                <View style={[styles.infoCard, { gap: 16 }]}>
+                                    <SkeletonBlock style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                    <View style={{ gap: 8 }}>
+                                        <SkeletonBlock style={{ width: 100, height: 20, borderRadius: 4 }} />
+                                        <SkeletonBlock style={{ width: '80%', height: 16, borderRadius: 4 }} />
+                                    </View>
+                                </View>
+                            </>
+                        )}
                     </View>
 
                     {/* Best Performing Creator */}
                     <View style={styles.section}>
                         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Best Performing Creator</ThemedText>
                         <View style={styles.creatorList}>
-                            {mockCampaign.creators.map((creator) => (
-                                <CreatorListItem
-                                    key={creator.id}
-                                    name={creator.name}
-                                    views={creator.views}
-                                    amount={creator.amount}
-                                />
-                            ))}
+                            {!isLoading && topApps ? (
+                                topApps.length > 0 ? (
+                                    topApps.map((app) => (
+                                        <CreatorListItem
+                                            key={app.id}
+                                            name={app.name}
+                                            views={app.views}
+                                            amount={app.amount}
+                                            logoUrl={app.logoUrl}
+                                            onPress={() => { }}
+                                        />
+                                    ))
+                                ) : (
+                                    <View style={styles.emptyStateContainer}>
+                                        <LottieView
+                                            source={require('@/assets/lotties/not-found.json')}
+                                            autoPlay
+                                            loop
+                                            style={styles.lottie}
+                                        />
+                                        <ThemedText style={{ color: '#666', marginTop: 8 }}>
+                                            No creators yet. Be the first!
+                                        </ThemedText>
+                                    </View>
+                                )
+                            ) : (
+                                <>
+                                    <SkeletonBlock style={{ width: '100%', height: 72, borderRadius: 12, marginBottom: 8 }} />
+                                    <SkeletonBlock style={{ width: '100%', height: 72, borderRadius: 12, marginBottom: 8 }} />
+                                    <SkeletonBlock style={{ width: '100%', height: 72, borderRadius: 12, marginBottom: 8 }} />
+                                </>
+                            )}
                         </View>
                     </View>
                     <ActionSheet gestureEnabled ref={requirementsSheetRef}>
@@ -172,7 +295,7 @@ export default function CampaignDetailsScreen() {
 
                             {/* Requirements List */}
                             <View style={styles.requirementsList}>
-                                {mockCampaign.requirements.map((req, index) => (
+                                {campaign && campaign.requirements.map((req, index) => (
                                     <View key={index} style={styles.requirementItem}>
                                         <Check size={20} color="#000" strokeWidth={3} />
                                         <ThemedText style={styles.requirementText}>{req}</ThemedText>
@@ -207,10 +330,10 @@ export default function CampaignDetailsScreen() {
                                 </View>
 
                                 {/* Rows */}
-                                {mockCampaign.payouts.map((payout, index) => (
+                                {campaign && campaign.payout_thresholds.map((payout, index) => (
                                     <View key={index} style={styles.payoutRow}>
-                                        <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>{payout.views}</ThemedText>
-                                        <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{payout.amount}</ThemedText>
+                                        <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>{formatViews(payout.views)}</ThemedText>
+                                        <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(payout.payout)}</ThemedText>
                                     </View>
                                 ))}
 
@@ -220,7 +343,7 @@ export default function CampaignDetailsScreen() {
                                 {/* Max Payout */}
                                 <View style={styles.payoutRow}>
                                     <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>You can earn maximum</ThemedText>
-                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{mockCampaign.maxPayout}</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
                                 </View>
                             </View>
 
@@ -296,8 +419,11 @@ export default function CampaignDetailsScreen() {
                             <Pressable
                                 style={styles.joinButton}
                                 onPress={() => {
+                                    const targetApplicationId = createdApplicationId ?? existingApplication?._id;
                                     successSheetRef.current?.hide();
-                                    router.replace(`/application/${id}`);
+                                    if (targetApplicationId) {
+                                        router.replace(`/application/${targetApplicationId}`);
+                                    }
                                 }}
                             >
                                 <ThemedText style={styles.joinButtonText}>View Application</ThemedText>
@@ -322,12 +448,14 @@ export default function CampaignDetailsScreen() {
                 <Pressable
                     style={[styles.joinButton, isJoining && styles.joinButtonDisabled]}
                     onPress={handleJoin}
-                    disabled={isJoining}
+                    disabled={isJoining || isLoading}
                 >
                     {isJoining ? (
                         <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                        <ThemedText style={styles.joinButtonText}>Join</ThemedText>
+                        <ThemedText style={styles.joinButtonText}>
+                            {hasExistingNonEarningApplication ? "View Application" : "Join"}
+                        </ThemedText>
                     )}
                 </Pressable>
             </View>
@@ -571,5 +699,18 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
+    },
+
+    skeletonBlock: {
+        backgroundColor: '#E0E0E0',
+    },
+    emptyStateContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 24,
+    },
+    lottie: {
+        width: 150,
+        height: 150,
     },
 });

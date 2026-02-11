@@ -94,19 +94,19 @@ export function CampaignList() {
 
         return results.map((campaign) => {
             // Calculate pay per 1k views from payout thresholds
-            const payoutPer1k = campaign.payout_thresholds?.[0]?.payout || 0;
+            const payoutPer1k = campaign.payout_threshold?.payout || 0;
 
             return {
-                id: campaign._id,
+                id: campaign.campaignId,
                 name: campaign.name,
-                companyName: 'Campaign', // You'll need to join with business table to get this
-                claimed: campaign.budget_claimed || 0,
+                companyName: campaign.business_name,
+                claimed: campaign.submissions || 0,
                 viewCount: '1k',
                 payout: payoutPer1k.toString(),
                 maxPayout: campaign.maximum_payout.toString(),
-                logoUrl: campaign.cover_photo_url || 'https://via.placeholder.com/100',
-                isTrending: campaign.budget_claimed > 1000, // Calculate trending based on claimed budget
-                category: 'for-you', // You'll need to add category field to schema
+                logoUrl: campaign.cover_photo_url || 'https://picsum.photos/200',
+                isTrending: campaign.submissions > 1000, // Calculate trending based on claimed budget
+                category: campaign.category || 'for-you', // You'll need to add category field to schema
             };
         });
     }, [results]);
@@ -115,7 +115,12 @@ export function CampaignList() {
     const filteredCampaigns = useMemo(() => {
         return processedCampaigns.filter(campaign => {
             if (!selectedCategory || selectedCategory === 'for-you') return true;
-            return campaign.category === selectedCategory;
+
+            const categories = campaign.category;
+            if (Array.isArray(categories)) {
+                return categories.includes(selectedCategory);
+            }
+            return categories === selectedCategory;
         });
     }, [processedCampaigns, selectedCategory]);
 

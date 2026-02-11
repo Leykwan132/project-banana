@@ -1,15 +1,16 @@
 import { useRef } from 'react';
 import { View, StyleSheet, Image, Pressable } from 'react-native';
-import { Badge } from 'react-native-ui-lib';
 import { useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
 import { ActionSheetRef } from "react-native-actions-sheet";
+import { useQuery } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ProfileActionSheet } from '@/components/ProfileActionSheet';
 import { authClient } from "@/lib/auth-client";
+import { api } from '../../../../packages/backend/convex/_generated/api';
 
 interface HeaderProps {
     title?: string;
@@ -23,9 +24,8 @@ export function Header({ title }: HeaderProps) {
     const { data: session } = authClient.useSession();
     const user = session?.user;
 
-    const handleOpenProfile = () => {
-        actionSheetRef.current?.show();
-    };
+    // Fetch unread notifications count
+    const unreadCount = useQuery(api.notifications.getUnreadNotificationCount) ?? 0;
 
     return (
         <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].navBackground }]}>
@@ -44,23 +44,21 @@ export function Header({ title }: HeaderProps) {
             <View style={styles.rightSection}>
                 <Pressable onPress={() => router.push('/notifications')}>
                     <View style={styles.iconButton}>
-                        <Bell size={22} color={Colors[colorScheme ?? 'light'].text} />
-                        <Badge
-                            label={'1'}
-                            size={16}
-                            backgroundColor="red"
-                            labelStyle={{ color: 'white' }}
-                            containerStyle={{ position: 'absolute', top: -4, right: -4 }}
-                        />
+                        <Bell size={20} color="#000" />
+                        {unreadCount > 0 && (
+                            <View style={styles.badgeContainer}>
+                                <ThemedText style={styles.badgeText}>
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </ThemedText>
+                            </View>
+                        )}
                     </View>
                 </Pressable>
-                <Pressable onPress={handleOpenProfile}>
-                    <View style={styles.avatar}>
-                        <Image
-                            source={{ uri: user?.image ?? 'https://i.pravatar.cc/100' }}
-                            style={styles.avatarImage}
-                        />
-                    </View>
+                <Pressable onPress={() => actionSheetRef.current?.show()}>
+                    <Image
+                        source={{ uri: user?.image || 'https://github.com/shadcn.png' }}
+                        style={styles.avatar}
+                    />
                 </Pressable>
             </View>
 
@@ -125,5 +123,25 @@ const styles = StyleSheet.create({
     avatarImage: {
         width: '100%',
         height: '100%',
+    },
+    badgeContainer: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#EF4444',
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 1.5,
+        borderColor: '#F0F0F0',
+    },
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: 'bold',
+        lineHeight: 12,
     },
 });

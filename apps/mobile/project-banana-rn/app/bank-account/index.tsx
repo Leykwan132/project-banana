@@ -2,11 +2,22 @@ import { View, StyleSheet, FlatList, Pressable, Image } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { ChevronLeft, ChevronRight, Plus, Landmark } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useMemo } from 'react';
+import Animated, {
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    useSharedValue
+} from 'react-native-reanimated';
+import { useQuery } from 'convex/react';
+import LottieView from 'lottie-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 type BankAccountStatus = 'active' | 'pending' | 'rejected';
 
@@ -19,37 +30,58 @@ interface BankAccount {
     status: BankAccountStatus;
 }
 
-const MOCK_BANK_ACCOUNTS: BankAccount[] = [
-    {
-        id: '1',
-        bankName: 'Public Bank Berhad',
-        accountHolder: 'Choo Ley Kwan',
-        accountNumber: '6558********',
-        logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493',
-        status: 'active',
-    },
-    {
-        id: '2',
-        bankName: 'Maybank',
-        accountHolder: 'Choo Ley Kwan',
-        accountNumber: '1234********',
-        logo: 'https://companieslogo.com/img/orig/1155.KL-b2d9e9b2.png?t=1720244490',
-        status: 'pending',
-    },
-    {
-        id: '3',
-        bankName: 'CIMB Bank',
-        accountHolder: 'Choo Ley Kwan',
-        accountNumber: '9988********',
-        logo: 'https://companieslogo.com/img/orig/6117.KL-70783f98.png?t=1720244491',
-        status: 'rejected',
-    },
-];
+const BankAccountSkeleton = () => {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(0.7, { duration: 800 }),
+                withTiming(0.3, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+    );
+};
 
 export default function BankAccountScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+
+    const user = useQuery(api.users.getUser);
+    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts);
+
+    const isLoading = bankAccounts === undefined || user === undefined;
+
+    const mappedBankAccounts: BankAccount[] = useMemo(() => {
+        if (!bankAccounts || !user) return [];
+
+        return bankAccounts.map((account) => {
+            // Map Convex status to local status
+            let status: BankAccountStatus = 'pending';
+            if (account.status === 'verified') status = 'active';
+            if (account.status === 'rejected') status = 'rejected';
+
+            return {
+                id: account._id,
+                bankName: account.bank_name,
+                accountHolder: user.name ?? 'User',
+                accountNumber: account.account_number,
+                logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493', // Placeholder from mock
+                status: status,
+            };
+        });
+    }, [bankAccounts, user]);
 
     const renderBankAccount = ({ item }: { item: BankAccount }) => {
         const mappedStatus: ApplicationStatus =
@@ -112,14 +144,37 @@ export default function BankAccountScreen() {
                     My Bank Accounts
                 </ThemedText>
 
-                <FlatList
-                    data={MOCK_BANK_ACCOUNTS}
-                    renderItem={renderBankAccount}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={styles.listContent}
-                    ItemSeparatorComponent={() => <View style={styles.separator} />}
-                    showsVerticalScrollIndicator={false}
-                />
+                {isLoading ? (
+                    <View>
+                        {[...Array(3)].map((_, i) => (
+                            <BankAccountSkeleton key={i} />
+                        ))}
+                    </View>
+                ) : mappedBankAccounts.length === 0 ? (
+                    <View style={styles.emptyStateContainer}>
+                        <LottieView
+                            source={require('@/assets/lotties/not-found.json')}
+                            autoPlay
+                            loop
+                            style={styles.lottie}
+                        />
+                        <ThemedText style={styles.emptyStateText}>
+                            No bank accounts found
+                        </ThemedText>
+                        <ThemedText style={styles.emptyStateSubtext}>
+                            Add a bank account to start receiving payouts
+                        </ThemedText>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={mappedBankAccounts}
+                        renderItem={renderBankAccount}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={styles.listContent}
+                        ItemSeparatorComponent={() => <View style={styles.separator} />}
+                        showsVerticalScrollIndicator={false}
+                    />
+                )}
             </View>
 
             {/* Add Bank Account Button */}
@@ -234,5 +289,32 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
+    },
+    skeletonItem: {
+        width: '100%',
+        height: 80,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 16,
+        marginBottom: 12,
+    },
+    emptyStateContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 48,
+        gap: 8,
+    },
+    emptyStateText: {
+        fontSize: 16,
+        fontFamily: 'GoogleSans_500Medium',
+        color: '#4B5563',
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        fontFamily: 'GoogleSans_400Regular',
+    },
+    lottie: {
+        width: 150,
+        height: 150,
     },
 });

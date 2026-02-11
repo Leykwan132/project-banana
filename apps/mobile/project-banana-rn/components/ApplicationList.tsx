@@ -94,11 +94,12 @@ export function ApplicationList() {
 
             return {
                 id: app._id,
-                campaignName: 'Campaign', // You'll need to join with campaign table
-                companyName: 'Company', // You'll need to join with business table via campaign
+                campaignId: app.campaign_id,
+                campaignName: app.campaignName,
+                businessName: app.businessName,
                 status: mapStatus(app.status),
                 createdOn: formattedDate,
-                logoUrl: undefined, // You'll need campaign data for this
+                logoUrl: app.campaignCoverPhotoUrl || 'https://picsum.photos/200',
             };
         });
     }, [results]);
@@ -163,11 +164,14 @@ export function ApplicationList() {
                         <ApplicationListItem
                             status={app.status}
                             key={app.id}
-                            campaignName={app.campaignName}
-                            companyName={app.companyName}
+                            campaignName={app.campaignName || 'Campaign Name'}
+                            businessName={app.businessName || 'Company Name'}
                             createdOn={app.createdOn}
                             logoUrl={app.logoUrl}
-                            onPress={() => router.push(`/application/${app.id}`)}
+                            onPress={() => router.push({
+                                pathname: '/application/[id]',
+                                params: { id: app.id, campaignId: app.campaignId }
+                            })}
                         />
                     ))
                 )}
