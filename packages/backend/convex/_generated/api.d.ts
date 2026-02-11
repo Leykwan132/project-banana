@@ -11,6 +11,7 @@
 import type * as analytics from "../analytics.js";
 import type * as applications from "../applications.js";
 import type * as auth from "../auth.js";
+import type * as bankAccounts from "../bankAccounts.js";
 import type * as businesses from "../businesses.js";
 import type * as campaigns from "../campaigns.js";
 import type * as crons from "../crons.js";
@@ -18,6 +19,7 @@ import type * as errors from "../errors.js";
 import type * as financials from "../financials.js";
 import type * as http from "../http.js";
 import type * as instagram from "../instagram.js";
+import type * as payouts from "../payouts.js";
 import type * as s3 from "../s3.js";
 import type * as seed from "../seed.js";
 import type * as stripe from "../stripe.js";
@@ -25,6 +27,7 @@ import type * as submissions from "../submissions.js";
 import type * as testFunctions from "../testFunctions.js";
 import type * as tiktok from "../tiktok.js";
 import type * as topup from "../topup.js";
+import type * as userCampaignStatus from "../userCampaignStatus.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 
@@ -38,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
   applications: typeof applications;
   auth: typeof auth;
+  bankAccounts: typeof bankAccounts;
   businesses: typeof businesses;
   campaigns: typeof campaigns;
   crons: typeof crons;
@@ -45,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   financials: typeof financials;
   http: typeof http;
   instagram: typeof instagram;
+  payouts: typeof payouts;
   s3: typeof s3;
   seed: typeof seed;
   stripe: typeof stripe;
@@ -52,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   testFunctions: typeof testFunctions;
   tiktok: typeof tiktok;
   topup: typeof topup;
+  userCampaignStatus: typeof userCampaignStatus;
   users: typeof users;
   utils: typeof utils;
 }>;

@@ -51,6 +51,7 @@ export default defineSchema({
             description: v.string(),
         }))),
         pending_approvals: v.optional(v.number()),
+        category: v.optional(v.array(v.string())),
         created_at: v.number(),
         updated_at: v.number(),
     })
@@ -62,6 +63,10 @@ export default defineSchema({
         campaign_id: v.id("campaigns"),
         maximum_payout: v.number(),
         total_earnings: v.number(),
+        likes: v.optional(v.number()),
+        comments: v.optional(v.number()),
+        shares: v.optional(v.number()),
+        views: v.optional(v.number()),
         status: v.string(), // "pending_review" | "ready_to_post" | "earning" | "maxed_out"
         created_at: v.number(),
         updated_at: v.number(),
@@ -120,6 +125,7 @@ export default defineSchema({
         bank_name: v.optional(v.string()), // Restored
         created_at: v.optional(v.number()), // Restored
         updated_at: v.optional(v.number()), // Restored
+        balance: v.optional(v.number()),
         // AuthKit fields
         authId: v.optional(v.string()),
         email: v.optional(v.string()),
@@ -197,6 +203,18 @@ export default defineSchema({
         requested_at: v.number(),
         processed_at: v.optional(v.number()),
         created_at: v.number(),
+    })
+        .index("by_user", ["user_id"])
+        .index("by_status", ["status"]),
+
+    bank_accounts: defineTable({
+        user_id: v.id("users"),
+        bank_name: v.string(),
+        account_number: v.string(),
+        status: v.string(), // "pending_review" | "verified" | "rejected"
+        proof_document_url: v.optional(v.string()),
+        created_at: v.number(),
+        updated_at: v.number(),
     })
         .index("by_user", ["user_id"])
         .index("by_status", ["status"]),
