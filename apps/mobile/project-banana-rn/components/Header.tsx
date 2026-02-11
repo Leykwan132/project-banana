@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ProfileActionSheet } from '@/components/ProfileActionSheet';
+import { authClient } from "@/lib/auth-client";
 
 interface HeaderProps {
     title?: string;
@@ -18,6 +19,9 @@ export function Header({ title }: HeaderProps) {
     const colorScheme = useColorScheme();
     const router = useRouter();
     const actionSheetRef = useRef<ActionSheetRef>(null);
+
+    const { data: session } = authClient.useSession();
+    const user = session?.user;
 
     const handleOpenProfile = () => {
         actionSheetRef.current?.show();
@@ -53,7 +57,7 @@ export function Header({ title }: HeaderProps) {
                 <Pressable onPress={handleOpenProfile}>
                     <View style={styles.avatar}>
                         <Image
-                            source={{ uri: 'https://i.pravatar.cc/100' }}
+                            source={{ uri: user?.image ?? 'https://i.pravatar.cc/100' }}
                             style={styles.avatarImage}
                         />
                     </View>

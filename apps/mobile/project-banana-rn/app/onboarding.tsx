@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import {
     Dimensions,
     ImageBackground,
@@ -16,6 +16,7 @@ import { ActionSheetRef } from 'react-native-actions-sheet';
 
 import { ThemedText } from '@/components/themed-text';
 import { LoginActionSheet } from '@/components/LoginActionSheet';
+import { authClient } from "@/lib/auth-client";
 
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -98,6 +99,16 @@ export default function OnboardingScreen() {
     const [currentPage, setCurrentPage] = useState(0);
 
     const loginActionSheetRef = useRef<ActionSheetRef>(null);
+
+    useEffect(() => {
+        const checkSession = async () => {
+            const session = await authClient.getSession();
+            if (session.data) {
+                router.replace('/(tabs)');
+            }
+        };
+        checkSession();
+    }, []);
 
     const handleLogin = useCallback(() => {
         loginActionSheetRef.current?.show();

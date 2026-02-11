@@ -1,9 +1,17 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    useSharedValue
+} from 'react-native-reanimated';
 import { ChevronDown, Filter } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { ActionSheetRef } from 'react-native-actions-sheet';
 import LottieView from 'lottie-react-native';
+import { usePaginatedQuery } from 'convex/react';
 
 import { ApplicationListItem } from '@/components/ApplicationListItem';
 import { ApplicationStatus } from '@/components/ApplicationStatusBadge';
@@ -11,32 +19,38 @@ import { SelectionSheet } from '@/components/SelectionSheet';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-
-interface Application {
-    id: string;
-    campaignName: string;
-    companyName: string;
-    status: ApplicationStatus;
-    createdOn: string;
-    logoUrl?: string;
-}
-
-// Demo data matching screenshot
-const applicationList: Application[] = [
-    { id: '1', campaignName: 'Summer Launch', companyName: 'Zalora', status: 'Pending Submission', createdOn: '12/2/26', logoUrl: undefined },
-    { id: '2', campaignName: '9.9 Super Sale', companyName: 'Shopee Malaysia', status: 'Under Review', createdOn: '14/2/26', logoUrl: 'https://static.vecteezy.com/system/resources/thumbnails/028/766/353/small/shopee-icon-symbol-free-png.png' },
-    { id: '3', campaignName: 'K-Beauty Review', companyName: 'Watsons', status: 'Changes Required', createdOn: '13/2/26', logoUrl: 'https://www.watsonsasia.com/assets/images/logo_watsons_mobile.png' },
-    { id: '4', campaignName: 'Merdeka Special', companyName: 'GrabFood', status: 'Ready to Post', createdOn: '10/2/26', logoUrl: 'https://images.seeklogo.com/logo-png/62/2/grab-logo-png_seeklogo-622162.png' },
-    { id: '5', campaignName: 'Chinese New Year 2026', companyName: 'Coca-Cola', status: 'Posted', createdOn: '01/2/26', logoUrl: undefined },
-];
+import { api } from '../../../../packages/backend/convex/_generated/api';
 
 const FILTER_OPTIONS = [
-    { label: 'Pending Submission', value: 'Pending Submission' },
-    { label: 'Under Review', value: 'Under Review' },
-    { label: 'Changes Required', value: 'Changes Required' },
-    { label: 'Ready to Post', value: 'Ready to Post' },
-    { label: 'Posted', value: 'Posted' },
+    { label: 'Pending Submission', value: 'pending_submission' },
+    { label: 'Under Review', value: 'reviewing' },
+    { label: 'Changes Required', value: 'changes_requested' },
+    { label: 'Ready to Post', value: 'ready_to_post' },
+    { label: 'Posted', value: 'earning' },
 ];
+
+const ApplicationSkeleton = () => {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(0.7, { duration: 800 }),
+                withTiming(0.3, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+    );
+};
 
 export function ApplicationList() {
     const router = useRouter();
@@ -44,14 +58,57 @@ export function ApplicationList() {
     const filterSheetRef = useRef<ActionSheetRef>(null);
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
+    // Fetch applications from Convex
+    const { results, status, loadMore } = usePaginatedQuery(
+        api.applications.getMyApplications,
+        {},
+        { initialNumItems: 20 }
+    );
+
+    const isLoading = status === 'LoadingFirstPage';
+
     const handleStatusSelect = (value: string) => {
         setSelectedStatus(value);
     };
 
-    const filteredApplications = applicationList.filter((app) => {
-        if (!selectedStatus) return true;
-        return app.status === selectedStatus;
-    });
+    // Map Convex status to display status
+    const mapStatus = (convexStatus: string): ApplicationStatus => {
+        const statusMap: Record<string, ApplicationStatus> = {
+            'pending_submission': 'Pending Submission',
+            'reviewing': 'Under Review',
+            'changes_requested': 'Changes Required',
+            'ready_to_post': 'Ready to Post',
+            'earning': 'Posted',
+        };
+        return statusMap[convexStatus] || 'Pending Submission';
+    };
+
+    // Process applications data
+    const processedApplications = useMemo(() => {
+        if (!results) return [];
+
+        return results.map((app) => {
+            // Format date from timestamp
+            const date = new Date(app.created_at);
+            const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear().toString().slice(-2)}`;
+
+            return {
+                id: app._id,
+                campaignName: 'Campaign', // You'll need to join with campaign table
+                companyName: 'Company', // You'll need to join with business table via campaign
+                status: mapStatus(app.status),
+                createdOn: formattedDate,
+                logoUrl: undefined, // You'll need campaign data for this
+            };
+        });
+    }, [results]);
+
+    const filteredApplications = useMemo(() => {
+        return processedApplications.filter((app) => {
+            if (!selectedStatus) return true;
+            return app.status === FILTER_OPTIONS.find(o => o.value === selectedStatus)?.label;
+        });
+    }, [processedApplications, selectedStatus]);
 
     return (
         <View style={styles.container}>
@@ -68,7 +125,7 @@ export function ApplicationList() {
                     onPress={() => filterSheetRef.current?.show()}
                 >
                     <ThemedText style={styles.filterButtonText}>
-                        {selectedStatus || 'Filter'}
+                        {FILTER_OPTIONS.find(o => o.value === selectedStatus)?.label || 'Filter'}
                     </ThemedText>
                     {selectedStatus ? (
                         <Filter size={14} color={Colors[colorScheme ?? 'light'].text} />
@@ -80,7 +137,13 @@ export function ApplicationList() {
 
             {/* Application List */}
             <View style={styles.listSection}>
-                {filteredApplications.length === 0 ? (
+                {isLoading ? (
+                    <View>
+                        {[...Array(4)].map((_, i) => (
+                            <ApplicationSkeleton key={i} />
+                        ))}
+                    </View>
+                ) : filteredApplications.length === 0 ? (
                     <View style={styles.emptyStateContainer}>
                         <LottieView
                             source={require('@/assets/lotties/not-found.json')}
@@ -103,7 +166,7 @@ export function ApplicationList() {
                             campaignName={app.campaignName}
                             companyName={app.companyName}
                             createdOn={app.createdOn}
-                            logoUrl={app.logoUrl} // Will fallback to placeholder
+                            logoUrl={app.logoUrl}
                             onPress={() => router.push(`/application/${app.id}`)}
                         />
                     ))
@@ -177,5 +240,12 @@ const styles = StyleSheet.create({
     lottie: {
         width: 150,
         height: 150,
+    },
+    skeletonItem: {
+        width: '100%',
+        height: 90,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        marginBottom: 12,
     },
 });

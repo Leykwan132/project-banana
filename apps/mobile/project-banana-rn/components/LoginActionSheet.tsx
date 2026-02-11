@@ -9,7 +9,9 @@ import { useAction } from "convex/react";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { storage } from "@/lib/storage";
+import Constants from 'expo-constants';
 import { api } from "../../../../packages/backend/convex/_generated/api"
+import { authClient } from "@/lib/auth-client";
 
 
 // import { api } from "@/convex/_generated/api";
@@ -27,12 +29,6 @@ export function LoginActionSheet({
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isAppleLoading, setIsAppleLoading] = useState(false);
 
-    // Use the auth actions from the backend
-    const getAuthorisationUrl = useAction(api.auth.getAuthorisationUrl);
-    const authenticateWithCode = useAction(api.auth.authenticateWithCode);
-
-    console.log("getAuthorisationUrl", getAuthorisationUrl);
-    console.log("authenticateWithCode", authenticateWithCode);
     const handleLoginPress = () => {
         setIsAppleLoading(true);
         // Simulate async operation or replace with actual Apple login logic
@@ -46,47 +42,30 @@ export function LoginActionSheet({
     const handleGoogleLogin = async () => {
         setIsGoogleLoading(true);
         try {
-            // The redirectUri must be added to the sign-in callback in the workos dashboard
-            const redirectUri = AuthSession.makeRedirectUri().toString();
-
-            console.log('redirectUri', redirectUri);
-            const authorisationUrl = await getAuthorisationUrl({
-                provider: "GoogleOAuth",
-                redirectUri,
+            const { data, error } = await authClient.signIn.social({
+                provider: "google",
+                callbackURL: "/" // this will be converted to a deep link (eg. `myapp://dashboard`) on native
             });
 
-            const result = await WebBrowser.openAuthSessionAsync(
-                authorisationUrl,
-                redirectUri
-            );
-
-            if (result.type !== "success" || !result.url) {
-                // User cancelled or failed
+            if (error) {
                 setIsGoogleLoading(false);
+                Alert.alert("Login Failed", "There was an error signing in with Google. Please try again.");
                 return;
             }
 
-            const params = new URL(result.url).searchParams;
-            const code = params.get("code");
-
-            if (!code) throw new Error("No code returned");
-
-            const { accessToken, refreshToken, user } = await authenticateWithCode({
-                code,
-            });
-
-            await storage.setItem("refreshToken", refreshToken);
-            await storage.setItem("accessToken", accessToken);
-            await storage.setItem("user", JSON.stringify(user));
-
-            // Proceed after successful login
-            setIsGoogleLoading(false);
-            actionSheetRef.current?.hide();
-            onLogin();
+            // Verify session was created
+            const session = await authClient.getSession();
+            if (session.data) {
+                setIsGoogleLoading(false);
+                actionSheetRef.current?.hide();
+                onLogin();
+            } else {
+                console.error("Session not found after login success");
+                setIsGoogleLoading(false);
+            }
 
         } catch (error) {
             setIsGoogleLoading(false);
-            console.error("Google login error:", error);
             Alert.alert("Login Failed", "There was an error signing in with Google.");
         }
     };

@@ -1,41 +1,51 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, TextInput, Pressable, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import LottieView from 'lottie-react-native';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-const MOCK_BALANCE = 453;
-
-const bankAccounts = [
-    {
-        id: '1',
-        bankName: 'Public Bank Berhad',
-        accountHolder: 'Choo Ley Kwan',
-        accountNumber: '6558********',
-        logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493' // Public Bank logo placeholder
-    }
-];
-
 export default function WithdrawScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
     const [amount, setAmount] = useState('');
-    const [selectedBankId, setSelectedBankId] = useState<string | null>(bankAccounts[0].id);
+    const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
     const actionSheetRef = useRef<ActionSheetRef>(null);
     const [confirmStep, setConfirmStep] = useState<'review' | 'success'>('review');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const balanceData = useQuery(api.users.getUserBalance);
+    const bankAccountsData = useQuery(api.bankAccounts.getActiveBankAccounts);
+
+    const bankAccounts = bankAccountsData?.map(account => ({
+        id: account._id,
+        bankName: account.bank_name,
+        accountHolder: 'User', // TODO: Get actual user name
+        accountNumber: account.account_number,
+        logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493' // Placeholder
+    })) || [];
+
+    // Pre-select first bank account when loaded
+    useEffect(() => {
+        if (selectedBankId === null && bankAccounts.length > 0) {
+            setSelectedBankId(bankAccounts[0].id);
+        }
+    }, [bankAccounts, selectedBankId]);
+
+    const currentBalance = balanceData?.balance ?? 0;
+
     const handleMax = () => {
-        setAmount(MOCK_BALANCE.toString());
+        setAmount(currentBalance.toString());
         setError('');
     };
 
@@ -63,10 +73,11 @@ export default function WithdrawScreen() {
             <ScrollView contentContainerStyle={styles.content}>
                 {/* Balance Card */}
                 <PayoutCard
-                    amount={`Rm ${MOCK_BALANCE}`}
+                    amount={`Rm ${currentBalance}`}
                     showButton={false}
                     onPress={() => { }} // Just to make it pressable if needed or to show arrow if we decide to
                 />
+
 
                 {/* Amount Section */}
                 <View style={styles.section}>
@@ -98,33 +109,50 @@ export default function WithdrawScreen() {
                 <View style={styles.section}>
                     <View style={styles.sectionHeaderRow}>
                         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>2. Bank accounts</ThemedText>
-                        <Pressable>
+                        <Pressable onPress={() => router.push('/bank-account/add')}>
                             <ThemedText style={styles.actionText}>+ Add bank account</ThemedText>
                         </Pressable>
                     </View>
 
-                    {bankAccounts.map((account) => (
-                        <Pressable
-                            key={account.id}
-                            style={[
-                                styles.bankCard,
-                                selectedBankId === account.id && styles.selectedBankCard
-                            ]}
-                            onPress={() => setSelectedBankId(account.id)}
-                        >
-                            <View style={styles.bankLogoContainer}>
-                                {/* Using a placeholder generic icon if image fails or for simplify */}
-                                <Image source={{ uri: account.logo }} style={styles.bankLogo} resizeMode="contain" />
-                            </View>
-                            <View style={styles.bankInfo}>
-                                <ThemedText type="defaultSemiBold">{account.bankName}</ThemedText>
-                                <View style={styles.bankDetailsRow}>
-                                    <ThemedText style={styles.bankDetailText}>{account.accountHolder}</ThemedText>
-                                    <ThemedText style={[styles.bankDetailText, { marginLeft: 16 }]}>{account.accountNumber}</ThemedText>
+                    {bankAccounts.length === 0 ? (
+                        <View style={styles.emptyStateContainer}>
+                            <LottieView
+                                source={require('@/assets/lotties/not-found.json')}
+                                autoPlay
+                                loop
+                                style={styles.lottie}
+                            />
+                            <ThemedText style={styles.emptyStateText}>
+                                No bank accounts found
+                            </ThemedText>
+                            <ThemedText style={styles.emptyStateSubtext}>
+                                Add a bank account to withdraw funds
+                            </ThemedText>
+                        </View>
+                    ) : (
+                        bankAccounts.map((account) => (
+                            <Pressable
+                                key={account.id}
+                                style={[
+                                    styles.bankCard,
+                                    selectedBankId === account.id && styles.selectedBankCard
+                                ]}
+                                onPress={() => setSelectedBankId(account.id)}
+                            >
+                                <View style={styles.bankLogoContainer}>
+                                    {/* Using a placeholder generic icon if image fails or for simplify */}
+                                    <Image source={{ uri: account.logo }} style={styles.bankLogo} resizeMode="contain" />
                                 </View>
-                            </View>
-                        </Pressable>
-                    ))}
+                                <View style={styles.bankInfo}>
+                                    <ThemedText type="defaultSemiBold">{account.bankName}</ThemedText>
+                                    <View style={styles.bankDetailsRow}>
+                                        <ThemedText style={styles.bankDetailText}>{account.accountHolder}</ThemedText>
+                                        <ThemedText style={[styles.bankDetailText, { marginLeft: 16 }]}>{account.accountNumber}</ThemedText>
+                                    </View>
+                                </View>
+                            </Pressable>
+                        ))
+                    )}
                 </View>
             </ScrollView>
 
@@ -410,5 +438,29 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
         fontFamily: 'GoogleSans_400Regular',
+    },
+    emptyStateContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 24,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 16,
+        borderStyle: 'dashed',
+    },
+    emptyStateText: {
+        fontSize: 16,
+        fontFamily: 'GoogleSans_500Medium',
+        color: '#4B5563',
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        fontFamily: 'GoogleSans_400Regular',
+    },
+    lottie: {
+        width: 120,
+        height: 120,
     },
 });

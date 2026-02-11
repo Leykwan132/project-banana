@@ -1,9 +1,18 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SegmentedControl } from 'react-native-ui-lib';
 import { useRouter } from 'expo-router';
 import { ActionSheetRef } from "react-native-actions-sheet";
+import Animated, {
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
+    withTiming,
+    useSharedValue
+} from 'react-native-reanimated';
+import { useQuery } from 'convex/react';
+import LottieView from 'lottie-react-native';
 
 import { Header } from '@/components/Header';
 import { Banner } from '@/components/Banner';
@@ -13,6 +22,7 @@ import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { PastPayoutListItem } from '@/components/PastPayoutListItem';
 import { TransactionDetailsSheet, DetailItem } from '@/components/TransactionDetailsSheet';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 interface Transaction {
     id: string;
@@ -24,17 +34,52 @@ interface Transaction {
     accountNumber?: string;
 }
 
-const pastPayouts: Transaction[] = [
-    { id: '1', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
-    { id: '2', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
-    { id: '3', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
-    { id: '4', campaignName: 'Campaign Name', date: '14/2/26', amount: '+ Rm 1.8k' },
-];
 
-const withdrawals: Transaction[] = [
-    { id: '1', campaignName: 'Withdraw', date: '12/2/26', amount: '- Rm 500', status: 'Pending', bankName: 'Public Bank Berhad', accountNumber: '6558********' },
-    { id: '2', campaignName: 'Withdraw', date: '10/2/26', amount: '- Rm 1.0k', status: 'Paid', bankName: 'Public Bank Berhad', accountNumber: '6558********' },
-];
+const PayoutCardSkeleton = () => {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(0.7, { duration: 800 }),
+                withTiming(0.3, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={[styles.skeletonCard, animatedStyle]} />
+    );
+};
+
+const TransactionItemSkeleton = () => {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(0.7, { duration: 800 }),
+                withTiming(0.3, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+    );
+};
 
 export default function PayoutsScreen() {
     const router = useRouter();
@@ -45,12 +90,75 @@ export default function PayoutsScreen() {
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const actionSheetRef = useRef<ActionSheetRef>(null);
 
+    // Fetch user balance from Convex
+    const balanceData = useQuery(api.users.getUserBalance);
+    const isBalanceLoading = balanceData === undefined;
+    const balance = balanceData?.balance ?? 0;
+
+    // Fetch payouts and withdrawals
+    const payoutsData = useQuery(api.payouts.getUserPayouts);
+    const withdrawalsData = useQuery(api.payouts.getUserWithdrawals);
+    const isPayoutsLoading = payoutsData === undefined;
+    const isWithdrawalsLoading = withdrawalsData === undefined;
+
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
     }, []);
+
+    // Format date helper
+    const formatDate = (timestamp: number): string => {
+        const date = new Date(timestamp);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}/${month}/${year}`;
+    };
+
+    // Format amount helper
+    const formatAmount = (amount: number, isPositive: boolean): string => {
+        const sign = isPositive ? '+ ' : '- ';
+        const absAmount = Math.abs(amount);
+        if (absAmount >= 1000) {
+            return `${sign}RM ${(absAmount / 1000).toFixed(1)}k`;
+        }
+        return `${sign}RM ${absAmount.toFixed(0)}`;
+    };
+
+    // Format payouts for display
+    const formattedPayouts: Transaction[] = useMemo(() => {
+        if (!payoutsData) return [];
+        return payoutsData.map((payout) => ({
+            id: payout._id,
+            campaignName: 'Campaign Name', // TODO: Join with campaigns/applications table
+            date: formatDate(payout.created_at),
+            amount: formatAmount(payout.amount, true),
+        }));
+    }, [payoutsData]);
+
+    // Format withdrawals for display
+    const formattedWithdrawals: Transaction[] = useMemo(() => {
+        if (!withdrawalsData) return [];
+        return withdrawalsData.map((withdrawal) => ({
+            id: withdrawal._id,
+            campaignName: 'Withdraw',
+            date: formatDate(withdrawal.requested_at),
+            amount: formatAmount(withdrawal.amount, false),
+            status: withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1),
+            bankName: withdrawal.bank_name,
+            accountNumber: maskAccountNumber(withdrawal.bank_account),
+        }));
+    }, [withdrawalsData]);
+
+    // Mask account number helper
+    const maskAccountNumber = (accountNumber: string): string => {
+        if (accountNumber.length <= 4) return accountNumber;
+        const lastFour = accountNumber.slice(-4);
+        const masked = '*'.repeat(Math.min(8, accountNumber.length - 4));
+        return `${masked}${lastFour}`;
+    };
 
     const handleItemPress = (item: Transaction) => {
         setSelectedTransaction(item);
@@ -68,7 +176,42 @@ export default function PayoutsScreen() {
     };
 
     const renderList = () => {
-        const data = selectedIndex === 0 ? pastPayouts : withdrawals;
+        const isLoading = selectedIndex === 0 ? isPayoutsLoading : isWithdrawalsLoading;
+
+        if (isLoading) {
+            return (
+                <>
+                    {[...Array(3)].map((_, i) => (
+                        <TransactionItemSkeleton key={i} />
+                    ))}
+                </>
+            );
+        }
+
+        const data = selectedIndex === 0 ? formattedPayouts : formattedWithdrawals;
+
+        if (data.length === 0) {
+            return (
+                <View style={styles.emptyStateContainer}>
+                    <LottieView
+                        source={require('@/assets/lotties/not-found.json')}
+                        autoPlay
+                        loop
+                        style={styles.lottie}
+                    />
+                    <ThemedText style={styles.emptyStateText}>
+                        {selectedIndex === 0 ? 'No payouts yet' : 'No withdrawals yet'}
+                    </ThemedText>
+                    <ThemedText style={styles.emptyStateSubtext}>
+                        {selectedIndex === 0
+                            ? 'Your earnings will appear here once campaigns are completed'
+                            : 'Request a withdrawal to see it here'
+                        }
+                    </ThemedText>
+                </View>
+            );
+        }
+
         return data.map((item) => (
             <PastPayoutListItem
                 key={item.id}
@@ -134,10 +277,14 @@ export default function PayoutsScreen() {
                 }
             >
                 <View style={styles.section}>
-                    <PayoutCard
-                        amount="Rm 453"
-                        onWithdraw={() => router.push('/withdraw')}
-                    />
+                    {isBalanceLoading ? (
+                        <PayoutCardSkeleton />
+                    ) : (
+                        <PayoutCard
+                            amount={`RM ${balance.toFixed(2)}`}
+                            onWithdraw={() => router.push('/withdraw')}
+                        />
+                    )}
                 </View>
 
                 {/* Segmented Control */}
@@ -164,9 +311,9 @@ export default function PayoutsScreen() {
                 </View>
 
                 {/* Banner */}
-                <View style={styles.bannerContainer}>
+                {/* <View style={styles.bannerContainer}>
                     <Banner type="cashback" />
-                </View>
+                </View> */}
             </ScrollView>
 
             <TransactionDetailsSheet
@@ -203,5 +350,38 @@ const styles = StyleSheet.create({
     },
     bannerContainer: {
         // Banner generic container
-    }
+    },
+    skeletonCard: {
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        minHeight: 240,
+    },
+    skeletonItem: {
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        height: 80,
+        marginBottom: 8,
+    },
+    emptyStateContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 48,
+        gap: 8,
+    },
+    emptyStateText: {
+        fontSize: 16,
+        fontFamily: 'GoogleSans_500Medium',
+        color: '#4B5563',
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        fontFamily: 'GoogleSans_400Regular',
+        textAlign: 'center',
+        paddingHorizontal: 32,
+    },
+    lottie: {
+        width: 150,
+        height: 150,
+    },
 });

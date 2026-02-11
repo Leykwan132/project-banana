@@ -1,30 +1,35 @@
-import { View, StyleSheet, Pressable, Image } from 'react-native';
+import { View, StyleSheet, Pressable, Image, ActivityIndicator } from 'react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Landmark, Settings, LogOut, Gift } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { authClient } from "@/lib/auth-client";
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface ProfileActionSheetProps {
     actionSheetRef: React.RefObject<ActionSheetRef | null>;
-    onLogout?: () => void;
 }
 
 export function ProfileActionSheet({
     actionSheetRef,
-    onLogout,
 }: ProfileActionSheetProps) {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const iconColor = Colors[colorScheme ?? 'light'].text;
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    // Dynamic Data
+    const { data: session } = authClient.useSession();
+    const user = session?.user;
 
     // Dynamic Data
     const profileData = {
-        name: "John Doe",
-        avatar: "https://i.pravatar.cc/150",
-        memberSince: "2024",
+        name: user?.name ?? "User",
+        avatar: user?.image ?? "https://i.pravatar.cc/150",
+        memberSince: user?.createdAt ? new Date(user.createdAt).getFullYear().toString() : new Date().getFullYear().toString(),
         stats: {
             campaigns: 12,
             earnings: "RM 1,240",
@@ -38,10 +43,24 @@ export function ProfileActionSheet({
         }, 300);
     };
 
-    const handleLogout = () => {
-        actionSheetRef.current?.hide();
-        if (onLogout) {
-            onLogout();
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await authClient.signOut({
+                fetchOptions: {
+                    onSuccess: () => {
+                        actionSheetRef.current?.hide();
+                        router.push("/onboarding"); // redirect to login page
+                        setIsLoggingOut(false);
+                    },
+                    onError: () => {
+                        setIsLoggingOut(false);
+                    }
+                },
+            });
+        } catch (error) {
+            console.error("Logout error:", error);
+            setIsLoggingOut(false);
         }
     };
 
@@ -111,11 +130,15 @@ export function ProfileActionSheet({
                     <Pressable
                         style={styles.optionRow}
                         onPress={handleLogout}
+                        disabled={isLoggingOut}
                     >
                         <View style={styles.iconContainer}>
                             <LogOut size={24} color="#D32F2F" />
                         </View>
                         <ThemedText style={[styles.optionLabel, { color: '#D32F2F' }]}>Logout</ThemedText>
+                        {isLoggingOut && (
+                            <ActivityIndicator size="small" color="#D32F2F" style={{ marginLeft: 10 }} />
+                        )}
                     </Pressable>
                 </View>
 

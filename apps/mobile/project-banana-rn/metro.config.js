@@ -23,4 +23,6 @@ config.resolver.extraNodeModules = {
     '@backend': path.resolve(backendRoot),
 };
 
+config.resolver.unstable_enablePackageExports = true;
+
 module.exports = config;

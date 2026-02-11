@@ -15,9 +15,11 @@ export default function PostsScreen() {
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
+        // Convex queries are reactive, so incrementing the trigger will cause a refetch
+        // We wait a bit to show the refresh animation
         setTimeout(() => {
             setRefreshing(false);
-        }, 2000);
+        }, 1000);
     }, []);
 
     return (

@@ -17,10 +17,18 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Providers } from '../lib/AuthProvider';
+import {
+  ConvexReactClient,
+} from "convex/react";
+import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { authClient } from "@/lib/auth-client"
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-
+const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL as string, {
+  // Optionally pause queries until the user is authenticated
+  expectAuth: true,
+  unsavedChangesWarning: false,
+});
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
@@ -46,7 +54,8 @@ export default function RootLayout() {
   }
 
   return (
-    <Providers>
+
+    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <GestureHandlerRootView>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack initialRouteName="onboarding">
@@ -57,6 +66,7 @@ export default function RootLayout() {
           <StatusBar style="auto" />
         </ThemeProvider>
       </GestureHandlerRootView>
-    </Providers>
+    </ConvexBetterAuthProvider>
+
   );
 }
