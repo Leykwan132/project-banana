@@ -14,6 +14,7 @@ import type * as auth from "../auth.js";
 import type * as bankAccounts from "../bankAccounts.js";
 import type * as businesses from "../businesses.js";
 import type * as campaigns from "../campaigns.js";
+import type * as creators from "../creators.js";
 import type * as crons from "../crons.js";
 import type * as errors from "../errors.js";
 import type * as financials from "../financials.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   bankAccounts: typeof bankAccounts;
   businesses: typeof businesses;
   campaigns: typeof campaigns;
+  creators: typeof creators;
   crons: typeof crons;
   errors: typeof errors;
   financials: typeof financials;

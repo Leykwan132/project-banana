@@ -13,14 +13,14 @@ import { authComponent } from "./auth";
 export const getUserNotifications = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             return [];
         }
 
         const notifications = await ctx.db
             .query("notifications")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .order("desc")
             .collect();
 
@@ -34,14 +34,14 @@ export const getUserNotifications = query({
 export const getUnreadNotificationCount = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             return 0;
         }
 
         const notifications = await ctx.db
             .query("notifications")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .filter((q) => q.eq(q.field("is_read"), false))
             .collect();
 

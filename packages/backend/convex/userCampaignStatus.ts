@@ -11,14 +11,27 @@ import { authComponent } from "./auth";
  */
 export const getUserCampaignStatuses = query({
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await ctx.auth.getUserIdentity();
         if (!user) return [];
 
-        return await ctx.db
+        const statuses = await ctx.db
             .query("user_campaign_status")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .collect();
+
+        return await Promise.all(
+            statuses.map(async (status) => {
+                const campaign = await ctx.db.get(status.campaign_id);
+                const business = campaign ? await ctx.db.get(campaign.business_id) : null;
+
+                return {
+                    ...status,
+                    campaign_name: campaign?.name ?? "Campaign",
+                    company_name: campaign?.business_name ?? business?.name ?? "Company",
+                    campaign_image_url: campaign?.cover_photo_url ?? business?.logo_url,
+                };
+            })
+        );
     },
 });
 
@@ -30,13 +43,12 @@ export const getUserCampaignStatus = query({
         campaignId: v.id("campaigns"),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await ctx.auth.getUserIdentity();
         if (!user) return null;
 
         return await ctx.db
             .query("user_campaign_status")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .filter((q) => q.eq(q.field("campaign_id"), args.campaignId))
             .unique();
     },
@@ -55,14 +67,13 @@ export const createUserCampaignStatus = mutation({
         maximumPayout: v.number(),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
         // Check if status already exists
         const existing = await ctx.db
             .query("user_campaign_status")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .filter((q) => q.eq(q.field("campaign_id"), args.campaignId))
             .unique();
 
@@ -72,7 +83,7 @@ export const createUserCampaignStatus = mutation({
 
         const now = Date.now();
         const statusId = await ctx.db.insert("user_campaign_status", {
-            user_id: user._id,
+            user_id: String(user._id),
             campaign_id: args.campaignId,
             maximum_payout: args.maximumPayout,
             total_earnings: 0,
@@ -99,14 +110,14 @@ export const updateUserCampaignStatus = mutation({
         totalEarnings: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("Unauthenticated");
 
         const existingStatus = await ctx.db.get(args.statusId);
         if (!existingStatus) throw new Error("Status not found");
 
         // Verify ownership
-        if (existingStatus.user_id !== user._id) {
+        if (existingStatus.user_id !== String(user._id)) {
             throw new Error("Unauthorized");
         }
 

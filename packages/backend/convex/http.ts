@@ -414,8 +414,9 @@ registerRoutes(http, components.stripe, {
 
             // Set user as onboarded after first subscription
             if (userId) {
-                await ctx.runMutation(api.users.setUserOnboarded, {
+                await ctx.runMutation(api.users.setUserOnboarded as any, {
                     authId: userId,
+                    isOnboarded: true,
                 });
                 console.log(`User onboarded: ${userId}`);
             }

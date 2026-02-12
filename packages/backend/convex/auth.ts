@@ -50,8 +50,14 @@ export const { authKitAction } = authKit.actions({
 export const getCurrentUser = query({
     args: {},
     handler: async (ctx, _args) => {
-        const user = await authKit.getAuthUser(ctx);
-        return user;
+        try {
+            return await authKit.getAuthUser(ctx);
+        } catch (error) {
+            if (isUnauthenticatedError(error)) {
+                return null;
+            }
+            throw error;
+        }
     },
 });
 
@@ -88,8 +94,25 @@ export const authenticateWithCode = action({
 });
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
-    return betterAuth({
+const isUnauthenticatedError = (error: unknown) => {
+    const message = String((error as any)?.message ?? error).toLowerCase();
+    if (message.includes("unauthenticated")) return true;
+
+    const code = String((error as any)?.code ?? "").toLowerCase();
+    if (code.includes("unauthenticated")) return true;
+
+    const data = String((error as any)?.data ?? "").toLowerCase();
+    if (data.includes("unauthenticated")) return true;
+
+    const cause = String((error as any)?.cause ?? "").toLowerCase();
+    if (cause.includes("unauthenticated")) return true;
+
+    return false;
+};
+
+
+export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
+    return {
         trustedOrigins: [
             "myapp://",
             "projectbananarn://",
@@ -116,15 +139,21 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
             expo(),
             convex({ authConfig }),
         ],
-        user: {
-            additionalFields: {
-                isDeleted: { type: "boolean", required: false },
-                isOnboarded: { type: "boolean", required: false },
-                profile_pic_url: { type: "string", required: false },
-                total_views: { type: "number", required: false },
-                total_earnings: { type: "number", required: false },
-                balance: { type: "number", required: false },
+        databaseHooks: {
+            user: {
+                create: {
+                    after: async (user) => {
+                        await (ctx as any).runMutation(internal.creators.createCreatorByUserId, {
+                            userId: user.id,
+                        });
+                        console.log("Creator created with ID", user.id);
+                    },
+                },
             }
-        }
-    })
+        },
+    } satisfies BetterAuthOptions
+}
+
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+    return betterAuth(createAuthOptions(ctx))
 }

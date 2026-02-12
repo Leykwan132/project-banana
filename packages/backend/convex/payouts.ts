@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "./auth";
+import { getCreatorByUserId } from "./creators";
 
 // ============================================================
 // PAYOUT QUERIES
@@ -11,13 +12,13 @@ import { authComponent } from "./auth";
  */
 export const getUserPayouts = query({
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
 
         if (!user) return [];
 
         return await ctx.db
             .query("payouts")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .order("desc")
             .collect();
     },
@@ -42,13 +43,13 @@ export const getPayout = query({
  */
 export const getUserWithdrawals = query({
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
 
         if (!user) return [];
 
         return await ctx.db
             .query("withdrawals")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .order("desc")
             .collect();
     },
@@ -131,7 +132,8 @@ export const requestWithdrawal = mutation({
         if (!user) throw new Error("User not found");
 
         // Check if user has sufficient balance
-        const currentBalance = (user as any).balance ?? 0;
+        const creator = await getCreatorByUserId(ctx, user._id);
+        const currentBalance = creator?.balance ?? 0;
         if (currentBalance < args.amount) {
             throw new Error("Insufficient balance");
         }
@@ -140,14 +142,14 @@ export const requestWithdrawal = mutation({
         const withdrawalId = await ctx.db.insert("withdrawals", {
             user_id: user._id,
             amount: args.amount,
-            status: "pending",
+            status: "processing",
             bank_account: args.bankAccount,
             bank_name: args.bankName,
             requested_at: now,
             created_at: now,
         });
 
-        // Balance update is intentionally skipped here because auth users are not in Convex db tables.
+        // Balance update is intentionally skipped here. Balance can be recomputed from creator-ledger state.
 
         return withdrawalId;
     },
@@ -176,7 +178,7 @@ export const updateWithdrawalStatus = mutation({
 
         await ctx.db.patch(args.withdrawalId, updateData);
 
-        // If failed, a user balance refund should be handled by the auth user store.
+        // If failed, a balance refund should be handled by creator-ledger state.
     },
 });
 
@@ -212,6 +214,6 @@ export const cancelWithdrawal = mutation({
         });
 
         // Refund the amount
-        // Balance refund is intentionally skipped here because auth users are not in Convex db tables.
+        // Balance refund is intentionally skipped here and should be handled by creator-ledger state.
     },
 });

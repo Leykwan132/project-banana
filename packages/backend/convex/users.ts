@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "./auth";
+import { createCreator, getCreatorByUserId } from "./creators";
 
 // ============================================================
 // QUERIES
@@ -9,9 +10,22 @@ import { authComponent } from "./auth";
 export const getUser = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        if (!user) return null;
 
-        return user;
+        const creator = await getCreatorByUserId(ctx, String(user._id));
+
+        return {
+            ...user,
+            isDeleted: creator?.is_deleted ?? false,
+            isOnboarded: creator?.is_onboarded ?? false,
+            profile_pic_url: creator?.profile_pic_url ?? null,
+            total_views: creator?.total_views ?? 0,
+            total_earnings: creator?.total_earnings ?? 0,
+            balance: creator?.balance ?? 0,
+            bank_account: creator?.bank_account ?? null,
+            bank_name: creator?.bank_name ?? null,
+        };
     },
 });
 
@@ -33,13 +47,13 @@ export const getUserByAuthId = query({
 export const getUserBalance = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
         if (!user) {
             return { balance: 0 };
         }
 
-        return { balance: (user as any).balance ?? 0 };
+        const creator = await getCreatorByUserId(ctx, String(user._id));
+        return { balance: creator?.balance ?? 0 };
     },
 });
 
@@ -61,6 +75,22 @@ export const createUser = mutation({
         if (!user) {
             throw new Error("Called createUser without authentication present");
         }
+
+        const creator = await getCreatorByUserId(ctx, user._id);
+        if (!creator) throw new Error("Creator record not found");
+
+        const updateData: Record<string, string | number | boolean | undefined> = {};
+        if (args.profile_pic_url !== undefined) updateData.profile_pic_url = args.profile_pic_url;
+        if (args.bank_account !== undefined) updateData.bank_account = args.bank_account;
+        if (args.bank_name !== undefined) updateData.bank_name = args.bank_name;
+
+        if (Object.keys(updateData).length > 0) {
+            await ctx.db.patch(creator._id, {
+                ...updateData,
+                updated_at: Date.now(),
+            });
+        }
+
         return user._id;
     },
 });
@@ -77,7 +107,33 @@ export const updateUser = mutation({
         if (!user) {
             throw new Error("Unauthenticated");
         }
+
+        const creator = await getCreatorByUserId(ctx, user._id);
+        if (!creator) throw new Error("Creator record not found");
+
+        const updateData: Record<string, string | number | boolean | undefined> = {};
+
+        if (args.profile_pic_url !== undefined) updateData.profile_pic_url = args.profile_pic_url;
+        if (args.bank_account !== undefined) updateData.bank_account = args.bank_account;
+        if (args.bank_name !== undefined) updateData.bank_name = args.bank_name;
+
+        if (Object.keys(updateData).length > 0) {
+            await ctx.db.patch(creator._id, {
+                ...updateData,
+                updated_at: Date.now(),
+            });
+        }
+
         return user._id;
+    },
+});
+
+export const createCreatorMutation = mutation({
+    args: { userId: v.string() },
+    handler: async (ctx, args) => {
+        const existing = await getCreatorByUserId(ctx, args.userId);
+        if (existing) return existing;
+        return createCreator(ctx, args.userId);
     },
 });
 
@@ -85,11 +141,13 @@ export const updateUser = mutation({
 export const getOnboardingStatus = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
         if (!user) {
             return { isOnboarded: false };
         }
-        return { isOnboarded: (user as any).isOnboarded ?? false };
+
+        const creator = await getCreatorByUserId(ctx, String(user._id));
+        return { isOnboarded: creator?.is_onboarded ?? false };
     },
 });
 
@@ -97,8 +155,21 @@ export const getOnboardingStatus = query({
 export const setUserOnboarded = mutation({
     args: {
         authId: v.string(),
+        isOnboarded: v.optional(v.boolean()),
     },
-    handler: async (_ctx, _args) => {
+    handler: async (ctx, args) => {
+        const creator = await getCreatorByUserId(ctx, args.authId);
+        if (!creator) throw new Error("Creator record not found");
+
+        if (args.isOnboarded === undefined) {
+            return { success: true };
+        }
+
+        await ctx.db.patch(creator._id, {
+            is_onboarded: args.isOnboarded,
+            updated_at: Date.now(),
+        });
+
         return { success: true };
     },
 });

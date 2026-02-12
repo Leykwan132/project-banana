@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const s3Client = new S3Client({
@@ -26,4 +26,12 @@ export const generateDownloadUrl = async (key: string) => {
     });
     // Download URL valid for 1 hour
     return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+};
+
+export const deleteObject = async (key: string) => {
+    const command = new DeleteObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: key,
+    });
+    await s3Client.send(command);
 };

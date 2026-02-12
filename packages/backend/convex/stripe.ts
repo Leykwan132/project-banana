@@ -51,13 +51,13 @@ function getStripeCredentials(): { secretKey: string } {
 export const getMySubscription = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
 
         if (!user) return null;
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .unique();
 
         if (!business) return null;

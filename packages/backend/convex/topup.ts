@@ -11,13 +11,13 @@ import { authComponent } from "./auth";
 export const getTopUpHistory = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
 
         if (!user) return { page: [], isDone: true, continueCursor: "" };
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .unique();
 
         if (!business) return { page: [], isDone: true, continueCursor: "" };
@@ -38,7 +38,7 @@ export const getPastTopUpPayments = query({
         status: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
 
         if (!user) {
             return {
@@ -50,7 +50,7 @@ export const getPastTopUpPayments = query({
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .unique();
 
         if (!business) {
@@ -83,13 +83,13 @@ export const getTopUpCount = query({
         status: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
 
         if (!user) return 0;
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .unique();
 
         if (!business) return 0;
@@ -577,7 +577,7 @@ export const deleteTopupOrder = mutation({
 
         // Verify ownership via business
         const business = await ctx.db.get(order.business_id);
-        if (!business || business.user_id !== user._id) {
+        if (!business || business.user_id !== String(user._id)) {
             throw new Error("Unauthorized");
         }
 
@@ -590,4 +590,3 @@ export const deleteTopupOrder = mutation({
         await ctx.db.delete(args.orderId);
     },
 });
-

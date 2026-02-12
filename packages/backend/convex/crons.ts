@@ -191,6 +191,10 @@ export const runDailyScrape = internalAction({
                         userCampaignStatusId: app.campaignStatusId,
                         newEarning,
                         userCampaignMaxPayout: app.userCampaignMaxPayout,
+                        views: totalViews,
+                        likes: totalLikes,
+                        comments: totalComments,
+                        shares: totalShares,
                     });
                 }
 

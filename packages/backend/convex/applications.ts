@@ -9,12 +9,12 @@ import { authComponent } from "./auth";
 export const getMyApplications = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) return { page: [], isDone: true, continueCursor: "" };
 
         const applications = await ctx.db
             .query("applications")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .order("desc")
             .paginate(args.paginationOpts);
 
@@ -95,15 +95,42 @@ export const getApplication = query({
 export const getApplicationByCampaignId = query({
     args: { campaignId: v.id("campaigns") },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) return null;
 
         return await ctx.db
             .query("applications")
             .withIndex("by_user_campaign", (q) =>
-                q.eq("user_id", user._id).eq("campaign_id", args.campaignId)
+                q.eq("user_id", String(user._id)).eq("campaign_id", args.campaignId)
             )
             .unique();
+    },
+});
+
+export const getMyApplicationsByCampaignWithStats = query({
+    args: { campaignId: v.id("campaigns") },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return [];
+
+        const applications = await ctx.db
+            .query("applications")
+            .withIndex("by_user_campaign", (q) =>
+                q.eq("user_id", String(user._id)).eq("campaign_id", args.campaignId)
+            )
+            .order("desc")
+            .collect();
+
+        return applications.map((application, index) => ({
+            ...application,
+            title: `Application ${applications.length - index}`,
+            views: application.views ?? 0,
+            likes: application.likes ?? 0,
+            saves: application.saves ?? 0,
+            comments: application.comments ?? 0,
+            shares: application.shares ?? 0,
+            earnings: application.earnings ?? 0,
+        }));
     },
 });
 
@@ -161,10 +188,21 @@ export const createApplication = mutation({
         if (!user) throw new Error("Unauthenticated");
 
         const now = Date.now();
+        // Generate a random 6-character string for the tracking tag
+        const randomTag = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const trackingTag = `UGCO${randomTag}`;
+
         const applicationId = await ctx.db.insert("applications", {
             user_id: user._id,
             campaign_id: args.campaignId,
             status: "pending_submission",
+            tracking_tag: trackingTag,
+            views: 0,
+            likes: 0,
+            saves: 0,
+            comments: 0,
+            shares: 0,
+            earnings: 0,
             created_at: now,
             updated_at: now,
         });
@@ -209,6 +247,10 @@ export const updateApplicationEarning = internalMutation({
         userCampaignStatusId: v.id("user_campaign_status"),
         newEarning: v.number(),
         userCampaignMaxPayout: v.number(),
+        views: v.number(),
+        likes: v.number(),
+        comments: v.number(),
+        shares: v.number(),
     },
     handler: async (ctx, args) => {
         // 1. Get current status to know existing earning
@@ -220,7 +262,17 @@ export const updateApplicationEarning = internalMutation({
         // 2. Calculate delta (only positive deltas to prevent rollback)
         const earningDelta = Math.max(0, args.newEarning - existingEarning);
 
-        if (earningDelta === 0) return; // No change needed
+        // Keep per-application high-level stats cached for quick list rendering.
+        await ctx.db.patch(args.applicationId, {
+            views: args.views,
+            likes: args.likes,
+            comments: args.comments,
+            shares: args.shares,
+            earnings: args.newEarning,
+            updated_at: Date.now(),
+        });
+
+        if (earningDelta === 0) return; // No earning delta to apply
 
         // 3. Get campaign and check budget availability
         const campaign = await ctx.db.get(args.campaignId);

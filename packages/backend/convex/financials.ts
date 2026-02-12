@@ -1,7 +1,9 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { authComponent } from "./auth";
+import { getCreatorByUserId } from "./creators";
+import { ErrorType } from "./errors";
 
 // ============================================================
 // QUERIES
@@ -10,13 +12,14 @@ import { authComponent } from "./auth";
 export const getPayouts = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-
-        if (!user) return { page: [], isDone: true, continueCursor: "" };
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        if (!user) {
+            throw new ConvexError(ErrorType.NOT_AUTHENTICATED);
+        }
 
         return await ctx.db
             .query("payouts")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user!._id)))
             .order("desc")
             .paginate(args.paginationOpts);
     },
@@ -25,13 +28,13 @@ export const getPayouts = query({
 export const getWithdrawals = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
 
         if (!user) return { page: [], isDone: true, continueCursor: "" };
 
         return await ctx.db
             .query("withdrawals")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .order("desc")
             .paginate(args.paginationOpts);
     },
@@ -40,7 +43,7 @@ export const getWithdrawals = query({
 export const getBalance = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await authComponent.getAuthUser(ctx).catch(() => null);
 
         if (!user) return 0;
 
@@ -50,7 +53,7 @@ export const getBalance = query({
 
         const withdrawals = await ctx.db
             .query("withdrawals")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
             .collect();
 
         const totalWithdrawn = withdrawals.reduce((sum, w) => {
@@ -60,7 +63,8 @@ export const getBalance = query({
             return sum;
         }, 0);
 
-        const totalEarnings = (user as any).total_earnings ?? 0;
+        const creator = await getCreatorByUserId(ctx, String(user._id));
+        const totalEarnings = creator?.total_earnings ?? 0;
         return totalEarnings - totalWithdrawn;
     }
 });
@@ -78,8 +82,9 @@ export const createWithdrawal = mutation({
 
         if (!user) throw new Error("User not found");
 
-        const bankAccount = (user as any).bank_account;
-        const bankName = (user as any).bank_name;
+        const creator = await getCreatorByUserId(ctx, user._id);
+        const bankAccount = creator?.bank_account;
+        const bankName = creator?.bank_name;
         if (!bankAccount || !bankName) {
             throw new Error("Please add bank details to your profile first");
         }
@@ -98,7 +103,7 @@ export const createWithdrawal = mutation({
             return sum;
         }, 0);
 
-        const currentBalance = ((user as any).total_earnings ?? 0) - totalWithdrawn;
+        const currentBalance = (creator?.total_earnings ?? 0) - totalWithdrawn;
 
         if (args.amount > currentBalance) {
             throw new Error("Insufficient balance");
@@ -108,7 +113,7 @@ export const createWithdrawal = mutation({
         await ctx.db.insert("withdrawals", {
             user_id: user._id,
             amount: args.amount,
-            status: "pending",
+            status: "processing",
             bank_account: bankAccount,
             bank_name: bankName,
             requested_at: now,

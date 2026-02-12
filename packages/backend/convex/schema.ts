@@ -22,7 +22,6 @@ export default defineSchema({
         subscription_plan_type: v.optional(v.string()), // "starter" | "growth"
         subscription_billing_cycle: v.optional(v.string()), // "monthly" | "annual"
         subscription_amount: v.optional(v.number()),
-
         created_at: v.number(),
         updated_at: v.number(),
     })
@@ -116,6 +115,15 @@ export default defineSchema({
     // user & APPLICATIONS
     // ============================================================
 
+    creators: defineTable({
+        user_id: v.string(),
+        is_deleted: v.optional(v.boolean()),
+        is_onboarded: v.optional(v.boolean()),
+        total_views: v.optional(v.number()),
+        total_earnings: v.optional(v.number()),
+        balance: v.optional(v.number()),
+    }).index("by_user", ["user_id"]),
+
     applications: defineTable({
         user_id: v.string(),
         campaign_id: v.id("campaigns"),
@@ -125,6 +133,13 @@ export default defineSchema({
         tracking_tag: v.optional(v.string()),
         posted_at: v.optional(v.number()),
         approved_submission_id: v.optional(v.id("submissions")),
+        // Cached high-level analytics to avoid recomputing for list rendering
+        views: v.optional(v.number()),
+        likes: v.optional(v.number()),
+        saves: v.optional(v.number()),
+        comments: v.optional(v.number()),
+        shares: v.optional(v.number()),
+        earnings: v.optional(v.number()),
         created_at: v.number(),
         updated_at: v.number(),
     })
@@ -192,9 +207,10 @@ export default defineSchema({
     bank_accounts: defineTable({
         user_id: v.string(),
         bank_name: v.string(),
+        account_holder_name: v.optional(v.string()),
         account_number: v.string(),
         status: v.string(), // "pending_review" | "verified" | "rejected"
-        proof_document_url: v.optional(v.string()),
+        proof_document_s3_key: v.optional(v.string()),
         created_at: v.number(),
         updated_at: v.number(),
     })
