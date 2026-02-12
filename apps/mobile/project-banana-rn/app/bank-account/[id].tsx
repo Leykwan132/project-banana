@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Upload, Eye, AlertCircle, FileText, CheckCircle, Clock, XCircle, ChevronRight, Camera, ImageIcon, Pencil } from 'lucide-react-native';
@@ -10,32 +10,45 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAction, useMutation, useQuery } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
-
-type BankAccountStatus = 'active' | 'pending' | 'rejected';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
 export default function BankAccountDetailsScreen() {
     const router = useRouter();
-    const params = useLocalSearchParams();
+    const { id } = useLocalSearchParams<{ id: string }>();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
 
-    const status = params.status as BankAccountStatus;
-    const isRejected = status === 'rejected';
+    const bankAccountId = id as Id<'bank_accounts'>;
+    const bankAccount = useQuery(
+        api.bankAccounts.getBankAccount,
+        bankAccountId ? { bankAccountId } : "skip"
+    );
+    const generateProofUploadUrl = useAction(api.bankAccounts.generateProofUploadUrl);
+    const generateProofAccessUrl = useAction(api.bankAccounts.generateProofAccessUrl);
+    const deleteProofObject = useAction(api.bankAccounts.deleteProofObject);
+    const resubmitBankAccountProof = useMutation(api.bankAccounts.resubmitBankAccountProof);
+
+    const isRejected = bankAccount?.status === 'rejected';
 
     const [uploadedFile, setUploadedFile] = useState<{
         uri: string;
         name?: string;
         type: 'image' | 'pdf';
-    } | null>(params.proofUri ? {
-        uri: params.proofUri as string,
-        name: 'Current Proof',
-        type: 'image',
-    } : null);
+        mimeType?: string;
+    } | null>(null);
+    const [remoteProofFile, setRemoteProofFile] = useState<{
+        uri: string;
+        name?: string;
+        type: 'image' | 'pdf';
+    } | null>(null);
+    const [isProofLoading, setIsProofLoading] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
     const [submitStep, setSubmitStep] = useState<'pending' | null>(null);
@@ -44,9 +57,65 @@ export default function BankAccountDetailsScreen() {
     const submitStatusSheetRef = useRef<ActionSheetRef>(null);
 
     const mappedStatus: ApplicationStatus =
-        status === 'active' ? 'Active' :
-            status === 'pending' ? 'Under Review' :
-                'Rejected';
+        bankAccount?.status === 'verified' ? 'Active' :
+            bankAccount?.status === 'rejected' ? 'Rejected' :
+                'Under Review';
+    const isAccountLoading = bankAccount === undefined;
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadProof = async () => {
+            if (!bankAccountId || bankAccount === undefined) return;
+            const proofKey = bankAccount?.proof_document_s3_key;
+            if (!proofKey) {
+                setRemoteProofFile(null);
+                setIsProofLoading(false);
+                return;
+            }
+
+            try {
+                setIsProofLoading(true);
+                if (proofKey.startsWith('http://') || proofKey.startsWith('https://')) {
+                    setRemoteProofFile({
+                        uri: proofKey,
+                        name: 'Current Proof',
+                        type: proofKey.toLowerCase().includes('.pdf') ? 'pdf' : 'image',
+                    });
+                    setIsProofLoading(false);
+                    return;
+                }
+
+                const signedUrl = await generateProofAccessUrl({ s3Key: proofKey });
+                if (cancelled) return;
+
+                if (!signedUrl) {
+                    setRemoteProofFile(null);
+                    setIsProofLoading(false);
+                    return;
+                }
+
+                setRemoteProofFile({
+                    uri: signedUrl,
+                    name: 'Current Proof',
+                    type: signedUrl.toLowerCase().includes('.pdf') ? 'pdf' : 'image',
+                });
+                setIsProofLoading(false);
+            } catch (error) {
+                if (!cancelled) {
+                    setRemoteProofFile(null);
+                    setIsProofLoading(false);
+                }
+            }
+        };
+
+        loadProof();
+        return () => {
+            cancelled = true;
+        };
+    }, [bankAccountId, bankAccount?._id, bankAccount?.proof_document_s3_key, generateProofAccessUrl]);
+
+    const proofFileToDisplay = uploadedFile ?? remoteProofFile;
 
     const handleTakePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -63,6 +132,7 @@ export default function BankAccountDetailsScreen() {
                 uri: result.assets[0].uri,
                 name: result.assets[0].fileName || 'Photo',
                 type: 'image',
+                mimeType: result.assets[0].mimeType ?? 'image/jpeg',
             });
         }
         uploadOptionsSheetRef.current?.hide();
@@ -78,6 +148,7 @@ export default function BankAccountDetailsScreen() {
                 uri: result.assets[0].uri,
                 name: result.assets[0].fileName || 'Image',
                 type: 'image',
+                mimeType: result.assets[0].mimeType ?? 'image/jpeg',
             });
         }
         uploadOptionsSheetRef.current?.hide();
@@ -94,6 +165,7 @@ export default function BankAccountDetailsScreen() {
                 uri: result.assets[0].uri,
                 name: result.assets[0].name || 'Document.pdf',
                 type: 'pdf',
+                mimeType: result.assets[0].mimeType ?? 'application/pdf',
             });
         }
         uploadOptionsSheetRef.current?.hide();
@@ -101,14 +173,57 @@ export default function BankAccountDetailsScreen() {
     };
 
     const handleSubmitReupload = async () => {
-        setIsLoading(true);
+        if (!uploadedFile) {
+            Alert.alert('No proof selected', 'Please upload a proof document first.');
+            return;
+        }
 
-        // Simulate upload delay
-        setTimeout(() => {
+        setIsLoading(true);
+        try {
+            const contentType =
+                uploadedFile.mimeType ??
+                (uploadedFile.type === 'pdf' ? 'application/pdf' : 'image/jpeg');
+
+            const { uploadUrl, s3Key } = await generateProofUploadUrl({ contentType });
+
+            const fileResponse = await fetch(uploadedFile.uri);
+            if (!fileResponse.ok) {
+                throw new Error('Unable to read selected proof file.');
+            }
+            const fileBuffer = await fileResponse.arrayBuffer();
+
+            const uploadResponse = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': contentType },
+                body: fileBuffer,
+            });
+            if (!uploadResponse.ok) {
+                throw new Error(`Proof upload failed with status ${uploadResponse.status}`);
+            }
+
+            const previousProofKey = await resubmitBankAccountProof({
+                bankAccountId,
+                newProofKey: s3Key,
+            });
+
+            if (
+                previousProofKey &&
+                previousProofKey !== s3Key &&
+                previousProofKey.startsWith('bank-proofs/')
+            ) {
+                deleteProofObject({ s3Key: previousProofKey }).catch((error) => {
+                    console.warn('Failed to delete old bank proof object:', error);
+                });
+            }
+
             setIsLoading(false);
             setSubmitStep('pending');
             submitStatusSheetRef.current?.show();
-        }, 2000);
+        } catch (error) {
+            console.error('Error resubmitting bank proof:', error);
+            setIsLoading(false);
+            Alert.alert('Submission failed', 'Unable to submit new proof. Please try again.');
+        }
     };
 
     const handleCloseSubmitSheet = () => {
@@ -118,6 +233,20 @@ export default function BankAccountDetailsScreen() {
             router.back();
         }, 300);
     };
+
+    if (bankAccount === null) {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
+                    <ThemedText>Bank account not found.</ThemedText>
+                    <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+                        <ThemedText style={{ color: '#2563EB' }}>Go Back</ThemedText>
+                    </Pressable>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -144,12 +273,16 @@ export default function BankAccountDetailsScreen() {
                     <View style={styles.section}>
                         <ThemedText type="defaultSemiBold" style={styles.label}>Verification Status</ThemedText>
                         <View style={styles.statusBadgeRow}>
-                            <ApplicationStatusBadge status={mappedStatus} />
+                            {isAccountLoading ? (
+                                <View style={styles.badgeSkeleton} />
+                            ) : (
+                                <ApplicationStatusBadge status={mappedStatus} />
+                            )}
                         </View>
                     </View>
 
                     {/* Rejection Reason */}
-                    {isRejected && params.rejectionReason && (
+                    {!isAccountLoading && isRejected && (
                         <View style={styles.rejectionCard}>
                             <View style={styles.rejectionHeader}>
                                 <AlertCircle size={18} color="#C62828" />
@@ -158,7 +291,7 @@ export default function BankAccountDetailsScreen() {
                                 </ThemedText>
                             </View>
                             <ThemedText style={styles.rejectionText}>
-                                {params.rejectionReason}
+                                Your proof needs updates. Please upload a clearer document that shows account holder name and account number.
                             </ThemedText>
                         </View>
                     )}
@@ -167,21 +300,33 @@ export default function BankAccountDetailsScreen() {
                     <View style={styles.section}>
                         <ThemedText type="defaultSemiBold" style={styles.label}>Bank Name</ThemedText>
                         <View style={styles.readOnlyField}>
-                            <ThemedText style={styles.readOnlyText}>{params.bankName}</ThemedText>
+                            {isAccountLoading ? (
+                                <View style={styles.fieldSkeleton} />
+                            ) : (
+                                <ThemedText style={styles.readOnlyText}>{bankAccount.bank_name}</ThemedText>
+                            )}
                         </View>
                     </View>
 
                     <View style={styles.section}>
                         <ThemedText type="defaultSemiBold" style={styles.label}>Account Number</ThemedText>
                         <View style={styles.readOnlyField}>
-                            <ThemedText style={styles.readOnlyText}>{params.accountNumber}</ThemedText>
+                            {isAccountLoading ? (
+                                <View style={styles.fieldSkeleton} />
+                            ) : (
+                                <ThemedText style={styles.readOnlyText}>{bankAccount.account_number}</ThemedText>
+                            )}
                         </View>
                     </View>
 
                     <View style={styles.section}>
                         <ThemedText type="defaultSemiBold" style={styles.label}>Account Holder</ThemedText>
                         <View style={styles.readOnlyField}>
-                            <ThemedText style={styles.readOnlyText}>{params.accountHolder}</ThemedText>
+                            {isAccountLoading ? (
+                                <View style={styles.fieldSkeleton} />
+                            ) : (
+                                <ThemedText style={styles.readOnlyText}>{bankAccount.account_holder_name ?? '-'}</ThemedText>
+                            )}
                         </View>
                     </View>
 
@@ -190,19 +335,21 @@ export default function BankAccountDetailsScreen() {
                         <ThemedText type="defaultSemiBold" style={styles.label}>Proof of Bank Account</ThemedText>
 
                         {/* Upload Area */}
-                        <View style={[styles.uploadArea, uploadedFile && styles.uploadAreaWithPreview]}>
-                            {uploadedFile ? (
+                        <View style={[styles.uploadArea, proofFileToDisplay && styles.uploadAreaWithPreview]}>
+                            {isAccountLoading || (isProofLoading && !uploadedFile) ? (
+                                <View style={styles.proofSkeleton} />
+                            ) : proofFileToDisplay ? (
                                 <View style={styles.previewContainer}>
-                                    {uploadedFile.type === 'image' ? (
+                                    {proofFileToDisplay.type === 'image' ? (
                                         <Image
-                                            source={{ uri: uploadedFile.uri }}
+                                            source={{ uri: proofFileToDisplay.uri }}
                                             style={styles.previewImage}
                                             contentFit="contain"
                                         />
                                     ) : (
                                         <View style={styles.webViewWrapperInPlace}>
                                             <WebView
-                                                source={{ uri: uploadedFile.uri }}
+                                                source={{ uri: proofFileToDisplay.uri }}
                                                 style={styles.webView}
                                                 scalesPageToFit
                                                 originWhitelist={['*']}
@@ -243,7 +390,7 @@ export default function BankAccountDetailsScreen() {
                 </ScrollView>
 
                 {/* Footer Buttons for Rejected */}
-                {isRejected && (
+                {!isAccountLoading && isRejected && (
                     <View style={styles.footer}>
                         {uploadedFile && uploadedFile.name !== 'Current Proof' ? (
                             /* Submit Button - Only visible when new file uploaded */
@@ -376,6 +523,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginTop: 4,
     },
+    badgeSkeleton: {
+        width: 110,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#EEF0F2',
+    },
     rejectionCard: {
         backgroundColor: '#FFF5F5',
         borderRadius: 12,
@@ -421,6 +574,12 @@ const styles = StyleSheet.create({
         fontFamily: 'GoogleSans_400Regular',
         color: '#333',
     },
+    fieldSkeleton: {
+        width: '60%',
+        height: 18,
+        borderRadius: 6,
+        backgroundColor: '#E5E7EB',
+    },
     uploadArea: {
         borderWidth: 2,
         borderColor: '#E5E7EB',
@@ -437,6 +596,12 @@ const styles = StyleSheet.create({
         padding: 0,
         overflow: 'hidden',
         height: 450,
+    },
+    proofSkeleton: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 14,
+        backgroundColor: '#EEF0F2',
     },
     emptyUploadContainer: {
         flex: 1,

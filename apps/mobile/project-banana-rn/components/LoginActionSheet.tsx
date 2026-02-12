@@ -5,17 +5,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
-import { useAction } from "convex/react";
-import * as AuthSession from "expo-auth-session";
-import * as WebBrowser from "expo-web-browser";
-import { storage } from "@/lib/storage";
-import Constants from 'expo-constants';
-import { api } from "../../../../packages/backend/convex/_generated/api"
 import { authClient } from "@/lib/auth-client";
-
-
-// import { api } from "@/convex/_generated/api";
-
 interface LoginActionSheetProps {
     actionSheetRef: React.RefObject<ActionSheetRef | null>;
     onLogin: () => void;
@@ -26,6 +16,7 @@ export function LoginActionSheet({
     onLogin,
 }: LoginActionSheetProps) {
     const colorScheme = useColorScheme();
+    const { data: session } = authClient.useSession();
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isAppleLoading, setIsAppleLoading] = useState(false);
 
@@ -44,7 +35,7 @@ export function LoginActionSheet({
         try {
             const { data, error } = await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/" // this will be converted to a deep link (eg. `myapp://dashboard`) on native
+                callbackURL: "/onboarding", // this will be converted to a deep link (eg. `myapp://dashboard`) on native
             });
 
             if (error) {

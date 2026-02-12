@@ -7,6 +7,7 @@ import { LineChart, useLineChart } from 'react-native-wagmi-charts';
 import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActionSheetRef } from 'react-native-actions-sheet';
+import { useQuery } from 'convex/react';
 
 import { Header } from '@/components/Header';
 import { Colors } from '@/constants/theme';
@@ -14,6 +15,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
 import { CampaignsAnalyticList } from '@/components/CampaignsAnalyticList';
 import { SelectionSheet } from '@/components/SelectionSheet';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
@@ -25,55 +27,6 @@ interface GraphDataPoint {
     label: string;
     [key: string]: unknown;
 }
-
-interface MetricData {
-    value: string;
-    total: number;
-    data: GraphDataPoint[];
-}
-
-// Mock Data Generator
-const generateDailyData = (baseValue: number): GraphDataPoint[] => {
-    const data: GraphDataPoint[] = [];
-    const now = new Date();
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    for (let i = 29; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-
-        const variation = (Math.random() * 0.8) + 0.6;
-        data.push({
-            timestamp: date.getTime(),
-            value: Math.round(baseValue * variation),
-            label: dayNames[date.getDay()],
-        });
-    }
-    return data;
-};
-
-// Mock Overview Data
-const mockOverviewAnalytics = {
-    metrics: {
-        earnings: {
-            value: 'RM 1,250',
-            total: 1250,
-            data: generateDailyData(45)
-        }
-    } as Record<string, MetricData>,
-};
-
-const TERMS_MAPPING = {
-    earnings: 'Earnings',
-};
-
-const ICON_MAPPING = {
-    earnings: Wallet,
-};
-
-const COLOR_MAPPING = {
-    earnings: '#FFD700',
-};
 
 const GRAPH_HEIGHT = 120;
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -96,12 +49,21 @@ export default function AnalyticsScreen() {
         { label: 'Earnings', value: 'earnings' },
     ];
 
-    const overview = mockOverviewAnalytics;
-
-    // Hardcode to earnings
-    const currentMetricData = overview.metrics.earnings;
+    const overview = useQuery((api as any).analytics.getUserEarningsOverviewLast30Days) as
+        | { totalEarnings: number; daily: Array<{ timestamp: number; earnings: number }> }
+        | undefined;
     const graphColor = '#FF4500'; // Gold for earnings
-    const graphData = currentMetricData.data;
+    const mappedGraphData: GraphDataPoint[] = (overview?.daily ?? []).map((point) => ({
+        timestamp: point.timestamp,
+        value: point.earnings,
+        label: '',
+    }));
+    const graphData = mappedGraphData.length > 0 ? mappedGraphData : [{
+        timestamp: Date.now(),
+        value: 0,
+        label: '',
+    }];
+    const totalEarningsLabel = `RM ${(overview?.totalEarnings ?? 0).toLocaleString()}`;
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -111,6 +73,8 @@ export default function AnalyticsScreen() {
     }, []);
 
     const xLabels = useMemo(() => {
+        if (!graphData.length) return [];
+
         const count = 3;
         const start = graphData[0].timestamp;
         const end = graphData[graphData.length - 1].timestamp;
@@ -164,7 +128,7 @@ export default function AnalyticsScreen() {
                                     </View>
                                     <InteractiveGraphValue
                                         key="earnings"
-                                        totalValue={currentMetricData.value}
+                                        totalValue={totalEarningsLabel}
                                         showCurrency={true}
                                     />
                                     <InteractiveGraphDate defaultText="Last 30 Days" />
@@ -252,6 +216,9 @@ export default function AnalyticsScreen() {
 function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValue: string, showCurrency?: boolean }) {
     const { currentIndex, isActive, data } = useLineChart();
     const svTotal = useSharedValue(totalValue);
+    React.useEffect(() => {
+        svTotal.value = totalValue;
+    }, [svTotal, totalValue]);
 
     const animatedProps = useAnimatedProps(() => {
         if (!isActive.value || currentIndex.value === -1) {

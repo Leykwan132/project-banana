@@ -10,10 +10,12 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
+import { useAction, useMutation } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 const BANK_OPTIONS = [
     'Affin Bank',
@@ -43,20 +45,25 @@ export default function AddBankAccountScreen() {
     const isEditing = !!params.id;
 
     const [bankName, setBankName] = useState((params.bankName as string) || '');
+    const [accountHolderName, setAccountHolderName] = useState((params.accountHolder as string) || '');
     const [accountNumber, setAccountNumber] = useState((params.accountNumber as string) || '');
     const [proofUploaded, setProofUploaded] = useState(!!params.proofUri);
     const [uploadedFile, setUploadedFile] = useState<{
         uri: string;
         name?: string;
         type: 'image' | 'pdf';
+        mimeType?: string;
     } | null>(params.proofUri ? {
         uri: params.proofUri as string,
         name: 'Selected Proof',
-        type: (params.proofUri as string).toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
+        type: (params.proofUri as string).toLowerCase().endsWith('.pdf') ? 'pdf' : 'image',
+        mimeType: (params.proofUri as string).toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
     } : null);
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [submitStep, setSubmitStep] = useState<'pending' | null>(null);
+    const createBankAccount = useMutation(api.bankAccounts.createBankAccount);
+    const generateProofUploadUrl = useAction(api.bankAccounts.generateProofUploadUrl);
 
     const bankSelectSheetRef = useRef<ActionSheetRef>(null);
     const exampleSheetRef = useRef<ActionSheetRef>(null);
@@ -119,6 +126,7 @@ export default function AddBankAccountScreen() {
                 uri: asset.uri,
                 name: asset.fileName || 'Photo',
                 type: 'image',
+                mimeType: asset.mimeType ?? 'image/jpeg',
             });
             setProofUploaded(true);
         }
@@ -145,6 +153,7 @@ export default function AddBankAccountScreen() {
                 uri: asset.uri,
                 name: asset.fileName || 'Image',
                 type: 'image',
+                mimeType: asset.mimeType ?? 'image/jpeg',
             });
             setProofUploaded(true);
         }
@@ -165,6 +174,7 @@ export default function AddBankAccountScreen() {
                     uri: asset.uri,
                     name: asset.name || 'Document.pdf',
                     type: 'pdf',
+                    mimeType: asset.mimeType ?? 'application/pdf',
                 });
                 setProofUploaded(true);
             }
@@ -175,18 +185,46 @@ export default function AddBankAccountScreen() {
     };
 
     const handleSubmit = async () => {
-        if (!bankName || !accountNumber || !proofUploaded) {
+        if (!bankName || !accountHolderName || !accountNumber || !proofUploaded || !uploadedFile) {
             return;
         }
 
         setIsLoading(true);
+        try {
+            const contentType =
+                uploadedFile.mimeType ??
+                (uploadedFile.type === 'pdf' ? 'application/pdf' : 'image/jpeg');
 
-        // Simulate upload delay
-        setTimeout(() => {
+            const { uploadUrl, s3Key } = await generateProofUploadUrl({ contentType });
+
+            const fileResponse = await fetch(uploadedFile.uri);
+            if (!fileResponse.ok) {
+                throw new Error('Unable to read selected proof file.');
+            }
+            const fileBuffer = await fileResponse.arrayBuffer();
+
+            const uploadResponse = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': contentType },
+                body: fileBuffer,
+            });
+            if (!uploadResponse.ok) {
+                throw new Error(`Proof upload failed with status ${uploadResponse.status}`);
+            }
+
+            await createBankAccount({
+                bankName,
+                accountHolderName: accountHolderName.trim(),
+                accountNumber: accountNumber.trim(),
+                proofDocumentKey: s3Key,
+            });
             setIsLoading(false);
             setSubmitStep('pending');
             submitStatusSheetRef.current?.show();
-        }, 2000);
+        } catch (error) {
+            setIsLoading(false);
+            Alert.alert('Submission failed', 'Unable to submit bank account. Please try again.');
+        }
     };
 
     const handleCloseSubmitSheet = () => {
@@ -197,7 +235,7 @@ export default function AddBankAccountScreen() {
         }, 300);
     };
 
-    const isFormValid = bankName && accountNumber && proofUploaded;
+    const isFormValid = bankName && accountHolderName && accountNumber && proofUploaded;
 
     const filteredBanks = BANK_OPTIONS.filter(bank =>
         bank.toLowerCase().includes(searchQuery.toLowerCase())
@@ -246,6 +284,18 @@ export default function AddBankAccountScreen() {
                         value={accountNumber}
                         onChangeText={setAccountNumber}
                         keyboardType="numeric"
+                        placeholderTextColor="#999"
+                    />
+                </View>
+
+                {/* Account Holder Name */}
+                <View style={styles.section}>
+                    <ThemedText type="defaultSemiBold" style={styles.label}>Account Holder Name</ThemedText>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Enter account holder name"
+                        value={accountHolderName}
+                        onChangeText={setAccountHolderName}
                         placeholderTextColor="#999"
                     />
                 </View>

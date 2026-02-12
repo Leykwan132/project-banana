@@ -18,9 +18,9 @@ interface FlippableEarningsCardProps {
     frontContent: React.ReactNode;
 
     /**
-     * Percentage value for top earner status (e.g., 5 for "Top 5%")
+     * Element to render on the back of the card.
      */
-    topEarnerPercent: number;
+    backContent: React.ReactNode;
 
     /**
      * Optional style override for the container
@@ -28,7 +28,7 @@ interface FlippableEarningsCardProps {
     style?: ViewStyle;
 }
 
-export function FlippableEarningsCard({ frontContent, topEarnerPercent, style }: FlippableEarningsCardProps) {
+export function FlippableEarningsCard({ frontContent, backContent, style }: FlippableEarningsCardProps) {
     const flipProgress = useSharedValue(0);
 
     const toggleCardFlip = () => {
@@ -73,9 +73,7 @@ export function FlippableEarningsCard({ frontContent, topEarnerPercent, style }:
                     autoPlay
                     style={styles.winnerAnimation}
                 />
-                <ThemedText style={styles.topEarnerText}>
-                    You are the top <ThemedText style={styles.topEarnerHighlight}>{topEarnerPercent}%</ThemedText> earners!
-                </ThemedText>
+                <ThemedText style={styles.topEarnerText}>{backContent}</ThemedText>
             </Animated.View>
         </Pressable>
     );

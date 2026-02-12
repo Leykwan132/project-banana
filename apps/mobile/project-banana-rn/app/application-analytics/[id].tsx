@@ -1,98 +1,38 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import Animated, { useAnimatedProps, useDerivedValue, useSharedValue, withTiming, runOnJS, SharedValue, useAnimatedReaction, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { View, StyleSheet, ScrollView, Pressable, Dimensions, TextInput, Image } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanimated';
+import { View, StyleSheet, ScrollView, Pressable, Dimensions, TextInput, Image, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Share, MessageCircle, Heart, Eye, Wallet, Calendar } from 'lucide-react-native';
 import { LineChart, useLineChart } from 'react-native-wagmi-charts';
-import * as Haptics from 'expo-haptics';
-
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useQuery } from 'convex/react';
+import { FontAwesome5 } from '@expo/vector-icons';
+
 import { ThemedText } from '@/components/themed-text';
+import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-// Types for our mock data
 type MetricType = 'views' | 'shares' | 'likes' | 'comments' | 'earnings';
 
-interface GraphDataPoint {
-    timestamp: number; // wagmi-charts expects 'timestamp'
-    value: number; // wagmi-charts expects 'value'
-    label: string;
-    [key: string]: unknown;
-}
-
-interface MetricData {
-    value: string;
-    total: number;
-    data: GraphDataPoint[];
-}
-
-// Mock Data Generator (30 days daily data)
-const generateDailyData = (baseValue: number): GraphDataPoint[] => {
-    const data: GraphDataPoint[] = [];
-    const now = new Date();
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    for (let i = 29; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-
-        // Random walk
-        const variation = (Math.random() * 0.8) + 0.6;
-        data.push({
-            timestamp: date.getTime(),
-            value: Math.round(baseValue * variation),
-            label: dayNames[date.getDay()],
-        });
-    }
-    return data;
+type DailyPoint = {
+    date: string;
+    timestamp: number;
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    earnings: number;
 };
 
-
-const mockApplicationAnalytics = {
-    id: '1',
-    name: 'Application 1',
-    image: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400',
-    startDate: '15/11/2025',
-    status: 'Top 20% performer',
-    metrics: {
-        earnings: {
-            value: 'RM 250',
-            total: 250,
-            data: generateDailyData(12) // Avg ~8-15/day
-        },
-        views: {
-            value: '250K',
-            total: 250000,
-            data: generateDailyData(250000)
-        },
-        shares: {
-            value: '333',
-            total: 333,
-            data: generateDailyData(10)
-        },
-        likes: {
-            value: '45K',
-            total: 45000,
-            data: generateDailyData(1500)
-        },
-        comments: {
-            value: '340K',
-            total: 340000,
-            data: generateDailyData(11000)
-        },
-    } as Record<MetricType, MetricData>
-};
-
-const TERMS_MAPPING = {
+const TERMS_MAPPING: Record<MetricType, string> = {
     earnings: 'Earnings',
     views: 'Views',
     shares: 'Shares',
     likes: 'Likes',
-    comments: 'Comments'
+    comments: 'Comments',
 };
 
 const ICON_MAPPING = {
@@ -100,97 +40,145 @@ const ICON_MAPPING = {
     views: Eye,
     shares: Share,
     likes: Heart,
-    comments: MessageCircle
+    comments: MessageCircle,
 };
 
-const COLOR_MAPPING = {
+const COLOR_MAPPING: Record<MetricType, string> = {
     earnings: '#FFD700',
     views: '#2196F3',
     shares: '#F44336',
     likes: '#E91E63',
-    comments: '#4CAF50'
+    comments: '#4CAF50',
 };
 
 const GRAPH_HEIGHT = 120;
 const SCREEN_WIDTH = Dimensions.get('window').width;
-// Screen Padding (20 * 2) + Container Padding (16 * 2) = 72
 const GRAPH_WIDTH = SCREEN_WIDTH - 72;
 
+const formatNumber = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    return `${Math.round(value)}`;
+};
+
+const formatMetricValue = (metric: MetricType, value: number) =>
+    metric === 'earnings' ? `RM ${Math.round(value).toLocaleString()}` : formatNumber(value);
+
+const formatCreatedAt = (timestamp: number) =>
+    new Date(timestamp).toLocaleDateString('en-MY', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    });
+
 export default function ApplicationAnalyticsScreen() {
-    const { id } = useLocalSearchParams();
+    const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const colorScheme = useColorScheme() ?? 'light';
 
-    // State
     const [selectedMetric, setSelectedMetric] = useState<MetricType>('earnings');
 
-    const application = mockApplicationAnalytics;
-    const currentMetricData = application.metrics[selectedMetric];
-    const graphColor = '#FF4500'; // IOS System Purple-ish Blue matching reference
-    const graphData = currentMetricData.data;
+    const applicationId = (id as Id<'applications'>) || undefined;
 
-    // Formatting functions for wagmi-charts
-    const formatCurrency = (value: string) => {
-        'worklet';
-        return value; // It already comes as a formatted string in current setup, but PriceText usually expects numbers to format. 
-        // Actually PriceText formats raw numbers. Let's just return raw string if we can, or better let PriceText handle it.
-        // Wait, PriceText format callback receives { value, formatted }.
-        // We will customize via format prop.
+    const application = useQuery(
+        api.applications.getApplication,
+        applicationId ? { applicationId } : 'skip'
+    );
+    const dailyStats = useQuery(
+        api.analytics.getApplicationDailyStatsLast30Days,
+        applicationId ? { applicationId } : 'skip'
+    ) as DailyPoint[] | undefined;
+
+    const isLoading = application === undefined || dailyStats === undefined;
+
+    if (application === null) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <ThemedText>Application not found</ThemedText>
+                <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
+                    <ThemedText style={{ color: 'blue' }}>Go Back</ThemedText>
+                </Pressable>
+            </View>
+        );
+    }
+
+    const highLevelMetrics: Record<MetricType, number> = {
+        earnings: application?.earnings ?? 0,
+        views: application?.views ?? 0,
+        shares: application?.shares ?? 0,
+        likes: application?.likes ?? 0,
+        comments: application?.comments ?? 0,
     };
 
-    const formatDate = ({ value }: { value: number }) => {
-        'worklet';
-        const date = new Date(value);
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${dayNames[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
-    };
+    const graphData = useMemo(() => {
+        if (!dailyStats || dailyStats.length === 0) {
+            return [{ timestamp: Date.now(), value: 0 }];
+        }
+
+        return dailyStats.map((point) => ({
+            timestamp: point.timestamp,
+            value: point[selectedMetric],
+        }));
+    }, [dailyStats, selectedMetric]);
 
     const xLabels = useMemo(() => {
-        const count = 3; // Number of labels to generate
+        if (!graphData.length) return [];
+
+        const count = 3;
         const start = graphData[0].timestamp;
         const end = graphData[graphData.length - 1].timestamp;
         const step = (end - start) / (count - 1);
-        const labels = [];
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
         const formatLabel = (value: number) => {
-            const d = new Date(value);
-            return `${d.getDate()} ${months[d.getMonth()]}`;
+            const date = new Date(value);
+            return `${date.getDate()} ${months[date.getMonth()]}`;
         };
 
-        for (let i = 0; i < count - 1; i++) {
-            labels.push(formatLabel(start + step * i));
-        }
-
-        labels.push(formatLabel(end));
-        return labels;
+        return [
+            formatLabel(start),
+            formatLabel(start + step),
+            formatLabel(end),
+        ];
     }, [graphData]);
 
     const renderMetricCard = (type: MetricType) => {
         const isSelected = selectedMetric === type;
-        const metric = application.metrics[type];
         const Icon = ICON_MAPPING[type];
         const color = COLOR_MAPPING[type];
+        const value = formatMetricValue(type, highLevelMetrics[type]);
 
         return (
             <Pressable
                 style={[
                     styles.metricCard,
-                    isSelected && styles.selectedCard
+                    isSelected && styles.selectedCard,
                 ]}
                 onPress={() => setSelectedMetric(type)}
             >
-                <View style={[styles.iconContainer, { backgroundColor: isSelected ? color + '20' : '#F5F5F5' }]}>
+                <View style={[styles.iconContainer, { backgroundColor: isSelected ? `${color}20` : '#F5F5F5' }]}>
                     <Icon size={16} color={isSelected ? color : '#666'} />
                 </View>
                 <View>
                     <ThemedText style={styles.cardLabel}>{TERMS_MAPPING[type]}</ThemedText>
-                    <ThemedText style={styles.cardValue}>{metric.value}</ThemedText>
+                    <ThemedText style={styles.cardValue}>{value}</ThemedText>
                 </View>
             </Pressable>
         );
+    };
+
+    const handleOpenPostLink = async (url?: string) => {
+        if (!url) {
+            Alert.alert('Link not available', 'This post link is not available yet.');
+            return;
+        }
+
+        try {
+            await Linking.openURL(url);
+        } catch {
+            Alert.alert('Unable to open link', 'Please try again later.');
+        }
     };
 
     return (
@@ -198,168 +186,160 @@ export default function ApplicationAnalyticsScreen() {
             <View style={[styles.container, { paddingTop: insets.top }]}>
                 <Stack.Screen options={{ headerShown: false }} />
 
-                {/* Header */}
                 <View style={styles.header}>
                     <Pressable onPress={() => router.back()} style={styles.backButton}>
                         <ArrowLeft size={20} color="#000" />
                     </Pressable>
                     <View style={styles.headerRight}>
-                        <FlowerIcon />
+                        <Pressable
+                            style={[
+                                styles.urlIconButton,
+                                !application?.ig_post_url && styles.urlIconButtonDisabled,
+                            ]}
+                            onPress={() => handleOpenPostLink(application?.ig_post_url)}
+                        >
+                            <FontAwesome5 name="instagram" size={20} color="#000" style={styles.inputIcon} />
+                        </Pressable>
+                        <Pressable
+                            style={[
+                                styles.urlIconButton,
+                                !application?.tiktok_post_url && styles.urlIconButtonDisabled,
+                            ]}
+                            onPress={() => handleOpenPostLink(application?.tiktok_post_url)}
+                        >
+                            <FontAwesome5 name="tiktok" size={20} color="#000" style={styles.inputIcon} />
+                        </Pressable>
                     </View>
                 </View>
 
-                <ScrollView
-                    contentContainerStyle={styles.contentContainer}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {/* Application Info */}
-                    <View style={styles.appInfoContainer}>
-                        {application.image ? (
-                            <Image source={{ uri: application.image }} style={styles.appThumbnail} />
-                        ) : (
-                            <View style={styles.appThumbnailPlaceholder}>
-                                <ThemedText style={styles.placeholderText}>📹</ThemedText>
-                            </View>
-                        )}
-                        <View style={styles.appDetails}>
-                            <ThemedText type="defaultSemiBold" style={styles.appName}>
-                                {application.name}
-                            </ThemedText>
-                            <View style={styles.dateRow}>
-                                <Calendar size={14} color="#6B7280" />
-                                <ThemedText style={styles.appDate}>{application.startDate}</ThemedText>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Graph Section */}
-                    <View style={styles.graphContainer}>
-                        <LineChart.Provider data={graphData}>
-                            <View style={{ marginBottom: 20 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                    {(() => {
-                                        const Icon = ICON_MAPPING[selectedMetric];
-                                        return <Icon size={16} color="#666" />;
-                                    })()}
-                                    <ThemedText style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_500Medium' }}>
-                                        {TERMS_MAPPING[selectedMetric]}
+                <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+                    {isLoading ? (
+                        <>
+                            <View style={styles.skeletonHeader} />
+                            <View style={styles.skeletonGraph} />
+                            <View style={styles.skeletonRow} />
+                            <View style={styles.skeletonRow} />
+                        </>
+                    ) : (
+                        <>
+                            <View style={styles.appInfoContainer}>
+                                <Image source={require('@/assets/images/bg-onboard.webp')} style={styles.appThumbnail} />
+                                <View style={styles.appDetails}>
+                                    <ThemedText type="defaultSemiBold" style={styles.appName}>
+                                        Application
                                     </ThemedText>
+                                    <View style={styles.dateRow}>
+                                        <Calendar size={14} color="#6B7280" />
+                                        <ThemedText style={styles.appDate}>
+                                            {application ? formatCreatedAt(application.created_at) : '-'}
+                                        </ThemedText>
+                                    </View>
                                 </View>
-                                <InteractiveGraphValue
-                                    key={selectedMetric}
-                                    totalValue={currentMetricData.value}
-                                    showCurrency={selectedMetric === 'earnings'}
-                                />
-                                <InteractiveGraphDate defaultText="Last 30 Days" />
                             </View>
 
-                            <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>
-                                <LineChart.Path color={graphColor} width={1} >
-                                    <LineChart.Gradient color={graphColor} />
-                                </LineChart.Path>
-                                {/* <LineChart.Axis position="bottom" ... /> */}
-                                <LineChart.CursorCrosshair snapToPoint={true} />
-                                {/* <LineChart.CursorLine /> */}
-                                <LineChart.HoverTrap />
-
-                            </LineChart>
-
-                            {/* X-Axis Labels */}
-                            <View style={{
-                                width: '100%',
-                                borderTopColor: '#E0E0E0',
-                                borderTopWidth: 1,
-                                // marginTop: 12,
-                                marginBottom: 12,
-
-                            }}>
-                                <View style={{
-                                    display: 'flex',
-                                    flexDirection: 'row',
-                                    justifyContent: 'space-between',
-                                }}>
-                                    {xLabels.map((label, index) => (
-                                        <View key={index} style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: index === 0 ? 'flex-start' : (index === xLabels.length - 1) ? 'flex-end' : 'center',
-                                        }}>
-                                            <View style={{
-                                                width: 1,
-                                                height: 4,
-                                                borderLeftColor: '#E0E0E0',
-                                                borderLeftWidth: 1,
-                                                marginBottom: 4,
-                                            }}></View>
-                                            <ThemedText style={{ fontSize: 10, color: '#999', fontFamily: 'GoogleSans_400Regular' }}>{label}</ThemedText>
+                            <View style={styles.graphContainer}>
+                                <LineChart.Provider data={graphData}>
+                                    <View style={{ marginBottom: 20 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                            {(() => {
+                                                const Icon = ICON_MAPPING[selectedMetric];
+                                                return <Icon size={16} color="#666" />;
+                                            })()}
+                                            <ThemedText style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_500Medium' }}>
+                                                {TERMS_MAPPING[selectedMetric]}
+                                            </ThemedText>
                                         </View>
-                                    ))}
-                                </View>
+                                        <InteractiveGraphValue
+                                            key={selectedMetric}
+                                            totalValue={formatMetricValue(selectedMetric, highLevelMetrics[selectedMetric])}
+                                            showCurrency={selectedMetric === 'earnings'}
+                                        />
+                                        <InteractiveGraphDate defaultText="Last 30 Days" />
+                                    </View>
+
+                                    <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>
+                                        <LineChart.Path color="#FF4500" width={1}>
+                                            <LineChart.Gradient color="#FF4500" />
+                                        </LineChart.Path>
+                                        <LineChart.CursorCrosshair snapToPoint={true} />
+                                        <LineChart.HoverTrap />
+                                    </LineChart>
+
+                                    <View style={styles.xAxisContainer}>
+                                        <View style={styles.xAxisLabels}>
+                                            {xLabels.map((label, index) => (
+                                                <View
+                                                    key={`${label}-${index}`}
+                                                    style={[
+                                                        styles.xAxisLabelItem,
+                                                        index === 0
+                                                            ? { alignItems: 'flex-start' }
+                                                            : index === xLabels.length - 1
+                                                                ? { alignItems: 'flex-end' }
+                                                                : { alignItems: 'center' },
+                                                    ]}
+                                                >
+                                                    <View style={styles.xAxisTick} />
+                                                    <ThemedText style={styles.xAxisText}>{label}</ThemedText>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                </LineChart.Provider>
                             </View>
 
-
-                        </LineChart.Provider>
-                    </View>
-
-                    {/* Metrics Grid */}
-                    <View style={styles.metricsGrid}>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('earnings')}
-                        </View>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('views')}
-                            {renderMetricCard('shares')}
-                        </View>
-                        <View style={styles.gridRow}>
-                            {renderMetricCard('likes')}
-                            {renderMetricCard('comments')}
-                        </View>
-                    </View>
-
+                            <View style={styles.metricsGrid}>
+                                <View style={styles.gridRow}>
+                                    {renderMetricCard('earnings')}
+                                </View>
+                                <View style={styles.gridRow}>
+                                    {renderMetricCard('views')}
+                                    {renderMetricCard('shares')}
+                                </View>
+                                <View style={styles.gridRow}>
+                                    {renderMetricCard('likes')}
+                                    {renderMetricCard('comments')}
+                                </View>
+                            </View>
+                        </>
+                    )}
                 </ScrollView>
-            </View >
-        </GestureHandlerRootView >
+            </View>
+        </GestureHandlerRootView>
     );
 }
 
-// Sticky Components
-
-// Interactive Components
-function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValue: string, showCurrency?: boolean }) {
+function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValue: string; showCurrency?: boolean }) {
     const { currentIndex, isActive, data } = useLineChart();
-    const svTotal = useSharedValue(totalValue);
+    const fallback = useSharedValue(totalValue);
 
     React.useEffect(() => {
-        svTotal.value = totalValue;
-    }, [totalValue]);
+        fallback.value = totalValue;
+    }, [fallback, totalValue]);
 
     const animatedProps = useAnimatedProps(() => {
         if (!isActive.value || currentIndex.value === -1) {
-            return {
-                text: svTotal.value
-            };
+            return { text: fallback.value };
         }
-        // Check if data is available
+
         if (!data || data.length === 0 || currentIndex.value >= data.length) {
-            return { text: svTotal.value };
+            return { text: fallback.value };
         }
 
         const item = data[currentIndex.value];
-        // Safely access value
-        if (item && item.value != null) {
-            const val = Math.round(Number(item.value));
-            return {
-                text: showCurrency ? `RM ${val}` : `${val}`
-            };
+        if (!item || item.value == null) {
+            return { text: fallback.value };
         }
-        return { text: svTotal.value };
+
+        const value = Math.round(Number(item.value));
+        return { text: showCurrency ? `RM ${value}` : `${value}` };
     });
 
     return (
         <AnimatedTextInput
             editable={false}
             underlineColorAndroid="transparent"
-            style={{ fontSize: 32, fontFamily: 'GoogleSans_700Bold', color: '#000' }}
+            style={styles.graphValue}
             // @ts-ignore
             animatedProps={animatedProps}
             defaultValue={totalValue}
@@ -372,25 +352,23 @@ function InteractiveGraphDate({ defaultText }: { defaultText: string }) {
 
     const animatedProps = useAnimatedProps(() => {
         if (!isActive.value || currentIndex.value === -1) {
-            return {
-                text: defaultText
-            };
+            return { text: defaultText };
         }
-        // Check if data is available
+
         if (!data || data.length === 0 || currentIndex.value >= data.length) {
             return { text: defaultText };
         }
 
         const item = data[currentIndex.value];
-        if (!item) return { text: defaultText };
+        if (!item) {
+            return { text: defaultText };
+        }
 
         const date = new Date(item.timestamp);
         const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const dateStr = `${dayNames[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
-
         return {
-            text: dateStr
+            text: `${dayNames[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`,
         };
     });
 
@@ -398,70 +376,13 @@ function InteractiveGraphDate({ defaultText }: { defaultText: string }) {
         <AnimatedTextInput
             editable={false}
             underlineColorAndroid="transparent"
-            style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_400Regular', marginTop: 4 }}
+            style={styles.graphDate}
             // @ts-ignore
             animatedProps={animatedProps}
             defaultValue={defaultText}
         />
     );
 }
-
-// Simple Flower Icon Component for Header
-function FlowerIcon() {
-    return (
-        <View style={localStyles.flowerIcon}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#000', position: 'absolute' }} />
-            {[0, 45, 90, 135].map((deg) => (
-                <View key={deg} style={{
-                    width: 20, height: 6, borderRadius: 3, borderWidth: 1, borderColor: '#000',
-                    position: 'absolute', transform: [{ rotate: `${deg}deg` }]
-                }} />
-            ))}
-        </View>
-    );
-}
-
-const localStyles = StyleSheet.create({
-    graphTitleContainer: {
-        height: 20, // fixed height to prevent jumps
-        justifyContent: 'center',
-    },
-    graphTitle: {
-        fontSize: 14,
-        color: '#666',
-        fontFamily: 'GoogleSans_500Medium',
-    },
-    scrubValueContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        height: 24, // fixed height
-    },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    scrubValue: {
-        fontSize: 16,
-        fontFamily: 'GoogleSans_700Bold',
-        color: '#000',
-    },
-    stickyCursorWrapper: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: 20,
-        height: 20,
-        // center via transform
-    },
-    flowerIcon: {
-        width: 24,
-        height: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-});
 
 const styles = StyleSheet.create({
     container: {
@@ -485,10 +406,24 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     headerRight: {
-        width: 40,
-        height: 40,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    urlIconButton: {
+        backgroundColor: '#F9F9F9',
+        borderRadius: 12,
+        width: 44,
+        height: 44,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    urlIconButtonDisabled: {
+        opacity: 0.5,
+    },
+    inputIcon: {
+        width: 24,
+        textAlign: 'center',
     },
     contentContainer: {
         paddingHorizontal: 20,
@@ -505,17 +440,6 @@ const styles = StyleSheet.create({
         height: 60,
         borderRadius: 8,
         resizeMode: 'cover',
-    },
-    appThumbnailPlaceholder: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
-        backgroundColor: '#F3F4F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    placeholderText: {
-        fontSize: 28,
     },
     appDetails: {
         flex: 1,
@@ -536,17 +460,48 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontFamily: 'GoogleSans_400Regular',
     },
-    statusBadge: {
-        backgroundColor: '#FFD700', // Gold/Yellow matches screenshot
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 16,
-        alignSelf: 'flex-start',
+    graphContainer: {
+        backgroundColor: '#F5F5F5',
+        marginBottom: 18,
+        borderRadius: 12,
+        padding: 16,
+        paddingBottom: 0,
     },
-    statusText: {
-        fontSize: 12,
-        fontFamily: 'GoogleSans_500Medium',
+    graphValue: {
+        fontSize: 32,
+        fontFamily: 'GoogleSans_700Bold',
         color: '#000',
+    },
+    graphDate: {
+        fontSize: 14,
+        color: '#666',
+        fontFamily: 'GoogleSans_400Regular',
+        marginTop: 4,
+    },
+    xAxisContainer: {
+        width: '100%',
+        borderTopColor: '#E0E0E0',
+        borderTopWidth: 1,
+        marginBottom: 12,
+    },
+    xAxisLabels: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    xAxisLabelItem: {
+        flexDirection: 'column',
+    },
+    xAxisTick: {
+        width: 1,
+        height: 4,
+        borderLeftColor: '#E0E0E0',
+        borderLeftWidth: 1,
+        marginBottom: 4,
+    },
+    xAxisText: {
+        fontSize: 10,
+        color: '#999',
+        fontFamily: 'GoogleSans_400Regular',
     },
     metricsGrid: {
         gap: 8,
@@ -563,7 +518,7 @@ const styles = StyleSheet.create({
         padding: 12,
         borderWidth: 1,
         borderColor: '#E0E0E0',
-        minHeight: 80, // Reduced from 120
+        minHeight: 80,
         justifyContent: 'space-between',
     },
     selectedCard: {
@@ -579,30 +534,35 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     cardLabel: {
-        fontSize: 12, // Reduced from 14
+        fontSize: 12,
         color: '#666',
         fontFamily: 'GoogleSans_400Regular',
         marginBottom: 2,
     },
     cardValue: {
-        fontSize: 18, // Reduced from 24
+        fontSize: 18,
         fontFamily: 'GoogleSans_700Bold',
         color: '#000',
     },
-    graphContainer: {
-        // height: GRAPH_HEIGHT + 60, // wagmi specific height management
-        backgroundColor: '#F5F5F5',
-        marginBottom: 18,
-        borderRadius: 12,
-        padding: 16,
-        paddingBottom: 0, // Curve touches bottom often in designs
-    },
-    graphHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    skeletonHeader: {
+        width: '100%',
+        height: 60,
+        borderRadius: 10,
+        backgroundColor: '#F3F4F6',
         marginBottom: 16,
-        height: 24,
-        paddingHorizontal: 0,
+    },
+    skeletonGraph: {
+        width: '100%',
+        height: 240,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        marginBottom: 16,
+    },
+    skeletonRow: {
+        width: '100%',
+        height: 88,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        marginBottom: 8,
     },
 });

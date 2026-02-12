@@ -75,7 +75,7 @@ export default function BankAccountScreen() {
             return {
                 id: account._id,
                 bankName: account.bank_name,
-                accountHolder: user.name ?? 'User',
+                accountHolder: account.account_holder_name ?? user.name ?? 'User',
                 accountNumber: account.account_number,
                 logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493', // Placeholder from mock
                 status: status,
@@ -91,16 +91,8 @@ export default function BankAccountScreen() {
 
         const handlePress = () => {
             router.push({
-                pathname: `/bank-account/${item.id}`,
-                params: {
-                    status: item.status,
-                    bankName: item.bankName,
-                    accountNumber: item.accountNumber,
-                    accountHolder: item.accountHolder,
-                    // Mock additional data that the details page expects
-                    rejectionReason: item.status === 'rejected' ? 'The uploaded proof is blurry and hard to read. Please re-upload a clearer image.' : undefined,
-                    proofUri: item.logo, // Using logo as a placeholder for proof
-                }
+                pathname: '/bank-account/[id]',
+                params: { id: item.id },
             });
         };
 

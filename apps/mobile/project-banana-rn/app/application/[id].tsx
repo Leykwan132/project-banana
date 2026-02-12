@@ -1,10 +1,11 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronDown, Check, Copy } from 'lucide-react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { TextInput, ActivityIndicator, Alert } from 'react-native';
+import { TextInput, Alert } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -89,7 +90,13 @@ export default function ApplicationDetailScreen() {
         api.applications.getTopApplicationsByCampaign,
         resolvedCampaignId ? { campaignId: resolvedCampaignId } : "skip"
     );
+    const userCampaignStatus = useQuery(
+        api.userCampaignStatus.getUserCampaignStatus,
+        resolvedCampaignId ? { campaignId: resolvedCampaignId } : "skip"
+    );
     const createSubmission = useMutation(api.submissions.createSubmission);
+    const updateApplicationStatus = useMutation(api.applications.updateApplicationStatus);
+    const createUserCampaignStatus = useMutation(api.userCampaignStatus.createUserCampaignStatus);
     const generateVideoUploadUrl = useAction(api.submissions.generateVideoUploadUrl);
 
     const scriptsSheetRef = useRef<ActionSheetRef>(null);
@@ -99,6 +106,7 @@ export default function ApplicationDetailScreen() {
     const [instagramLink, setInstagramLink] = useState('');
     const [tiktokLink, setTikTokLink] = useState('');
     const [error, setError] = useState('');
+    const [showCopySuccess, setShowCopySuccess] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isReviewed, setIsReviewed] = useState(false);
@@ -111,7 +119,7 @@ export default function ApplicationDetailScreen() {
     const isLoading =
         application === undefined ||
         submissions === undefined ||
-        (resolvedCampaignId ? campaign === undefined || topApplications === undefined : false);
+        (resolvedCampaignId ? campaign === undefined || topApplications === undefined || userCampaignStatus === undefined : false);
 
 
     // Video player for preview - autoplay
@@ -191,19 +199,75 @@ export default function ApplicationDetailScreen() {
         }
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         setError('');
         if (!instagramLink || !tiktokLink) {
             setError('Please provide both Instagram and TikTok post URLs.');
             return;
         }
 
+        const isValidUrl = (string: string) => {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        };
+
+        if (!isValidUrl(instagramLink)) {
+            setError('Please enter a valid URL for Instagram.');
+            return;
+        }
+
+        if (!instagramLink.toLowerCase().includes('instagram.com')) {
+            setError('The Instagram link must be from instagram.com.');
+            return;
+        }
+
+        if (!isValidUrl(tiktokLink)) {
+            setError('Please enter a valid URL for TikTok.');
+            return;
+        }
+
+        if (!tiktokLink.toLowerCase().includes('tiktok.com')) {
+            setError('The TikTok link must be from tiktok.com.');
+            return;
+        }
+
+        if (!resolvedCampaignId || !campaign) {
+            setError('Campaign details are not available. Please try again.');
+            return;
+        }
+
         setIsSubmitting(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const createStatusPromise = createUserCampaignStatus({
+                campaignId: resolvedCampaignId,
+                maximumPayout: campaign.maximum_payout,
+            }).catch((e: any) => {
+                const message = String(e?.message ?? e);
+                if (message.toLowerCase().includes('already exists')) return null;
+                throw e;
+            });
+
+            await Promise.all([
+                updateApplicationStatus({
+                    applicationId,
+                    status: "earning",
+                    ig_post_url: instagramLink.trim(),
+                    tiktok_post_url: tiktokLink.trim(),
+                }),
+                createStatusPromise,
+            ]);
+
             setIsSubmitting(false);
             setShowSuccess(true);
-        }, 1500);
+        } catch (submitError) {
+            console.error('Error updating application submission links:', submitError);
+            setIsSubmitting(false);
+            setError('Failed to submit links. Please try again.');
+        }
     };
 
     const onRefresh = useCallback(() => {
@@ -365,11 +429,34 @@ export default function ApplicationDetailScreen() {
                 {applicationStatus === 'Posted' && (
                     <FlippableEarningsCard
                         style={{ marginBottom: 24 }}
-                        topEarnerPercent={5}
                         frontContent={
-                            <>
-                                Your post has made <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>Rm 0</ThemedText>
-                            </>
+                            (userCampaignStatus?.total_earnings ?? 0) > 0 ? (
+                                <ThemedText style={{ fontSize: 22, color: '#FFFFFF' }}>
+                                    Your post is earning{" "}
+                                    <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>
+                                        {formatCurrency(userCampaignStatus?.total_earnings ?? 0)}
+                                    </ThemedText>
+                                </ThemedText>
+                            ) : (
+                                <ThemedText style={{ fontSize: 22, color: '#FFFFFF' }}>
+                                    Your post is <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>earning</ThemedText> now!
+                                </ThemedText>
+                            )
+                        }
+                        backContent={
+                            userCampaignStatus?.status === "maxed_out" ? (
+                                <ThemedText style={{ color: '#FFFFFF', fontSize: 20 }}>
+                                    You have <ThemedText style={{ color: '#FFD700', fontSize: 20 }}>maxed out</ThemedText> this campaign payout.
+                                </ThemedText>
+                            ) : (userCampaignStatus?.total_earnings ?? 0) === 0 ? (
+                                <ThemedText style={{ color: '#FFFFFF', fontSize: 20 }}>
+                                    Stay consistent, your first payout is on the way.
+                                </ThemedText>
+                            ) : (
+                                <>
+                                    You are the top <ThemedText style={{ color: '#FFD700', fontSize: 22 }}>5%</ThemedText> earners!
+                                </>
+                            )
                         }
                     />
                 )}
@@ -650,7 +737,20 @@ export default function ApplicationDetailScreen() {
                 {/* Submission Sheet */}
                 <ActionSheet gestureEnabled ref={submissionSheetRef}>
                     <View style={styles.sheetContent}>
-                        {!showSuccess ? (
+                        {isSubmitting ? (
+                            <Animated.View entering={SlideInRight} style={styles.successContent}>
+                                <LottieView
+                                    source={require('../../assets/lotties/uploading.json')}
+                                    autoPlay
+                                    loop
+                                    style={{
+                                        width: 140, height: 140, marginBottom: 16, transform: [{ scale: 2.5 }],
+                                    }}
+                                />
+                                <ThemedText style={styles.successTitle}>Submitting...</ThemedText>
+                                <ThemedText style={styles.successSubtitle}>Please wait while we process your post links</ThemedText>
+                            </Animated.View>
+                        ) : !showSuccess ? (
                             <Animated.View exiting={SlideOutLeft}>
                                 <View style={styles.sheetHeader}>
                                     <ThemedText style={styles.sheetTitle}>Congratulations!</ThemedText>
@@ -662,9 +762,22 @@ export default function ApplicationDetailScreen() {
                                     <ThemedText type="defaultSemiBold" style={styles.inputLabel}>1. Tracking tag</ThemedText>
                                     <ThemedText style={styles.inputDescription}>Paste this tracking tag to your post description for ownership.</ThemedText>
                                     <View style={styles.tagContainer}>
-                                        <ThemedText style={styles.tagText}>#youniq2222</ThemedText>
-                                        <Pressable hitSlop={10} onPress={() => console.log('Copied')}>
-                                            <Copy size={20} color="#000" />
+                                        <ThemedText style={styles.tagText}>#{application?.tracking_tag}</ThemedText>
+                                        <Pressable style={styles.copyAction} hitSlop={10} onPress={async () => {
+                                            if (application?.tracking_tag) {
+                                                await Clipboard.setStringAsync(`#${application.tracking_tag}`);
+                                                setShowCopySuccess(true);
+                                                setTimeout(() => setShowCopySuccess(false), 1200);
+                                            }
+                                        }}>
+                                            {showCopySuccess ? (
+                                                <>
+                                                    <Check size={16} color="#1E8E3E" />
+                                                    <ThemedText style={styles.copyButtonText}>Copied</ThemedText>
+                                                </>
+                                            ) : (
+                                                <Copy size={18} color="#000" />
+                                            )}
                                         </Pressable>
                                     </View>
                                 </View>
@@ -714,13 +827,8 @@ export default function ApplicationDetailScreen() {
                                 <Pressable
                                     style={[styles.actionButton, { marginTop: 8 }]}
                                     onPress={handleSubmit}
-                                    disabled={isSubmitting}
                                 >
-                                    {isSubmitting ? (
-                                        <ActivityIndicator color="#FFF" />
-                                    ) : (
-                                        <ThemedText style={styles.actionButtonText}>Submit</ThemedText>
-                                    )}
+                                    <ThemedText style={styles.actionButtonText}>Submit</ThemedText>
                                 </Pressable>
                             </Animated.View>
                         ) : (
@@ -1201,6 +1309,16 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'GoogleSans_400Regular',
         color: '#000',
+    },
+    copyAction: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    copyButtonText: {
+        fontSize: 12,
+        color: '#1E8E3E',
+        fontFamily: 'GoogleSans_500Medium',
     },
     urlInputContainer: {
         backgroundColor: '#F9F9F9',

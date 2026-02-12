@@ -5,13 +5,49 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import LottieView from 'lottie-react-native';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+} from 'react-native-reanimated';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+const BankAccountSkeleton = () => {
+    const opacity = useSharedValue(0.35);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(0.75, { duration: 800 }),
+                withTiming(0.35, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View style={[styles.bankSkeletonCard, animatedStyle]}>
+            <View style={styles.bankSkeletonLogo} />
+            <View style={styles.bankSkeletonInfo}>
+                <View style={styles.bankSkeletonTitle} />
+                <View style={styles.bankSkeletonMeta} />
+            </View>
+        </Animated.View>
+    );
+};
 
 export default function WithdrawScreen() {
     const router = useRouter();
@@ -20,17 +56,20 @@ export default function WithdrawScreen() {
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
     const actionSheetRef = useRef<ActionSheetRef>(null);
-    const [confirmStep, setConfirmStep] = useState<'review' | 'success'>('review');
+    const [confirmStep, setConfirmStep] = useState<'review' | 'success' | 'failed'>('review');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [withdrawErrorMessage, setWithdrawErrorMessage] = useState('Something went wrong while creating your withdrawal request.');
+    const requestWithdrawal = useMutation(api.payouts.requestWithdrawal);
 
     const balanceData = useQuery(api.users.getUserBalance);
     const bankAccountsData = useQuery(api.bankAccounts.getActiveBankAccounts);
+    const isBankAccountsLoading = bankAccountsData === undefined;
 
     const bankAccounts = bankAccountsData?.map(account => ({
         id: account._id,
         bankName: account.bank_name,
-        accountHolder: 'User', // TODO: Get actual user name
+        accountHolder: account.account_holder_name ?? 'User',
         accountNumber: account.account_number,
         logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493' // Placeholder
     })) || [];
@@ -49,13 +88,39 @@ export default function WithdrawScreen() {
         setError('');
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
+        const selectedBank = bankAccounts.find((bank) => bank.id === selectedBankId);
+        const parsedAmount = parseFloat(amount);
+
+        if (!selectedBank) {
+            Alert.alert('No bank account selected', 'Please select a bank account to continue.');
+            return;
+        }
+
+        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            setError('Amount is required');
+            return;
+        }
+
+        if (parsedAmount > currentBalance) {
+            setError('Not enough balance');
+            return;
+        }
+
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            await requestWithdrawal({
+                amount: parsedAmount,
+                bankAccount: selectedBank.accountNumber,
+                bankName: selectedBank.bankName,
+            });
             setIsLoading(false);
             setConfirmStep('success');
-        }, 2000);
+        } catch (mutationError: any) {
+            setIsLoading(false);
+            setWithdrawErrorMessage(mutationError?.message ?? 'Please try again.');
+            setConfirmStep('failed');
+        }
     };
 
     return (
@@ -114,7 +179,13 @@ export default function WithdrawScreen() {
                         </Pressable>
                     </View>
 
-                    {bankAccounts.length === 0 ? (
+                    {isBankAccountsLoading ? (
+                        <View style={styles.bankSkeletonList}>
+                            {[...Array(3)].map((_, index) => (
+                                <BankAccountSkeleton key={index} />
+                            ))}
+                        </View>
+                    ) : bankAccounts.length === 0 ? (
                         <View style={styles.emptyStateContainer}>
                             <LottieView
                                 source={require('@/assets/lotties/not-found.json')}
@@ -161,8 +232,18 @@ export default function WithdrawScreen() {
                 <Pressable
                     style={styles.confirmButton}
                     onPress={() => {
-                        if (!amount || parseFloat(amount) <= 0) {
+                        const parsedAmount = parseFloat(amount);
+
+                        if (!amount || parsedAmount <= 0) {
                             setError('Amount is required');
+                            return;
+                        }
+                        if (parsedAmount > currentBalance) {
+                            setError('Not enough balance');
+                            return;
+                        }
+                        if (!selectedBankId) {
+                            Alert.alert('No bank account selected', 'Please add or select a bank account first.');
                             return;
                         }
                         setConfirmStep('review');
@@ -214,7 +295,7 @@ export default function WithdrawScreen() {
                                 )}
                             </Pressable>
                         </View>
-                    ) : (
+                    ) : confirmStep === 'success' ? (
                         <View style={styles.successContainer}>
                             <LottieView
                                 source={require('../../assets/lotties/pending.json')}
@@ -233,6 +314,31 @@ export default function WithdrawScreen() {
                                 }}
                             >
                                 <ThemedText style={styles.confirmButtonText}>Done</ThemedText>
+                            </Pressable>
+                        </View>
+                    ) : (
+                        <View style={styles.successContainer}>
+                            <LottieView
+                                source={require('../../assets/lotties/failed.json')}
+                                autoPlay
+                                loop={false}
+                                style={{ width: 150, height: 150 }}
+                            />
+                            <ThemedText type="subtitle" style={styles.successTitle}>Withdrawal Failed</ThemedText>
+                            <ThemedText style={styles.successSubtitle}>{withdrawErrorMessage}</ThemedText>
+
+                            <Pressable
+                                style={[styles.confirmButton, { marginTop: 32, width: '100%' }]}
+                                onPress={() => setConfirmStep('review')}
+                            >
+                                <ThemedText style={styles.confirmButtonText}>Try Again</ThemedText>
+                            </Pressable>
+
+                            <Pressable
+                                style={[styles.confirmButtonSecondary, { width: '100%', marginTop: 12 }]}
+                                onPress={() => actionSheetRef.current?.hide()}
+                            >
+                                <ThemedText style={styles.confirmButtonSecondaryText}>Dismiss</ThemedText>
                             </Pressable>
                         </View>
                     )}
@@ -349,6 +455,41 @@ const styles = StyleSheet.create({
         borderColor: '#E0E0E0',
         backgroundColor: '#fff',
     },
+    bankSkeletonList: {
+        gap: 12,
+    },
+    bankSkeletonCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        backgroundColor: '#F6F6F6',
+    },
+    bankSkeletonLogo: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#E5E7EB',
+        marginRight: 16,
+    },
+    bankSkeletonInfo: {
+        flex: 1,
+        gap: 8,
+    },
+    bankSkeletonTitle: {
+        width: '45%',
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: '#E5E7EB',
+    },
+    bankSkeletonMeta: {
+        width: '70%',
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#E5E7EB',
+    },
     selectedBankCard: {
         borderColor: '#000', // Active state
         backgroundColor: '#fff',
@@ -401,6 +542,20 @@ const styles = StyleSheet.create({
     },
     confirmButtonText: {
         color: '#fff',
+        fontSize: 16,
+        fontFamily: 'GoogleSans_700Bold',
+    },
+    confirmButtonSecondary: {
+        backgroundColor: '#fff',
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    confirmButtonSecondaryText: {
+        color: '#111827',
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
     },

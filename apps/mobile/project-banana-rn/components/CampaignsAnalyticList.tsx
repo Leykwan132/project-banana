@@ -65,9 +65,9 @@ export function CampaignsAnalyticList({ sortBy = 'shares' }: CampaignsAnalyticLi
         return statuses.map((status) => ({
             id: status._id,
             campaignId: status.campaign_id,
-            name: 'Campaign Name', // TODO: Join with campaigns table
-            companyName: 'Company', // TODO: Join with businesses table via campaigns
-            logoUrl: undefined, // TODO: Get from campaigns table
+            name: status.campaign_name,
+            companyName: status.company_name,
+            logoUrl: status.campaign_image_url,
             views: formatNumber(status.views || 0),
             likes: formatNumber(status.likes || 0),
             comments: formatNumber(status.comments || 0),

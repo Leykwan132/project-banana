@@ -10,10 +10,10 @@ import {
   useFonts,
 } from '@expo-google-fonts/google-sans';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Redirect, Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';;
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -22,6 +22,8 @@ import {
 } from "convex/react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "@/lib/auth-client"
+import Toast from 'react-native-toast-message';
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL as string, {
@@ -31,7 +33,9 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL as strin
 });
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+  const router = useRouter();
+  const segments = useSegments();
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
   const [loaded] = useFonts({
     GoogleSans_400Regular,
     GoogleSans_400Regular_Italic,
@@ -49,6 +53,21 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  useEffect(() => {
+    if (!loaded || isSessionPending) return;
+
+    const isOnOnboarding = segments[0] === "onboarding";
+
+    if (!session && !isOnOnboarding) {
+      router.replace("/onboarding");
+      return;
+    }
+
+    if (session && isOnOnboarding) {
+      router.replace("/(tabs)");
+    }
+  }, [loaded, isSessionPending, segments, session, router]);
+
   if (!loaded) {
     return null;
   }
@@ -65,6 +84,7 @@ export default function RootLayout() {
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
+        <Toast />
       </GestureHandlerRootView>
     </ConvexBetterAuthProvider>
 

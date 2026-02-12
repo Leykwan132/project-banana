@@ -35,29 +35,6 @@ interface Transaction {
 }
 
 
-const PayoutCardSkeleton = () => {
-    const opacity = useSharedValue(0.3);
-
-    useEffect(() => {
-        opacity.value = withRepeat(
-            withSequence(
-                withTiming(0.7, { duration: 800 }),
-                withTiming(0.3, { duration: 800 })
-            ),
-            -1,
-            true
-        );
-    }, []);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        opacity: opacity.value,
-    }));
-
-    return (
-        <Animated.View style={[styles.skeletonCard, animatedStyle]} />
-    );
-};
-
 const TransactionItemSkeleton = () => {
     const opacity = useSharedValue(0.3);
 
@@ -277,14 +254,11 @@ export default function PayoutsScreen() {
                 }
             >
                 <View style={styles.section}>
-                    {isBalanceLoading ? (
-                        <PayoutCardSkeleton />
-                    ) : (
-                        <PayoutCard
-                            amount={`RM ${balance.toFixed(2)}`}
-                            onWithdraw={() => router.push('/withdraw')}
-                        />
-                    )}
+                    <PayoutCard
+                        amount={`RM ${balance.toFixed(2)}`}
+                        onWithdraw={() => router.push('/withdraw')}
+                        isAmountLoading={isBalanceLoading}
+                    />
                 </View>
 
                 {/* Segmented Control */}
@@ -350,11 +324,6 @@ const styles = StyleSheet.create({
     },
     bannerContainer: {
         // Banner generic container
-    },
-    skeletonCard: {
-        backgroundColor: '#F3F4F6',
-        borderRadius: 8,
-        minHeight: 240,
     },
     skeletonItem: {
         backgroundColor: '#F3F4F6',

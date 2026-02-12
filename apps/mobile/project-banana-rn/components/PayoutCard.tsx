@@ -6,9 +6,16 @@ import { ThemedText } from '@/components/themed-text';
 interface PayoutCardProps {
     amount: string;
     onWithdraw?: () => void;
+    isAmountLoading?: boolean;
 }
 
-export function PayoutCard({ amount, onWithdraw, showButton = true, onPress }: { amount: string, onWithdraw?: () => void, showButton?: boolean, onPress?: () => void }) {
+export function PayoutCard({
+    amount,
+    onWithdraw,
+    showButton = true,
+    onPress,
+    isAmountLoading = false,
+}: { amount: string, onWithdraw?: () => void, showButton?: boolean, onPress?: () => void, isAmountLoading?: boolean }) {
     return (
         <Pressable
             style={styles.container}
@@ -23,7 +30,11 @@ export function PayoutCard({ amount, onWithdraw, showButton = true, onPress }: {
                 <ThemedText style={styles.label}>Available Payouts</ThemedText>
 
                 <View style={styles.row}>
-                    <ThemedText style={styles.amount}>{amount}</ThemedText>
+                    {isAmountLoading ? (
+                        <View style={styles.amountSkeleton} />
+                    ) : (
+                        <ThemedText style={styles.amount}>{amount}</ThemedText>
+                    )}
 
                     {showButton ? (
                         <Pressable style={styles.withdrawButton} onPress={onWithdraw}>
@@ -76,6 +87,12 @@ const styles = StyleSheet.create({
         fontSize: 34,
         lineHeight: 42, // Ensure adequate line height to prevent clipping
         fontFamily: 'GoogleSans_700Bold',
+    },
+    amountSkeleton: {
+        width: 140,
+        height: 36,
+        borderRadius: 8,
+        backgroundColor: '#4A4A4A',
     },
     withdrawButton: {
         backgroundColor: '#FFFFFF',

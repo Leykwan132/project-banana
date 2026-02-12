@@ -9,7 +9,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
-    Carousel, PageControlPosition
+    Carousel, PageControlPosition,
+    TouchableOpacity
 } from 'react-native-ui-lib';
 
 import { ActionSheetRef } from 'react-native-actions-sheet';
@@ -111,7 +112,9 @@ export default function OnboardingScreen() {
     }, []);
 
     const handleLogin = useCallback(() => {
+        console.log('pressing login')
         loginActionSheetRef.current?.show();
+
     }, []);
 
     const onActualLogin = useCallback(() => {
@@ -131,7 +134,6 @@ export default function OnboardingScreen() {
                 </View>
                 <ThemedText type="defaultSemiBold" style={styles.brandingAppName}>Youniq</ThemedText>
             </View>
-
             <Carousel
                 autoplay
                 onChangePage={onChangePage}
@@ -151,14 +153,11 @@ export default function OnboardingScreen() {
                     <Slide key={slide.id} item={slide} />
                 ))}
             </Carousel>
-
             <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <Pressable style={styles.primaryButton} onPress={handleLogin}>
                     <ThemedText style={styles.primaryButtonText}>Login or Sign up</ThemedText>
                 </Pressable>
-
             </View>
-
             <LoginActionSheet
                 actionSheetRef={loginActionSheetRef}
                 onLogin={onActualLogin}
@@ -310,6 +309,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 12,
+        zIndex: 100,
     },
     primaryButtonText: {
         color: '#FFFFFF',

@@ -50,7 +50,7 @@ export function ProfileActionSheet({
                 fetchOptions: {
                     onSuccess: () => {
                         actionSheetRef.current?.hide();
-                        router.push("/onboarding"); // redirect to login page
+                        router.replace("/onboarding");
                         setIsLoggingOut(false);
                     },
                     onError: () => {

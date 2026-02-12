@@ -46,9 +46,7 @@ export function ApplicationAnalyticItem({
                 {thumbnailUrl ? (
                     <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} />
                 ) : (
-                    <View style={styles.thumbnailPlaceholder}>
-                        <ThemedText style={styles.placeholderText}>📹</ThemedText>
-                    </View>
+                    <Image source={require('@/assets/images/bg-onboard.webp')} style={styles.thumbnail} />
                 )}
 
                 <View style={styles.textColumn}>
@@ -113,17 +111,6 @@ const styles = StyleSheet.create({
         height: 60,
         borderRadius: 8,
         resizeMode: 'cover',
-    },
-    thumbnailPlaceholder: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
-        backgroundColor: '#F3F4F6',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    placeholderText: {
-        fontSize: 28,
     },
     textColumn: {
         flex: 1,
