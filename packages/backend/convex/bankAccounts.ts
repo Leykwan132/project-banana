@@ -51,7 +51,7 @@ export const getBankAccount = query({
 
         const account = await ctx.db.get(args.bankAccountId);
         if (!account) return null;
-        if (account.user_id !== String(user._id)) return null;
+        if (account.user_id !== user.subject) return null;
 
         const legacyProofKey = (account as any).proof_document_url as string | undefined;
         return {
