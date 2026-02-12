@@ -51,6 +51,26 @@ export const getSubmission = query({
     }
 });
 
+export const getLatestSubmissionFeedback = query({
+    args: { submissionId: v.id("submissions") },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+            return null;
+        }
+
+        const reviews = await ctx.db
+            .query("submission_reviews")
+            .withIndex("by_submission", (q) => q.eq("submission_id", args.submissionId))
+            .collect();
+
+        if (reviews.length === 0) return null;
+
+        reviews.sort((a, b) => (b.reviewed_at ?? b.created_at) - (a.reviewed_at ?? a.created_at));
+        return reviews[0]?.feedback ?? null;
+    },
+});
+
 // ============================================================
 // MUTATIONS
 // ============================================================
