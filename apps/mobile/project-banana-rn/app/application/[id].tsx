@@ -19,7 +19,7 @@ import Animated, {
 import LottieView from 'lottie-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
@@ -89,6 +89,8 @@ export default function ApplicationDetailScreen() {
         api.applications.getTopApplicationsByCampaign,
         resolvedCampaignId ? { campaignId: resolvedCampaignId } : "skip"
     );
+    const createSubmission = useMutation(api.submissions.createSubmission);
+    const generateVideoUploadUrl = useAction(api.submissions.generateVideoUploadUrl);
 
     const scriptsSheetRef = useRef<ActionSheetRef>(null);
     const submissionSheetRef = useRef<ActionSheetRef>(null);
@@ -103,14 +105,13 @@ export default function ApplicationDetailScreen() {
 
     // Video upload state - single sheet with steps
     const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
+    const [selectedVideoMimeType, setSelectedVideoMimeType] = useState<string | null>(null);
     const [reviewStep, setReviewStep] = useState<'requirements' | 'preview' | 'uploading' | 'done'>('requirements');
 
     const isLoading =
         application === undefined ||
         submissions === undefined ||
         (resolvedCampaignId ? campaign === undefined || topApplications === undefined : false);
-
-    // Flip card animation
 
 
     // Video player for preview - autoplay
@@ -133,31 +134,61 @@ export default function ApplicationDetailScreen() {
                 quality: 1,
             });
 
-            if (!result.canceled && result.assets && result.assets[0]) {
-                setSelectedVideoUri(result.assets[0].uri);
+            if (!result.canceled && result.assets.length > 0) {
+                const selected = result.assets[0];
+                setSelectedVideoUri(selected.uri);
+                setSelectedVideoMimeType(selected.mimeType ?? null);
                 setReviewStep('preview');
             }
         } catch (error) {
             console.error('Error picking video:', error);
-            Alert.alert('Error', 'Failed to open video picker');
+            Alert.alert('Error', 'Failed to open document picker');
         }
     };
 
     const handleUpload = async () => {
-        if (!selectedVideoUri) return;
+        if (!selectedVideoUri || !application) return;
 
         videoPlayer.pause();
         setReviewStep('uploading');
 
-        // Simulate upload with FormData
-        // In production, you would:
-        // const formData = new FormData();
-        // formData.append('video', { uri: selectedVideoUri, name: 'video.mp4', type: 'video/mp4' });
-        // await fetch('YOUR_API_ENDPOINT', { method: 'POST', body: formData });
+        try {
+            const contentType = selectedVideoMimeType ?? "video/mp4";
+            const { uploadUrl, s3Key } = await generateVideoUploadUrl({
+                contentType,
+            });
 
-        setTimeout(() => {
+            const fileResponse = await fetch(selectedVideoUri);
+            if (!fileResponse.ok) {
+                throw new Error("Unable to read selected video file.");
+            }
+            const fileBuffer = await fileResponse.arrayBuffer();
+
+            const uploadResponse = await fetch(uploadUrl, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": contentType,
+                },
+                body: fileBuffer,
+            });
+            if (!uploadResponse.ok) {
+                throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+            }
+
+            const uploadedObjectUrl = uploadUrl.split("?")[0];
+
+            await createSubmission({
+                applicationId,
+                video_url: uploadedObjectUrl,
+                s3_key: s3Key,
+            });
+
             setReviewStep('done');
-        }, 2500);
+        } catch (uploadError) {
+            console.error('Error uploading submission video:', uploadError);
+            setReviewStep('preview');
+            Alert.alert('Upload failed', 'Unable to upload your video. Please try again.');
+        }
     };
 
     const handleSubmit = () => {
@@ -780,7 +811,7 @@ export default function ApplicationDetailScreen() {
                                     style={[styles.actionButton, { marginTop: 8 }]}
                                     onPress={handleUpload}
                                 >
-                                    <ThemedText style={styles.actionButtonText}>Upload</ThemedText>
+                                    <ThemedText style={styles.actionButtonText}>Submit</ThemedText>
                                 </Pressable>
                             </Animated.View>
                         )}
@@ -818,6 +849,7 @@ export default function ApplicationDetailScreen() {
                                     onPress={() => {
                                         reviewSheetRef.current?.hide();
                                         setSelectedVideoUri(null);
+                                        setSelectedVideoMimeType(null);
                                         setReviewStep('requirements');
                                         setIsReviewed(false);
                                     }}
