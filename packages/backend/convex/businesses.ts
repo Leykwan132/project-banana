@@ -2,7 +2,6 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
-import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -34,7 +33,7 @@ export const getMyBusiness = query({
 
         return await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .unique();
     },
 });
@@ -62,7 +61,7 @@ export const createBusiness = mutation({
         size: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("Unauthenticated call to mutation");
 
         // Check if name exists
@@ -77,7 +76,7 @@ export const createBusiness = mutation({
 
         const now = Date.now();
         const businessId = await ctx.db.insert("businesses", {
-            user_id: user._id,
+            user_id: user.subject,
             name: args.name,
             logo_url: args.logo_url,
             logo_s3_key: args.logo_s3_key,
@@ -103,7 +102,7 @@ export const updateBusiness = mutation({
         size: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("Unauthenticated call to mutation");
 
         const business = await ctx.db.get(args.businessId);
@@ -111,7 +110,7 @@ export const updateBusiness = mutation({
             throw new Error("Business not found");
         }
 
-        if (business.user_id !== user._id) {
+        if (business.user_id !== user.subject) {
             throw new Error("Unauthorized: You do not own this business");
         }
 

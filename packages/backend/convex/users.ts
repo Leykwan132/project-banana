@@ -1,6 +1,5 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { authComponent } from "./auth";
 import { createCreator, getCreatorByUserId } from "./creators";
 
 // ============================================================
@@ -10,10 +9,11 @@ import { createCreator, getCreatorByUserId } from "./creators";
 export const getUser = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        const user = await ctx.auth.getUserIdentity();
+
         if (!user) return null;
 
-        const creator = await getCreatorByUserId(ctx, String(user._id));
+        const creator = await getCreatorByUserId(ctx, user.subject);
 
         return {
             ...user,
@@ -47,12 +47,12 @@ export const getUserByAuthId = query({
 export const getUserBalance = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             return { balance: 0 };
         }
 
-        const creator = await getCreatorByUserId(ctx, String(user._id));
+        const creator = await getCreatorByUserId(ctx, user.subject);
         return { balance: creator?.balance ?? 0 };
     },
 });
@@ -71,12 +71,12 @@ export const createUser = mutation({
         bank_name: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             throw new Error("Called createUser without authentication present");
         }
 
-        const creator = await getCreatorByUserId(ctx, user._id);
+        const creator = await getCreatorByUserId(ctx, user.subject);
         if (!creator) throw new Error("Creator record not found");
 
         const updateData: Record<string, string | number | boolean | undefined> = {};
@@ -103,12 +103,12 @@ export const updateUser = mutation({
         bank_name: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             throw new Error("Unauthenticated");
         }
 
-        const creator = await getCreatorByUserId(ctx, user._id);
+        const creator = await getCreatorByUserId(ctx, user.subject);
         if (!creator) throw new Error("Creator record not found");
 
         const updateData: Record<string, string | number | boolean | undefined> = {};
@@ -141,12 +141,12 @@ export const createCreatorMutation = mutation({
 export const getOnboardingStatus = query({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             return { isOnboarded: false };
         }
 
-        const creator = await getCreatorByUserId(ctx, String(user._id));
+        const creator = await getCreatorByUserId(ctx, user.subject);
         return { isOnboarded: creator?.is_onboarded ?? false };
     },
 });

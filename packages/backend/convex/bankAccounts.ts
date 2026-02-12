@@ -1,6 +1,5 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { authComponent } from "./auth";
 import { deleteObject, generateDownloadUrl, generateUploadUrl } from "./s3";
 
 // ============================================================
@@ -18,7 +17,7 @@ export const getUserBankAccounts = query({
 
         return await ctx.db
             .query("bank_accounts")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
             .collect();
     },
@@ -35,7 +34,7 @@ export const getActiveBankAccounts = query({
 
         const allAccounts = await ctx.db
             .query("bank_accounts")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .collect();
 
         return allAccounts.filter((account) => account.status === "verified");
@@ -77,14 +76,13 @@ export const createBankAccount = mutation({
         proofDocumentKey: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
         const now = Date.now();
 
         const bankAccountId = await ctx.db.insert("bank_accounts", {
-            user_id: user._id,
+            user_id: user.subject,
             bank_name: args.bankName,
             account_holder_name: args.accountHolderName,
             account_number: args.accountNumber,
@@ -105,12 +103,12 @@ export const resubmitBankAccountProof = mutation({
         newProofKey: v.string(),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
         const account = await ctx.db.get(args.bankAccountId);
         if (!account) throw new Error("Bank account not found");
-        if (account.user_id !== user._id) throw new Error("Unauthorized");
+        if (account.user_id !== user.subject) throw new Error("Unauthorized");
 
         const previousProofKey = account.proof_document_s3_key;
 

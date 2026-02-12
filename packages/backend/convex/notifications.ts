@@ -1,7 +1,6 @@
 import { mutation, query } from "./_generated/server";
 
 import { v } from "convex/values";
-import { authComponent } from "./auth";
 
 // ============================================================
 // NOTIFICATION QUERIES
@@ -20,7 +19,7 @@ export const getUserNotifications = query({
 
         const notifications = await ctx.db
             .query("notifications")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
             .collect();
 
@@ -41,7 +40,7 @@ export const getUnreadNotificationCount = query({
 
         const notifications = await ctx.db
             .query("notifications")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .filter((q) => q.eq(q.field("is_read"), false))
             .collect();
 
@@ -88,7 +87,7 @@ export const markAsRead = mutation({
         notificationId: v.id("notifications"),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             throw new Error("Unauthenticated");
         }
@@ -99,7 +98,7 @@ export const markAsRead = mutation({
             throw new Error("Notification not found");
         }
 
-        if (notification.user_id !== user._id) {
+        if (notification.user_id !== user.subject) {
             throw new Error("Unauthorized access to notification");
         }
 
@@ -117,14 +116,14 @@ export const markAsRead = mutation({
 export const markAllAsRead = mutation({
     args: {},
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) {
             throw new Error("Unauthenticated");
         }
 
         const unreadNotifications = await ctx.db
             .query("notifications")
-            .withIndex("by_user", (q) => q.eq("user_id", user._id))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .filter((q) => q.eq(q.field("is_read"), false))
             .collect();
 

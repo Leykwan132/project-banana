@@ -3,7 +3,6 @@ import { components, api } from "./_generated/api";
 import { StripeSubscriptions, } from "@convex-dev/stripe";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { authComponent } from "./auth";
 
 const stripeClient = new StripeSubscriptions(components.stripe, {});
 
@@ -57,7 +56,7 @@ export const getMySubscription = query({
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .unique();
 
         if (!business) return null;

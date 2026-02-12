@@ -1,6 +1,5 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { authComponent } from "./auth";
 import { getCreatorByUserId } from "./creators";
 
 // ============================================================
@@ -12,13 +11,13 @@ import { getCreatorByUserId } from "./creators";
  */
 export const getUserPayouts = query({
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        const user = await ctx.auth.getUserIdentity();
 
         if (!user) return [];
 
         return await ctx.db
             .query("payouts")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
             .collect();
     },
@@ -43,13 +42,13 @@ export const getPayout = query({
  */
 export const getUserWithdrawals = query({
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        const user = await ctx.auth.getUserIdentity();
 
         if (!user) return [];
 
         return await ctx.db
             .query("withdrawals")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
             .collect();
     },
@@ -127,12 +126,11 @@ export const requestWithdrawal = mutation({
         bankName: v.string(),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
         // Check if user has sufficient balance
-        const creator = await getCreatorByUserId(ctx, user._id);
+        const creator = await getCreatorByUserId(ctx, user.subject);
         const currentBalance = creator?.balance ?? 0;
         if (currentBalance < args.amount) {
             throw new Error("Insufficient balance");
@@ -140,7 +138,7 @@ export const requestWithdrawal = mutation({
 
         const now = Date.now();
         const withdrawalId = await ctx.db.insert("withdrawals", {
-            user_id: user._id,
+            user_id: user.subject,
             amount: args.amount,
             status: "processing",
             bank_account: args.bankAccount,
@@ -190,15 +188,14 @@ export const cancelWithdrawal = mutation({
         withdrawalId: v.id("withdrawals"),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
         const withdrawal = await ctx.db.get(args.withdrawalId);
         if (!withdrawal) throw new Error("Withdrawal not found");
 
         // Verify ownership
-        if (withdrawal.user_id !== user._id) {
+        if (withdrawal.user_id !== user.subject) {
             throw new Error("Unauthorized");
         }
 

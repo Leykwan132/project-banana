@@ -1,7 +1,6 @@
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { authComponent } from "./auth";
 // ============================================================
 // QUERIES
 // ============================================================
@@ -14,7 +13,7 @@ export const getMyApplications = query({
 
         const applications = await ctx.db
             .query("applications")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
             .paginate(args.paginationOpts);
 
@@ -101,7 +100,7 @@ export const getApplicationByCampaignId = query({
         return await ctx.db
             .query("applications")
             .withIndex("by_user_campaign", (q) =>
-                q.eq("user_id", String(user._id)).eq("campaign_id", args.campaignId)
+                q.eq("user_id", user.subject).eq("campaign_id", args.campaignId)
             )
             .unique();
     },
@@ -116,7 +115,7 @@ export const getMyApplicationsByCampaignWithStats = query({
         const applications = await ctx.db
             .query("applications")
             .withIndex("by_user_campaign", (q) =>
-                q.eq("user_id", String(user._id)).eq("campaign_id", args.campaignId)
+                q.eq("user_id", user.subject).eq("campaign_id", args.campaignId)
             )
             .order("desc")
             .collect();
@@ -184,7 +183,7 @@ export const createApplication = mutation({
         campaignId: v.id("campaigns"),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("Unauthenticated");
 
         const now = Date.now();
@@ -193,7 +192,7 @@ export const createApplication = mutation({
         const trackingTag = `UGCO${randomTag}`;
 
         const applicationId = await ctx.db.insert("applications", {
-            user_id: user._id,
+            user_id: user.subject,
             campaign_id: args.campaignId,
             status: "pending_submission",
             tracking_tag: trackingTag,

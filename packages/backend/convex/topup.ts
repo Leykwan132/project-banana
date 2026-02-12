@@ -2,7 +2,6 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { api, internal } from "./_generated/api";
-import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -17,7 +16,7 @@ export const getTopUpHistory = query({
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .unique();
 
         if (!business) return { page: [], isDone: true, continueCursor: "" };
@@ -50,7 +49,7 @@ export const getPastTopUpPayments = query({
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .unique();
 
         if (!business) {
@@ -89,7 +88,7 @@ export const getTopUpCount = query({
 
         const business = await ctx.db
             .query("businesses")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .unique();
 
         if (!business) return 0;
@@ -568,8 +567,7 @@ export const deleteTopupOrder = mutation({
         orderId: v.id("topup_orders"),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-
+        const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
         const order = await ctx.db.get(args.orderId);
@@ -577,7 +575,7 @@ export const deleteTopupOrder = mutation({
 
         // Verify ownership via business
         const business = await ctx.db.get(order.business_id);
-        if (!business || business.user_id !== String(user._id)) {
+        if (!business || business.user_id !== user.subject) {
             throw new Error("Unauthorized");
         }
 

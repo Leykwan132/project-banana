@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { TableAggregate } from "@convex-dev/aggregate";
 import type { DataModel } from "./_generated/dataModel.js";
 import { components } from "./_generated/api.js";
-import { authComponent } from "./auth";
 
 import { Triggers } from "convex-helpers/server/triggers";
 import {
@@ -115,11 +114,11 @@ export const getApplicationDailyStatsLast30Days = query({
         applicationId: v.id("applications"),
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) return [];
 
         const application = await ctx.db.get(args.applicationId);
-        if (!application || application.user_id !== String(user._id)) return [];
+        if (!application || application.user_id !== user.subject) return [];
 
         const campaign = await ctx.db.get(application.campaign_id);
         if (!campaign) return [];
@@ -194,12 +193,12 @@ export const getApplicationDailyStatsLast30Days = query({
 
 export const getUserEarningsOverviewLast30Days = query({
     handler: async (ctx) => {
-        const user = await authComponent.getAuthUser(ctx).catch(() => null);
+        const user = await ctx.auth.getUserIdentity();
         if (!user) return { totalEarnings: 0, daily: [] as Array<{ date: string; timestamp: number; earnings: number }> };
 
         const applications = await ctx.db
             .query("applications")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .collect();
 
         const totalEarnings = applications.reduce(
@@ -219,7 +218,7 @@ export const getUserEarningsOverviewLast30Days = query({
         const rows = await ctx.db
             .query("app_analytics_daily")
             .withIndex("by_user_date", (q) =>
-                q.eq("user_id", String(user._id))
+                q.eq("user_id", user.subject)
                     .gte("date", startDate)
                     .lte("date", endDate)
             )

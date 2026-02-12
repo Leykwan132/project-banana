@@ -1,6 +1,5 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -16,7 +15,7 @@ export const getUserCampaignStatuses = query({
 
         const statuses = await ctx.db
             .query("user_campaign_status")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .collect();
 
         return await Promise.all(
@@ -48,7 +47,7 @@ export const getUserCampaignStatus = query({
 
         return await ctx.db
             .query("user_campaign_status")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .filter((q) => q.eq(q.field("campaign_id"), args.campaignId))
             .unique();
     },
@@ -73,7 +72,7 @@ export const createUserCampaignStatus = mutation({
         // Check if status already exists
         const existing = await ctx.db
             .query("user_campaign_status")
-            .withIndex("by_user", (q) => q.eq("user_id", String(user._id)))
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .filter((q) => q.eq(q.field("campaign_id"), args.campaignId))
             .unique();
 

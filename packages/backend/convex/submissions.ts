@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { api } from "./_generated/api";
-import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -82,8 +81,7 @@ export const createSubmission = mutation({
         s3_key: v.optional(v.string()),    // New
     },
     handler: async (ctx, args) => {
-        const user = await authComponent.getAuthUser(ctx);
-        if (!user) throw new Error("Unauthenticated call to mutation");
+        const user = await ctx.auth.getUserIdentity(); if (!user) throw new Error("Unauthenticated call to mutation");
 
         const application = await ctx.db.get(args.applicationId);
         if (!application) throw new Error("Application not found");
@@ -102,7 +100,7 @@ export const createSubmission = mutation({
         const submissionId = await ctx.db.insert("submissions", {
             application_id: args.applicationId,
             campaign_id: application.campaign_id,
-            user_id: user._id,
+            user_id: user.subject,
             video_url: args.video_url,
             s3_key: args.s3_key,
             status: "pending_review",
@@ -146,8 +144,8 @@ export const approveSubmission = mutation({
         feedback: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const reviewer = await authComponent.getAuthUser(ctx);
-        if (!reviewer) throw new Error("Unauthenticated call");
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) throw new Error("Unauthenticated call");
 
         const submission = await ctx.db.get(args.submissionId);
         if (!submission) throw new Error("Submission not found");
@@ -170,7 +168,7 @@ export const approveSubmission = mutation({
         // Create Review Record
         await ctx.db.insert("submission_reviews", {
             submission_id: args.submissionId,
-            reviewer_id: reviewer._id,
+            reviewer_id: user.subject,
             feedback: args.feedback,
             action: "approved",
             reviewed_at: now,
@@ -209,8 +207,8 @@ export const requestChanges = mutation({
         feedback: v.string(), // Required for changes request
     },
     handler: async (ctx, args) => {
-        const reviewer = await authComponent.getAuthUser(ctx);
-        if (!reviewer) throw new Error("Unauthenticated call");
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) throw new Error("Unauthenticated call");
 
         const submission = await ctx.db.get(args.submissionId);
         if (!submission) throw new Error("Submission not found");
@@ -231,7 +229,7 @@ export const requestChanges = mutation({
         // Create Review Record
         await ctx.db.insert("submission_reviews", {
             submission_id: args.submissionId,
-            reviewer_id: reviewer._id,
+            reviewer_id: user.subject,
             feedback: args.feedback,
             action: "changes_requested",
             reviewed_at: now,
