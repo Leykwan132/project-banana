@@ -222,13 +222,13 @@ export default defineSchema({
     // ============================================================
 
     notifications: defineTable({
-        user_id: v.optional(v.string()),
+        user_id: v.string(),
         business_id: v.optional(v.id("businesses")),
         title: v.string(),
         description: v.string(),
-        redirect_url: v.optional(v.string()),
+        redirect_type: v.string(),
+        redirect_id: v.optional(v.string()),
         is_read: v.boolean(),
-        created_at: v.number(),
     })
         .index("by_user", ["user_id"])
         .index("by_business", ["business_id"])

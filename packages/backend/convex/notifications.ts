@@ -19,6 +19,7 @@ export const getUserNotifications = query({
         const notifications = await ctx.db
             .query("notifications")
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
+            // Implicitly ordered by _creationTime desc because of the index
             .order("desc")
             .collect();
 
@@ -60,7 +61,8 @@ export const createNotification = mutation({
         userId: v.id("user"),
         title: v.string(),
         description: v.string(),
-        redirectUrl: v.optional(v.string()), // e.g. "/campaigns/123"
+        redirectType: v.string(), // e.g. "campaign"
+        redirectId: v.optional(v.string()),
         businessId: v.optional(v.id("businesses")),
     },
     handler: async (ctx, args) => {
@@ -69,9 +71,9 @@ export const createNotification = mutation({
             business_id: args.businessId,
             title: args.title,
             description: args.description,
-            redirect_url: args.redirectUrl,
+            redirect_type: args.redirectType,
+            redirect_id: args.redirectId,
             is_read: false,
-            created_at: Date.now(),
         });
 
         return notificationId;
