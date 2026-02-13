@@ -24,8 +24,9 @@ interface NotificationItem {
     title: string;
     description: string;
     is_read: boolean;
-    created_at: number;
-    redirect_url?: string;
+    _creationTime: number;
+    redirect_type?: string;
+    redirect_id?: string;
 }
 
 const NotificationSkeleton = () => {
@@ -66,22 +67,51 @@ export default function NotificationsScreen() {
     const markAsRead = useMutation(api.notifications.markAsRead);
 
     const handlePress = async (notification: any) => {
+        // Navigate based on redirect type
+        if (notification.redirect_type) {
+            switch (notification.redirect_type) {
+                case 'campaign':
+                    if (notification.redirect_id) {
+                        router.push(`/campaign/${notification.redirect_id}` as any);
+                    }
+                    break;
+
+                case 'application':
+                    if (notification.redirect_id) {
+                        router.push(`/application/${notification.redirect_id}` as any);
+                    }
+                    break;
+
+                case 'submission':
+                    if (notification.redirect_id) {
+                        router.push(`/submission/${notification.redirect_id}` as any);
+                    }
+                    break;
+                case 'withdrawal':
+                    router.push('/withdraw' as any);
+                    break;
+                case 'bank-account':
+                    router.push('/bank-account' as any);
+                    break;
+                default:
+                    console.log('Unknown redirect type:', notification.redirect_type);
+            }
+        }
+
         // Mark as read
         if (!notification.is_read) {
             await markAsRead({ notificationId: notification._id });
         }
-
-        // Navigate if there is a redirect URL
-        if (notification.redirect_url) {
-            router.push(notification.redirect_url as any);
-        }
     };
 
     const formatDate = (timestamp: number) => {
-        return new Date(timestamp).toLocaleDateString('en-GB', {
+        return new Date(timestamp).toLocaleString('en-GB', {
             day: '2-digit',
             month: '2-digit',
             year: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
         });
     };
 
@@ -100,7 +130,7 @@ export default function NotificationsScreen() {
                     <ThemedText type={item.is_read ? 'default' : 'defaultSemiBold'} style={[styles.title, item.is_read && styles.readTitle]}>
                         {item.title}
                     </ThemedText>
-                    <ThemedText style={styles.date}>{formatDate(item.created_at)}</ThemedText>
+                    <ThemedText style={styles.date}>{formatDate(item._creationTime)}</ThemedText>
                 </View>
                 <ThemedText style={[styles.description, item.is_read && styles.readDescription]}>{item.description}</ThemedText>
             </View>
