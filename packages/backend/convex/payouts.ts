@@ -1,6 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { action, mutation, query, internalMutation, internalQuery, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getCreatorByUserId } from "./creators";
+import { api, internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 // ============================================================
 // PAYOUT QUERIES
@@ -119,18 +120,51 @@ export const updatePayoutStatus = mutation({
 /**
  * Request a withdrawal
  */
-export const requestWithdrawal = mutation({
+/**
+ * Internal mutation to handle the actual withdrawal logic atomically
+ */
+/**
+ * Internal query to check balance before processing withdrawal
+ */
+export const internalCheckSufficientBalance = internalQuery({
     args: {
+        userId: v.string(),
+        amount: v.number(),
+    },
+    handler: async (ctx, args) => {
+        const creator = await ctx.db
+            .query("creators")
+            .withIndex("by_user", (q) => q.eq("user_id", args.userId))
+            .unique();
+
+        if (!creator) throw new Error("Creator not found");
+
+        const currentBalance = creator?.balance ?? 0;
+        if (currentBalance < args.amount) {
+            throw new Error("Insufficient balance");
+        }
+    },
+});
+
+/**
+ * Internal mutation to handle the actual withdrawal logic atomically
+ */
+export const internalProcessWithdrawal = internalMutation({
+    args: {
+        userId: v.string(),
         amount: v.number(),
         bankAccount: v.string(),
         bankName: v.string(),
     },
     handler: async (ctx, args) => {
-        const user = await ctx.auth.getUserIdentity();
-        if (!user) throw new Error("User not found");
+        // Direct DB access is efficient here since we are in a mutation
+        const creator = await ctx.db
+            .query("creators")
+            .withIndex("by_user", (q) => q.eq("user_id", args.userId))
+            .unique();
 
-        // Check if user has sufficient balance
-        const creator = await getCreatorByUserId(ctx, user.subject);
+        if (!creator) throw new Error("Creator not found");
+
         const currentBalance = creator?.balance ?? 0;
         if (currentBalance < args.amount) {
             throw new Error("Insufficient balance");
@@ -138,7 +172,7 @@ export const requestWithdrawal = mutation({
 
         const now = Date.now();
         const withdrawalId = await ctx.db.insert("withdrawals", {
-            user_id: user.subject,
+            user_id: args.userId,
             amount: args.amount,
             status: "processing",
             bank_account: args.bankAccount,
@@ -147,9 +181,79 @@ export const requestWithdrawal = mutation({
             created_at: now,
         });
 
-        // Balance update is intentionally skipped here. Balance can be recomputed from creator-ledger state.
+        // Decrement user balance immediately
+        await ctx.db.patch(creator._id, {
+            balance: currentBalance - args.amount,
+        });
 
         return withdrawalId;
+    },
+});
+
+/**
+ * Request a withdrawal (Action)
+ */
+export const requestWithdrawal = action({
+    args: {
+        amount: v.number(),
+        bankAccount: v.string(),
+        bankName: v.string(),
+    },
+    handler: async (ctx, args): Promise<Id<"withdrawals">> => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) throw new Error("User not found");
+
+
+        // Check balance first
+        await ctx.runQuery(internal.payouts.internalCheckSufficientBalance, {
+            userId: user.subject,
+            amount: args.amount,
+        });
+
+        // run the payout function http by billz
+
+        // Execute the DB operations as a single transaction via internal mutation
+        return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
+            userId: user.subject,
+            amount: args.amount,
+            bankAccount: args.bankAccount,
+            bankName: args.bankName,
+        });
+    },
+});
+
+/**
+ * Mock function to process payout (for testing purposes)
+ */
+export const mockProcessPayout = mutation({
+    args: {
+        withdrawalId: v.id("withdrawals"),
+        status: v.string(), // "completed" | "failed"
+    },
+    handler: async (ctx, args) => {
+        const withdrawal = await ctx.db.get(args.withdrawalId);
+        if (!withdrawal) throw new Error("Withdrawal not found");
+
+        if (withdrawal.status !== "processing") {
+            throw new Error("Withdrawal is not in processing state");
+        }
+
+        const updates: any = {
+            status: args.status,
+            processed_at: Date.now(),
+        };
+
+        await ctx.db.patch(args.withdrawalId, updates);
+
+        // If failed, refund the balance
+        if (args.status === "failed") {
+            const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: withdrawal.user_id });
+            if (creator) {
+                await ctx.db.patch(creator._id, {
+                    balance: (creator.balance ?? 0) + withdrawal.amount,
+                });
+            }
+        }
     },
 });
 

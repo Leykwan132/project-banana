@@ -22,6 +22,7 @@ import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { PastPayoutListItem } from '@/components/PastPayoutListItem';
 import { TransactionDetailsSheet, DetailItem } from '@/components/TransactionDetailsSheet';
+import { ApplicationStatus } from '@/components/ApplicationStatusBadge';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 interface Transaction {
@@ -29,7 +30,7 @@ interface Transaction {
     campaignName: string;
     date: string;
     amount: string;
-    status?: string;
+    status?: ApplicationStatus;
     bankName?: string;
     accountNumber?: string;
 }
@@ -68,9 +69,9 @@ export default function PayoutsScreen() {
     const actionSheetRef = useRef<ActionSheetRef>(null);
 
     // Fetch user balance from Convex
-    const balanceData = useQuery(api.users.getUserBalance);
-    const isBalanceLoading = balanceData === undefined;
-    const balance = balanceData?.balance ?? 0;
+    const creatorData = useQuery(api.creators.getCreator);
+    const isBalanceLoading = creatorData === undefined;
+    const balance = creatorData?.balance ?? 0;
 
     // Fetch payouts and withdrawals
     const payoutsData = useQuery(api.payouts.getUserPayouts);
@@ -114,7 +115,13 @@ export default function PayoutsScreen() {
             amount: formatAmount(payout.amount, true),
         }));
     }, [payoutsData]);
-
+    // Mask account number helper
+    const maskAccountNumber = (accountNumber: string): string => {
+        if (accountNumber.length <= 4) return accountNumber;
+        const lastFour = accountNumber.slice(-4);
+        const masked = '*'.repeat(Math.min(8, accountNumber.length - 4));
+        return `${masked}${lastFour}`;
+    };
     // Format withdrawals for display
     const formattedWithdrawals: Transaction[] = useMemo(() => {
         if (!withdrawalsData) return [];
@@ -123,19 +130,13 @@ export default function PayoutsScreen() {
             campaignName: 'Withdraw',
             date: formatDate(withdrawal.requested_at),
             amount: formatAmount(withdrawal.amount, false),
-            status: withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1),
+            status: (withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)) as ApplicationStatus,
             bankName: withdrawal.bank_name,
             accountNumber: maskAccountNumber(withdrawal.bank_account),
         }));
     }, [withdrawalsData]);
 
-    // Mask account number helper
-    const maskAccountNumber = (accountNumber: string): string => {
-        if (accountNumber.length <= 4) return accountNumber;
-        const lastFour = accountNumber.slice(-4);
-        const masked = '*'.repeat(Math.min(8, accountNumber.length - 4));
-        return `${masked}${lastFour}`;
-    };
+
 
     const handleItemPress = (item: Transaction) => {
         setSelectedTransaction(item);
@@ -193,6 +194,7 @@ export default function PayoutsScreen() {
             <PastPayoutListItem
                 key={item.id}
                 campaignName={item.campaignName}
+                accountNumber={item.accountNumber}
                 date={item.date}
                 amount={item.amount}
                 status={item.status}
@@ -218,12 +220,14 @@ export default function PayoutsScreen() {
             if (selectedTransaction.bankName) details.push({ label: 'Bank', value: selectedTransaction.bankName });
             if (selectedTransaction.accountNumber) details.push({ label: 'Account Number', value: selectedTransaction.accountNumber });
             if (selectedTransaction.status) {
+                const isPendingOrProcessing = ['Pending', 'Processing'].includes(selectedTransaction.status);
                 details.push({
                     label: 'Status',
                     value: selectedTransaction.status,
                     valueStyle: {
-                        color: selectedTransaction.status === 'Pending' ? '#F57C00' : '#2E7D32'
-                    }
+                        color: isPendingOrProcessing ? '#F57C00' : '#2E7D32'
+                    },
+                    note: isPendingOrProcessing ? 'Estimated arrival: 2-5 days' : undefined
                 });
             }
         }
@@ -255,7 +259,7 @@ export default function PayoutsScreen() {
             >
                 <View style={styles.section}>
                     <PayoutCard
-                        amount={`RM ${balance.toFixed(2)}`}
+                        amount={`RM ${balance}`}
                         onWithdraw={() => router.push('/withdraw')}
                         isAmountLoading={isBalanceLoading}
                     />
@@ -317,7 +321,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
-        marginBottom: 12,
+        marginBottom: 24,
     },
     list: {
         gap: 8,

@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TextInput, Pressable, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import LottieView from 'lottie-react-native';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery, useAction } from 'convex/react';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -14,10 +14,11 @@ import Animated, {
     withTiming,
 } from 'react-native-reanimated';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { Image } from 'expo-image';
+import { BANK_OPTIONS } from '@/constants/banks';
 
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
-import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const BankAccountSkeleton = () => {
@@ -60,19 +61,22 @@ export default function WithdrawScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [withdrawErrorMessage, setWithdrawErrorMessage] = useState('Something went wrong while creating your withdrawal request.');
-    const requestWithdrawal = useMutation(api.payouts.requestWithdrawal);
+    const requestWithdrawal = useAction(api.payouts.requestWithdrawal);
 
     const balanceData = useQuery(api.users.getUserBalance);
     const bankAccountsData = useQuery(api.bankAccounts.getActiveBankAccounts);
     const isBankAccountsLoading = bankAccountsData === undefined;
 
-    const bankAccounts = bankAccountsData?.map(account => ({
-        id: account._id,
-        bankName: account.bank_name,
-        accountHolder: account.account_holder_name ?? 'User',
-        accountNumber: account.account_number,
-        logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493' // Placeholder
-    })) || [];
+    const bankAccounts = bankAccountsData?.map(account => {
+        const bank = BANK_OPTIONS.find(b => b.name === account.bank_name);
+        return {
+            id: account._id,
+            bankName: account.bank_name,
+            accountHolder: account.account_holder_name ?? 'User',
+            accountNumber: account.account_number,
+            logo: bank?.logo ?? 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493' // Fallback
+        };
+    }) || [];
 
     // Pre-select first bank account when loaded
     useEffect(() => {
@@ -212,7 +216,7 @@ export default function WithdrawScreen() {
                             >
                                 <View style={styles.bankLogoContainer}>
                                     {/* Using a placeholder generic icon if image fails or for simplify */}
-                                    <Image source={{ uri: account.logo }} style={styles.bankLogo} resizeMode="contain" />
+                                    <Image source={{ uri: account.logo }} style={styles.bankLogo} contentFit="contain" />
                                 </View>
                                 <View style={styles.bankInfo}>
                                     <ThemedText type="defaultSemiBold">{account.bankName}</ThemedText>
@@ -258,7 +262,7 @@ export default function WithdrawScreen() {
                 <View style={[styles.sheetContent]}>
                     {confirmStep === 'review' ? (
                         <View>
-                            <ThemedText type="subtitle" style={styles.sheetTitle}>Confirm Withdrawal</ThemedText>
+                            <ThemedText type="subtitle" style={styles.sheetTitle}>Review Withdrawal</ThemedText>
 
                             <View style={styles.reviewRow}>
                                 <ThemedText style={styles.reviewLabel}>Amount</ThemedText>
@@ -291,9 +295,11 @@ export default function WithdrawScreen() {
                                 {isLoading ? (
                                     <ActivityIndicator color="#fff" />
                                 ) : (
-                                    <ThemedText style={styles.confirmButtonText}>Confirm Withdrawal</ThemedText>
+                                    <ThemedText style={styles.confirmButtonText}>Confirm</ThemedText>
                                 )}
                             </Pressable>
+
+                            <ThemedText style={styles.disclaimerText}>Please review as this action cannot be undone.</ThemedText>
                         </View>
                     ) : confirmStep === 'success' ? (
                         <View style={styles.successContainer}>
@@ -352,6 +358,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingBottom: 24,
     },
     header: {
         flexDirection: 'row',
@@ -451,6 +458,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderRadius: 16,
+        marginBottom: 18,
         borderWidth: 1,
         borderColor: '#E0E0E0',
         backgroundColor: '#fff',
@@ -575,6 +583,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#666',
         fontFamily: 'GoogleSans_400Regular',
+    },
+    disclaimerText: {
+        fontSize: 12,
+        color: '#666',
+        fontFamily: 'GoogleSans_400Regular',
+        textAlign: 'center',
+        marginTop: 8,
     },
     divider: {
         height: 1,

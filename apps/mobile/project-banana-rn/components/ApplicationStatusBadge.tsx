@@ -10,7 +10,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 
-export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Posted' | 'Active' | 'Rejected';
+export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Posted' | 'Active' | 'Rejected' | 'Pending' | 'Paid' | 'Processing' | 'Completed' | 'Failed';
 
 export const getStatusConfig = (status?: ApplicationStatus) => {
     switch (status) {
@@ -69,6 +69,39 @@ export const getStatusConfig = (status?: ApplicationStatus) => {
                 border: '#D93025',
                 icon: AlertCircle,
                 iconColor: '#FF7E87'
+            };
+        case 'Pending':
+            return {
+                bg: '#FFF3E0',
+                text: '#F57C00',
+                border: '#F57C00',
+                icon: Clock,
+                iconColor: '#F57C00'
+            };
+        case 'Paid':
+        case 'Completed':
+            return {
+                bg: '#E8F5E9',
+                text: '#2E7D32',
+                border: '#2E7D32',
+                icon: CheckCheck,
+                iconColor: '#2E7D32'
+            };
+        case 'Processing':
+            return {
+                bg: '#E3F2FD',
+                text: '#1976D2',
+                border: '#1976D2',
+                icon: Clock,
+                iconColor: '#1976D2'
+            };
+        case 'Failed':
+            return {
+                bg: '#FFEBEE',
+                text: '#C62828',
+                border: '#C62828',
+                icon: AlertCircle,
+                iconColor: '#C62828'
             };
         default:
             return {

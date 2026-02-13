@@ -1,4 +1,4 @@
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 
 
@@ -9,32 +9,62 @@ export const getCreatorById = query({
     },
 });
 
-export const getCreatorByUserId = async (ctx: any, userId: string) => {
-    return await ctx.db
-        .query("creators")
-        .withIndex("by_user", (q: any) => q.eq("user_id", userId))
-        .unique();
-};
+export const getCreatorByUserId = query({
+    args: { userId: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("creators")
+            .withIndex("by_user", (q: any) => q.eq("user_id", args.userId))
+            .unique();
+    },
+});
 
 
-// Helper for direct DB access
-export const createCreator = async (ctx: any, userId: string) => {
-    return await ctx.db.insert("creators", {
-        user_id: userId,
-        is_deleted: false,
-        is_onboarded: false,
-        total_views: 0,
-        total_earnings: 0,
-        balance: 0,
-    });
-};
+export const internalGetCreatorByUserId = internalQuery({
+    args: { userId: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("creators")
+            .withIndex("by_user", (q: any) => q.eq("user_id", args.userId))
+            .unique();
+    },
+});
+
 
 export const createCreatorByUserId = internalMutation({
     args: { userId: v.string() },
     handler: async (ctx, args) => {
-        return await createCreator(ctx, args.userId);
+        return await ctx.db.insert("creators", {
+            user_id: args.userId,
+            is_deleted: false,
+            is_onboarded: false,
+            total_views: 0,
+            total_earnings: 0,
+            balance: 0,
+        });
     },
 });
 
 
 
+export const getCreator = query({
+    args: {},
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+
+        if (!user) {
+            throw new Error("Unauthorized");
+        }
+
+        const creator = await ctx.db
+            .query("creators")
+            .withIndex("by_user", (q: any) => q.eq("user_id", user.subject))
+            .unique();
+
+        if (!creator) {
+            throw new Error("Creator not found");
+        }
+
+        return creator;
+    },
+});

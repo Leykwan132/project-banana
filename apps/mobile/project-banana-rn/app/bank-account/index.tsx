@@ -1,4 +1,4 @@
-import { View, StyleSheet, FlatList, Pressable, Image } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { ChevronLeft, ChevronRight, Plus, Landmark } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +17,9 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
+import { Image } from 'expo-image';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { BANK_OPTIONS } from '@/constants/banks';
 
 type BankAccountStatus = 'active' | 'pending' | 'rejected';
 
@@ -72,12 +74,14 @@ export default function BankAccountScreen() {
             if (account.status === 'verified') status = 'active';
             if (account.status === 'rejected') status = 'rejected';
 
+            const bank = BANK_OPTIONS.find(b => b.name === account.bank_name);
+
             return {
                 id: account._id,
                 bankName: account.bank_name,
                 accountHolder: account.account_holder_name ?? user.name ?? 'User',
                 accountNumber: account.account_number,
-                logo: 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493', // Placeholder from mock
+                logo: bank?.logo ?? 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493', // Fallback
                 status: status,
             };
         });
@@ -105,7 +109,7 @@ export default function BankAccountScreen() {
                 onPress={handlePress}
             >
                 <View style={styles.bankLogoContainer}>
-                    <Image source={{ uri: item.logo }} style={styles.bankLogo} resizeMode="contain" />
+                    <Image source={{ uri: item.logo }} style={styles.bankLogo} contentFit="contain" />
                 </View>
                 <View style={styles.bankInfo}>
                     <ThemedText type="defaultSemiBold">{item.bankName}</ThemedText>

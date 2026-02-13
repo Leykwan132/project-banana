@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { authComponent } from "./auth";
+import { api, components, internal } from "./_generated/api";
 import { getCreatorByUserId } from "./creators";
 import { ErrorType } from "./errors";
 
@@ -62,7 +64,7 @@ export const getBalance = query({
             return sum;
         }, 0);
 
-        const creator = await getCreatorByUserId(ctx, String(user._id));
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
         const totalEarnings = creator?.total_earnings ?? 0;
         return totalEarnings - totalWithdrawn;
     }
@@ -81,13 +83,12 @@ export const createWithdrawal = mutation({
 
         if (!user) throw new Error("User not found");
 
-        const creator = await getCreatorByUserId(ctx, user.subject);
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
         const bankAccount = creator?.bank_account;
         const bankName = creator?.bank_name;
         if (!bankAccount || !bankName) {
             throw new Error("Please add bank details to your profile first");
         }
-
         // Check balance
         // This duplicates logic in getBalance, ideally extracted helper
         const withdrawals = await ctx.db

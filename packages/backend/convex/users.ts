@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
-import { createCreator, getCreatorByUserId } from "./creators";
 
 // ============================================================
 // QUERIES
@@ -13,7 +13,7 @@ export const getUser = query({
 
         if (!user) return null;
 
-        const creator = await getCreatorByUserId(ctx, user.subject);
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
 
         return {
             ...user,
@@ -52,10 +52,12 @@ export const getUserBalance = query({
             return { balance: 0 };
         }
 
-        const creator = await getCreatorByUserId(ctx, user.subject);
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
         return { balance: creator?.balance ?? 0 };
     },
 });
+
+
 
 
 
@@ -76,7 +78,7 @@ export const createUser = mutation({
             throw new Error("Called createUser without authentication present");
         }
 
-        const creator = await getCreatorByUserId(ctx, user.subject);
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
         if (!creator) throw new Error("Creator record not found");
 
         const updateData: Record<string, string | number | boolean | undefined> = {};
@@ -108,7 +110,7 @@ export const updateUser = mutation({
             throw new Error("Unauthenticated");
         }
 
-        const creator = await getCreatorByUserId(ctx, user.subject);
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
         if (!creator) throw new Error("Creator record not found");
 
         const updateData: Record<string, string | number | boolean | undefined> = {};
@@ -128,15 +130,6 @@ export const updateUser = mutation({
     },
 });
 
-export const createCreatorMutation = mutation({
-    args: { userId: v.string() },
-    handler: async (ctx, args) => {
-        const existing = await getCreatorByUserId(ctx, args.userId);
-        if (existing) return existing;
-        return createCreator(ctx, args.userId);
-    },
-});
-
 // Get onboarding status for the current user
 export const getOnboardingStatus = query({
     args: {},
@@ -146,7 +139,7 @@ export const getOnboardingStatus = query({
             return { isOnboarded: false };
         }
 
-        const creator = await getCreatorByUserId(ctx, user.subject);
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
         return { isOnboarded: creator?.is_onboarded ?? false };
     },
 });
@@ -158,7 +151,7 @@ export const setUserOnboarded = mutation({
         isOnboarded: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
-        const creator = await getCreatorByUserId(ctx, args.authId);
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: args.authId });
         if (!creator) throw new Error("Creator record not found");
 
         if (args.isOnboarded === undefined) {

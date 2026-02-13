@@ -1,63 +1,78 @@
 import { View, StyleSheet, Image, Pressable } from 'react-native';
+import { Calendar } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ApplicationStatusBadge, ApplicationStatus } from './ApplicationStatusBadge';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface PastPayoutListItemProps {
     logoUrl?: string;
     campaignName: string;
+    accountNumber?: string;
     date: string;
     amount: string;
-    status?: string;
+    status?: ApplicationStatus;
     onPress?: () => void;
 }
 
 export function PastPayoutListItem({
     logoUrl,
     campaignName,
+    accountNumber,
     date,
     amount,
     status,
     onPress,
 }: PastPayoutListItemProps) {
-    const getStatusColor = (status?: string) => {
-        if (status === 'Pending') return '#F57C00'; // Orange
-        if (status === 'Paid') return '#2E7D32'; // Green
-        return '#666';
-    };
+    const colorScheme = useColorScheme();
+
 
     return (
         <Pressable onPress={onPress}>
-            <View style={styles.container}>
-                <View style={styles.logoContainer}>
-                    {logoUrl ? (
-                        <Image source={{ uri: logoUrl }} style={styles.logo} />
-                    ) : (
-                        <View style={styles.logoPlaceholder}>
-                            <Image
-                                source={{ uri: 'https://picsum.photos/200' }}
-                                style={styles.logo}
-                            />
-                        </View>
-                    )}
-                </View>
-
-                <View style={styles.content}>
-                    <View style={styles.nameRow}>
-                        <ThemedText type="defaultSemiBold" style={styles.name}>{campaignName}</ThemedText>
-                        {status && (
-                            <View style={[styles.statusBadge, { backgroundColor: status === 'Pending' ? '#FFF3E0' : '#E8F5E9' }]}>
-                                <ThemedText style={[styles.statusText, { color: getStatusColor(status) }]}>
-                                    {status}
-                                </ThemedText>
+            <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+                {/* Top Section */}
+                <View style={styles.topSection}>
+                    <View style={styles.logoContainer}>
+                        {logoUrl ? (
+                            <Image source={{ uri: logoUrl }} style={styles.logo} />
+                        ) : (
+                            <View style={styles.logoPlaceholder}>
+                                <Image
+                                    source={{ uri: 'https://picsum.photos/200' }}
+                                    style={styles.logo}
+                                />
                             </View>
                         )}
                     </View>
-                    <ThemedText style={styles.date}>
-                        {status === 'Pending' ? 'requested on ' : 'paid on '}{date}
-                    </ThemedText>
+
+                    <View style={styles.titleContainer}>
+                        <View style={styles.textColumn}>
+                            {accountNumber && (
+                                <ThemedText style={styles.subText}>
+                                    {accountNumber}
+                                </ThemedText>
+                            )}
+                            <ThemedText type="defaultSemiBold" style={styles.name}>{campaignName}</ThemedText>
+                        </View>
+                        <ThemedText type="defaultSemiBold" style={styles.amount}>{amount}</ThemedText>
+                    </View>
                 </View>
 
-                <ThemedText type="defaultSemiBold" style={styles.amount}>{amount}</ThemedText>
+                {/* Bottom Section */}
+                <View style={styles.bottomSection}>
+                    <View>
+                        {status && (
+                            <ApplicationStatusBadge status={status} />
+                        )}
+                    </View>
+                    <View style={styles.dateContainer}>
+                        <Calendar size={16} color={Colors[colorScheme ?? 'light'].icon} style={styles.icon} />
+                        <ThemedText style={styles.date}>
+                            {['Pending', 'Processing'].includes(status || '') ? 'Requested on ' : 'Paid on '}{date}
+                        </ThemedText>
+                    </View>
+                </View>
             </View>
         </Pressable>
     );
@@ -65,9 +80,14 @@ export function PastPayoutListItem({
 
 const styles = StyleSheet.create({
     container: {
+        flexDirection: 'column',
+        marginBottom: 24,
+        borderRadius: 12,
+    },
+    topSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
+        marginBottom: 16,
     },
     logoContainer: {
         marginRight: 12,
@@ -88,37 +108,51 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#EEEEEE',
     },
-    content: {
+    titleContainer: {
         flex: 1,
-        justifyContent: 'center',
-    },
-    nameRow: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 2,
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+    },
+    textColumn: {
+        flex: 1,
+        marginRight: 8,
+    },
+    subText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontFamily: 'GoogleSans_400Regular',
     },
     name: {
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    statusText: {
-        fontSize: 10,
-        fontFamily: 'GoogleSans_700Bold',
-    },
-    date: {
-        fontSize: 13,
-        color: '#666666',
-        fontFamily: 'GoogleSans_400Regular',
+        lineHeight: 22,
+        marginBottom: 2,
     },
     amount: {
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
         color: '#2E7D32', // Green color
+    },
+    bottomSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+    },
+    dateContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    icon: {
+        opacity: 0.7,
+    },
+    date: {
+        fontSize: 13,
+        color: '#666666',
+        fontFamily: 'GoogleSans_400Regular',
     },
 });

@@ -10,6 +10,7 @@ export interface DetailItem {
     label: string;
     value: string;
     valueStyle?: StyleProp<TextStyle>;
+    note?: string;
 }
 
 interface TransactionDetailsSheetProps {
@@ -68,8 +69,15 @@ export function TransactionDetailsSheet({
                         {details.map((item, index) => (
                             <View key={index}>
                                 <View style={styles.detailRow}>
-                                    <ThemedText style={styles.detailLabel}>{item.label}</ThemedText>
-                                    <ThemedText type="defaultSemiBold" style={item.valueStyle}>{item.value}</ThemedText>
+                                    <View>
+                                        <ThemedText style={styles.detailLabel}>{item.label}</ThemedText>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <ThemedText type="defaultSemiBold" style={item.valueStyle}>{item.value}</ThemedText>
+                                        {item.note && (
+                                            <ThemedText style={styles.noteText}>{item.note}</ThemedText>
+                                        )}
+                                    </View>
                                 </View>
                                 <View style={styles.divider} />
                             </View>
@@ -199,5 +207,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'GoogleSans_400Regular',
         marginBottom: 8,
+    },
+    noteText: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 4,
+        fontFamily: 'GoogleSans_400Regular',
     },
 });

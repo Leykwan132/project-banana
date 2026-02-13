@@ -15,26 +15,9 @@ import { useAction, useMutation } from 'convex/react';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BANK_OPTIONS } from '@/constants/banks';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
-const BANK_OPTIONS = [
-    'Affin Bank',
-    'Alliance Bank',
-    'AmBank',
-    'Bank Islam Malaysia',
-    'Bank Rakyat',
-    'BSN (Bank Simpanan Nasional)',
-    'CIMB Bank',
-    'Hong Leong Bank',
-    'HSBC Bank',
-    'Maybank (Malayan Banking)',
-    'MBSB Bank',
-    'OCBC Bank',
-    'Public Bank Berhad',
-    'RHB Bank',
-    'Standard Chartered',
-    'UOB Bank',
-];
 
 export default function AddBankAccountScreen() {
     const router = useRouter();
@@ -74,7 +57,7 @@ export default function AddBankAccountScreen() {
 
     const scrollToSelectedBank = () => {
         if (bankName) {
-            const index = BANK_OPTIONS.indexOf(bankName);
+            const index = BANK_OPTIONS.findIndex(b => b.name === bankName);
             if (index !== -1) {
                 // Approximate item height is 53px
                 bankScrollViewRef.current?.scrollTo({
@@ -238,7 +221,7 @@ export default function AddBankAccountScreen() {
     const isFormValid = bankName && accountHolderName && accountNumber && proofUploaded;
 
     const filteredBanks = BANK_OPTIONS.filter(bank =>
-        bank.toLowerCase().includes(searchQuery.toLowerCase())
+        bank.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -424,17 +407,20 @@ export default function AddBankAccountScreen() {
                     >
                         {filteredBanks.map((bank) => (
                             <Pressable
-                                key={bank}
+                                key={bank.name}
                                 style={styles.bankOption}
-                                onPress={() => handleSelectBank(bank)}
+                                onPress={() => handleSelectBank(bank.name)}
                             >
-                                <ThemedText style={[
-                                    styles.bankOptionText,
-                                    bank === bankName && styles.bankOptionSelected
-                                ]}>
-                                    {bank}
-                                </ThemedText>
-                                {bank === bankName && (
+                                <View style={styles.bankOptionLeft}>
+                                    <Image source={{ uri: bank.logo }} style={styles.bankOptionLogo} contentFit="contain" />
+                                    <ThemedText style={[
+                                        styles.bankOptionText,
+                                        bank.name === bankName && styles.bankOptionSelected
+                                    ]}>
+                                        {bank.name}
+                                    </ThemedText>
+                                </View>
+                                {bank.name === bankName && (
                                     <CheckCircle size={20} color="#000" />
                                 )}
                             </Pressable>
@@ -742,6 +728,17 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#F0F0F0',
+    },
+    bankOptionLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    bankOptionLogo: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#f5f5f5',
     },
     bankOptionText: {
         fontSize: 16,

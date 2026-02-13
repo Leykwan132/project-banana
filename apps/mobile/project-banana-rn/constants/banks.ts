@@ -1,0 +1,18 @@
+export const BANK_OPTIONS = [
+    { name: 'Affin Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/AffinBank/AffinBank_V1_SQU.svg' },
+    { name: 'Alliance Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/AllianceBank/AllianceBank_V1_SQU.svg' },
+    { name: 'AmBank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/AmBank/AmBank_V1_SQU.svg' },
+    { name: 'Bank Islam Malaysia', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/BankIslam/BankIslam_V1_SQU.svg' },
+    { name: 'Bank Rakyat', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/BankRakyat/BankRakyat_V1_SQU.svg' },
+    { name: 'BSN (Bank Simpanan Nasional)', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/BSN/BSN_V1_SQU.svg' },
+    { name: 'CIMB Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/Cimb/Cimb_V1_SQU.svg' },
+    { name: 'Hong Leong Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/HongLeongBank/HongLeongBank_V1_SQU.svg' },
+    { name: 'HSBC Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/HSBC/HSBC_V1_SQU.svg' },
+    { name: 'Maybank (Malayan Banking)', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/Maybank/MayBank_V1_SQU.svg' },
+    { name: 'MBSB Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/MBSB/MBSB_V1_SQU.svg' },
+    { name: 'OCBC Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/OCBC/OCBC_V1_SQU.svg' },
+    { name: 'Public Bank Berhad', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/PublicBank/PublicBank_V1_SQU.svg' },
+    { name: 'RHB Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/RHB/RHB_V1_SQU.svg' },
+    { name: 'Standard Chartered', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/StandardChartered/StandardChartered_V1_SQU.svg' },
+    { name: 'UOB Bank', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/UOB/UOB_V1_SQU.svg' },
+];
