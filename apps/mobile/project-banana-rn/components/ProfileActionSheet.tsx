@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Landmark, Settings, LogOut, Gift } from 'lucide-react-native';
 
+import { useQuery } from 'convex/react';
+import { api } from '../../../../packages/backend/convex/_generated/api';
+
 import { ThemedText } from '@/components/themed-text';
 import { authClient } from "@/lib/auth-client";
 import { Colors } from '@/constants/theme';
@@ -25,14 +28,17 @@ export function ProfileActionSheet({
     const { data: session } = authClient.useSession();
     const user = session?.user;
 
-    // Dynamic Data
+    const convexUser = useQuery(api.users.getUser);
+    const campaignsCount = convexUser?.campaigns_count ?? 0;
+    const totalEarnings = convexUser?.total_earnings ?? 0;
+
     const profileData = {
         name: user?.name ?? "User",
         avatar: user?.image ?? "https://i.pravatar.cc/150",
         memberSince: user?.createdAt ? new Date(user.createdAt).getFullYear().toString() : new Date().getFullYear().toString(),
         stats: {
-            campaigns: 12,
-            earnings: "RM 1,240",
+            campaigns: campaignsCount,
+            earnings: `RM ${totalEarnings.toLocaleString()}`,
         },
     };
 
@@ -83,12 +89,12 @@ export function ProfileActionSheet({
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
                         <ThemedText type="subtitle">{profileData.stats.campaigns}</ThemedText>
-                        <ThemedText style={styles.statLabel}>Campaigns</ThemedText>
+                        <ThemedText style={styles.statLabel}>Earning Campaigns</ThemedText>
                     </View>
                     <View style={styles.verticalDivider} />
                     <View style={styles.statItem}>
                         <ThemedText type="subtitle">{profileData.stats.earnings}</ThemedText>
-                        <ThemedText style={styles.statLabel}>Earnings</ThemedText>
+                        <ThemedText style={styles.statLabel}>Lifetime Earnings</ThemedText>
                     </View>
                 </View>
 

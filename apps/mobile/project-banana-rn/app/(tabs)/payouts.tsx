@@ -182,7 +182,7 @@ export default function PayoutsScreen() {
                     </ThemedText>
                     <ThemedText style={styles.emptyStateSubtext}>
                         {selectedIndex === 0
-                            ? 'Your earnings will appear here once campaigns are completed'
+                            ? 'Payouts by Youniq are made at the start of every month.'
                             : 'Request a withdrawal to see it here'
                         }
                     </ThemedText>
