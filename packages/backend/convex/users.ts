@@ -15,13 +15,22 @@ export const getUser = query({
 
         const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
 
+        const userCampaignStatuses = await ctx.db
+            .query("user_campaign_status")
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
+            .collect();
+
+        const campaignsCount = userCampaignStatuses.length;
+        const totalEarnings = userCampaignStatuses.reduce((acc, curr) => acc + (curr.total_earnings || 0), 0);
+
         return {
             ...user,
             isDeleted: creator?.is_deleted ?? false,
             isOnboarded: creator?.is_onboarded ?? false,
             profile_pic_url: creator?.profile_pic_url ?? null,
             total_views: creator?.total_views ?? 0,
-            total_earnings: creator?.total_earnings ?? 0,
+            total_earnings: totalEarnings, // Use calculated earnings
+            campaigns_count: campaignsCount,
             balance: creator?.balance ?? 0,
             bank_account: creator?.bank_account ?? null,
             bank_name: creator?.bank_name ?? null,

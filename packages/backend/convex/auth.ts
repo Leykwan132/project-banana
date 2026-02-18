@@ -5,12 +5,13 @@ import type { DataModel } from "./_generated/dataModel";
 import { WorkOS } from "@workos-inc/node";
 import { v } from "convex/values";
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
-import { convex } from "@convex-dev/better-auth/plugins";
+import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { expo } from '@better-auth/expo'
 import authConfig from "./auth.config";
 
 const authFunctions: AuthFunctions = internal.auth;
+const siteUrl = process.env.SITE_URL!;
 
 export const authKit = new AuthKit<DataModel>(components.workOSAuthKit, {
     authFunctions,
@@ -120,7 +121,8 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
             "exp://",                      // Trust all Expo URLs (prefix matching)
             "exp://**",                    // Trust all Expo URLs (wildcard matching)
             "exp://[IP_ADDRESS]/**",      // Trust 192.168.x.x IP range with any port and path
-            "exp://192.168.100.250:8081"
+            "exp://192.168.100.250:8081",
+            siteUrl,
         ],
         socialProviders: {
             google: {
@@ -137,6 +139,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
         plugins: [
             // The Expo and Convex plugins are required
             expo(),
+            crossDomain({ siteUrl }),
             convex({ authConfig }),
         ],
         databaseHooks: {

@@ -20,7 +20,7 @@ authKit.registerRoutes(http);
 // RAZORPAY WEBHOOK (For Top-up/Credits only)
 // ============================================================
 
-authComponent.registerRoutes(http, createAuth);
+authComponent.registerRoutes(http, createAuth, { cors: true });
 
 
 http.route({
