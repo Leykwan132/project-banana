@@ -23,6 +23,7 @@ import {
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "@/lib/auth-client"
 import Toast from 'react-native-toast-message';
+import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -56,10 +57,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (!loaded || isSessionPending) return;
 
-    const isOnOnboarding = segments[0] === "onboarding";
+    const isOnOnboarding = segments[0] === "welcome";
 
     if (!session && !isOnOnboarding) {
-      router.replace("/onboarding");
+      router.replace("/welcome");
       return;
     }
 
@@ -77,12 +78,15 @@ export default function RootLayout() {
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <GestureHandlerRootView>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack initialRouteName="onboarding">
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </Stack>
-          <StatusBar style="auto" />
+          <GlobalErrorBoundary>
+            <Stack initialRouteName="welcome">
+              <Stack.Screen name="welcome" options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            </Stack>
+            <StatusBar style="auto" />
+          </GlobalErrorBoundary>
         </ThemeProvider>
         <Toast />
       </GestureHandlerRootView>

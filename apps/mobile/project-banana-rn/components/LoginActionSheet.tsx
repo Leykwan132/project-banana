@@ -35,7 +35,8 @@ export function LoginActionSheet({
         try {
             const { data, error } = await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/onboarding", // this will be converted to a deep link (eg. `myapp://dashboard`) on native
+                callbackURL: "/welcome", // this will be converted to a deep link (eg. `myapp://dashboard`) on native
+                newUserCallbackURL: "/onboarding",
             });
 
             if (error) {

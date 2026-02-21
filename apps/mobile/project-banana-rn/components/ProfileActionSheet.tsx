@@ -56,8 +56,9 @@ export function ProfileActionSheet({
                 fetchOptions: {
                     onSuccess: () => {
                         actionSheetRef.current?.hide();
-                        router.replace("/onboarding");
                         setIsLoggingOut(false);
+                        // No manual redirect needed — _layout.tsx auth guard
+                        // detects session === null and redirects to /welcome automatically
                     },
                     onError: () => {
                         setIsLoggingOut(false);
