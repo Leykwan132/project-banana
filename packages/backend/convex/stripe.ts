@@ -123,7 +123,6 @@ export const updateStripeSubscriptionStatus = mutation({
 
         const updates: any = {
             subscription_status: args.status,
-            updated_at: Date.now(),
         };
 
         if (args.planType) updates.subscription_plan_type = args.planType;

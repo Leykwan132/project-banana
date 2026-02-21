@@ -402,7 +402,11 @@ registerRoutes(http, components.stripe, {
             const plan = priceIdToPlan[priceId];
             const unitAmount = event.data.object.items.data[0].price.unit_amount ? event.data.object.items.data[0].price.unit_amount / 100 : 0;
             const businessId = event.data.object.metadata?.businessId;
-            const userId = event.data.object.metadata?.userId;
+
+            if (!businessId) {
+                console.error(`Subscription created without businessId metadata: ${subscriptionId}`);
+                return;
+            }
 
             await ctx.runMutation(api.stripe.updateStripeSubscriptionStatus, {
                 businessId: businessId,
@@ -412,14 +416,12 @@ registerRoutes(http, components.stripe, {
                 amount: unitAmount,
             });
 
-            // Set user as onboarded after first subscription
-            if (userId) {
-                await ctx.runMutation(api.users.setUserOnboarded as any, {
-                    authId: userId,
-                    isOnboarded: true,
-                });
-                console.log(`User onboarded: ${userId}`);
-            }
+            // Mark business as onboarded once a subscribed plan is created.
+            await ctx.runMutation(internal.businesses.setBusinessOnboarded, {
+                businessId,
+                isOnboarded: true,
+            });
+            console.log(`Business onboarded: ${businessId}`);
 
             console.log(`Subscription created: ${subscriptionId}, status: ${status}, plan: ${plan}, cycle: ${billingCycle}`);
         },

@@ -1,5 +1,6 @@
 import { internalMutation, internalQuery, query } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import { ErrorType } from "./errors";
 
 
 export const getCreatorById = query({
@@ -53,7 +54,7 @@ export const getCreator = query({
         const user = await ctx.auth.getUserIdentity();
 
         if (!user) {
-            throw new Error("Unauthorized");
+            throw new ConvexError(ErrorType.NOT_AUTHENTICATED);
         }
 
         const creator = await ctx.db

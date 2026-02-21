@@ -22,6 +22,7 @@ export default defineSchema({
         subscription_plan_type: v.optional(v.string()), // "starter" | "growth"
         subscription_billing_cycle: v.optional(v.string()), // "monthly" | "annual"
         subscription_amount: v.optional(v.number()),
+        is_onboarded: v.optional(v.boolean()),
         created_at: v.number(),
         updated_at: v.number(),
     })

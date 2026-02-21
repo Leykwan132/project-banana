@@ -2,6 +2,7 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 // ============================================================
 // QUERIES
@@ -48,6 +49,21 @@ export const getBusinessByUserId = query({
     },
 });
 
+export const getOnboardingStatus = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return { isOnboarded: false };
+
+        const business = await ctx.db
+            .query("businesses")
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
+            .unique();
+
+        return { isOnboarded: business?.is_onboarded ?? false };
+    }
+});
+
 // ============================================================
 // MUTATIONS
 // ============================================================
@@ -84,6 +100,7 @@ export const createBusiness = mutation({
             size: args.size,
             credit_balance: 0,
             pending_approvals: 0,
+            is_onboarded: false,
             created_at: now,
             updated_at: now,
         });
@@ -170,6 +187,30 @@ export const addCredits = internalMutation({
         });
 
         return newBalance;
+    },
+});
+
+export const setBusinessOnboarded = internalMutation({
+    args: {
+        businessId: v.string(),
+        isOnboarded: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const business = await ctx.db.get(args.businessId as Id<"businesses">);
+        if (!business) {
+            throw new Error("Business not found");
+        }
+
+        if (args.isOnboarded === undefined) {
+            return { success: true };
+        }
+
+        await ctx.db.patch(business._id, {
+            is_onboarded: args.isOnboarded,
+            updated_at: Date.now(),
+        });
+
+        return { success: true };
     },
 });
 

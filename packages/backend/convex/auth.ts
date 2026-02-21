@@ -142,18 +142,6 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
             crossDomain({ siteUrl }),
             convex({ authConfig }),
         ],
-        databaseHooks: {
-            user: {
-                create: {
-                    after: async (user) => {
-                        await (ctx as any).runMutation(internal.creators.createCreatorByUserId, {
-                            userId: user.id,
-                        });
-                        console.log("Creator created with ID", user.id);
-                    },
-                },
-            }
-        },
     } satisfies BetterAuthOptions
 }
 
