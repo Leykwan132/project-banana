@@ -5,6 +5,10 @@ import Button from './ui/Button';
 
 // Static plan configuration
 const STRIPE_PRICES = {
+    free: {
+        monthly: '',
+        annual: '',
+    },
     starter: {
         monthly: 'price_1SwdFtGxFs9ga3zc5cI5Weib',
         annual: 'price_1SwdR9GxFs9ga3zcN4TG9KnG',
@@ -13,43 +17,69 @@ const STRIPE_PRICES = {
         monthly: 'price_1SwdJYGxFs9ga3zcZpNKmp4S',
         annual: 'price_1SwdUGGxFs9ga3zc6C80xiAz',
     },
+    pro: {
+        monthly: '',
+        annual: '',
+    }
 };
 
 const PLANS = [
     {
+        type: 'free' as const,
+        name: 'Pay As You Go',
+        monthlyPrice: 0,
+        annualPrice: 0,
+        description: 'One-off UGC campaigns on demand',
+        features: [
+            'Pay RM 300 per campaign'
+        ],
+    },
+    {
         type: 'starter' as const,
         name: 'Starter',
         monthlyPrice: 199,
-        annualPrice: 1188,
-        description: 'Perfect for getting started',
+        annualPrice: 1910,
+        description: 'Steady stream of UGC content',
         features: [
-            '1 active campaign',
-            '100 submissions/month',
-            'Email support',
+            '1 active campaign at a time'
         ],
     },
     {
         type: 'growth' as const,
         name: 'Growth',
         monthlyPrice: 299,
-        annualPrice: 2388,
-        description: 'For growing businesses',
+        annualPrice: 2870,
+        description: 'Scale with concurrent UGC campaigns',
         features: [
-            '15 active campaigns',
-            'Unlimited submissions',
-            'Priority support',
+            '5 active campaigns at a time',
+            'Certified business badge'
+        ],
+    },
+    {
+        type: 'pro' as const,
+        name: 'Unlimited',
+        monthlyPrice: 499,
+        annualPrice: 4790,
+        description: 'Uncapped campaigns for enterprise',
+        features: [
+            'Unlimited active campaigns',
+            'Certified business badge',
+            'Founder support',
+            'Feature requests'
         ],
     },
 ];
 
+export type PlanType = typeof PLANS[number]['type'];
+
 interface PlanSelectorProps {
     billingCycle: 'monthly' | 'annual';
     onBillingCycleChange: (cycle: 'monthly' | 'annual') => void;
-    onSelectPlan?: (planType: 'starter' | 'growth') => void;
+    onSelectPlan?: (planType: PlanType) => void;
     hasActiveSubscription?: boolean;
-    currentPlanType?: 'starter' | 'growth' | null;
+    currentPlanType?: PlanType | null;
     isLoading?: boolean;
-    selectedPlan?: 'starter' | 'growth' | null;
+    selectedPlan?: PlanType | null;
 }
 
 export default function PlanSelector({
@@ -63,7 +93,7 @@ export default function PlanSelector({
 }: PlanSelectorProps) {
     const createSubscriptionCheckout = useAction(api.stripe.createSubscriptionCheckout);
 
-    const handleStartSubscription = async (planType: 'starter' | 'growth') => {
+    const handleStartSubscription = async (planType: PlanType) => {
         if (onSelectPlan) {
             onSelectPlan(planType);
             return;
@@ -99,7 +129,7 @@ export default function PlanSelector({
         return Math.round((savings / monthlyTotal) * 100);
     };
 
-    const isCurrentPlan = (planType: 'starter' | 'growth') => {
+    const isCurrentPlan = (planType: PlanType) => {
         return currentPlanType === planType && hasActiveSubscription;
     };
 
@@ -120,55 +150,67 @@ export default function PlanSelector({
                     >
                         Annually
                         <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            SAVE 30%
+                            SAVE 20%
                         </span>
                     </button>
                 </div>
             </div>
 
             {/* Plans Grid */}
-            <div className="flex flex-wrap justify-center gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 w-full mx-auto">
                 {PLANS.map((plan) => {
                     const isCurrent = isCurrentPlan(plan.type);
+                    const isPopular = plan.type === 'growth' && !isCurrent;
                     const price = getPrice(plan);
 
                     return (
                         <div
                             key={plan.type}
-                            className={`rounded-xl p-6 border flex-1 min-w-[280px] max-w-[400px] ${isCurrent ? 'border-2 border-blue-600 bg-blue-50/20' : 'border-gray-200 bg-white'} relative flex flex-col`}
+                            className={`rounded-2xl p-6 lg:p-7 border relative flex flex-col transition-all duration-200 ${isCurrent
+                                ? 'border-2 border-blue-600 bg-blue-50/20 shadow-md'
+                                : isPopular
+                                    ? 'border-2 border-gray-900 bg-gray-900 shadow-2xl scale-105 z-10 text-white'
+                                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg'
+                                }`}
                         >
                             {isCurrent && (
-                                <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl">
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] tracking-wider font-bold px-3 py-1 rounded-full whitespace-nowrap">
                                     CURRENT PLAN
                                 </div>
                             )}
 
+                            {isPopular && (
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FFD700] text-gray-900 text-[10px] tracking-wider font-extrabold px-3 py-1 rounded-full shadow-sm whitespace-nowrap">
+                                    MOST POPULAR
+                                </div>
+                            )}
+
                             <div className="mb-4">
-                                <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                                <p className="text-gray-500 text-sm mt-1">{plan.description}</p>
+                                <h3 className={`text-lg font-bold ${isPopular ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
+                                <p className={`text-sm mt-1 ${isPopular ? 'text-gray-300' : 'text-gray-500'}`}>{plan.description}</p>
                             </div>
 
                             <div className="mb-6">
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold text-gray-900">RM {price}</span>
-                                    <span className="text-gray-500 text-sm font-medium">/month</span>
-                                    {billingCycle === 'annual' && (
+                                    <span className={`text-3xl font-bold tracking-tight ${isPopular ? 'text-white' : 'text-gray-900'}`}>RM {price}</span>
+                                    <span className={`text-sm font-medium ${isPopular ? 'text-gray-400' : 'text-gray-500'}`}>/month</span>
+                                    {billingCycle === 'annual' && plan.monthlyPrice > 0 && (
                                         <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                             SAVE {getSavingsPercent(plan)}%
                                         </span>
                                     )}
                                 </div>
-                                {billingCycle === 'annual' && (
+                                {billingCycle === 'annual' && plan.monthlyPrice > 0 && (
                                     <div className="text-xs text-gray-400 mt-1 line-through">
                                         RM {plan.monthlyPrice} /month
                                     </div>
                                 )}
                             </div>
 
-                            <ul className="space-y-3 mb-8 flex-1">
+                            <ul className="space-y-3.5 mb-8 flex-1">
                                 {plan.features.map((feature, index) => (
-                                    <li key={index} className="flex items-start gap-3 text-sm text-gray-600">
-                                        <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                                    <li key={index} className={`flex items-start gap-3 text-sm ${isPopular ? 'text-gray-200' : 'text-gray-600'}`}>
+                                        <Check className={`w-4 h-4 shrink-0 mt-0.5 ${isPopular ? 'text-[#FFD700]' : 'text-blue-600'}`} />
                                         <span>{feature}</span>
                                     </li>
                                 ))}
@@ -176,16 +218,25 @@ export default function PlanSelector({
 
                             <Button
                                 variant={isCurrent ? 'outline' : 'primary'}
-                                className={`w-full justify-center ${isCurrent ? 'border-blue-200 text-blue-700 hover:bg-blue-50' : 'bg-black hover:bg-gray-800'}`}
+                                className={`w-full justify-center ${isCurrent
+                                    ? 'border-blue-200 text-blue-700 hover:bg-blue-50'
+                                    : isPopular
+                                        ? 'bg-white hover:bg-gray-200! text-gray-900! shadow-xl'
+                                        : 'bg-gray-900 hover:bg-black text-white shadow-sm'
+                                    }`}
                                 disabled={isCurrent || isLoading || hasActiveSubscription}
                                 onClick={() => !isCurrent && !hasActiveSubscription && handleStartSubscription(plan.type)}
                             >
                                 {isLoading && selectedPlan === plan.type ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className={`w-4 h-4 animate-spin ${isPopular ? 'text-gray-900' : ''}`} />
                                 ) : isCurrent ? (
                                     'Current Plan'
                                 ) : hasActiveSubscription ? (
                                     'Change via Portal'
+                                ) : plan.type === 'free' ? (
+                                    'Get Started'
+                                ) : plan.type === 'pro' ? (
+                                    'Contact Sales'
                                 ) : (
                                     'Start 14-day free trial'
                                 )}
@@ -194,46 +245,22 @@ export default function PlanSelector({
                     );
                 })}
 
-                {/* Enterprise Plan */}
-                <div className="rounded-xl p-6 border flex-1 min-w-[280px] max-w-[400px] border-gray-200 bg-white relative flex flex-col">
-                    <div className="mb-4">
-                        <h3 className="text-lg font-bold text-gray-900">Enterprise</h3>
-                        <p className="text-gray-500 text-sm mt-1">For large organizations</p>
+
+            </div>
+
+            {/* Shared Features Footer */}
+            <div className="flex justify-center mt-6">
+                <div className="bg-gray-50 border border-gray-100 rounded-xl px-6 py-4 flex flex-col sm:flex-row items-center justify-center gap-4 lg:gap-8 max-w-3xl w-full text-sm text-gray-600 font-medium">
+                    <span className="text-gray-900 font-bold whitespace-nowrap">Every plan includes:</span>
+                    <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-500" />
+                        <span>Automated Payouts</span>
                     </div>
-
-                    <div className="mb-6">
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-bold text-gray-900">Custom</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">Contact us for pricing</p>
+                    <div className="hidden sm:block w-1 h-1 bg-gray-300 rounded-full"></div>
+                    <div className="flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-500" />
+                        <span>Advanced Analytics</span>
                     </div>
-
-                    <ul className="space-y-3 mb-8 flex-1">
-                        <li className="flex items-start gap-3 text-sm text-gray-600">
-                            <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                            <span>Unlimited campaigns</span>
-                        </li>
-                        <li className="flex items-start gap-3 text-sm text-gray-600">
-                            <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                            <span>Unlimited submissions</span>
-                        </li>
-                        <li className="flex items-start gap-3 text-sm text-gray-600">
-                            <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                            <span>Dedicated support</span>
-                        </li>
-                        <li className="flex items-start gap-3 text-sm text-gray-600">
-                            <Check className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                            <span>Custom integrations</span>
-                        </li>
-                    </ul>
-
-                    <Button
-                        variant="outline"
-                        className="w-full justify-center border-gray-200 text-gray-700 hover:bg-gray-50"
-                        disabled={hasActiveSubscription}
-                    >
-                        Contact Sales
-                    </Button>
                 </div>
             </div>
 

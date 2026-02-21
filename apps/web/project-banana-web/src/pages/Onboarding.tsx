@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useMutation, useAction, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
-import { Upload, Loader2, ArrowRight, Sparkles, TrendingUp, Users } from 'lucide-react';
+import { Upload, Loader2, ArrowRight, Sparkles, TrendingUp, Users, Check } from 'lucide-react';
 import PlanSelector from '../components/PlanSelector';
+import type { PlanType } from '../components/PlanSelector';
 
 export default function Onboarding() {
     // Check if user has business and subscription to determine initial step
@@ -44,6 +45,7 @@ export default function Onboarding() {
     // Business Profile State
     const [name, setName] = useState('');
     const [industry, setIndustry] = useState('E-commerce');
+    const [customIndustry, setCustomIndustry] = useState('');
     const [size, setSize] = useState('1-10');
     const [file, setFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -53,11 +55,13 @@ export default function Onboarding() {
     // Plan Selection State
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
     const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<'starter' | 'growth' | null>(null);
+    const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
 
     const createBusiness = useMutation(api.businesses.createBusiness);
     const generateUploadUrl = useAction(api.businesses.generateLogoUploadUrl);
     const createSubscriptionCheckout = useAction(api.stripe.createSubscriptionCheckout);
+    const industryOptions = ['E-commerce', 'SaaS', 'Agency', 'Health', 'Education', 'Fintech', 'Food & Beverage', 'Other'];
+    const sizeOptions = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -104,7 +108,7 @@ export default function Onboarding() {
             // 3. Create Business
             await createBusiness({
                 name,
-                industry,
+                industry: industry === 'Other' ? customIndustry || 'Other' : industry,
                 size,
                 logo_s3_key: s3Key,
             });
@@ -128,12 +132,16 @@ export default function Onboarding() {
     // Will update logic later if needed
 
     // ... Copying handlePlanSelection logic ...
-    const handlePlanSelection = async (planType: 'starter' | 'growth') => {
+    const handlePlanSelection = async (planType: PlanType) => {
         setSelectedPlan(planType);
         setIsCreatingCheckout(true);
 
         try {
             const STRIPE_PRICES = {
+                free: {
+                    monthly: '',
+                    annual: '',
+                },
                 starter: {
                     monthly: 'price_1SwdFtGxFs9ga3zc5cI5Weib',
                     annual: 'price_1SwdR9GxFs9ga3zcN4TG9KnG',
@@ -142,9 +150,21 @@ export default function Onboarding() {
                     monthly: 'price_1SwdJYGxFs9ga3zcZpNKmp4S',
                     annual: 'price_1SwdUGGxFs9ga3zc6C80xiAz',
                 },
+                pro: {
+                    monthly: '',
+                    annual: '',
+                }
             };
 
-            const priceId = STRIPE_PRICES[planType][billingCycle];
+            const priceId = STRIPE_PRICES[planType]?.[billingCycle];
+
+            if (!priceId) {
+                // If there's no price ID (like the Free plan), we just bypass Stripe checkout for now
+                // and skip to the main dashboard. The backend will treat users without
+                // a Stripe subscription as Free by default.
+                window.location.href = '/';
+                return;
+            }
             const result = await createSubscriptionCheckout({
                 priceId,
                 planType,
@@ -167,12 +187,12 @@ export default function Onboarding() {
 
 
     return (
-        <div className="min-h-screen bg-[url('/bg-onboard.webp')] bg-cover bg-center bg-no-repeat p-4 flex items-center justify-center font-sans">
-            <div className="bg-white rounded-xl py-20  min-w-[1400px]  shadow-2xl overflow-hidden relative flex">
+        <div className="h-screen bg-[url('/bg-onboard.webp')] bg-cover bg-center bg-no-repeat p-3 lg:p-4 flex items-center justify-center font-sans overflow-hidden">
+            <div className="bg-white rounded-xl lg:rounded-2xl w-full max-w-[1440px] h-full max-h-[900px] shadow-2xl overflow-hidden relative flex">
                 {/* Intro Step */}
                 {currentStep === 0 && (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-8 animate-in fade-in slide-in-from-right duration-500">
-                        <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <div className="w-full h-full flex flex-col items-center justify-center p-6 lg:p-8 animate-in fade-in slide-in-from-right duration-500">
+                        <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
                             {/* Left: Content */}
                             <div className="h-full flex flex-col justify-between">
                                 <div className="space-y-4">
@@ -187,7 +207,7 @@ export default function Onboarding() {
                                     </p>
                                 </div>
 
-                                <div className="flex items-center justify-between pt-8">
+                                <div className="flex items-center justify-between pt-6">
                                     <div className="flex gap-2">
                                         {slides.map((_, idx) => (
                                             <div
@@ -263,14 +283,14 @@ export default function Onboarding() {
                 {currentStep === 1 && (
                     <div className="w-full h-full grid grid-cols-1 lg:grid-cols-2 animate-in fade-in slide-in-from-right duration-500">
                         {/* Left Side - Form */}
-                        <div className="p-20 flex flex-col justify-center overflow-y-auto">
-                            <div className="mb-12">
-                                <h2 className="text-4xl font-bold text-gray-900 mb-4">Tell us about your business</h2>
-                                <p className="text-gray-500 text-lg">We'll customize your experience based on your needs.</p>
+                        <div className="p-6 lg:p-10 flex flex-col justify-center">
+                            <div className="mb-6">
+                                <h2 className="text-3xl lg:text-[2rem] font-bold text-gray-900 mb-3">Tell us about your business</h2>
+                                <p className="text-gray-500 text-base lg:text-[17px]">We'll customize your experience based on your needs.</p>
                             </div>
 
-                            <form onSubmit={handleBusinessSubmit} className="space-y-10">
-                                <div className="space-y-8">
+                            <form onSubmit={handleBusinessSubmit} className="space-y-6">
+                                <div className="space-y-5">
                                     <div>
                                         <label className="block text-sm font-bold text-gray-900 mb-3">Business Name</label>
                                         <input
@@ -283,40 +303,70 @@ export default function Onboarding() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-8">
+                                    <div className="grid grid-cols-1 gap-5">
                                         <div>
                                             <label className="block text-sm font-bold text-gray-900 mb-3">Industry</label>
-                                            <select
-                                                value={industry}
-                                                onChange={(e) => setIndustry(e.target.value)}
-                                                className="w-full bg-[#F9FAFB] border-2 border-transparent focus:bg-white focus:border-gray-200 rounded-xl px-5 py-4 outline-none transition-all font-medium text-gray-900 appearance-none text-lg"
-                                            >
-                                                <option value="E-commerce">E-commerce</option>
-                                                <option value="SaaS">SaaS</option>
-                                                <option value="Agency">Agency</option>
-                                                <option value="Health">Health</option>
-                                                <option value="Education">Education</option>
-                                                <option value="Other">Other</option>
-                                            </select>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                                {industryOptions.map((option) => {
+                                                    const selected = industry === option;
+                                                    return (
+                                                        <button
+                                                            key={option}
+                                                            type="button"
+                                                            aria-pressed={selected}
+                                                            onClick={() => setIndustry(option)}
+                                                            className={`group rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all text-left flex items-center justify-between gap-2 ${selected
+                                                                ? 'bg-gray-100 text-gray-900 border-gray-900 ring-1 ring-gray-900 shadow-sm'
+                                                                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                                }`}
+                                                        >
+                                                            <span className="leading-tight">{option}</span>
+                                                            {selected && <Check className="w-4 h-4 shrink-0 text-gray-900" />}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            {industry === 'Other' && (
+                                                <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={customIndustry}
+                                                        onChange={(e) => setCustomIndustry(e.target.value)}
+                                                        placeholder="Please specify your industry"
+                                                        className="w-full bg-[#F9FAFB] border-2 border-transparent focus:bg-white focus:border-gray-900 rounded-xl px-4 py-3 outline-none transition-all text-gray-900 placeholder:text-gray-400 text-sm font-medium"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-900 mb-3">Size</label>
-                                            <select
-                                                value={size}
-                                                onChange={(e) => setSize(e.target.value)}
-                                                className="w-full bg-[#F9FAFB] border-2 border-transparent focus:bg-white focus:border-gray-200 rounded-xl px-5 py-4 outline-none transition-all font-medium text-gray-900 appearance-none text-lg"
-                                            >
-                                                <option value="1-10">1-10</option>
-                                                <option value="11-50">11-50</option>
-                                                <option value="51-200">51-200</option>
-                                                <option value="200+">200+</option>
-                                            </select>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                                {sizeOptions.map((option) => {
+                                                    const selected = size === option;
+                                                    return (
+                                                        <button
+                                                            key={option}
+                                                            type="button"
+                                                            aria-pressed={selected}
+                                                            onClick={() => setSize(option)}
+                                                            className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all text-left flex items-center justify-between gap-2 ${selected
+                                                                ? 'bg-gray-100 text-gray-900 border-gray-900 ring-1 ring-gray-900 shadow-sm'
+                                                                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                                }`}
+                                                        >
+                                                            <span>{option}</span>
+                                                            {selected && <Check className="w-4 h-4 shrink-0 text-gray-900" />}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-bold text-gray-900 mb-3">Logo (Optional)</label>
-                                        <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-4">
                                             <div className="w-24 h-24 rounded-2xl bg-[#F9FAFB] border-2 border-transparent flex items-center justify-center overflow-hidden relative group cursor-pointer hover:border-gray-300 transition-colors">
                                                 {previewUrl ? (
                                                     <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
@@ -347,7 +397,7 @@ export default function Onboarding() {
 
                                 <Button
                                     disabled={isCreating || !name}
-                                    className="w-full justify-center py-5 text-xl bg-[#1C1C1C] hover:bg-black text-white border-transparent shadow-2xl shadow-black/10 rounded-xl"
+                                    className="w-full justify-center py-4 text-lg bg-[#1C1C1C] hover:bg-black text-white border-transparent shadow-2xl shadow-black/10 rounded-xl transition-all"
                                 >
                                     {isCreating ? (
                                         <>
@@ -357,7 +407,6 @@ export default function Onboarding() {
                                     ) : (
                                         <>
                                             Create Business
-                                            <ArrowRight className="w-6 h-6 ml-3" />
                                         </>
                                     )}
                                 </Button>
@@ -365,7 +414,7 @@ export default function Onboarding() {
                         </div>
 
                         {/* Right Side - Image */}
-                        <div className="hidden lg:block p-20">
+                        <div className="hidden lg:block p-8">
                             <div className="relative w-full h-full overflow-hidden rounded-3xl">
                                 <img
                                     src="/bg-onboard.webp"
@@ -373,8 +422,8 @@ export default function Onboarding() {
                                     className="absolute inset-0 w-full h-full object-cover"
                                 />
                                 <div className="absolute inset-0 bg-black/10"></div>
-                                <div className="absolute bottom-12 left-12 right-12 text-white p-8 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
-                                    <p className="text-xl font-medium mb-4">"This platform transformed how we handle UGC. It's incredibly intuitive and powerful."</p>
+                                <div className="absolute bottom-8 left-8 right-8 text-white p-6 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+                                    <p className="text-lg font-medium mb-4">"This platform transformed how we handle UGC. It's incredibly intuitive and powerful."</p>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">JD</div>
                                         <div>
@@ -391,11 +440,11 @@ export default function Onboarding() {
                 {/* Plan Selection Step */}
                 {currentStep === 2 && (
                     <div className="w-full h-full flex flex-col animate-in fade-in slide-in-from-right duration-500">
-                        <div className="p-12 overflow-y-auto h-full flex flex-col justify-center">
-                            <div className="max-w-7xl mx-auto w-full">
-                                <div className="mb-12 text-center">
-                                    <h2 className="text-4xl font-bold text-gray-900 mb-3">Choose Your Plan</h2>
-                                    <p className="text-gray-500 text-lg">Select the perfect plan to get started with your UGC campaigns.</p>
+                        <div className="p-8 lg:p-10 h-full flex flex-col justify-center">
+                            <div className="max-w-[1400px] mx-auto w-full">
+                                <div className="mb-10 text-center">
+                                    <h2 className="text-3xl lg:text-[2rem] font-bold text-gray-900 mb-3">Choose Your Plan</h2>
+                                    <p className="text-gray-500 text-base lg:text-[17px]">Select the perfect plan to get started with your UGC campaigns.</p>
                                 </div>
 
                                 {error && (

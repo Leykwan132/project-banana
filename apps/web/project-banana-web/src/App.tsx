@@ -1,29 +1,35 @@
-import { useAuth } from '@workos-inc/authkit-react';
+import { authClient } from "./lib/auth-client"; //import the auth client
 import { Navigate } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 
 export default function App() {
-    const { user, signIn } = useAuth();
-    const onboardingStatus = useQuery(api.users.getOnboardingStatus);
+    const signIn = async () => {
+        const data = await authClient.signIn.social({
+            provider: "google",
+            callbackURL: "/overview",
+            newUserCallbackURL: "/onboarding",
+        });
+    };
 
-    console.log(user);
-    if (user) {
-        // Wait for onboarding status to load
-        if (onboardingStatus === undefined) {
-            return (
-                <div className="min-h-screen flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                </div>
-            );
-        }
+    // const onboardingStatus = useQuery(api.users.getOnboardingStatus);
 
-        if (onboardingStatus.isOnboarded) {
-            return <Navigate to="/overview" />;
-        } else {
-            return <Navigate to="/onboarding" />;
-        }
-    }
+    // if (user) {
+    //     // Wait for onboarding status to load
+    //     if (onboardingStatus === undefined) {
+    //         return (
+    //             <div className="min-h-screen flex items-center justify-center">
+    //                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    //             </div>
+    //         );
+    //     }
+
+    //     if (onboardingStatus.isOnboarded) {
+    //         return <Navigate to="/overview" />;
+    //     } else {
+    //         return <Navigate to="/onboarding" />;
+    //     }
+    // }
 
     return (
         <div className="min-h-screen w-full flex">
@@ -46,10 +52,10 @@ export default function App() {
 
                     <div className="mt-8 space-y-6">
                         <button
-                            onClick={() => void signIn()}
+                            onClick={signIn}
                             className="flex w-full justify-center rounded-xl bg-black px-3 py-3.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black transition-all active:scale-[0.99] cursor-pointer"
                         >
-                            Sign in with AuthKit
+                            Sign in with Google
                         </button>
                     </div>
 

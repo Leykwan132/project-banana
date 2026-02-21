@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@convex-dev/better-auth": "^0.10.10",
     "@convex-dev/workos": "^0.0.1",
     "@heroui/card": "^2.2.27",
     "@heroui/chip": "^2.2.24",
@@ -24,6 +25,7 @@
     "@stripe/stripe-js": "^8.7.0",
     "@tailwindcss/vite": "^4.1.18",
     "@workos-inc/authkit-react": "^0.16.0",
+    "better-auth": "^1.4.18",
     "clsx": "^2.1.1",
     "convex": "^1.31.6",
     "formik": "^2.4.9",

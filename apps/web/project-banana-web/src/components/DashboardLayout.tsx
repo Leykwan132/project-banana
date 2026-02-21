@@ -4,10 +4,10 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Sidebar } from './Sidebar';
 
 export function DashboardLayout() {
-    const onboardingStatus = useQuery(api.users.getOnboardingStatus);
+    const businessOnboardingStatus = useQuery(api.businesses.getOnboardingStatus);
 
     // Wait for onboarding status to load
-    if (onboardingStatus === undefined) {
+    if (businessOnboardingStatus === undefined) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -16,7 +16,7 @@ export function DashboardLayout() {
     }
 
     // Redirect to onboarding if not onboarded
-    if (!onboardingStatus.isOnboarded) {
+    if (!businessOnboardingStatus.isOnboarded) {
         return <Navigate to="/onboarding" />;
     }
 

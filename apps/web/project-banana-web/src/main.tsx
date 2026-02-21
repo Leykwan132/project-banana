@@ -6,6 +6,9 @@ import { ConvexProviderWithAuthKit } from "@convex-dev/workos";
 import { ConvexReactClient } from "convex/react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastProvider } from "@heroui/toast";
+import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { authClient } from "./lib/auth-client";
+
 
 import App from './App'
 import Onboarding from './pages/Onboarding'
@@ -23,18 +26,24 @@ import Subscription from './pages/Subscription'
 import { DashboardLayout } from './components/DashboardLayout'
 import { HeroUIProvider } from "@heroui/react";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string, {
+  // Optionally pause queries until the user is authenticated
+  expectAuth: true,
+});
+
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HeroUIProvider>
-      <ToastProvider placement='top-center' toastOffset={30} toastProps={{
-        timeout: 2000,
-      }} />
-      <AuthKitProvider
-        clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}
-        redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
-      >
-        <ConvexProviderWithAuthKit client={convex} useAuth={useAuth}>
+    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+      <HeroUIProvider>
+        <ToastProvider placement='top-center' toastOffset={30} toastProps={{
+          timeout: 2000,
+        }} />
+        <AuthKitProvider
+          clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}
+          redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
+        >
+
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<App />} />
@@ -54,8 +63,9 @@ createRoot(document.getElementById('root')!).render(
               </Route>
             </Routes>
           </BrowserRouter>
-        </ConvexProviderWithAuthKit>
-      </AuthKitProvider>
-    </HeroUIProvider>
+        </AuthKitProvider>
+      </HeroUIProvider>
+    </ConvexBetterAuthProvider>
+
   </StrictMode>,
 )
