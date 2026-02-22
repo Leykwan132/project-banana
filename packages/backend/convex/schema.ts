@@ -52,7 +52,7 @@ export default defineSchema({
             description: v.string(),
         }))),
         pending_approvals: v.optional(v.number()),
-        category: v.optional(v.array(v.string())),
+        category: v.array(v.string()),
         created_at: v.number(),
         updated_at: v.number(),
     })

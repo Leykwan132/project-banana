@@ -99,7 +99,7 @@ export const createCampaign = mutation({
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),
         business_name: v.string(),
-        category: v.optional(v.array(v.string())),
+        category: v.array(v.string()),
         // Complex objects
         payout_thresholds: v.array(v.object({
             views: v.number(),
@@ -238,6 +238,7 @@ export const updateCampaign = mutation({
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),
+        category: v.array(v.string()),
         payout_thresholds: v.array(v.object({
             views: v.number(),
             payout: v.number(),
@@ -301,6 +302,7 @@ export const updateCampaign = mutation({
         await ctx.db.patch(args.campaignId, {
             name: args.name,
             total_budget: args.total_budget,
+            category: args.category,
             asset_links: args.asset_links,
             maximum_payout: args.maximum_payout,
             payout_thresholds: args.payout_thresholds,

@@ -10,24 +10,25 @@ const stripeClient = new StripeSubscriptions(components.stripe, {});
 // TYPES
 // ============================================================
 
-type PlanType = "starter" | "growth";
+type PlanType = "starter" | "growth" | "unlimited";
 type BillingCycle = "monthly" | "annual";
 
 // Plan configuration mapping
 const PLAN_CONFIG: Record<PlanType, {
     name: string;
-    campaignLimit: number | "unlimited";
-    submissionLimit: number | "unlimited";
+    campaignLimit: number;
 }> = {
     starter: {
         name: "Starter",
         campaignLimit: 1,
-        submissionLimit: 100,
     },
     growth: {
         name: "Growth",
-        campaignLimit: 15,
-        submissionLimit: "unlimited",
+        campaignLimit: 5,
+    },
+    unlimited: {
+        name: "Unlimited",
+        campaignLimit: -1,
     },
 };
 
@@ -61,6 +62,7 @@ export const getMySubscription = query({
 
         if (!business) return null;
 
+        console.log('plan config', PLAN_CONFIG[business.subscription_plan_type as PlanType])
         return {
             subscriptionId: business.stripe_subscription_id,
             status: business.subscription_status,
@@ -208,6 +210,7 @@ export const createSubscriptionCheckout = action({
                 "payment_method_types[0]": "card",
                 "line_items[0][price]": args.priceId,
                 "line_items[0][quantity]": "1",
+                // TODO: update this to 14 days
                 // "subscription_data[trial_period_days]": "14",
                 "success_url": "http://localhost:5173/overview?success=true",
                 "cancel_url": "http://localhost:5173/overview?canceled=true",

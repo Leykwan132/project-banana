@@ -12,6 +12,10 @@ if (process.env.STRIPE_PRICE_STARTER_MONTHLY) priceIdToPlan[process.env.STRIPE_P
 if (process.env.STRIPE_PRICE_STARTER_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_STARTER_ANNUAL] = "starter";
 if (process.env.STRIPE_PRICE_GROWTH_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_GROWTH_MONTHLY] = "growth";
 if (process.env.STRIPE_PRICE_GROWTH_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_GROWTH_ANNUAL] = "growth";
+if (process.env.STRIPE_PRICE_PAYG_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_PAYG_MONTHLY] = "free";
+if (process.env.STRIPE_PRICE_PAYG_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_PAYG_ANNUAL] = "free";
+if (process.env.STRIPE_PRICE_UNLIMITED_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_UNLIMITED_MONTHLY] = "unlimited";
+if (process.env.STRIPE_PRICE_UNLIMITED_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_UNLIMITED_ANNUAL] = "unlimited";
 
 const http = httpRouter();
 authKit.registerRoutes(http);
@@ -408,6 +412,7 @@ registerRoutes(http, components.stripe, {
                 return;
             }
 
+            console.log('plan', plan)
             await ctx.runMutation(api.stripe.updateStripeSubscriptionStatus, {
                 businessId: businessId,
                 status: status,
