@@ -187,6 +187,7 @@ export default function CampaignDetails() {
     const [showScriptsModal, setShowScriptsModal] = useState(false);
     const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
     const [isStatusUpdating, setIsStatusUpdating] = useState(false); // For pause/resume button loading
+    const [isEndingCampaign, setIsEndingCampaign] = useState(false);
 
     // Initial Values State for Formik Reinitialization
     const [initialValues, setInitialValues] = useState({
@@ -273,15 +274,32 @@ export default function CampaignDetails() {
         initialValues,
         enableReinitialize: true,
         validationSchema,
-        onSubmit: async (values, { setSubmitting }) => {
-            if (!campaignId) return;
+        onSubmit: async (values, { setSubmitting, setFieldError, setFieldTouched }) => {
+            if (!campaignId || !campaign) {
+                setSubmitting(false);
+                return;
+            }
+
+            const requestedTotalBudget = parseFloat(values.totalPayouts) || 0;
+            const currentTotalBudget = campaign.total_budget;
+            const claimedBudget = campaign.budget_claimed;
+
+            if (requestedTotalBudget < claimedBudget) {
+                setFieldTouched("totalPayouts", true, false);
+                setFieldError(
+                    "totalPayouts",
+                    `Total payouts cannot be lower than claimed amount (Rm ${claimedBudget.toFixed(2)})`
+                );
+                setSubmitting(false);
+                return;
+            }
 
             try {
                 await updateCampaign({
                     campaignId: campaignId as Id<"campaigns">,
                     name: values.name,
                     category: values.category,
-                    total_budget: parseFloat(values.totalPayouts) || 0,
+                    total_budget: requestedTotalBudget,
                     asset_links: values.assets,
                     maximum_payout: parseFloat(values.maxPayout) || 0,
                     payout_thresholds: values.thresholdData
@@ -304,10 +322,19 @@ export default function CampaignDetails() {
                         ...values.scriptsData.custom
                     ]
                 });
-                addToast({
-                    title: "Campaign updated successfully!",
-                    color: "success",
-                });
+                const additionalCharge = requestedTotalBudget - currentTotalBudget;
+                addToast(
+                    additionalCharge > 0
+                        ? {
+                            title: "Campaign updated successfully!",
+                            description: `Charged Rm ${additionalCharge.toFixed(2)} from your credits.`,
+                            color: "success",
+                        }
+                        : {
+                            title: "Campaign updated successfully!",
+                            color: "success",
+                        }
+                );
 
             } catch (error: any) {
                 console.error("Failed to update campaign:", error);
@@ -336,6 +363,10 @@ export default function CampaignDetails() {
     if (!campaign) {
         return <CampaignDetailsSkeleton />;
     }
+
+    const parsedTotalPayouts = parseFloat(formik.values.totalPayouts);
+    const proposedTotalPayouts = Number.isFinite(parsedTotalPayouts) ? parsedTotalPayouts : 0;
+    const isLowerThanClaimedAmount = formik.values.totalPayouts !== "" && proposedTotalPayouts < campaign.budget_claimed;
 
     return (
         <div className="animate-fadeIn relative pb-24 p-8">
@@ -367,19 +398,86 @@ export default function CampaignDetails() {
 
             <div className="max-w-6xl">
                 {/* Title & Status */}
-                <div className="flex items-center gap-4 mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">{formik.values.name || 'Campaign Details'}</h1>
+                <div className="flex items-start md:items-center justify-between gap-4 mb-8">
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-3xl font-bold text-gray-900">{formik.values.name || 'Campaign Details'}</h1>
 
-                    <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full border text-sm font-semibold capitalize ${campaign.status === 'active'
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : campaign.status === 'paused'
-                                ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                                : 'bg-gray-50 text-gray-700 border-gray-200'
-                            }`}>
-                            {campaign.status}
-                        </span>
+                        <div className="flex items-center gap-3">
+                            <span className={`px-3 py-1 rounded-full border text-sm font-semibold capitalize ${campaign.status === 'active'
+                                ? 'bg-green-50 text-green-700 border-green-200'
+                                : campaign.status === 'paused'
+                                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                    : 'bg-gray-50 text-gray-700 border-gray-200'
+                                }`}>
+                                {campaign.status}
+                            </span>
+                        </div>
                     </div>
+                    {campaign.status !== 'completed' && (
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="secondary"
+                                isLoading={isStatusUpdating}
+                                disabled={isEndingCampaign}
+                                onClick={async () => {
+                                    if (!campaignId) return;
+                                    try {
+                                        setIsStatusUpdating(true);
+                                        const newStatus = campaign.status === 'active' ? 'paused' : 'active';
+                                        await updateCampaignStatus({
+                                            campaignId: campaignId as Id<"campaigns">,
+                                            status: newStatus
+                                        });
+                                        addToast({
+                                            title: `Campaign ${newStatus === 'active' ? 'resumed' : 'paused'} successfully!`,
+                                            color: "success",
+                                        });
+                                    } catch (error: any) {
+                                        console.error("Failed to update status:", error);
+                                        addToast({
+                                            title: "Failed to update status",
+                                            description: error.data?.message || error.message,
+                                            color: "danger",
+                                        });
+                                    } finally {
+                                        setIsStatusUpdating(false);
+                                    }
+                                }}
+                            >
+                                {campaign.status === 'paused' ? 'Resume Campaign' : 'Pause Campaign'}
+                            </Button>
+                            <Button
+                                variant="danger"
+                                isLoading={isEndingCampaign}
+                                disabled={isStatusUpdating}
+                                onClick={async () => {
+                                    if (!campaignId) return;
+                                    try {
+                                        setIsEndingCampaign(true);
+                                        await updateCampaignStatus({
+                                            campaignId: campaignId as Id<"campaigns">,
+                                            status: 'completed'
+                                        });
+                                        addToast({
+                                            title: "Campaign ended successfully!",
+                                            color: "success",
+                                        });
+                                    } catch (error: any) {
+                                        console.error("Failed to end campaign:", error);
+                                        addToast({
+                                            title: "Failed to end campaign",
+                                            description: error.data?.message || error.message,
+                                            color: "danger",
+                                        });
+                                    } finally {
+                                        setIsEndingCampaign(false);
+                                    }
+                                }}
+                            >
+                                End Campaign
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Tabs */}
@@ -448,6 +546,7 @@ export default function CampaignDetails() {
                                             value={formik.values.totalPayouts}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
+                                            min={campaign.budget_claimed}
                                             className={`w-full bg-[#F4F6F8] rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all ${formik.touched.totalPayouts && formik.errors.totalPayouts ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
                                         />
                                     </div>
@@ -926,41 +1025,11 @@ export default function CampaignDetails() {
             {activeTab === 'about' && createPortal(
                 <div className="fixed bottom-8 right-8 flex gap-4 z-50">
                     <Button
-                        variant="secondary"
-                        isLoading={isStatusUpdating}
-                        onClick={async () => {
-                            if (!campaignId) return;
-                            try {
-                                setIsStatusUpdating(true);
-                                const newStatus = campaign.status === 'active' ? 'paused' : 'active';
-                                await updateCampaignStatus({
-                                    campaignId: campaignId as Id<"campaigns">,
-                                    status: newStatus
-                                });
-                                addToast({
-                                    title: `Campaign ${newStatus === 'active' ? 'resumed' : 'paused'} successfully!`,
-                                    color: "success",
-                                });
-                            } catch (error: any) {
-                                console.error("Failed to update status:", error);
-                                addToast({
-                                    title: "Failed to update status",
-                                    description: error.data?.message || error.message,
-                                    color: "danger",
-                                });
-                            } finally {
-                                setIsStatusUpdating(false);
-                            }
-                        }}
-                    >
-                        {campaign.status === 'paused' ? 'Resume Campaign' : 'Pause Campaign'}
-                    </Button>
-                    <Button
                         variant="primary"
                         onClick={() => formik.handleSubmit()}
                         isLoading={formik.isSubmitting}
-                        disabled={formik.isSubmitting || !formik.dirty}
-                        className={!formik.dirty && !formik.isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
+                        disabled={formik.isSubmitting || !formik.dirty || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign}
+                        className={(!formik.dirty || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign) && !formik.isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
                     >
                         {formik.isSubmitting ? 'Saving...' : 'Save Changes'}
                     </Button>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
-import { Layers, Check, Rocket, ArrowUp, ArrowDown } from 'lucide-react';
+import { Layers, Check, Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
 import { Chip } from "@heroui/chip";
 import { Skeleton } from "@heroui/skeleton";
@@ -21,8 +21,9 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
         </p>
         <button
             onClick={onCreate}
-            className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+            className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
         >
+            <Plus className="w-4 h-4" />
             Create Campaign
         </button>
     </div>
@@ -194,8 +195,9 @@ export default function Campaigns() {
                 <div className="mb-12">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-semibold">Ongoing Campaigns</h2>
-                        <button disabled className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold opacity-50 cursor-not-allowed">
-                            + Create Campaign
+                        <button disabled className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold opacity-50 cursor-not-allowed flex items-center justify-center gap-2">
+                            <Plus className="w-4 h-4" />
+                            Create Campaign
                         </button>
                     </div>
                     <CampaignsSkeleton />
@@ -223,9 +225,10 @@ export default function Campaigns() {
                     <h2 className="text-lg font-semibold">Ongoing Campaigns</h2>
                     <button
                         onClick={() => navigate('/campaign/new')}
-                        className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+                        className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
                     >
-                        + Create Campaign
+                        <Plus className="w-4 h-4" />
+                        Create Campaign
                     </button>
                 </div>
 

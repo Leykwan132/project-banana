@@ -265,6 +265,15 @@ export const updateCampaign = mutation({
             throw new Error("Business not found");
         }
 
+        if (args.total_budget < campaign.budget_claimed) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: `Total payouts cannot be lower than claimed amount (RM ${campaign.budget_claimed.toFixed(2)})`,
+                claimedAmount: campaign.budget_claimed,
+                requestedTotalBudget: args.total_budget,
+            });
+        }
+
         // Check if budget is being increased
         if (args.total_budget > campaign.total_budget) {
             const additionalBudget = args.total_budget - campaign.total_budget;
@@ -314,5 +323,3 @@ export const updateCampaign = mutation({
         return args.campaignId;
     },
 });
-
-

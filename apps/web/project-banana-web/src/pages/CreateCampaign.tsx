@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
-import { ChevronLeft, Plus, X, Check, Loader2, Eye, DollarSign, Wallet, ArrowRight, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info } from 'lucide-react';
+import { ChevronLeft, Plus, X, Check, Eye, DollarSign, Wallet, ArrowRight, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info } from 'lucide-react';
 import { ERROR_CODES } from '../../../../../packages/backend/convex/errors';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Popover, PopoverTrigger, PopoverContent, Button } from "@heroui/react";
+import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton } from "@heroui/react";
+import Button from '../components/ui/Button';
 
 export interface Threshold {
     views: string;
@@ -833,7 +834,7 @@ export default function CreateCampaign() {
                                         <div className="absolute top-2 right-2">
                                             <Popover placement="top" showArrow={true} backdrop="transparent">
                                                 <PopoverTrigger>
-                                                    <Button
+                                                    <HeroButton
                                                         isIconOnly
                                                         variant="light"
                                                         size="sm"
@@ -844,7 +845,7 @@ export default function CreateCampaign() {
                                                         }}
                                                     >
                                                         <Info className="w-4 h-4" strokeWidth={2} />
-                                                    </Button>
+                                                    </HeroButton>
                                                 </PopoverTrigger>
                                                 <PopoverContent>
                                                     <div className="px-1 py-2 max-w-[250px]">
@@ -1094,27 +1095,14 @@ export default function CreateCampaign() {
                 </div>
 
                 <div className="fixed bottom-8 right-8 flex gap-4 z-40">
-                    <button
-                        type="button"
-                        disabled={formik.isSubmitting}
-                        className="bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-900 px-8 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors shadow-lg disabled:opacity-50"
-                    >
-                        Save Draft
-                    </button>
-                    <button
+
+                    <Button
                         type="submit"
-                        disabled={formik.isSubmitting}
-                        className="bg-[#1C1C1C] text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-lg shadow-black/20 flex items-center gap-2 min-w-[140px] justify-center disabled:opacity-70"
+                        isLoading={formik.isSubmitting}
+                        className="px-8 py-3 font-bold"
                     >
-                        {formik.isSubmitting ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>Publishing...</span>
-                            </>
-                        ) : (
-                            <span>Publish</span>
-                        )}
-                    </button>
+                        {formik.isSubmitting ? 'Publishing...' : 'Publish'}
+                    </Button>
                 </div>
             </form>
 
