@@ -18,7 +18,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
         </p>
         <button
             onClick={onCreate}
-            className="bg-[#1C1C1C] text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-lg shadow-black/20"
+            className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
         >
             Create Campaign
         </button>

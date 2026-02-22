@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import { Upload, Loader2, ArrowRight, Sparkles, TrendingUp, Users, Check } from 'lucide-react';
 import PlanSelector from '../components/PlanSelector';
 import type { PlanType } from '../components/PlanSelector';
+import { getStripePriceId } from '../lib/stripe-prices';
 
 export default function Onboarding() {
     // Check if user has business and subscription to determine initial step
@@ -137,26 +138,7 @@ export default function Onboarding() {
         setIsCreatingCheckout(true);
 
         try {
-            const STRIPE_PRICES = {
-                free: {
-                    monthly: '',
-                    annual: '',
-                },
-                starter: {
-                    monthly: 'price_1SwdFtGxFs9ga3zc5cI5Weib',
-                    annual: 'price_1SwdR9GxFs9ga3zcN4TG9KnG',
-                },
-                growth: {
-                    monthly: 'price_1SwdJYGxFs9ga3zcZpNKmp4S',
-                    annual: 'price_1SwdUGGxFs9ga3zc6C80xiAz',
-                },
-                pro: {
-                    monthly: '',
-                    annual: '',
-                }
-            };
-
-            const priceId = STRIPE_PRICES[planType]?.[billingCycle];
+            const priceId = getStripePriceId(planType, billingCycle);
 
             if (!priceId) {
                 // If there's no price ID (like the Free plan), we just bypass Stripe checkout for now

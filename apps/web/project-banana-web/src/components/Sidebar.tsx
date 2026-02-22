@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap } from 'lucide-react';
 import { useAuth } from '@workos-inc/authkit-react';
 import { useQuery } from 'convex/react';
@@ -18,7 +18,15 @@ const account = [
 
 export function Sidebar() {
     const { signOut } = useAuth();
+    const navigate = useNavigate();
     const business = useQuery(api.businesses.getMyBusiness);
+    const handleLogout = async () => {
+        try {
+            await signOut();
+        } finally {
+            navigate('/', { replace: true });
+        }
+    };
 
     return (
         <div className="flex h-screen w-64 flex-col border-r border-[#F4F6F8] bg-white">
@@ -84,7 +92,7 @@ export function Sidebar() {
 
             <div className="border-t border-[#F4F6F8] p-4">
                 <button
-                    onClick={() => signOut()}
+                    onClick={handleLogout}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
                 >
                     <LogOut className="h-4 w-4" />

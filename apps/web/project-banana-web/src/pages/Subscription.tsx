@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAction, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -42,8 +42,13 @@ export default function Subscription() {
     const hasActiveSubscription = liveSubscriptionStatus?.status === 'active' || liveSubscriptionStatus?.status === 'trialing';
 
     // Helper to get plan details from LOCAL CACHE (Stable)
-    const currentPlanType = subscriptionCache?.planType as 'starter' | 'growth' | undefined;
+    const currentPlanType = subscriptionCache?.planType as 'free' | 'starter' | 'growth' | 'unlimited' | undefined;
     const currentBillingCycle = subscriptionCache?.billingCycle as 'monthly' | 'annual' | undefined;
+    useEffect(() => {
+        if (hasActiveSubscription && currentBillingCycle) {
+            setBillingCycle(currentBillingCycle);
+        }
+    }, [hasActiveSubscription, currentBillingCycle]);
 
     // Format renewal date from LIVE STRIPE DATA
     const renewsOn = liveSubscriptionStatus?.currentPeriodEnd
@@ -162,7 +167,7 @@ export default function Subscription() {
                                     </>
                                 ) : (
                                     <>
-                                        Manage Subscription
+                                        Update Subscription
                                         <ExternalLink className="w-4 h-4 ml-2" />
                                     </>
                                 )}
@@ -173,11 +178,9 @@ export default function Subscription() {
 
                 {/* Heading for Plan Comparison */}
                 <div className="mb-6">
-                    <h2 className="text-xl font-bold">Available Plans</h2>
+                    <h2 className="text-xl font-bold">{hasActiveSubscription ? 'Available Plan' : 'Available Plans'}</h2>
                     <p className="text-gray-500 text-sm mt-1">
-                        {hasActiveSubscription
-                            ? 'Compare plans below. Use "Manage Subscription" above to change your plan.'
-                            : 'Choose the perfect plan for your business'}
+                        Choose the perfect plan for your business
                     </p>
                 </div>
 
@@ -187,6 +190,7 @@ export default function Subscription() {
                     onBillingCycleChange={setBillingCycle}
                     hasActiveSubscription={hasActiveSubscription}
                     currentPlanType={currentPlanType}
+                    currentBillingCycle={currentBillingCycle}
                 />
             </div>
 

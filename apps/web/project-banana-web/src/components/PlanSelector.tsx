@@ -2,26 +2,7 @@ import { Check, Loader2 } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from './ui/Button';
-
-// Static plan configuration
-const STRIPE_PRICES = {
-    free: {
-        monthly: '',
-        annual: '',
-    },
-    starter: {
-        monthly: 'price_1SwdFtGxFs9ga3zc5cI5Weib',
-        annual: 'price_1SwdR9GxFs9ga3zcN4TG9KnG',
-    },
-    growth: {
-        monthly: 'price_1SwdJYGxFs9ga3zcZpNKmp4S',
-        annual: 'price_1SwdUGGxFs9ga3zc6C80xiAz',
-    },
-    pro: {
-        monthly: '',
-        annual: '',
-    }
-};
+import { getStripePriceId } from '../lib/stripe-prices';
 
 const PLANS = [
     {
@@ -56,7 +37,7 @@ const PLANS = [
         ],
     },
     {
-        type: 'pro' as const,
+        type: 'unlimited' as const,
         name: 'Unlimited',
         monthlyPrice: 499,
         annualPrice: 4790,
@@ -78,6 +59,7 @@ interface PlanSelectorProps {
     onSelectPlan?: (planType: PlanType) => void;
     hasActiveSubscription?: boolean;
     currentPlanType?: PlanType | null;
+    currentBillingCycle?: 'monthly' | 'annual' | null;
     isLoading?: boolean;
     selectedPlan?: PlanType | null;
 }
@@ -88,6 +70,7 @@ export default function PlanSelector({
     onSelectPlan,
     hasActiveSubscription = false,
     currentPlanType = null,
+    currentBillingCycle = null,
     isLoading = false,
     selectedPlan = null,
 }: PlanSelectorProps) {
@@ -101,7 +84,13 @@ export default function PlanSelector({
 
         // Default behavior: create checkout
         try {
-            const priceId = STRIPE_PRICES[planType][billingCycle];
+            const priceId = getStripePriceId(planType, billingCycle);
+            if (!priceId) {
+                if (planType === 'free') {
+                    window.location.assign('/');
+                }
+                return;
+            }
             const result = await createSubscriptionCheckout({
                 priceId,
                 planType,
@@ -109,7 +98,7 @@ export default function PlanSelector({
             });
 
             if (result.url) {
-                window.location.href = result.url;
+                window.location.assign(result.url);
             }
         } catch (error) {
             console.error('Failed to create checkout session:', error);
@@ -130,7 +119,11 @@ export default function PlanSelector({
     };
 
     const isCurrentPlan = (planType: PlanType) => {
-        return currentPlanType === planType && hasActiveSubscription;
+        return (
+            currentPlanType === planType &&
+            hasActiveSubscription &&
+            (!currentBillingCycle || billingCycle === currentBillingCycle)
+        );
     };
 
     return (
@@ -160,40 +153,31 @@ export default function PlanSelector({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 w-full mx-auto">
                 {PLANS.map((plan) => {
                     const isCurrent = isCurrentPlan(plan.type);
-                    const isPopular = plan.type === 'growth' && !isCurrent;
                     const price = getPrice(plan);
 
                     return (
                         <div
                             key={plan.type}
                             className={`rounded-2xl p-6 lg:p-7 border relative flex flex-col transition-all duration-200 ${isCurrent
-                                ? 'border-2 border-blue-600 bg-blue-50/20 shadow-md'
-                                : isPopular
-                                    ? 'border-2 border-gray-900 bg-gray-900 shadow-2xl scale-105 z-10 text-white'
-                                    : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg'
+                                ? 'border-2 border-blue-600 bg-blue-50/30 shadow-lg ring-2 ring-blue-200'
+                                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg'
                                 }`}
                         >
                             {isCurrent && (
                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] tracking-wider font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                                    CURRENT PLAN
-                                </div>
-                            )}
-
-                            {isPopular && (
-                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FFD700] text-gray-900 text-[10px] tracking-wider font-extrabold px-3 py-1 rounded-full shadow-sm whitespace-nowrap">
-                                    MOST POPULAR
+                                    ACTIVE PLAN
                                 </div>
                             )}
 
                             <div className="mb-4">
-                                <h3 className={`text-lg font-bold ${isPopular ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
-                                <p className={`text-sm mt-1 ${isPopular ? 'text-gray-300' : 'text-gray-500'}`}>{plan.description}</p>
+                                <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
+                                <p className="text-sm mt-1 text-gray-500">{plan.description}</p>
                             </div>
 
                             <div className="mb-6">
                                 <div className="flex items-baseline gap-2">
-                                    <span className={`text-3xl font-bold tracking-tight ${isPopular ? 'text-white' : 'text-gray-900'}`}>RM {price}</span>
-                                    <span className={`text-sm font-medium ${isPopular ? 'text-gray-400' : 'text-gray-500'}`}>/month</span>
+                                    <span className="text-3xl font-bold tracking-tight text-gray-900">RM {price}</span>
+                                    <span className="text-sm font-medium text-gray-500">/month</span>
                                     {billingCycle === 'annual' && plan.monthlyPrice > 0 && (
                                         <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                                             SAVE {getSavingsPercent(plan)}%
@@ -209,38 +193,29 @@ export default function PlanSelector({
 
                             <ul className="space-y-3.5 mb-8 flex-1">
                                 {plan.features.map((feature, index) => (
-                                    <li key={index} className={`flex items-start gap-3 text-sm ${isPopular ? 'text-gray-200' : 'text-gray-600'}`}>
-                                        <Check className={`w-4 h-4 shrink-0 mt-0.5 ${isPopular ? 'text-[#FFD700]' : 'text-blue-600'}`} />
+                                    <li key={index} className="flex items-start gap-3 text-sm text-gray-600">
+                                        <Check className="w-4 h-4 shrink-0 mt-0.5 text-blue-600" />
                                         <span>{feature}</span>
                                     </li>
                                 ))}
                             </ul>
 
-                            <Button
-                                variant={isCurrent ? 'outline' : 'primary'}
-                                className={`w-full justify-center ${isCurrent
-                                    ? 'border-blue-200 text-blue-700 hover:bg-blue-50'
-                                    : isPopular
-                                        ? 'bg-white hover:bg-gray-200! text-gray-900! shadow-xl'
-                                        : 'bg-gray-900 hover:bg-black text-white shadow-sm'
-                                    }`}
-                                disabled={isCurrent || isLoading || hasActiveSubscription}
-                                onClick={() => !isCurrent && !hasActiveSubscription && handleStartSubscription(plan.type)}
-                            >
-                                {isLoading && selectedPlan === plan.type ? (
-                                    <Loader2 className={`w-4 h-4 animate-spin ${isPopular ? 'text-gray-900' : ''}`} />
-                                ) : isCurrent ? (
-                                    'Current Plan'
-                                ) : hasActiveSubscription ? (
-                                    'Change via Portal'
-                                ) : plan.type === 'free' ? (
-                                    'Get Started'
-                                ) : plan.type === 'pro' ? (
-                                    'Contact Sales'
-                                ) : (
-                                    'Start 14-day free trial'
-                                )}
-                            </Button>
+                            {!hasActiveSubscription && !isCurrent && (
+                                <Button
+                                    variant="primary"
+                                    className="w-full justify-center bg-gray-900 hover:bg-black text-white shadow-sm"
+                                    disabled={isLoading}
+                                    onClick={() => handleStartSubscription(plan.type)}
+                                >
+                                    {isLoading && selectedPlan === plan.type ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : plan.type === 'free' ? (
+                                        'Get Started'
+                                    ) : (
+                                        'Start 14-day free trial'
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     );
                 })}
@@ -263,12 +238,6 @@ export default function PlanSelector({
                     </div>
                 </div>
             </div>
-
-            {hasActiveSubscription && (
-                <p className="text-center text-sm text-gray-500 mt-4">
-                    To change your plan, use the "Manage Subscription" button above to access the Stripe portal.
-                </p>
-            )}
         </div>
     );
 }

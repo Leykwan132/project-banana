@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
-import { ChevronLeft, Plus, X, Check, Loader2, Eye, DollarSign, Wallet, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Plus, X, Check, Loader2, Eye, DollarSign, Wallet, ArrowRight, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info } from 'lucide-react';
 import { ERROR_CODES } from '../../../../../packages/backend/convex/errors';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { Popover, PopoverTrigger, PopoverContent, Button } from "@heroui/react";
 
 export interface Threshold {
     views: string;
@@ -560,6 +561,7 @@ export const ScriptsModal = ({ onClose, onSave, initialData }: {
 
 const validationSchema = Yup.object({
     name: Yup.string().required('Please enter a campaign name'),
+    category: Yup.array().min(1, 'Please select at least one category'),
     totalPayouts: Yup.number()
         .required('Please enter a valid total budget')
         .positive('Please enter a valid total budget'),
@@ -592,6 +594,7 @@ export default function CreateCampaign() {
     const formik = useFormik({
         initialValues: {
             name: '',
+            category: [] as string[],
             totalPayouts: '',
             assets: '',
             maxPayout: '',
@@ -617,6 +620,7 @@ export default function CreateCampaign() {
             try {
                 const campaignId = await createCampaign({
                     businessId: business._id,
+                    business_name: business.name,
                     status: "active",
                     name: values.name,
                     total_budget: parseFloat(values.totalPayouts) || 0,
@@ -628,6 +632,7 @@ export default function CreateCampaign() {
                             views: parseViews(t.views),
                             payout: parseFloat(t.amount) || 0
                         })),
+                    category: values.category,
                     requirements: [
                         ...(values.reqData.noAi ? ["No AI Content"] : []),
                         ...(values.reqData.followScript ? ["Follow Script 1:1"] : []),
@@ -714,35 +719,40 @@ export default function CreateCampaign() {
                 </button>
 
                 <div className="flex items-center gap-4">
-                    <div className="bg-[#F4F6F8] rounded-full px-4 py-2 flex items-center gap-3 h-10">
+                    <button
+                        onClick={() => navigate('/credits')}
+                        className="bg-[#F4F6F8] rounded-full px-4 py-2 flex items-center gap-3 h-10 hover:bg-gray-200 transition-colors"
+                    >
                         <div className="flex items-center gap-2">
                             <Wallet className="w-4 h-4 text-gray-500" />
                             <span className="text-sm font-medium text-gray-600">
                                 <span className="text-gray-900 font-bold">Rm {business?.credit_balance?.toFixed(2) ?? '0.00'}</span>
                             </span>
                         </div>
-                        <button className="w-5 h-5 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors">
+                        <div className="w-5 h-5 bg-black text-white rounded-full flex items-center justify-center">
                             <Plus className="w-3 h-3" />
-                        </button>
-                    </div>
+                        </div>
+                    </button>
                 </div>
             </div>
 
             <h1 className="text-2xl font-bold mb-8">Setup new campaign</h1>
 
             <form onSubmit={formik.handleSubmit}>
-                <div className="flex flex-col md:flex-row gap-8 md:gap-12 max-w-6xl">
-                    {/* Left Column */}
-                    <div className="flex-1 flex flex-col gap-8">
+                <div className="flex flex-col gap-8 max-w-6xl">
+                    {/* Row 1: Name & Total Payouts */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Name */}
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <label className="font-semibold text-gray-900 block w-fit relative">
                                 Name
                                 <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
                             </label>
+                            <p className="text-sm text-gray-500 mb-4">Give your campaign a clear and catchy title.</p>
                             <input
                                 type="text"
                                 name="name"
+                                placeholder="Campaign name..."
                                 value={formik.values.name}
                                 onChange={formik.handleChange}
                                 onBlur={formik.handleBlur}
@@ -754,11 +764,12 @@ export default function CreateCampaign() {
                         </div>
 
                         {/* Total Payouts */}
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <label className="font-semibold text-gray-900 block w-fit relative">
                                 Total payouts
                                 <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
                             </label>
+                            <p className="text-sm text-gray-500 mb-4">Set the total budget for this campaign.</p>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">Rm</span>
                                 <input
@@ -774,12 +785,234 @@ export default function CreateCampaign() {
                                 <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.totalPayouts}</p>
                             )}
                         </div>
+                    </div>
 
+                    {/* Category */}
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="font-semibold text-gray-900 block w-fit relative">
+                                Category
+                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">Select the content categories for your campaign.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-4">
+                            {[
+                                { id: 'challenge', label: 'Challenge', desc: 'Fun tasks or trends that creators do to showcase your brand playfully.', icon: Swords },
+                                { id: 'product-review', label: 'Product Review', desc: 'Honest and detailed feedback highlighting your product\'s best features.', icon: Star },
+                                { id: 'vlog', label: 'Vlog', desc: 'Casual, story-style videos integrating your product into daily life.', icon: Video },
+                                { id: 'reaction', label: 'Reaction', desc: 'Genuine, unfiltered first impressions of creators trying your product.', icon: MessageSquare },
+                                { id: 'voiceover', label: 'Voiceover', desc: 'A narrative spoken over compelling visuals or B-roll of your product.', icon: Mic },
+                                { id: 'clipping', label: 'Clipping', desc: 'Short, viral highlights cut from longer podcasts or stream content.', icon: Scissors },
+                                { id: 'product-demo', label: 'Product Demo', desc: 'A clear, step-by-step guide showing exactly how your product works.', icon: MonitorPlay },
+                            ].map((cat) => {
+                                const Icon = cat.icon;
+                                const isSelected = formik.values.category.includes(cat.label);
+                                return (
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
+                                        key={cat.id}
+                                        onClick={() => {
+                                            const newCategories = isSelected
+                                                ? formik.values.category.filter((c) => c !== cat.label)
+                                                : [...formik.values.category, cat.label];
+                                            formik.setFieldValue('category', newCategories);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                const newCategories = isSelected
+                                                    ? formik.values.category.filter((c) => c !== cat.label)
+                                                    : [...formik.values.category, cat.label];
+                                                formik.setFieldValue('category', newCategories);
+                                            }
+                                        }}
+                                        className={`relative flex flex-col items-center justify-center gap-3 p-4 w-36 aspect-3/4 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'border-black bg-gray-50 scale-[1.02]' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                                    >
+                                        <div className="absolute top-2 right-2">
+                                            <Popover placement="top" showArrow={true} backdrop="transparent">
+                                                <PopoverTrigger>
+                                                    <Button
+                                                        isIconOnly
+                                                        variant="light"
+                                                        size="sm"
+                                                        className="text-gray-400 hover:text-gray-900 transition-colors bg-transparent border-none min-w-0 h-6 w-6"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                        }}
+                                                    >
+                                                        <Info className="w-4 h-4" strokeWidth={2} />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent>
+                                                    <div className="px-1 py-2 max-w-[250px]">
+                                                        <div className="text-small font-bold mb-1">{cat.label}</div>
+                                                        <div className="text-tiny text-default-500 leading-relaxed">{cat.desc}</div>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+
+                                        <div className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors ${isSelected ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                            <Icon className="w-5 h-5" strokeWidth={2.5} />
+                                        </div>
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className={`text-xs font-bold text-center leading-tight ${isSelected ? 'text-black' : 'text-gray-900'}`}>{cat.label}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {formik.touched.category && formik.errors.category && typeof formik.errors.category === 'string' && (
+                            <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.category}</p>
+                        )}
+                    </div>
+
+                    {/* Row 2: Payout Threshold & Requirements */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Payout Threshold */}
+                        <div className="space-y-1">
+                            <label className="font-semibold text-gray-900 block w-fit relative">
+                                Payout Threshold
+                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">Define view milestones and reward amounts.</p>
+                            {formik.touched.thresholdData && formik.errors.thresholdData && typeof formik.errors.thresholdData === 'string' && (
+                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.thresholdData}</p>
+                            )}
+                            {formik.touched.maxPayout && formik.errors.maxPayout && (
+                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.maxPayout}</p>
+                            )}
+                            {formik.values.thresholdData.some(t => t.views && t.amount) ? (
+                                <div className="bg-[#F8F9FA] rounded-3xl p-6">
+                                    <h3 className="font-bold text-sm mb-4 text-gray-900">Current Threshold</h3>
+                                    <div className="space-y-3 mb-6">
+                                        {formik.values.thresholdData.map((t, i) => (
+                                            t.views && t.amount ? (
+                                                <div key={i} className="flex items-center gap-6 text-sm text-gray-600">
+                                                    <div className="flex items-center gap-2 min-w-[100px]">
+                                                        <Eye className="w-4 h-4 text-gray-400" />
+                                                        <span>{t.views} view</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
+                                                            <DollarSign className="w-2.5 h-2.5" />
+                                                        </div>
+                                                        <span>Rm{t.amount}</span>
+                                                    </div>
+                                                </div>
+                                            ) : null
+                                        ))}
+                                        {formik.values.maxPayout && (
+                                            <div className="flex items-center gap-6 text-sm text-gray-600 pt-2 border-t border-dashed border-gray-200 mt-2">
+                                                <div className="flex items-center gap-2 min-w-[100px]">
+                                                    <span className='font-semibold'>Max Payout</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
+                                                        <DollarSign className="w-2.5 h-2.5" />
+                                                    </div>
+                                                    <span>Rm{formik.values.maxPayout}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsThresholdModalOpen(true)}
+                                        className="w-full bg-white rounded-xl py-3 font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors text-gray-900"
+                                    >
+                                        Update Threshold
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsThresholdModalOpen(true)}
+                                    className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 flex items-center justify-center font-medium hover:bg-gray-200 transition-colors gap-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Add Thresholds
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Requirements */}
+                        <div className="space-y-1">
+                            <label className="font-semibold text-gray-900 block w-fit relative">
+                                Requirements
+                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">Specify what creators must do or qualifications.</p>
+                            {formik.touched.reqData && formik.errors.reqData && typeof formik.errors.reqData === 'string' && (
+                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.reqData}</p>
+                            )}
+                            {formik.values.reqData.noAi || formik.values.reqData.followScript || formik.values.reqData.language || formik.values.reqData.location || formik.values.reqData.custom.length > 0 ? (
+                                <div className="bg-[#F8F9FA] rounded-3xl p-6">
+                                    <h3 className="font-bold text-sm mb-4 text-gray-900">Current Requirements</h3>
+                                    <div className="space-y-3 mb-6">
+                                        {formik.values.reqData.noAi && (
+                                            <div className="flex items-start gap-3">
+                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
+                                                <span className="text-sm text-gray-600">No AI generated</span>
+                                            </div>
+                                        )}
+                                        {formik.values.reqData.followScript && (
+                                            <div className="flex items-start gap-3">
+                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
+                                                <span className="text-sm text-gray-600">Follow Script</span>
+                                            </div>
+                                        )}
+                                        {formik.values.reqData.language && (
+                                            <div className="flex items-start gap-3">
+                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
+                                                <span className="text-sm text-gray-600">Speak {formik.values.reqData.language}</span>
+                                            </div>
+                                        )}
+                                        {formik.values.reqData.location && formik.values.reqData.location.toLowerCase() !== 'any' && (
+                                            <div className="flex items-start gap-3">
+                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
+                                                <span className="text-sm text-gray-600">Creator from {formik.values.reqData.location}</span>
+                                            </div>
+                                        )}
+                                        {formik.values.reqData.custom.map((req, i) => (
+                                            <div key={i} className="flex items-start gap-3">
+                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
+                                                <span className="text-sm text-gray-600">{req}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsReqModalOpen(true)}
+                                        className="w-full bg-white rounded-xl py-3 font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors text-gray-900"
+                                    >
+                                        Update Requirements
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsReqModalOpen(true)}
+                                    className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 flex items-center justify-center font-medium hover:bg-gray-200 transition-colors gap-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Add Requirements
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Row 3: Scripts & Assets */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Scripts */}
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <label className="font-semibold text-gray-900 block w-fit relative">
                                 Scripts (Optional)
                             </label>
+                            <p className="text-sm text-gray-500 mb-4">Provide dialogue or instructions for creators.</p>
                             {formik.values.scriptsData.hook || formik.values.scriptsData.product || formik.values.scriptsData.cta || formik.values.scriptsData.custom.length > 0 ? (
                                 <div className="bg-[#F8F9FA] rounded-3xl p-6">
                                     <h3 className="font-bold text-sm mb-4 text-gray-900">Current Scripts</h3>
@@ -840,146 +1073,13 @@ export default function CreateCampaign() {
                                 </button>
                             )}
                         </div>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="flex-1 flex flex-col gap-8">
-                        {/* Payout Threshold */}
-                        <div className="space-y-2">
-                            <label className="font-semibold text-gray-900 block w-fit relative">
-                                Payout Threshold
-                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
-                            </label>
-                            {formik.touched.thresholdData && formik.errors.thresholdData && typeof formik.errors.thresholdData === 'string' && (
-                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.thresholdData}</p>
-                            )}
-                            {formik.touched.maxPayout && formik.errors.maxPayout && (
-                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.maxPayout}</p>
-                            )}
-
-                            {formik.values.thresholdData.some(t => t.views && t.amount) ? (
-                                <div className="bg-[#F8F9FA] rounded-3xl p-6">
-                                    <h3 className="font-bold text-sm mb-4 text-gray-900">Current Threshold</h3>
-                                    <div className="space-y-3 mb-6">
-                                        {formik.values.thresholdData.map((t, i) => (
-                                            t.views && t.amount ? (
-                                                <div key={i} className="flex items-center gap-6 text-sm text-gray-600">
-                                                    <div className="flex items-center gap-2 min-w-[100px]">
-                                                        <Eye className="w-4 h-4 text-gray-400" />
-                                                        <span>{t.views} view</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
-                                                            <DollarSign className="w-2.5 h-2.5" />
-                                                        </div>
-                                                        <span>Rm{t.amount}</span>
-                                                    </div>
-                                                </div>
-                                            ) : null
-                                        ))}
-                                        {formik.values.maxPayout && (
-                                            <div className="flex items-center gap-6 text-sm text-gray-600 pt-2 border-t border-dashed border-gray-200 mt-2">
-                                                <div className="flex items-center gap-2 min-w-[100px]">
-                                                    <span className='font-semibold'>Max Payout</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
-                                                        <DollarSign className="w-2.5 h-2.5" />
-                                                    </div>
-                                                    <span>Rm{formik.values.maxPayout}</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsThresholdModalOpen(true)}
-                                        className="w-full bg-white rounded-xl py-3 font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors text-gray-900"
-                                    >
-                                        Update Threshold
-                                    </button>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsThresholdModalOpen(true)}
-                                    className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 flex items-center justify-center font-medium hover:bg-gray-200 transition-colors gap-2"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Add Thresholds
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Requirements */}
-                        <div className="space-y-2">
-                            <label className="font-semibold text-gray-900 block w-fit relative">
-                                Requirements
-                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
-                            </label>
-                            {formik.touched.reqData && formik.errors.reqData && typeof formik.errors.reqData === 'string' && (
-                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.reqData}</p>
-                            )}
-                            {formik.values.reqData.noAi || formik.values.reqData.followScript || formik.values.reqData.language || formik.values.reqData.location || formik.values.reqData.custom.length > 0 ? (
-                                <div className="bg-[#F8F9FA] rounded-3xl p-6">
-                                    <h3 className="font-bold text-sm mb-4 text-gray-900">Current Requirements</h3>
-                                    <div className="space-y-3 mb-6">
-                                        {formik.values.reqData.noAi && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">No AI generated</span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.followScript && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">Follow Script</span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.language && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">Speak {formik.values.reqData.language}</span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.location && formik.values.reqData.location.toLowerCase() !== 'any' && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">Creator from {formik.values.reqData.location}</span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.custom.map((req, i) => (
-                                            <div key={i} className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">{req}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsReqModalOpen(true)}
-                                        className="w-full bg-white rounded-xl py-3 font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors text-gray-900"
-                                    >
-                                        Update Requirements
-                                    </button>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsReqModalOpen(true)}
-                                    className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 flex items-center justify-center font-medium hover:bg-gray-200 transition-colors gap-2"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Add Requirements
-                                </button>
-                            )}
-                        </div>
 
                         {/* Assets */}
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <label className="font-semibold text-gray-900 block w-fit relative">
                                 Assets link (optional)
                             </label>
+                            <p className="text-sm text-gray-500 mb-4">Share folder with images or reference videos.</p>
                             <input
                                 type="text"
                                 name="assets"
