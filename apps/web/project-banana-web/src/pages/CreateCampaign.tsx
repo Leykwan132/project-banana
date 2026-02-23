@@ -567,6 +567,7 @@ const validationSchema = Yup.object({
     totalPayouts: Yup.number()
         .required('Please enter a valid total budget')
         .positive('Please enter a valid total budget'),
+    assets: Yup.string().url('Please enter a valid URL'),
     maxPayout: Yup.number()
         .required('Please configure payout thresholds and maximum payout')
         .positive('Please configure payout thresholds and maximum payout'),
@@ -1160,8 +1161,11 @@ export default function CreateCampaign() {
                                 onChange={formik.handleChange}
                                 onBlur={formik.handleBlur}
                                 placeholder="https://www.drive.google.com/..."
-                                className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-400"
+                                className={`w-full bg-[#F4F6F8] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-400 ${formik.touched.assets && formik.errors.assets ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
                             />
+                            {formik.touched.assets && formik.errors.assets && (
+                                <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.assets as string}</p>
+                            )}
                         </div>
                     </div>
 
