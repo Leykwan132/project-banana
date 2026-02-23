@@ -32,7 +32,9 @@ export const getMyApplications = query({
                     ...app,
                     campaignName: campaign?.name,
                     businessName,
-                    campaignCoverPhotoUrl: campaign?.cover_photo_url,
+                    campaignCoverPhotoUrl: campaign?.cover_photo_url ?? campaign?.logo_url,
+                    campaignLogoUrl: campaign?.logo_url,
+                    campaignLogoS3Key: campaign?.logo_s3_key,
                 };
             })
         );

@@ -34,7 +34,11 @@ export default defineSchema({
     campaigns: defineTable({
         business_id: v.id("businesses"),
         name: v.string(),
+        logo_url: v.optional(v.string()),
+        logo_s3_key: v.optional(v.string()),
+        use_company_logo: v.optional(v.boolean()),
         cover_photo_url: v.optional(v.string()),
+        cover_photo_s3_key: v.optional(v.string()),
         total_budget: v.number(),
         budget_claimed: v.number(),
         submissions: v.number(),

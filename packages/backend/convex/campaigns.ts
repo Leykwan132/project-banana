@@ -1,8 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError } from "convex/values";
 import { ERROR_CODES } from "./errors";
+import { generateDownloadUrl, generateUploadUrl } from "./s3";
 // ============================================================
 // QUERIES
 // ============================================================
@@ -56,6 +57,9 @@ export const getActiveCampaigns = query({
                 campaignId: campaign._id,
                 name: campaign.name,
                 cover_photo_url: campaign.cover_photo_url,
+                cover_photo_s3_key: campaign.cover_photo_s3_key,
+                logo_url: campaign.logo_url,
+                logo_s3_key: campaign.logo_s3_key,
                 payout_threshold: campaign.payout_thresholds[0],
                 maximum_payout: campaign.maximum_payout,
                 submissions: campaign.submissions,
@@ -94,7 +98,10 @@ export const createCampaign = mutation({
         businessId: v.id("businesses"),
         status: v.string(),
         name: v.string(),
+        logo_url: v.optional(v.string()),
+        logo_s3_key: v.optional(v.string()),
         cover_photo_url: v.optional(v.string()),
+        cover_photo_s3_key: v.optional(v.string()),
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),
@@ -158,7 +165,10 @@ export const createCampaign = mutation({
         const campaignId = await ctx.db.insert("campaigns", {
             business_id: args.businessId,
             name: args.name,
+            logo_url: args.logo_url,
+            logo_s3_key: args.logo_s3_key,
             cover_photo_url: args.cover_photo_url,
+            cover_photo_s3_key: args.cover_photo_s3_key,
             total_budget: args.total_budget,
             budget_claimed: 0, // Starts at 0
             status: args.status, // "active" or "draft"
@@ -235,6 +245,11 @@ export const updateCampaign = mutation({
     args: {
         campaignId: v.id("campaigns"),
         name: v.string(),
+        logo_url: v.optional(v.string()),
+        logo_s3_key: v.optional(v.string()),
+        use_company_logo: v.optional(v.boolean()),
+        cover_photo_url: v.optional(v.string()),
+        cover_photo_s3_key: v.optional(v.string()),
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),
@@ -310,6 +325,11 @@ export const updateCampaign = mutation({
 
         await ctx.db.patch(args.campaignId, {
             name: args.name,
+            logo_url: args.logo_url,
+            logo_s3_key: args.logo_s3_key,
+            use_company_logo: args.use_company_logo,
+            cover_photo_url: args.cover_photo_url,
+            cover_photo_s3_key: args.cover_photo_s3_key,
             total_budget: args.total_budget,
             category: args.category,
             asset_links: args.asset_links,
@@ -321,5 +341,47 @@ export const updateCampaign = mutation({
         });
 
         return args.campaignId;
+    },
+});
+
+export const generateCampaignImageUploadUrl = action({
+    args: {
+        contentType: v.string(),
+        imageType: v.union(v.literal("logo"), v.literal("cover")),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+            throw new Error("Unauthenticated call to action");
+        }
+
+        const key = crypto.randomUUID();
+        const prefix = args.imageType === "logo" ? "campaign-logos" : "campaign-covers";
+        const s3Key = `${prefix}/${key}`;
+        const uploadUrl = await generateUploadUrl(s3Key, args.contentType);
+
+        return { uploadUrl, s3Key };
+    },
+});
+
+export const generateCampaignImageAccessUrl = action({
+    args: {
+        s3Key: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+            throw new Error("Unauthenticated call to action");
+        }
+
+        const isAllowedPrefix =
+            args.s3Key.startsWith("campaign-logos/") ||
+            args.s3Key.startsWith("campaign-covers/");
+
+        if (!isAllowedPrefix) {
+            throw new Error("Invalid campaign image key");
+        }
+
+        return await generateDownloadUrl(args.s3Key);
     },
 });
