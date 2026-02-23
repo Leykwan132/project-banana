@@ -66,7 +66,36 @@ export const getLatestSubmissionFeedback = query({
         if (reviews.length === 0) return null;
 
         reviews.sort((a, b) => (b.reviewed_at ?? b.created_at) - (a.reviewed_at ?? a.created_at));
-        return reviews[0]?.feedback ?? null;
+        const latestReview = reviews[0];
+
+        if (!latestReview || !latestReview.feedback) return null;
+
+        const submission = await ctx.db.get(args.submissionId);
+        let authorName = "Business";
+        let authorLogoUrl = null;
+        let authorLogoS3Key = null;
+
+        if (submission) {
+            const campaign = await ctx.db.get(submission.campaign_id);
+            if (campaign) {
+                if (campaign.business_name) {
+                    authorName = campaign.business_name;
+                } else {
+                    const business = await ctx.db.get(campaign.business_id);
+                    if (business) authorName = business.name;
+                }
+                authorLogoUrl = campaign.logo_url ?? null;
+                authorLogoS3Key = campaign.logo_s3_key ?? null;
+            }
+        }
+
+        return {
+            text: latestReview.feedback,
+            authorName,
+            authorLogoUrl,
+            authorLogoS3Key,
+            createdAt: latestReview.reviewed_at ?? latestReview.created_at,
+        };
     },
 });
 
