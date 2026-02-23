@@ -1,12 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { Skeleton } from "@heroui/skeleton";
-import { ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info } from 'lucide-react';
+import { ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -15,6 +14,7 @@ import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton } from "@
 import { PayoutThresholdModal, RequirementsModal, ScriptsModal, parseViews } from '../CreateCampaign';
 import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign';
 import Button from '../../components/ui/Button';
+import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
 import { addToast } from "@heroui/toast";
 
 // Mock Analytics Data
@@ -180,6 +180,9 @@ export default function CampaignDetails() {
     const business = useQuery(api.businesses.getMyBusiness);
     const updateCampaign = useMutation(api.campaigns.updateCampaign);
     const updateCampaignStatus = useMutation(api.campaigns.updateCampaignStatus);
+    const generateCampaignImageUploadUrl = useAction(api.campaigns.generateCampaignImageUploadUrl);
+    const generateCampaignImageAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
+    const generateBusinessLogoAccessUrl = useAction(api.businesses.generateLogoAccessUrl);
 
     // Modals State
     const [showThresholdModal, setShowThresholdModal] = useState(false);
@@ -188,6 +191,12 @@ export default function CampaignDetails() {
     const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
     const [isStatusUpdating, setIsStatusUpdating] = useState(false); // For pause/resume button loading
     const [isEndingCampaign, setIsEndingCampaign] = useState(false);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [coverFile, setCoverFile] = useState<File | null>(null);
+    const [coverPreview, setCoverPreview] = useState<string | null>(null);
+    const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
+    const [useCompanyLogo, setUseCompanyLogo] = useState(false);
 
     // Initial Values State for Formik Reinitialization
     const [initialValues, setInitialValues] = useState({
@@ -267,8 +276,98 @@ export default function CampaignDetails() {
                 reqData: newReqData,
                 scriptsData: newScriptsData
             });
+
+            setUseCompanyLogo(Boolean(campaign.use_company_logo));
         }
     }, [campaign]);
+
+    useEffect(() => {
+        const loadCompanyLogo = async () => {
+            if (!business) {
+                setCompanyLogoPreview(null);
+                return;
+            }
+
+            if (business.logo_url) {
+                setCompanyLogoPreview(business.logo_url);
+                return;
+            }
+
+            if (business.logo_s3_key) {
+                try {
+                    const signedUrl = await generateBusinessLogoAccessUrl({ businessId: business._id });
+                    setCompanyLogoPreview(signedUrl ?? null);
+                } catch (error) {
+                    console.error("Failed to fetch company logo preview:", error);
+                    setCompanyLogoPreview(null);
+                }
+                return;
+            }
+
+            setCompanyLogoPreview(null);
+        };
+
+        void loadCompanyLogo();
+    }, [business, generateBusinessLogoAccessUrl]);
+
+    useEffect(() => {
+        const loadCampaignMedia = async () => {
+            if (!campaign) {
+                setLogoPreview(null);
+                setCoverPreview(null);
+                return;
+            }
+
+            if (campaign.logo_url) {
+                setLogoPreview(campaign.logo_url);
+            } else if (campaign.logo_s3_key) {
+                try {
+                    const signedUrl = await generateCampaignImageAccessUrl({ s3Key: campaign.logo_s3_key });
+                    setLogoPreview(signedUrl ?? null);
+                } catch (error) {
+                    console.error("Failed to fetch campaign logo preview:", error);
+                    setLogoPreview(null);
+                }
+            } else {
+                setLogoPreview(null);
+            }
+
+            if (campaign.cover_photo_url) {
+                setCoverPreview(campaign.cover_photo_url);
+            } else if (campaign.cover_photo_s3_key) {
+                try {
+                    const signedUrl = await generateCampaignImageAccessUrl({ s3Key: campaign.cover_photo_s3_key });
+                    setCoverPreview(signedUrl ?? null);
+                } catch (error) {
+                    console.error("Failed to fetch campaign cover preview:", error);
+                    setCoverPreview(null);
+                }
+            } else {
+                setCoverPreview(null);
+            }
+        };
+
+        void loadCampaignMedia();
+    }, [campaign, generateCampaignImageAccessUrl]);
+
+    const uploadCampaignImage = async (file: File, imageType: "logo" | "cover") => {
+        const { uploadUrl, s3Key } = await generateCampaignImageUploadUrl({
+            contentType: file.type,
+            imageType,
+        });
+
+        const result = await fetch(uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type },
+        });
+
+        if (!result.ok) {
+            throw new Error(`Failed to upload campaign ${imageType}`);
+        }
+
+        return s3Key;
+    };
 
     const formik = useFormik({
         initialValues,
@@ -295,9 +394,44 @@ export default function CampaignDetails() {
             }
 
             try {
+                const hasCompanyLogo = !!(business?.logo_url || business?.logo_s3_key || companyLogoPreview);
+                const shouldUseCompanyLogo = useCompanyLogo && hasCompanyLogo;
+
+                if (shouldUseCompanyLogo && !business) {
+                    throw new Error("Business profile is not loaded yet");
+                }
+
+                let nextLogoS3Key = campaign.logo_s3_key;
+                let nextLogoUrl = campaign.logo_url;
+                let nextUseCompanyLogo = campaign.use_company_logo;
+                let nextCoverS3Key = campaign.cover_photo_s3_key;
+                let nextCoverUrl = campaign.cover_photo_url;
+
+                if (logoFile && !shouldUseCompanyLogo) {
+                    nextLogoS3Key = await uploadCampaignImage(logoFile, "logo");
+                    nextLogoUrl = undefined;
+                    nextUseCompanyLogo = false;
+                } else if (shouldUseCompanyLogo) {
+                    nextLogoS3Key = business?.logo_s3_key;
+                    nextLogoUrl = business?.logo_url;
+                    nextUseCompanyLogo = true;
+                } else if (!shouldUseCompanyLogo && campaign.use_company_logo) {
+                    nextUseCompanyLogo = false;
+                }
+
+                if (coverFile) {
+                    nextCoverS3Key = await uploadCampaignImage(coverFile, "cover");
+                    nextCoverUrl = undefined;
+                }
+
                 await updateCampaign({
                     campaignId: campaignId as Id<"campaigns">,
                     name: values.name,
+                    logo_url: nextLogoUrl,
+                    logo_s3_key: nextLogoS3Key,
+                    use_company_logo: nextUseCompanyLogo,
+                    cover_photo_url: nextCoverUrl,
+                    cover_photo_s3_key: nextCoverS3Key,
                     category: values.category,
                     total_budget: requestedTotalBudget,
                     asset_links: values.assets,
@@ -322,6 +456,10 @@ export default function CampaignDetails() {
                         ...values.scriptsData.custom
                     ]
                 });
+
+                setLogoFile(null);
+                setCoverFile(null);
+
                 const additionalCharge = requestedTotalBudget - currentTotalBudget;
                 addToast(
                     additionalCharge > 0
@@ -351,9 +489,12 @@ export default function CampaignDetails() {
 
     // Analytics State
     const [analyticsMetric, setAnalyticsMetric] = useState<'Views' | 'Likes' | 'Comments' | 'Shares'>('Views');
+    const hasCompanyLogo = !!(business?.logo_url || business?.logo_s3_key || companyLogoPreview);
+    const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
+    const hasMediaChanges = !!logoFile || !!coverFile || (campaign ? useCompanyLogo !== Boolean(campaign.use_company_logo) : false);
 
     const handleBack = () => {
-        if (formik.dirty) {
+        if (formik.dirty || hasMediaChanges) {
             setShowUnsavedChangesModal(true);
         } else {
             navigate('/campaigns');
@@ -566,15 +707,7 @@ export default function CampaignDetails() {
                                     <p className="text-sm text-gray-500 mb-4">Select the content categories for your campaign.</p>
                                 </div>
                                 <div className="flex flex-wrap gap-4">
-                                    {[
-                                        { id: 'challenge', label: 'Challenge', desc: 'Fun tasks or trends that creators do to showcase your brand playfully.', icon: Swords },
-                                        { id: 'product-review', label: 'Product Review', desc: 'Honest and detailed feedback highlighting your product\'s best features.', icon: Star },
-                                        { id: 'vlog', label: 'Vlog', desc: 'Casual, story-style videos integrating your product into daily life.', icon: Video },
-                                        { id: 'reaction', label: 'Reaction', desc: 'Genuine, unfiltered first impressions of creators trying your product.', icon: MessageSquare },
-                                        { id: 'voiceover', label: 'Voiceover', desc: 'A narrative spoken over compelling visuals or B-roll of your product.', icon: Mic },
-                                        { id: 'clipping', label: 'Clipping', desc: 'Short, viral highlights cut from longer podcasts or stream content.', icon: Scissors },
-                                        { id: 'product-demo', label: 'Product Demo', desc: 'A clear, step-by-step guide showing exactly how your product works.', icon: MonitorPlay },
-                                    ].map((cat) => {
+                                    {CAMPAIGN_CATEGORIES.map((cat) => {
                                         const Icon = cat.icon;
                                         const isSelected = formik.values.category.includes(cat.label);
                                         return (
@@ -639,7 +772,9 @@ export default function CampaignDetails() {
                                 )}
                             </div>
 
-                            {/* Row 2: Payout Threshold & Requirements */}
+
+
+                            {/* Row 3: Payout Threshold & Requirements */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {/* Payout Threshold */}
                                 <div className="space-y-1">
@@ -779,7 +914,7 @@ export default function CampaignDetails() {
                                 {/* Scripts */}
                                 <div className="space-y-1">
                                     <label className="font-semibold text-gray-900 block w-fit relative">
-                                        Scripts (Optional)
+                                        Scripts
                                     </label>
                                     <p className="text-sm text-gray-500 mb-4">Provide dialogue or instructions for creators.</p>
                                     {formik.values.scriptsData.hook || formik.values.scriptsData.product || formik.values.scriptsData.cta || formik.values.scriptsData.custom.length > 0 ? (
@@ -846,7 +981,7 @@ export default function CampaignDetails() {
                                 {/* Assets */}
                                 <div className="space-y-1">
                                     <label className="font-semibold text-gray-900 block w-fit relative">
-                                        Assets link (optional)
+                                        Assets link
                                     </label>
                                     <p className="text-sm text-gray-500 mb-4">Share folder with images or reference videos.</p>
                                     <input
@@ -858,6 +993,104 @@ export default function CampaignDetails() {
                                         placeholder="https://www.drive.google.com/..."
                                         className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-400"
                                     />
+                                </div>
+                            </div>
+
+                            {/* Row 4: Campaign Logo & Cover */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-1">
+                                    <label className="font-semibold text-gray-900 block">Campaign logo</label>
+                                    <div className="flex justify-between mb-4 ">
+                                        <p className="text-sm text-gray-500">Campaign icon at front page.</p>
+                                        {hasCompanyLogo && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); setUseCompanyLogo((prev) => !prev); }}
+                                                className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${useCompanyLogo
+                                                    ? 'bg-black text-white border-black'
+                                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                                                    }`}
+                                            >
+                                                {useCompanyLogo ? "Using company logo" : "Use company logo"}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <label htmlFor="campaign-logo-upload" className="block bg-[#F8F9FA] rounded-3xl p-6 cursor-pointer border-2 border-transparent hover:border-gray-200 transition-all group h-full max-h-[240px]">
+                                        <div className="h-full flex flex-col items-center justify-center space-y-4">
+                                            <div className="w-24 h-24 rounded-full bg-white border-2 border-dashed border-gray-300 overflow-hidden flex items-center justify-center relative">
+                                                {displayedLogoPreview ? (
+                                                    <>
+                                                        <img src={displayedLogoPreview} alt="Campaign logo preview" className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
+                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Upload className="w-6 h-6 text-gray-900" />
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <Building className="w-8 h-8 text-gray-300" />
+                                                )}
+                                            </div>
+                                            <div className="text-center group-hover:opacity-70 transition-opacity">
+                                                <span className="block text-sm font-semibold text-gray-900">
+                                                    {logoPreview ? "Change logo" : "Click to upload logo"}
+                                                </span>
+                                                <span className="block text-xs text-gray-500 mt-1">1:1 aspect ratio</span>
+                                            </div>
+                                        </div>
+                                        <input
+                                            id="campaign-logo-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setLogoFile(file);
+                                                setLogoPreview(URL.createObjectURL(file));
+                                                setUseCompanyLogo(false);
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="font-semibold text-gray-900 block">Campaign cover photo</label>
+                                    <div className="flex justify-between mb-4">
+                                        <p className="text-sm text-gray-500">Cover image for your campaign background.</p>
+                                    </div>
+                                    <label htmlFor="campaign-cover-upload" className="block bg-[#F8F9FA] rounded-3xl p-6 cursor-pointer border-2 border-transparent hover:border-gray-200 transition-all group h-full max-h-[240px]">
+                                        <div className="w-full h-full min-h-[140px] rounded-2xl bg-white border-2 border-dashed border-gray-300 overflow-hidden flex flex-col items-center justify-center relative mx-auto">
+                                            {coverPreview ? (
+                                                <>
+                                                    <img src={coverPreview} alt="Campaign cover preview" className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50">
+                                                        <div className="text-white px-4 py-2 rounded-xl flex items-center gap-2 font-semibold text-sm">
+                                                            <Upload className="w-4 h-4" /> Change cover
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                                                        <Upload className="w-5 h-5 text-gray-400 group-hover:text-gray-900 transition-colors" />
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-gray-900 mt-2 group-hover:opacity-70 transition-opacity">Click to upload cover</span>
+                                                    <span className="text-xs text-gray-500 group-hover:opacity-70 transition-opacity">16:9 aspect ratio recommended</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        <input
+                                            id="campaign-cover-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setCoverFile(file);
+                                                setCoverPreview(URL.createObjectURL(file));
+                                            }}
+                                        />
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -1028,8 +1261,8 @@ export default function CampaignDetails() {
                         variant="primary"
                         onClick={() => formik.handleSubmit()}
                         isLoading={formik.isSubmitting}
-                        disabled={formik.isSubmitting || !formik.dirty || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign}
-                        className={(!formik.dirty || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign) && !formik.isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
+                        disabled={formik.isSubmitting || (!formik.dirty && !hasMediaChanges) || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign}
+                        className={((!formik.dirty && !hasMediaChanges) || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign) && !formik.isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
                     >
                         {formik.isSubmitting ? 'Saving...' : 'Save Changes'}
                     </Button>

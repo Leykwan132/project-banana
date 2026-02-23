@@ -1,10 +1,61 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from "@heroui/card";
-import { Image } from "@heroui/image";
 import { ArrowRight, Rocket } from 'lucide-react';
-import { usePaginatedQuery, useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery, useAction } from "convex/react";
 import { Skeleton } from "@heroui/skeleton";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
+
+// Fallback images pool — pick one randomly per card so they feel distinct
+const FALLBACK_IMAGES = [
+    "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2071&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=2070&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1557804506-669a67965ba0?q=80&w=2074&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1533750349088-cd871a92f312?q=80&w=2070&auto=format&fit=crop",
+];
+
+function getRandomFallback(seed: string) {
+    // Deterministic-ish pick based on string length so it doesn't flicker on re-render
+    return FALLBACK_IMAGES[seed.length % FALLBACK_IMAGES.length];
+}
+
+// Sub-component: resolves cover photo URL (s3 signed url → direct url → fallback)
+function CampaignCoverImage({ campaign }: { campaign: { _id: string; name: string; cover_photo_s3_key?: string; cover_photo_url?: string } }) {
+    const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
+
+    const [src, setSrc] = useState<string | null>(
+        !campaign.cover_photo_s3_key ? (campaign.cover_photo_url || getRandomFallback(campaign._id)) : null
+    );
+
+    useEffect(() => {
+        if (!campaign.cover_photo_s3_key) return;
+
+        let cancelled = false;
+        generateAccessUrl({ s3Key: campaign.cover_photo_s3_key })
+            .then((url) => {
+                if (!cancelled) setSrc(url || campaign.cover_photo_url || getRandomFallback(campaign._id));
+            })
+            .catch(() => {
+                if (!cancelled) setSrc(campaign.cover_photo_url || getRandomFallback(campaign._id));
+            });
+
+        return () => { cancelled = true; };
+    }, [campaign.cover_photo_s3_key, campaign.cover_photo_url, campaign._id, generateAccessUrl]);
+
+    return (
+        <div className="mt-4 w-full aspect-video rounded-sm overflow-hidden bg-gray-100">
+            {src ? (
+                <img
+                    alt={campaign.name}
+                    className="w-full h-full object-cover"
+                    src={src}
+                />
+            ) : (
+                <Skeleton className="w-full h-full" />
+            )}
+        </div>
+    );
+}
 
 // Empty State Component
 const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
@@ -35,7 +86,6 @@ export default function Approvals() {
         { initialNumItems: 10 }
     );
 
-    console.log(results);
     if (!business || status === "LoadingFirstPage") {
         return (
             <div className="p-8 font-sans">
@@ -68,7 +118,7 @@ export default function Approvals() {
             </div>
 
             {results && results.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                     {results.map((campaign) => (
                         <Card
                             key={campaign._id}
@@ -81,7 +131,7 @@ export default function Approvals() {
                                 <h4 className="text-gray-900 text-xl font-semibold leading-tight line-clamp-2 text-left">
                                     {campaign.name}
                                 </h4>
-                                <div className="flex items-center gap-3 mt-3">
+                                <div className="flex items-center gap-3 mt-2">
                                     {campaign.pending_approvals && campaign.pending_approvals > 0 ? (
                                         <>
                                             <span className="px-3 bg-white py-1 rounded-full border border-gray-400 text-sm font-semibold text-gray-700">
@@ -94,18 +144,14 @@ export default function Approvals() {
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-1 pt-8 text-orange-500 font-semibold text-sm mt-4 transition-all">
+                                <div className="flex items-center gap-1 pt-4 text-orange-500 font-semibold text-sm mt-4 transition-all">
                                     <span>Review now</span>
                                     <ArrowRight className="w-4 h-4" />
                                 </div>
                             </div>
 
                             {/* Image Section (Bottom) */}
-                            <Image
-                                alt={campaign.name}
-                                className="object-cover rounded-sm mt-6"
-                                src={campaign.cover_photo_url || "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=2071&auto=format&fit=crop"}
-                            />
+                            <CampaignCoverImage campaign={campaign} />
                         </Card>
                     ))}
                 </div>

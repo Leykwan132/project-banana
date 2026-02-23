@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Loader2, ArrowRight } from 'lucide-react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { Skeleton } from "@heroui/skeleton";
+import ReactPlayer from 'react-player';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import Button from '../components/ui/Button';
@@ -13,11 +14,44 @@ export default function ReviewSubmission() {
     const { id: campaignId, submissionId } = useParams();
     const [feedback, setFeedback] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [loadingUrl, setLoadingUrl] = useState(false);
 
     const submission = useQuery(
         api.submissions.getSubmission,
         submissionId ? { submissionId: submissionId as Id<"submissions"> } : "skip"
     );
+
+    const generateVideoAccessUrl = useAction(api.submissions.generateVideoAccessUrl);
+
+    // Load video URL from S3 or fallback to video_url
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadVideoUrl = async () => {
+            if (!submission) return;
+            if (submission.s3_key) {
+                setLoadingUrl(true);
+                try {
+                    const signedUrl = await generateVideoAccessUrl({ submissionId: submissionId as Id<"submissions"> });
+                    if (isMounted) setVideoUrl(signedUrl);
+                } catch (error) {
+                    console.error("Failed to generate video access URL:", error);
+                    if (isMounted) setVideoUrl(submission.video_url ?? null);
+                } finally {
+                    if (isMounted) setLoadingUrl(false);
+                }
+                return;
+            }
+            setVideoUrl(submission.video_url ?? null);
+        };
+
+        void loadVideoUrl();
+        console.log(videoUrl)
+        return () => {
+            isMounted = false;
+        };
+    }, [submission?._id, submission?.s3_key, submission?.video_url, submissionId]);
 
     const [successAction, setSuccessAction] = useState<'approved' | 'changes_requested' | null>(null);
 
@@ -82,19 +116,21 @@ export default function ReviewSubmission() {
                 </div>
 
                 <div className="flex-1 flex items-center justify-center">
-                    {isLoading ? (
+                    {isLoading || loadingUrl ? (
                         <Skeleton className="w-full max-w-[420px] aspect-9/16 rounded-3xl" />
-                    ) : submission.video_url ? (
-                        <video
-                            src={submission.video_url}
-                            controls
-                            className="w-full max-w-[420px] aspect-9/16 bg-gray-100 rounded-3xl object-cover"
-                        />
+                    ) : videoUrl ? (
+                        <div className="w-full max-w-[420px] aspect-9/16 rounded-3xl overflow-hidden bg-black">
+                            <ReactPlayer
+                                src={videoUrl}
+                                controls
+                                width="100%"
+                                height="100%"
+                                style={{ borderRadius: '1.5rem' }}
+                            />
+                        </div>
                     ) : (
                         <div className="w-full max-w-[420px] aspect-9/16 bg-gray-100 rounded-3xl flex items-center justify-center">
-                            <span className="text-gray-400 font-medium">
-                                {submission.type === 'video' ? 'Video' : submission.type === 'image' ? 'Image' : 'Media'}
-                            </span>
+                            <span className="text-gray-400 font-medium">No video available</span>
                         </div>
                     )}
                 </div>

@@ -141,7 +141,7 @@ export default function ApprovalDetails() {
                                 Submission Date <SortIcon columnKey="submittedOn" />
                             </div>
                             <div className="col-span-2 flex items-center justify-center cursor-pointer hover:text-gray-600 outline-none" onClick={() => requestSort('submissionCount')}>
-                                No. of Feedbacks <SortIcon columnKey="submissionCount" />
+                                Submissions No. <SortIcon columnKey="submissionCount" />
                             </div>
                             <div className="col-span-2 flex items-center justify-center text-gray-400 cursor-default">
                                 Approval
@@ -170,7 +170,7 @@ export default function ApprovalDetails() {
                                         <div className="col-span-2 flex justify-center">
                                             <button
                                                 onClick={() => navigate(`/approvals/${campaignId}/submission/${item.id}`)}
-                                                className="bg-[#1C1C1C] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-gray-800 transition-colors"
+                                                className="bg-[#1C1C1C] text-white px-4 py-2 font-medium  rounded-xl text-xs hover:bg-gray-800 transition-colors"
                                             >
                                                 Review
                                             </button>
