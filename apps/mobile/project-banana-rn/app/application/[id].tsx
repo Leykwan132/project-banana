@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, RefreshControl, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, RefreshControl, Image, Linking } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -99,7 +99,6 @@ export default function ApplicationDetailScreen() {
     const createUserCampaignStatus = useMutation(api.userCampaignStatus.createUserCampaignStatus);
     const generateVideoUploadUrl = useAction(api.submissions.generateVideoUploadUrl);
 
-    const scriptsSheetRef = useRef<ActionSheetRef>(null);
     const submissionSheetRef = useRef<ActionSheetRef>(null);
     const reviewSheetRef = useRef<ActionSheetRef>(null);
     const [refreshing, setRefreshing] = useState(false);
@@ -315,14 +314,13 @@ export default function ApplicationDetailScreen() {
     // Accordion State
     const requirementsOpen = useSharedValue(false);
     const payoutsOpen = useSharedValue(false);
+    const scriptsOpen = useSharedValue(false);
+    const assetsOpen = useSharedValue(false);
 
-    const toggleRequirements = () => {
-        requirementsOpen.value = !requirementsOpen.value;
-    };
-
-    const togglePayouts = () => {
-        payoutsOpen.value = !payoutsOpen.value;
-    };
+    const toggleRequirements = () => { requirementsOpen.value = !requirementsOpen.value; };
+    const togglePayouts = () => { payoutsOpen.value = !payoutsOpen.value; };
+    const toggleScripts = () => { scriptsOpen.value = !scriptsOpen.value; };
+    const toggleAssets = () => { assetsOpen.value = !assetsOpen.value; };
 
 
     const Chevron = ({ progress }: { progress: SharedValue<boolean> }) => {
@@ -648,35 +646,6 @@ export default function ApplicationDetailScreen() {
                                 </View>
                             ))}
                         </View>
-
-                        {/* Scripts & Assets Cards */}
-                        {(campaign?.scripts || campaign?.asset_links) && (
-                            <View style={styles.cardsGrid}>
-                                {campaign?.scripts && (
-                                    <Pressable style={styles.infoCard} onPress={() => scriptsSheetRef.current?.show()}>
-                                        <View style={styles.infoIconContainer}>
-                                            <ThemedText style={styles.infoIconText}>S</ThemedText>
-                                        </View>
-                                        <View>
-                                            <ThemedText style={styles.infoTitle}>Scripts</ThemedText>
-                                            <ThemedText style={styles.infoSubtitle}>Things to say in video</ThemedText>
-                                        </View>
-                                    </Pressable>
-                                )}
-
-                                {campaign?.asset_links && (
-                                    <Pressable style={styles.infoCard} onPress={() => { }}>
-                                        <View style={styles.infoIconContainer}>
-                                            <ThemedText style={styles.infoIconText}>A</ThemedText>
-                                        </View>
-                                        <View>
-                                            <ThemedText style={styles.infoTitle}>Assets</ThemedText>
-                                            <ThemedText style={styles.infoSubtitle}>Things to show in video</ThemedText>
-                                        </View>
-                                    </Pressable>
-                                )}
-                            </View>
-                        )}
                     </AccordionItem>
                 </View>
 
@@ -716,6 +685,58 @@ export default function ApplicationDetailScreen() {
                     </AccordionItem>
                 </View>
 
+                {/* Scripts Accordion */}
+                {(campaign?.scripts && campaign.scripts.length > 0) ? (
+                    <>
+                        <View style={styles.divider} />
+                        <View style={styles.accordionSection}>
+                            <Pressable style={styles.accordionHeader} onPress={toggleScripts}>
+                                <View>
+                                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Scripts</ThemedText>
+                                    <ThemedText style={styles.accordionSubtitle}>Things to say in video</ThemedText>
+                                </View>
+                                <Chevron progress={scriptsOpen} />
+                            </Pressable>
+                            <AccordionItem isExpanded={scriptsOpen}>
+                                <View style={{ gap: 24, paddingVertical: 8 }}>
+                                    {campaign.scripts.map((script, index) => (
+                                        <View key={index}>
+                                            <ThemedText type="defaultSemiBold" style={{ marginBottom: 8, fontSize: 16 }}>{script.type}</ThemedText>
+                                            <View style={styles.scriptBox}>
+                                                <ThemedText style={styles.scriptText}>{script.description}</ThemedText>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            </AccordionItem>
+                        </View>
+                    </>
+                ) : null}
+
+                {/* Asset Links Accordion */}
+                {campaign?.asset_links && (
+                    <>
+                        <View style={styles.divider} />
+                        <View style={styles.accordionSection}>
+                            <Pressable style={styles.accordionHeader} onPress={toggleAssets}>
+                                <View>
+                                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Assets</ThemedText>
+                                    <ThemedText style={styles.accordionSubtitle}>Things to show in video</ThemedText>
+                                </View>
+                                <Chevron progress={assetsOpen} />
+                            </Pressable>
+                            <AccordionItem isExpanded={assetsOpen}>
+                                <Pressable
+                                    style={{ paddingVertical: 8 }}
+                                    onPress={() => Linking.openURL(campaign.asset_links!)}
+                                >
+                                    <ThemedText style={{ color: '#E11D48', textDecorationLine: 'underline', fontSize: 16 }}>{campaign.asset_links}</ThemedText>
+                                </Pressable>
+                            </AccordionItem>
+                        </View>
+                    </>
+                )}
+
                 <View style={styles.divider} />
 
                 {/* Inspirations */}
@@ -749,38 +770,6 @@ export default function ApplicationDetailScreen() {
                         )}
                     </View>
                 </View>
-
-                {/* Scripts Action Sheet */}
-                <ActionSheet gestureEnabled ref={scriptsSheetRef}>
-                    <View style={styles.sheetContent}>
-                        {/* Title Header */}
-                        <View style={styles.sheetHeader}>
-                            <ThemedText style={styles.sheetTitle}>Scripts</ThemedText>
-                            <ThemedText style={styles.sheetSubtitle}>These line must appear in the video</ThemedText>
-                        </View>
-
-                        {/* Script Sections */}
-                        <View style={{ gap: 24, marginBottom: 32 }}>
-                            {campaign?.scripts?.map((script, index) => (
-                                <View key={index}>
-                                    <ThemedText type="defaultSemiBold" style={{ marginBottom: 8, fontSize: 16 }}>{script.type}</ThemedText>
-                                    <View style={styles.scriptBox}>
-                                        <ThemedText style={styles.scriptText}>{script.description}</ThemedText>
-                                    </View>
-                                </View>
-                            ))}
-                        </View>
-
-                        {/* Dismiss Button */}
-                        <Pressable
-                            style={styles.actionButton}
-                            onPress={() => scriptsSheetRef.current?.hide()}
-                        >
-                            <ThemedText style={styles.actionButtonText}>Dismiss</ThemedText>
-                        </Pressable>
-                    </View>
-                </ActionSheet>
-
                 {/* Submission Sheet */}
                 <ActionSheet gestureEnabled ref={submissionSheetRef}>
                     <View style={styles.sheetContent}>
