@@ -1,16 +1,21 @@
 
+import { useState, useEffect } from 'react';
 import { View, StyleSheet, Image, Pressable, StyleProp, ViewStyle } from 'react-native';
 import {
     Calendar,
+    Building,
 } from 'lucide-react-native';
+import { useAction } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
+import { api } from '../../../../packages/backend/convex/_generated/api';
 
 interface ApplicationListItemProps {
-    logoUrl?: string;
+    logoUrl?: string | null;
+    logoS3Key?: string | null;
     campaignName: string;
     businessName?: string;
     createdOn?: string;
@@ -21,6 +26,7 @@ interface ApplicationListItemProps {
 
 export function ApplicationListItem({
     logoUrl,
+    logoS3Key,
     campaignName,
     businessName = 'Company Name',
     status,
@@ -29,6 +35,27 @@ export function ApplicationListItem({
     style,
 }: ApplicationListItemProps) {
     const colorScheme = useColorScheme();
+
+    const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
+    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoS3Key ? (logoUrl || null) : null);
+
+    useEffect(() => {
+        if (!logoS3Key) {
+            setFinalLogoUrl(logoUrl || null);
+            return;
+        }
+
+        let cancelled = false;
+        generateAccessUrl({ s3Key: logoS3Key })
+            .then((url) => {
+                if (!cancelled) setFinalLogoUrl(url || logoUrl || null);
+            })
+            .catch(() => {
+                if (!cancelled) setFinalLogoUrl(logoUrl || null);
+            });
+
+        return () => { cancelled = true; };
+    }, [logoS3Key, logoUrl, generateAccessUrl]);
 
     return (
         <Pressable
@@ -42,13 +69,11 @@ export function ApplicationListItem({
             {/* Top Part */}
             <View style={styles.topSection}>
                 <View style={styles.logoContainer}>
-                    {logoUrl ? (
-                        <Image source={{ uri: logoUrl }} style={styles.logo} />
+                    {finalLogoUrl ? (
+                        <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
                     ) : (
-                        <View style={[styles.logoPlaceholder, { backgroundColor: '#FF9900' }]}>
-                            <ThemedText style={styles.logoText}>
-                                {campaignName.charAt(0).toUpperCase()}
-                            </ThemedText>
+                        <View style={[styles.logoPlaceholder, { backgroundColor: '#F3F4F6' }]}>
+                            <Building size={24} color="#9CA3AF" />
                         </View>
                     )}
                 </View>
@@ -108,11 +133,6 @@ const styles = StyleSheet.create({
         borderRadius: 100,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    logoText: {
-        color: '#FFFFFF',
-        fontSize: 24,
-        fontFamily: 'GoogleSans_700Bold',
     },
     titleContainer: {
         flex: 1,

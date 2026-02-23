@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, RefreshControl, Image } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronDown, Check, Copy } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Check, Copy, Building, ExternalLink } from 'lucide-react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { TextInput, Alert } from 'react-native';
 import Animated, {
@@ -110,6 +110,40 @@ export default function ApplicationDetailScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isReviewed, setIsReviewed] = useState(false);
+
+    // Campaign logo resolved URL
+    const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
+    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(null);
+    const [isLogoLoading, setIsLogoLoading] = useState(true);
+
+    useEffect(() => {
+        if (!campaign) return;
+        const s3Key = campaign.logo_s3_key;
+        const directUrl = campaign.logo_url ?? null;
+
+        if (!s3Key) {
+            setFinalLogoUrl(directUrl);
+            setIsLogoLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        generateAccessUrl({ s3Key })
+            .then((url) => {
+                if (!cancelled) {
+                    setFinalLogoUrl(url || directUrl);
+                    setIsLogoLoading(false);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setFinalLogoUrl(directUrl);
+                    setIsLogoLoading(false);
+                }
+            });
+
+        return () => { cancelled = true; };
+    }, [campaign?.logo_s3_key, campaign?.logo_url]);
 
     // Video upload state - single sheet with steps
     const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
@@ -401,6 +435,15 @@ export default function ApplicationDetailScreen() {
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <ArrowLeft size={20} color="#000" />
                 </Pressable>
+                {resolvedCampaignId && (
+                    <Pressable
+                        style={styles.viewCampaignButton}
+                        onPress={() => router.push(`/campaign/${resolvedCampaignId}`)}
+                    >
+                        <ThemedText style={styles.viewCampaignText}>View Campaign</ThemedText>
+                        <ExternalLink size={14} color="#000" />
+                    </Pressable>
+                )}
             </View>
 
             <ScrollView
@@ -413,11 +456,15 @@ export default function ApplicationDetailScreen() {
                 {/* Campaign Info */}
                 <View style={styles.campaignInfo}>
                     <View style={styles.logoContainer}>
-                        <View style={styles.logoPlaceholder}>
-                            <ThemedText style={styles.logoText}>
-                                {(campaign?.business_name ?? "C").charAt(0).toUpperCase()}
-                            </ThemedText>
-                        </View>
+                        {isLogoLoading ? (
+                            <Animated.View style={[styles.logoPlaceholder, { backgroundColor: '#E5E7EB' }]} />
+                        ) : finalLogoUrl ? (
+                            <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
+                        ) : (
+                            <View style={styles.logoPlaceholder}>
+                                <Building size={28} color="#9CA3AF" />
+                            </View>
+                        )}
                     </View>
                     <View style={styles.campaignText}>
                         <ThemedText style={styles.campaignName}>{campaign?.name ?? "Campaign"}</ThemedText>
@@ -453,9 +500,9 @@ export default function ApplicationDetailScreen() {
                                     Stay consistent, your first payout is on the way.
                                 </ThemedText>
                             ) : (
-                                <>
-                                    You are the top <ThemedText style={{ color: '#FFD700', fontSize: 22 }}>5%</ThemedText> earners!
-                                </>
+                                <ThemedText style={{ color: '#FFFFFF', fontSize: 20 }}>
+                                    Your earnings and stats will refresh every day at 12am!
+                                </ThemedText>
                             )
                         }
                     />
@@ -559,7 +606,7 @@ export default function ApplicationDetailScreen() {
                             submissions.map((sub, index) => (
                                 <SubmissionListItem
                                     key={sub._id}
-                                    attemptNumber={index + 1}
+                                    attemptNumber={sub.attempt_number ?? submissions.length - index}
                                     date={formatSubmissionDate(sub.created_at)}
                                     status={mapBackendStatusToUiStatus(sub.status)}
                                     onPress={() => router.push(`/submission/${sub._id}`)}
@@ -1019,9 +1066,26 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingBottom: 0,
         height: 48,
+    },
+    viewCampaignButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        backgroundColor: '#FFFFFF',
+    },
+    viewCampaignText: {
+        fontSize: 13,
+        fontFamily: 'GoogleSans_500Medium',
+        color: '#000',
     },
     backButton: {
         width: 40,
@@ -1044,20 +1108,19 @@ const styles = StyleSheet.create({
     logoContainer: {
         marginRight: 16,
     },
+    logo: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        resizeMode: 'contain',
+    },
     logoPlaceholder: {
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F3F4F6',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#EEEEEE',
-    },
-    logoText: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#000',
     },
     campaignText: {
         flex: 1,

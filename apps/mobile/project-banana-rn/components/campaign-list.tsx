@@ -20,12 +20,10 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 
+import { CAMPAIGN_CATEGORIES } from '@/constants/campaignCategories';
+
 const CATEGORY_OPTIONS = [
-    { label: 'For you', value: 'for-you' },
-    { label: 'No-face', value: 'no-face' },
-    { label: 'Script 1:1', value: 'script-1-1' },
-    { label: 'Food Review', value: 'food-review' },
-    { label: 'Product Review', value: 'product-review' },
+    ...CAMPAIGN_CATEGORIES.map(c => ({ label: c.label, value: c.id, icon: c.icon }))
 ];
 
 const SORT_OPTIONS = [
@@ -104,7 +102,8 @@ export function CampaignList() {
                 viewCount: '1k',
                 payout: payoutPer1k.toString(),
                 maxPayout: campaign.maximum_payout.toString(),
-                logoUrl: campaign.cover_photo_url || 'https://picsum.photos/200',
+                logoUrl: campaign.logo_url || null,
+                logoS3Key: campaign.logo_s3_key || null,
                 isTrending: campaign.submissions > 1000, // Calculate trending based on claimed budget
                 category: campaign.category || 'for-you', // You'll need to add category field to schema
             };
@@ -114,13 +113,15 @@ export function CampaignList() {
     // Filter and sort campaigns
     const filteredCampaigns = useMemo(() => {
         return processedCampaigns.filter(campaign => {
-            if (!selectedCategory || selectedCategory === 'for-you') return true;
+            if (!selectedCategory) return true;
+
+            const categoryLabel = CAMPAIGN_CATEGORIES.find(c => c.id === selectedCategory)?.label;
 
             const categories = campaign.category;
             if (Array.isArray(categories)) {
-                return categories.includes(selectedCategory);
+                return categories.includes(categoryLabel as string);
             }
-            return categories === selectedCategory;
+            return categories === categoryLabel;
         });
     }, [processedCampaigns, selectedCategory]);
 
@@ -160,7 +161,10 @@ export function CampaignList() {
                         <ThemedText style={styles.filterButtonText}>
                             {selectedCategory ? CATEGORY_OPTIONS.find(c => c.value === selectedCategory)?.label : 'Category'}
                         </ThemedText>
-                        <Filter size={14} color={Colors[colorScheme ?? 'light'].text} />
+                        {(() => {
+                            const SelectedIcon = selectedCategory ? CATEGORY_OPTIONS.find(c => c.value === selectedCategory)?.icon : Filter;
+                            return SelectedIcon ? <SelectedIcon size={14} color={Colors[colorScheme ?? 'light'].text} /> : null;
+                        })()}
                     </Pressable>
                     <Pressable
                         style={[
@@ -210,6 +214,7 @@ export function CampaignList() {
                             payout={campaign.payout}
                             maxPayout={campaign.maxPayout}
                             logoUrl={campaign.logoUrl}
+                            logoS3Key={campaign.logoS3Key}
                             isTrending={campaign.isTrending}
                             onPress={() => handlePress(campaign.id)}
                         />

@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 interface Option {
     label: string;
     value: string;
+    icon?: React.ElementType;
 }
 
 interface SelectionSheetProps {
@@ -56,6 +57,7 @@ export function SelectionSheet({
                     <View style={styles.filterContainer}>
                         {options.map((option) => {
                             const isSelected = selectedOption === option.value;
+                            const Icon = option.icon;
                             return (
                                 <Pressable
                                     key={option.value}
@@ -67,6 +69,7 @@ export function SelectionSheet({
                                     ]}
                                     onPress={() => handleSelect(option.value)}
                                 >
+                                    {Icon && <Icon size={16} color={isSelected ? themeColors.text : '#6B7280'} />}
                                     <ThemedText
                                         style={[
                                             styles.chipText,
@@ -84,15 +87,19 @@ export function SelectionSheet({
                     <View style={styles.listContainer}>
                         {options.map((option) => {
                             const isSelected = selectedOption === option.value;
+                            const Icon = option.icon;
                             return (
                                 <Pressable
                                     key={option.value}
                                     style={styles.listItem}
                                     onPress={() => handleSelect(option.value)}
                                 >
-                                    <ThemedText style={[styles.listItemText, isSelected && styles.selectedListItemText]}>
-                                        {option.label}
-                                    </ThemedText>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                        {Icon && <Icon size={20} color={isSelected ? themeColors.text : '#6B7280'} />}
+                                        <ThemedText style={[styles.listItemText, isSelected && styles.selectedListItemText]}>
+                                            {option.label}
+                                        </ThemedText>
+                                    </View>
                                     {isSelected && <Check size={20} color={themeColors.text} />}
                                 </Pressable>
                             );
@@ -127,6 +134,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     chip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 24,

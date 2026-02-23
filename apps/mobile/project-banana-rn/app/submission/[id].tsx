@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Building } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAction, useQuery } from 'convex/react';
 import LottieView from 'lottie-react-native';
@@ -35,6 +35,23 @@ const mapSubmissionStatus = (status?: string): ApplicationStatus => {
     }
 };
 
+const timeAgo = (timestamp?: number) => {
+    if (!timestamp) return '';
+    const diffInSeconds = Math.floor((Date.now() - timestamp) / 1000);
+
+    if (diffInSeconds < 60) return `Just now`;
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 30) return `${diffInDays}d ago`;
+    const diffInMonths = Math.floor(diffInDays / 30);
+    if (diffInMonths < 12) return `${diffInMonths} mo. ago`;
+    const diffInYears = Math.floor(diffInMonths / 12);
+    return `${diffInYears}y ago`;
+};
+
 export default function SubmissionDetailScreen() {
     const { id } = useLocalSearchParams(); // submission id
     const submissionId = id as Id<"submissions">;
@@ -43,8 +60,29 @@ export default function SubmissionDetailScreen() {
     const submission = useQuery(api.submissions.getSubmission, { submissionId });
     const latestFeedback = useQuery(api.submissions.getLatestSubmissionFeedback, { submissionId });
     const generateVideoAccessUrl = useAction(api.submissions.generateVideoAccessUrl);
+    const generateCampaignImageAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
+
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const [loadingUrl, setLoadingUrl] = useState(false);
+    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!latestFeedback) return;
+        const s3Key = latestFeedback.authorLogoS3Key;
+        const directUrl = latestFeedback.authorLogoUrl ?? null;
+
+        if (!s3Key) {
+            setFinalLogoUrl(directUrl);
+            return;
+        }
+
+        let cancelled = false;
+        generateCampaignImageAccessUrl({ s3Key })
+            .then((url) => { if (!cancelled) setFinalLogoUrl(url || directUrl); })
+            .catch(() => { if (!cancelled) setFinalLogoUrl(directUrl); });
+
+        return () => { cancelled = true; };
+    }, [latestFeedback?.authorLogoS3Key, latestFeedback?.authorLogoUrl]);
 
     useEffect(() => {
         let isMounted = true;
@@ -75,8 +113,8 @@ export default function SubmissionDetailScreen() {
     }, [submission?._id, submission?.s3_key, submission?.video_url, submissionId]);
 
     const videoPlayer = useVideoPlayer(videoUrl ?? "", (player) => {
-        player.loop = true;
-        player.play();
+        player.loop = false;
+        player.muted = true;
     });
 
     const skeletonOpacity = useSharedValue(0.3);
@@ -154,10 +192,36 @@ export default function SubmissionDetailScreen() {
 
                 {/* Feedback */}
                 <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Feedback</ThemedText>
-                    {latestFeedback ? (
+                    <View style={styles.sectionHeader}>
+                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Feedback</ThemedText>
+                        <ApplicationStatusBadge
+                            status={mapSubmissionStatus(submission?.status)}
+                        />
+                    </View>
+                    {latestFeedback === undefined ? (
                         <View style={styles.feedbackBox}>
-                            <ThemedText style={styles.feedbackText}>{latestFeedback}</ThemedText>
+                            <Animated.View style={[{ height: 16, backgroundColor: '#E5E5E5', borderRadius: 8, marginBottom: 8, width: '100%' }, skeletonAnimatedStyle]} />
+                            <Animated.View style={[{ height: 16, backgroundColor: '#E5E5E5', borderRadius: 8, marginBottom: 8, width: '80%' }, skeletonAnimatedStyle]} />
+                            <Animated.View style={[{ height: 16, backgroundColor: '#E5E5E5', borderRadius: 8, marginBottom: 0, width: '60%' }, skeletonAnimatedStyle]} />
+                        </View>
+                    ) : latestFeedback ? (
+                        <View style={styles.feedbackBox}>
+                            <View style={styles.commentContainer}>
+                                <View style={styles.commentAvatar}>
+                                    {finalLogoUrl ? (
+                                        <Image source={{ uri: finalLogoUrl }} style={styles.commentAvatarImage} />
+                                    ) : (
+                                        <Building size={16} color="#A0A0A0" />
+                                    )}
+                                </View>
+                                <View style={styles.commentContent}>
+                                    <ThemedText style={styles.commentAuthor}>
+                                        {latestFeedback.authorName}
+                                        <ThemedText style={styles.commentTime}>  {timeAgo(latestFeedback.createdAt)}</ThemedText>
+                                    </ThemedText>
+                                    <ThemedText style={styles.feedbackText}>{latestFeedback.text}</ThemedText>
+                                </View>
+                            </View>
                         </View>
                     ) : (
                         <View style={styles.emptyStateContainer}>
@@ -174,14 +238,7 @@ export default function SubmissionDetailScreen() {
                     )}
                 </View>
 
-                {/* Status */}
-                <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Status</ThemedText>
-                    <ApplicationStatusBadge
-                        status={mapSubmissionStatus(submission?.status)}
-                        style={{ alignSelf: 'flex-start' }}
-                    />
-                </View>
+                {/* Content ending */}
 
             </ScrollView>
         </View>
@@ -271,19 +328,56 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontFamily: 'GoogleSans_700Bold',
-        marginBottom: 12,
         color: '#000',
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 24,
     },
     feedbackBox: {
-        backgroundColor: '#F9F9F9', // Very light grey
-        padding: 16,
-        borderRadius: 12,
+        padding: 0,
+    },
+    commentContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    commentAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+        overflow: 'hidden',
+    },
+    commentAvatarImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    commentContent: {
+        flex: 1,
+        marginTop: -2, // pull name slightly up to better align with circular avatar top
+    },
+    commentAuthor: {
+        color: '#111111',
+        fontSize: 15,
+        fontFamily: 'GoogleSans_700Bold',
+        marginBottom: 2, // very tight gap between name and text
+    },
+    commentTime: {
+        color: '#999999',
+        fontSize: 13,
+        fontFamily: 'GoogleSans_400Regular',
     },
     feedbackText: {
-        fontSize: 16,
-        lineHeight: 24,
+        fontSize: 14,
+        lineHeight: 20,
         fontFamily: 'GoogleSans_400Regular',
-        color: '#000',
+        color: '#111111',
     },
     emptyStateContainer: {
         alignItems: 'center',

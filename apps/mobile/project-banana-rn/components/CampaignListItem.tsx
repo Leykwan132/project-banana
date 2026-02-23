@@ -1,12 +1,16 @@
 import { View, StyleSheet, Image, Pressable } from 'react-native';
-import { Users, Eye, CircleDollarSign, Flame } from 'lucide-react-native';
+import { Users, Eye, CircleDollarSign, Flame, Building } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import { useAction } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { api } from '../../../../packages/backend/convex/_generated/api';
 
 interface CampaignListItemProps {
-    logoUrl?: string;
+    logoUrl?: string | null;
+    logoS3Key?: string | null;
     name: string;
     companyName?: string;
     claimed: number;
@@ -19,6 +23,7 @@ interface CampaignListItemProps {
 
 export function CampaignListItem({
     logoUrl,
+    logoS3Key,
     name,
     companyName = 'Company Name', // Default for now
     claimed,
@@ -32,6 +37,24 @@ export function CampaignListItem({
     const iconColor = Colors[colorScheme ?? 'light'].icon;
     const textColor = Colors[colorScheme ?? 'light'].text;
 
+    const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
+    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoS3Key ? (logoUrl || null) : null);
+
+    useEffect(() => {
+        if (!logoS3Key) return;
+
+        let cancelled = false;
+        generateAccessUrl({ s3Key: logoS3Key })
+            .then((url) => {
+                if (!cancelled) setFinalLogoUrl(url || logoUrl || null);
+            })
+            .catch(() => {
+                if (!cancelled) setFinalLogoUrl(logoUrl || null);
+            });
+
+        return () => { cancelled = true; };
+    }, [logoS3Key, logoUrl, generateAccessUrl]);
+
     return (
         <Pressable
             onPress={onPress}
@@ -43,13 +66,11 @@ export function CampaignListItem({
             {/* Top Part */}
             <View style={styles.topSection}>
                 <View style={styles.logoContainer}>
-                    {logoUrl ? (
-                        <Image source={{ uri: logoUrl }} style={styles.logo} />
+                    {finalLogoUrl ? (
+                        <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
                     ) : (
-                        <View style={[styles.logoPlaceholder, { backgroundColor: '#FF9900' }]}>
-                            <ThemedText style={styles.logoText}>
-                                {name.charAt(0).toUpperCase()}
-                            </ThemedText>
+                        <View style={[styles.logoPlaceholder, { backgroundColor: '#F3F4F6' }]}>
+                            <Building size={24} color="#9CA3AF" />
                         </View>
                     )}
                 </View>
@@ -75,7 +96,7 @@ export function CampaignListItem({
             <View style={styles.bottomSection}>
                 <View style={styles.statItem}>
                     <Users size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{claimed} claimed</ThemedText>
+                    <ThemedText style={styles.statText}>{claimed} submitted</ThemedText>
                 </View>
 
                 <View style={styles.statItem}>

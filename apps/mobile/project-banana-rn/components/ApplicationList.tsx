@@ -99,7 +99,8 @@ export function ApplicationList() {
                 businessName: app.businessName,
                 status: mapStatus(app.status),
                 createdOn: formattedDate,
-                logoUrl: app.campaignCoverPhotoUrl || 'https://picsum.photos/200',
+                logoUrl: app.campaignLogoUrl || null,
+                logoS3Key: app.campaignLogoS3Key || null,
             };
         });
     }, [results]);
@@ -168,6 +169,7 @@ export function ApplicationList() {
                             businessName={app.businessName || 'Company Name'}
                             createdOn={app.createdOn}
                             logoUrl={app.logoUrl}
+                            logoS3Key={app.logoS3Key}
                             onPress={() => router.push({
                                 pathname: '/application/[id]',
                                 params: { id: app.id, campaignId: app.campaignId }
