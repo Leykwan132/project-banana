@@ -15,6 +15,7 @@
     "@heroui/card": "^2.2.27",
     "@heroui/chip": "^2.2.24",
     "@heroui/image": "^2.2.18",
+    "@heroui/modal": "^2.2.28",
     "@heroui/pagination": "^2.2.26",
     "@heroui/popover": "^2.3.31",
     "@heroui/react": "^2.8.7",

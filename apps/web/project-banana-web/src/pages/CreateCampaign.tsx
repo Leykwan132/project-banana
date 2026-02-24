@@ -1,13 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
-import { ChevronLeft, Plus, X, Check, Eye, DollarSign, Wallet, ArrowRight, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building } from 'lucide-react';
+import { ChevronLeft, Plus, X, Check, Eye, DollarSign, Wallet, ArrowRight, Info, Upload, Building, Users, CircleDollarSign, Ghost, Heart, ArrowLeft, MessageSquare, Mic } from 'lucide-react';
 import { ERROR_CODES } from '../../../../../packages/backend/convex/errors';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton } from "@heroui/react";
+import {
+    Button as HeroButton,
+    Modal,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter
+} from "@heroui/react";
+import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
+import { addToast } from "@heroui/toast";
 import Button from '../components/ui/Button';
 import { CAMPAIGN_CATEGORIES } from '../lib/campaignCategories';
 
@@ -561,28 +570,6 @@ export const ScriptsModal = ({ onClose, onSave, initialData }: {
     );
 };
 
-const validationSchema = Yup.object({
-    name: Yup.string().required('Please enter a campaign name'),
-    category: Yup.array().min(1, 'Please select at least one category'),
-    totalPayouts: Yup.number()
-        .required('Please enter a valid total budget')
-        .positive('Please enter a valid total budget'),
-    assets: Yup.string().url('Please enter a valid URL'),
-    maxPayout: Yup.number()
-        .required('Please configure payout thresholds and maximum payout')
-        .positive('Please configure payout thresholds and maximum payout'),
-    thresholdData: Yup.array().test(
-        'at-least-one-threshold',
-        'Please add at least one payout threshold',
-        (value) => value ? value.some(t => t.views && t.amount) : false
-    ),
-    reqData: Yup.object().test(
-        'at-least-one-requirement',
-        'Please set campaign requirements',
-        (value: any) => value.noAi || value.followScript || value.language || value.location || value.custom.length > 0
-    )
-});
-
 export default function CreateCampaign() {
     const business = useQuery(api.businesses.getMyBusiness);
     const createCampaign = useMutation(api.campaigns.createCampaign);
@@ -590,10 +577,35 @@ export default function CreateCampaign() {
     const generateBusinessLogoAccessUrl = useAction(api.businesses.generateLogoAccessUrl);
     const navigate = useNavigate();
 
+    const LAUNCH_FEE_AMOUNT = import.meta.env.VITE_LAUNCH_FEE ? Number(import.meta.env.VITE_LAUNCH_FEE) : 300;
+
+    const validationSchema = useMemo(() => Yup.object({
+        name: Yup.string().required('Please enter a campaign name'),
+        category: Yup.array().min(1, 'Please select at least one category'),
+        totalPayouts: Yup.number()
+            .required('Please enter a valid total budget')
+            .positive('Please enter a valid total budget'),
+        assets: Yup.string().url('Please enter a valid URL'),
+        maxPayout: Yup.number()
+            .required('Please configure payout thresholds and maximum payout')
+            .positive('Please configure payout thresholds and maximum payout'),
+        thresholdData: Yup.array().test(
+            'at-least-one-threshold',
+            'Please add at least one payout threshold',
+            (value) => value ? value.some(t => t.views && t.amount) : false
+        ),
+        reqData: Yup.object().test(
+            'at-least-one-requirement',
+            'Please set campaign requirements',
+            (value: any) => value.noAi || value.followScript || value.language || value.location || value.custom.length > 0
+        )
+    }), []);
+
     const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
     const [isThresholdModalOpen, setIsThresholdModalOpen] = useState(false);
     const [isReqModalOpen, setIsReqModalOpen] = useState(false);
     const [isScriptsModalOpen, setIsScriptsModalOpen] = useState(false);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -761,9 +773,75 @@ export default function CreateCampaign() {
 
     const hasCompanyLogo = !!(business?.logo_url || business?.logo_s3_key || companyLogoPreview);
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
+    const businessPlanType = (business?.subscription_plan_type ?? 'free').toLowerCase();
+    const isFreePlan = businessPlanType === 'free';
+    const campaignBudget = parseFloat(formik.values.totalPayouts) || 0;
+    const launchFee = isFreePlan ? LAUNCH_FEE_AMOUNT : 0;
+    const totalCharge = campaignBudget + launchFee;
+    const estimatedRemainingCredits = (business?.credit_balance ?? 0) - totalCharge;
+    const previewThresholds = formik.values.thresholdData.filter((t) => t.views && t.amount);
+
+    const handleOpenReviewModal = async () => {
+        if (formik.isSubmitting) return;
+
+        await Promise.all([
+            formik.setFieldTouched('name', true, false),
+            formik.setFieldTouched('category', true, false),
+            formik.setFieldTouched('totalPayouts', true, false),
+            formik.setFieldTouched('assets', true, false),
+            formik.setFieldTouched('maxPayout', true, false),
+            formik.setFieldTouched('thresholdData', true, false),
+            formik.setFieldTouched('reqData', true, false),
+        ]);
+
+        const errors = await formik.validateForm();
+        if (Object.keys(errors).length > 0) {
+            addToast({
+                title: "Error",
+                description: "Please ensure all required fields are filled properly before proceeding.",
+                color: "danger"
+            });
+            return;
+        }
+
+        const isLogoValid = (useCompanyLogo && hasCompanyLogo) || logoFile !== null;
+        if (!isLogoValid) {
+            addToast({
+                title: "Error",
+                description: "Please upload a campaign logo.",
+                color: "danger"
+            });
+            return;
+        }
+
+        if (!coverFile) {
+            addToast({
+                title: "Error",
+                description: "Please upload a campaign cover photo.",
+                color: "danger"
+            });
+            return;
+        }
+
+        if (estimatedRemainingCredits < 0) {
+            addToast({
+                title: "Insufficient credits",
+                description: "You do not have enough credits to publish this campaign. Please top up your balance.",
+                color: "danger"
+            });
+            return;
+        }
+
+        setIsReviewModalOpen(true);
+    };
+
+    const handleConfirmPublish = async () => {
+        setIsReviewModalOpen(false);
+        await formik.submitForm();
+    };
 
     return (
-        <div className="p-8 font-sans text-gray-900 animate-fadeIn relative">
+        <div className="p-8 pb-16 font-sans text-gray-900 animate-fadeIn relative">
             {isThresholdModalOpen && (
                 <PayoutThresholdModal
                     onClose={() => setIsThresholdModalOpen(false)}
@@ -818,7 +896,12 @@ export default function CreateCampaign() {
 
             <h1 className="text-2xl font-bold mb-8">Setup new campaign</h1>
 
-            <form onSubmit={formik.handleSubmit}>
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    void handleOpenReviewModal();
+                }}
+            >
                 <div className="flex flex-col gap-8 max-w-6xl">
                     {/* Row 1: Name & Total Payouts */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -1172,9 +1255,12 @@ export default function CreateCampaign() {
                     {/* Row 4: Campaign Logo & Cover */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-1">
-                            <label className="font-semibold text-gray-900 block">Campaign logo  </label>
+                            <label className="font-semibold text-gray-900 block w-fit relative">
+                                Campaign logo
+                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
+                            </label>
                             <div className="flex justify-between mb-4 ">
-                                <p className="text-sm text-gray-500">Upload a campaign icon or use your company logo.</p>
+                                <p className="text-sm text-gray-500">Upload a campaign icon.</p>
                                 {hasCompanyLogo && (
                                     <button
                                         type="button"
@@ -1226,7 +1312,10 @@ export default function CreateCampaign() {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="font-semibold text-gray-900 block">Campaign cover photo</label>
+                            <label className="font-semibold text-gray-900 block w-fit relative">
+                                Campaign cover photo
+                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
+                            </label>
                             <div className="flex justify-between mb-4">
                                 <p className="text-sm text-gray-500">Add a cover image shown for this campaign.</p>
                             </div>
@@ -1271,14 +1360,126 @@ export default function CreateCampaign() {
                 <div className="fixed bottom-8 right-8 flex gap-4 z-40">
 
                     <Button
-                        type="submit"
+                        type="button"
                         isLoading={formik.isSubmitting}
+                        onClick={() => void handleOpenReviewModal()}
                         className="px-8 py-3 font-bold"
                     >
                         {formik.isSubmitting ? 'Publishing...' : 'Publish'}
                     </Button>
                 </div>
             </form>
+
+            <Modal
+                isOpen={isReviewModalOpen}
+                onOpenChange={setIsReviewModalOpen}
+                size="5xl"
+                scrollBehavior="inside"
+                isDismissable={!formik.isSubmitting}
+                hideCloseButton={formik.isSubmitting}
+            >
+                <ModalContent>
+                    {(onClose) => (
+                        <>
+                            <ModalHeader className="flex flex-col gap-1 px-8 pt-8">
+                                <span className="text-xl font-bold text-gray-900">Campaign Summary</span>
+                                <span className="text-sm font-normal text-gray-500">
+                                    Your campaign will be visible to all the creators immediately.
+                                </span>
+                            </ModalHeader>
+                            <ModalBody className="p-8 mb-4">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+                                    <div className="flex flex-col items-start w-full lg:pr-8 pt-2">
+                                        <h3 className="text-xl mb-4 font-semibold text-gray-900 tracking-tight">{formik.values.name || 'Untitled Campaign'}</h3>
+
+                                        <div className="space-y-3 text-[15px] w-full">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500">Total Budget</span>
+                                                <span className="font-semibold text-gray-900">RM {campaignBudget}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500">Maximum Payout for 1 User</span>
+                                                <span className="font-semibold text-gray-900">RM {formik.values.maxPayout}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="text-xl font-semibold text-gray-900">Cost Summary</div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8">
+                                            <div className="space-y-6">
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between text-base">
+                                                        <span className="text-gray-500">Campaign payout budget</span>
+                                                        <span className="font-semibold text-gray-900">RM {campaignBudget}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-base">
+                                                        <div className="flex items-center gap-1.5 text-gray-500">
+                                                            <span>Publishing fee</span>
+                                                            <Popover placement="top" showArrow={true}>
+                                                                <PopoverTrigger>
+                                                                    <button type="button" className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none">
+                                                                        <Info className="w-4 h-4 hover:scale-110 transition-transform" />
+                                                                    </button>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="px-3 py-2 bg-gray-900 border-none shadow-xl rounded-xl max-w-[200px]">
+                                                                    <p className="text-xs font-medium text-white text-center">
+                                                                        A 1-time fee charged for every campaign created. It will only be charged for the free plan.
+                                                                    </p>
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                        </div>
+                                                        <span className="font-semibold text-gray-900">{isFreePlan ? `RM ${launchFee}` : 'N/A'}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-6 border-t border-gray-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-lg font-bold text-gray-900">Total credits </span>
+                                                        <span className="text-2xl font-bold text-gray-900">RM {totalCharge}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-6 border-t border-gray-100">
+                                                    <div className="flex items-center justify-between text-base">
+                                                        <span className="text-gray-500">Credits remaining after publish</span>
+                                                        <span className={`font-semibold ${estimatedRemainingCredits < 0 ? "text-red-500" : "text-gray-900"}`}>
+                                                            RM {estimatedRemainingCredits}
+                                                        </span>
+                                                    </div>
+                                                    {estimatedRemainingCredits < 0 && (
+                                                        <div className="rounded-xl bg-red-50 p-3 text-xs text-red-600 mt-2">
+                                                            You have insufficient credits. Please top up your balance.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ModalBody>
+                            <ModalFooter className="px-8 pb-8 pt-0">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    disabled={formik.isSubmitting}
+                                    className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                >
+                                    Back
+                                </button>
+                                <Button
+                                    type="button"
+                                    isLoading={formik.isSubmitting}
+                                    onClick={() => void handleConfirmPublish()}
+                                    className="px-6 py-2.5"
+                                >
+                                    {formik.isSubmitting ? 'Publishing...' : 'Proceed & Publish'}
+                                </Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
 
             {showSuccess && (
                 <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -1320,7 +1521,7 @@ export default function CreateCampaign() {
                                             navigate('/campaigns');
                                         }
                                     }}
-                                    className="bg-[#1C1C1C] text-white px-6 py-3 rounded-xl text-sm hover:bg-black transition-colors shadow-lg shadow-black/10 flex items-center gap-2 group/btn"
+                                    className="bg-[#1C1C1C] text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-black transition-colors shadow-lg shadow-black/10 flex items-center gap-2 group/btn"
                                 >
                                     View Campaign
                                     <ArrowRight className="w-4 h-4 transition-transform" />

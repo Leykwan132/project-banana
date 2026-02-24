@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { Skeleton } from "@heroui/skeleton";
-import { ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building } from 'lucide-react';
+import { ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Play } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton } from "@heroui/react";
+import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 
 import { PayoutThresholdModal, RequirementsModal, ScriptsModal, parseViews } from '../CreateCampaign';
 import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign';
@@ -58,32 +58,44 @@ const PerformanceItem = ({ name, value, maxValue }: { name: string, value: numbe
     </div>
 );
 
-const UnsavedChangesModal = ({ isOpen, onClose, onConfirm }: { isOpen: boolean; onClose: () => void; onConfirm: () => void }) => {
+const UnsavedChangesModal = ({ isOpen, onClose, onConfirm, changes = [] }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; changes?: { label: string; icon: any }[] }) => {
     if (!isOpen) return null;
     return createPortal(
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
             <div
-                className="bg-white rounded-xl p-8 max-w-sm w-full shadow-[0_8px_30px_rgb(0,0,0,0.04)] animate-fadeIn border border-[#F4F6F8]"
+                className="bg-white rounded-xl pt-12 px-8 pb-6 max-w-[400px] w-full shadow-2xl animate-fadeIn flex flex-col items-center text-center max-h-[90vh] overflow-y-auto hidden-scrollbar"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="w-12 h-12 bg-[#FFF0F0] rounded-full flex items-center justify-center mb-6">
-                    <AlertCircle className="w-6 h-6 text-[#FF4D4D]" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">Unsaved Changes</h3>
-                <p className="text-gray-500 mb-8 text-sm leading-relaxed font-medium">
-                    You have unsaved changes in your campaign.
+                <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">Discard changes?</h3>
+                <p className="text-gray-500 text-sm leading-relaxed font-medium mb-6">
+                    You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
                 </p>
-                <div className="flex flex-col gap-3">
+
+                {changes.length > 0 && (
+                    <div className="w-full bg-[#F4F6F8] rounded-xl p-5 mb-6 space-y-5 text-left max-h-[30vh] overflow-y-auto hidden-scrollbar">
+                        {changes.map((change, i) => {
+                            const Icon = change.icon;
+                            return (
+                                <div key={i} className="flex items-center gap-4 text-[15px] font-semibold text-gray-700">
+                                    <Icon className="w-4 h-4 text-gray-400 shrink-0" />
+                                    <span>{change.label}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-2 w-full">
                     <Button
                         variant="primary"
                         className="w-full bg-[#FF4D4D] hover:bg-[#FF3333] border-none text-white h-12 rounded-xl text-sm font-bold shadow-none"
                         onClick={onConfirm}
                     >
-                        Discard Changes
+                        Discard
                     </Button>
                     <Button
                         variant="ghost"
-                        className="w-full bg-[#F4F6F8] hover:bg-[#EAECEF] text-gray-900 h-12 rounded-xl text-sm font-bold"
+                        className="w-full bg-transparent hover:bg-gray-50 text-gray-900 h-10 rounded-xl text-sm font-bold shadow-none"
                         onClick={onClose}
                     >
                         Keep Editing
@@ -190,6 +202,9 @@ export default function CampaignDetails() {
     const [showRequirementsModal, setShowRequirementsModal] = useState(false);
     const [showScriptsModal, setShowScriptsModal] = useState(false);
     const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+    const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
+    const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+    const [isEndModalOpen, setIsEndModalOpen] = useState(false);
     const [isStatusUpdating, setIsStatusUpdating] = useState(false); // For pause/resume button loading
     const [isEndingCampaign, setIsEndingCampaign] = useState(false);
     const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -221,6 +236,15 @@ export default function CampaignDetails() {
             custom: []
         } as ScriptsData
     });
+
+    // ---------------------------------------------------------------------------
+    // FETCH APPLICATIONS
+    // ---------------------------------------------------------------------------
+    const applications = useQuery(api.applications.getMyApplicationsByCampaignWithStats,
+        campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
+
+    );
+    const hasChangesRequested = applications?.some(app => app.status === 'changes_requested') ?? false;
 
     // Populate state when campaign data is loaded
     useEffect(() => {
@@ -370,6 +394,115 @@ export default function CampaignDetails() {
         return s3Key;
     };
 
+    const [isIncreaseBudgetModalOpen, setIsIncreaseBudgetModalOpen] = useState(false);
+
+    const submitForm = async (values: typeof initialValues, shouldSetSubmitting = true) => {
+        if (!campaignId || !campaign) {
+            if (shouldSetSubmitting) {
+                formik.setSubmitting(false);
+            }
+            return;
+        }
+
+        const requestedTotalBudget = parseFloat(values.totalPayouts) || 0;
+        const currentTotalBudget = campaign.total_budget;
+
+        try {
+            const hasCompanyLogo = !!(business?.logo_url || business?.logo_s3_key || companyLogoPreview);
+            const shouldUseCompanyLogo = useCompanyLogo && hasCompanyLogo;
+
+            if (shouldUseCompanyLogo && !business) {
+                throw new Error("Business profile is not loaded yet");
+            }
+
+            let nextLogoS3Key = campaign.logo_s3_key;
+            let nextLogoUrl = campaign.logo_url;
+            let nextUseCompanyLogo = campaign.use_company_logo;
+            let nextCoverS3Key = campaign.cover_photo_s3_key;
+            let nextCoverUrl = campaign.cover_photo_url;
+
+            if (logoFile && !shouldUseCompanyLogo) {
+                nextLogoS3Key = await uploadCampaignImage(logoFile, "logo");
+                nextLogoUrl = undefined;
+                nextUseCompanyLogo = false;
+            } else if (shouldUseCompanyLogo) {
+                nextLogoS3Key = business?.logo_s3_key;
+                nextLogoUrl = business?.logo_url;
+                nextUseCompanyLogo = true;
+            } else if (!shouldUseCompanyLogo && campaign.use_company_logo) {
+                nextUseCompanyLogo = false;
+            }
+
+            if (coverFile) {
+                nextCoverS3Key = await uploadCampaignImage(coverFile, "cover");
+                nextCoverUrl = undefined;
+            }
+
+            await updateCampaign({
+                campaignId: campaignId as Id<"campaigns">,
+                name: values.name,
+                logo_url: nextLogoUrl,
+                logo_s3_key: nextLogoS3Key,
+                use_company_logo: nextUseCompanyLogo,
+                cover_photo_url: nextCoverUrl,
+                cover_photo_s3_key: nextCoverS3Key,
+                category: values.category,
+                total_budget: requestedTotalBudget,
+                asset_links: values.assets,
+                maximum_payout: parseFloat(values.maxPayout) || 0,
+                payout_thresholds: values.thresholdData
+                    .filter(t => t.views && t.amount)
+                    .map(t => ({
+                        views: parseViews(t.views),
+                        payout: parseFloat(t.amount) || 0
+                    })),
+                requirements: [
+                    ...(values.reqData.noAi ? ["No AI Content"] : []),
+                    ...(values.reqData.followScript ? ["Follow Script 1:1"] : []),
+                    ...(values.reqData.language ? [`Speak ${values.reqData.language}`] : []),
+                    ...(values.reqData.location ? [`Creator from ${values.reqData.location}`] : []),
+                    ...values.reqData.custom
+                ],
+                scripts: [
+                    ...(values.scriptsData.hook ? [{ type: "Hook", description: values.scriptsData.hook }] : []),
+                    ...(values.scriptsData.product ? [{ type: "Product", description: values.scriptsData.product }] : []),
+                    ...(values.scriptsData.cta ? [{ type: "CTA", description: values.scriptsData.cta }] : []),
+                    ...values.scriptsData.custom
+                ]
+            });
+
+            setLogoFile(null);
+            setCoverFile(null);
+
+            const additionalCharge = requestedTotalBudget - currentTotalBudget;
+            addToast(
+                additionalCharge > 0
+                    ? {
+                        title: "Campaign updated successfully!",
+                        description: `Charged Rm ${additionalCharge.toFixed(2)} from your credits.`,
+                        color: "success",
+                    }
+                    : {
+                        title: "Campaign updated successfully!",
+                        color: "success",
+                    }
+            );
+            setIsIncreaseBudgetModalOpen(false); // Close modal on success
+
+        } catch (error: any) {
+            console.error("Failed to update campaign:", error);
+            addToast({
+                title: "Failed to update campaign. Please try again.",
+                description: error.data?.message || error.message,
+                color: "danger",
+            });
+        } finally {
+            if (shouldSetSubmitting) {
+                formik.setSubmitting(false);
+            }
+        }
+    };
+
     const formik = useFormik({
         initialValues,
         enableReinitialize: true,
@@ -382,109 +515,36 @@ export default function CampaignDetails() {
 
             const requestedTotalBudget = parseFloat(values.totalPayouts) || 0;
             const currentTotalBudget = campaign.total_budget;
-            const claimedBudget = campaign.budget_claimed;
+            const budgetIncrease = requestedTotalBudget > currentTotalBudget ? requestedTotalBudget - currentTotalBudget : 0;
+            const estimatedRemainingCredits = (business?.credit_balance ?? 0) - budgetIncrease;
 
-            if (requestedTotalBudget < claimedBudget) {
+            if (requestedTotalBudget < currentTotalBudget) {
                 setFieldTouched("totalPayouts", true, false);
                 setFieldError(
                     "totalPayouts",
-                    `Total payouts cannot be lower than claimed amount (Rm ${claimedBudget.toFixed(2)})`
+                    `You cannot go below Rm ${currentTotalBudget.toFixed(2)}`
                 );
                 setSubmitting(false);
                 return;
             }
 
-            try {
-                const hasCompanyLogo = !!(business?.logo_url || business?.logo_s3_key || companyLogoPreview);
-                const shouldUseCompanyLogo = useCompanyLogo && hasCompanyLogo;
-
-                if (shouldUseCompanyLogo && !business) {
-                    throw new Error("Business profile is not loaded yet");
-                }
-
-                let nextLogoS3Key = campaign.logo_s3_key;
-                let nextLogoUrl = campaign.logo_url;
-                let nextUseCompanyLogo = campaign.use_company_logo;
-                let nextCoverS3Key = campaign.cover_photo_s3_key;
-                let nextCoverUrl = campaign.cover_photo_url;
-
-                if (logoFile && !shouldUseCompanyLogo) {
-                    nextLogoS3Key = await uploadCampaignImage(logoFile, "logo");
-                    nextLogoUrl = undefined;
-                    nextUseCompanyLogo = false;
-                } else if (shouldUseCompanyLogo) {
-                    nextLogoS3Key = business?.logo_s3_key;
-                    nextLogoUrl = business?.logo_url;
-                    nextUseCompanyLogo = true;
-                } else if (!shouldUseCompanyLogo && campaign.use_company_logo) {
-                    nextUseCompanyLogo = false;
-                }
-
-                if (coverFile) {
-                    nextCoverS3Key = await uploadCampaignImage(coverFile, "cover");
-                    nextCoverUrl = undefined;
-                }
-
-                await updateCampaign({
-                    campaignId: campaignId as Id<"campaigns">,
-                    name: values.name,
-                    logo_url: nextLogoUrl,
-                    logo_s3_key: nextLogoS3Key,
-                    use_company_logo: nextUseCompanyLogo,
-                    cover_photo_url: nextCoverUrl,
-                    cover_photo_s3_key: nextCoverS3Key,
-                    category: values.category,
-                    total_budget: requestedTotalBudget,
-                    asset_links: values.assets,
-                    maximum_payout: parseFloat(values.maxPayout) || 0,
-                    payout_thresholds: values.thresholdData
-                        .filter(t => t.views && t.amount)
-                        .map(t => ({
-                            views: parseViews(t.views),
-                            payout: parseFloat(t.amount) || 0
-                        })),
-                    requirements: [
-                        ...(values.reqData.noAi ? ["No AI Content"] : []),
-                        ...(values.reqData.followScript ? ["Follow Script 1:1"] : []),
-                        ...(values.reqData.language ? [`Speak ${values.reqData.language}`] : []),
-                        ...(values.reqData.location ? [`Creator from ${values.reqData.location}`] : []),
-                        ...values.reqData.custom
-                    ],
-                    scripts: [
-                        ...(values.scriptsData.hook ? [{ type: "Hook", description: values.scriptsData.hook }] : []),
-                        ...(values.scriptsData.product ? [{ type: "Product", description: values.scriptsData.product }] : []),
-                        ...(values.scriptsData.cta ? [{ type: "CTA", description: values.scriptsData.cta }] : []),
-                        ...values.scriptsData.custom
-                    ]
-                });
-
-                setLogoFile(null);
-                setCoverFile(null);
-
-                const additionalCharge = requestedTotalBudget - currentTotalBudget;
-                addToast(
-                    additionalCharge > 0
-                        ? {
-                            title: "Campaign updated successfully!",
-                            description: `Charged Rm ${additionalCharge.toFixed(2)} from your credits.`,
-                            color: "success",
-                        }
-                        : {
-                            title: "Campaign updated successfully!",
-                            color: "success",
-                        }
+            if (budgetIncrease > 0 && estimatedRemainingCredits < 0) {
+                setFieldTouched("totalPayouts", true, false);
+                setFieldError(
+                    "totalPayouts",
+                    "Insufficient credits to increase budget."
                 );
-
-            } catch (error: any) {
-                console.error("Failed to update campaign:", error);
-                addToast({
-                    title: "Failed to update campaign. Please try again.",
-                    description: error.data?.message || error.message,
-                    color: "danger",
-                });
-            } finally {
                 setSubmitting(false);
+                return;
             }
+
+            if (requestedTotalBudget > currentTotalBudget) {
+                setSubmitting(false);
+                setIsIncreaseBudgetModalOpen(true);
+                return;
+            }
+
+            await submitForm(values);
         }
     });
 
@@ -494,11 +554,47 @@ export default function CampaignDetails() {
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
     const hasMediaChanges = !!logoFile || !!coverFile || (campaign ? useCompanyLogo !== Boolean(campaign.use_company_logo) : false);
 
+    const unsavedChangesList = useMemo(() => {
+        const changes: { label: string; icon: any }[] = [];
+        if (formik.values.name !== initialValues.name) changes.push({ label: 'Campaign Name', icon: Type });
+        if (JSON.stringify(formik.values.category) !== JSON.stringify(initialValues.category)) changes.push({ label: 'Category', icon: Tag });
+
+        // Use loose equality or string casting to avoid number/string mismatch issues
+        if (formik.values.totalPayouts.toString() !== initialValues.totalPayouts.toString()) changes.push({ label: 'Total Payouts', icon: DollarSign });
+        if (formik.values.assets !== initialValues.assets) changes.push({ label: 'Assets Link', icon: LinkIcon });
+        if (formik.values.maxPayout.toString() !== initialValues.maxPayout.toString()) changes.push({ label: 'Max Payout', icon: DollarSign });
+
+        if (JSON.stringify(formik.values.thresholdData) !== JSON.stringify(initialValues.thresholdData)) changes.push({ label: 'Payout Thresholds', icon: DollarSign });
+        if (JSON.stringify(formik.values.reqData) !== JSON.stringify(initialValues.reqData)) changes.push({ label: 'Requirements', icon: CheckSquare });
+        if (JSON.stringify(formik.values.scriptsData) !== JSON.stringify(initialValues.scriptsData)) changes.push({ label: 'Scripts', icon: FileText });
+
+        if (logoFile) changes.push({ label: 'Campaign Logo', icon: ImageIcon });
+        if (coverFile) changes.push({ label: 'Cover Photo', icon: ImageIcon });
+        if (campaign && useCompanyLogo !== Boolean(campaign.use_company_logo)) changes.push({ label: 'Company Logo Preference', icon: Building });
+
+        return changes;
+    }, [formik.values, initialValues, logoFile, coverFile, useCompanyLogo, campaign]);
+
     const handleBack = () => {
-        if (formik.dirty || hasMediaChanges) {
+        if (unsavedChangesList.length > 0) {
             setShowUnsavedChangesModal(true);
         } else {
             navigate('/campaigns');
+        }
+    };
+
+    const requestedTotalBudget = parseFloat(formik.values.totalPayouts) || 0;
+    const currentTotalBudget = campaign?.total_budget ?? 0;
+    const budgetIncrease = requestedTotalBudget > currentTotalBudget ? requestedTotalBudget - currentTotalBudget : 0;
+    const estimatedRemainingCredits = (business?.credit_balance ?? 0) - budgetIncrease;
+    const isIncreaseBudgetDisabled = budgetIncrease > 0 && estimatedRemainingCredits < 0;
+
+    const handleResetChanges = () => {
+        formik.resetForm();
+        setLogoFile(null);
+        setCoverFile(null);
+        if (campaign) {
+            setUseCompanyLogo(Boolean(campaign.use_company_logo));
         }
     };
 
@@ -508,7 +604,7 @@ export default function CampaignDetails() {
 
     const parsedTotalPayouts = parseFloat(formik.values.totalPayouts);
     const proposedTotalPayouts = Number.isFinite(parsedTotalPayouts) ? parsedTotalPayouts : 0;
-    const isLowerThanClaimedAmount = formik.values.totalPayouts !== "" && proposedTotalPayouts < campaign.budget_claimed;
+    const isLowerThanCurrentAmount = formik.values.totalPayouts !== "" && proposedTotalPayouts < campaign.total_budget;
 
     return (
         <div className="animate-fadeIn relative pb-24 p-8">
@@ -563,26 +659,10 @@ export default function CampaignDetails() {
                                 disabled={isEndingCampaign}
                                 onClick={async () => {
                                     if (!campaignId) return;
-                                    try {
-                                        setIsStatusUpdating(true);
-                                        const newStatus = campaign.status === 'active' ? 'paused' : 'active';
-                                        await updateCampaignStatus({
-                                            campaignId: campaignId as Id<"campaigns">,
-                                            status: newStatus
-                                        });
-                                        addToast({
-                                            title: `Campaign ${newStatus === 'active' ? 'resumed' : 'paused'} successfully!`,
-                                            color: "success",
-                                        });
-                                    } catch (error: any) {
-                                        console.error("Failed to update status:", error);
-                                        addToast({
-                                            title: "Failed to update status",
-                                            description: error.data?.message || error.message,
-                                            color: "danger",
-                                        });
-                                    } finally {
-                                        setIsStatusUpdating(false);
+                                    if (campaign.status === 'active') {
+                                        setIsPauseModalOpen(true);
+                                    } else {
+                                        setIsResumeModalOpen(true);
                                     }
                                 }}
                             >
@@ -592,28 +672,9 @@ export default function CampaignDetails() {
                                 variant="danger"
                                 isLoading={isEndingCampaign}
                                 disabled={isStatusUpdating}
-                                onClick={async () => {
+                                onClick={() => {
                                     if (!campaignId) return;
-                                    try {
-                                        setIsEndingCampaign(true);
-                                        await updateCampaignStatus({
-                                            campaignId: campaignId as Id<"campaigns">,
-                                            status: 'completed'
-                                        });
-                                        addToast({
-                                            title: "Campaign ended successfully!",
-                                            color: "success",
-                                        });
-                                    } catch (error: any) {
-                                        console.error("Failed to end campaign:", error);
-                                        addToast({
-                                            title: "Failed to end campaign",
-                                            description: error.data?.message || error.message,
-                                            color: "danger",
-                                        });
-                                    } finally {
-                                        setIsEndingCampaign(false);
-                                    }
+                                    setIsEndModalOpen(true);
                                 }}
                             >
                                 End Campaign
@@ -688,13 +749,17 @@ export default function CampaignDetails() {
                                             value={formik.values.totalPayouts}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            min={campaign.budget_claimed}
-                                            className={`w-full bg-[#F4F6F8] rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all ${formik.touched.totalPayouts && formik.errors.totalPayouts ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
+                                            min={campaign.total_budget}
+                                            className={`w-full bg-[#F4F6F8] rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all ${(formik.touched.totalPayouts && formik.errors.totalPayouts) || isLowerThanCurrentAmount || isIncreaseBudgetDisabled ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
                                         />
                                     </div>
-                                    {formik.touched.totalPayouts && formik.errors.totalPayouts && (
-                                        <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.totalPayouts}</p>
-                                    )}
+                                    {isLowerThanCurrentAmount ? (
+                                        <p className="text-red-500 text-sm mt-1 font-medium">You cannot go below Rm {campaign.total_budget}</p>
+                                    ) : isIncreaseBudgetDisabled ? (
+                                        <p className="text-red-500 text-sm mt-1 font-medium">Insufficient credits to increase budget.</p>
+                                    ) : formik.touched.totalPayouts && formik.errors.totalPayouts ? (
+                                        <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.totalPayouts as string}</p>
+                                    ) : null}
                                 </div>
                             </div>
 
@@ -1213,40 +1278,46 @@ export default function CampaignDetails() {
             </div>
 
             {/* Modals */}
-            {showThresholdModal && (
-                <PayoutThresholdModal
-                    initialData={formik.values.thresholdData}
-                    initialMaxPayout={formik.values.maxPayout}
-                    onClose={() => setShowThresholdModal(false)}
-                    onSave={(data, max) => {
-                        formik.setFieldValue('thresholdData', data);
-                        formik.setFieldValue('maxPayout', max);
-                        setShowThresholdModal(false);
-                    }}
-                />
-            )}
+            {
+                showThresholdModal && (
+                    <PayoutThresholdModal
+                        initialData={formik.values.thresholdData}
+                        initialMaxPayout={formik.values.maxPayout}
+                        onClose={() => setShowThresholdModal(false)}
+                        onSave={(data, max) => {
+                            formik.setFieldValue('thresholdData', data);
+                            formik.setFieldValue('maxPayout', max);
+                            setShowThresholdModal(false);
+                        }}
+                    />
+                )
+            }
 
-            {showRequirementsModal && (
-                <RequirementsModal
-                    initialData={formik.values.reqData}
-                    onClose={() => setShowRequirementsModal(false)}
-                    onSave={(data) => {
-                        formik.setFieldValue('reqData', data);
-                        setShowRequirementsModal(false);
-                    }}
-                />
-            )}
+            {
+                showRequirementsModal && (
+                    <RequirementsModal
+                        initialData={formik.values.reqData}
+                        onClose={() => setShowRequirementsModal(false)}
+                        onSave={(data) => {
+                            formik.setFieldValue('reqData', data);
+                            setShowRequirementsModal(false);
+                        }}
+                    />
+                )
+            }
 
-            {showScriptsModal && (
-                <ScriptsModal
-                    initialData={formik.values.scriptsData}
-                    onClose={() => setShowScriptsModal(false)}
-                    onSave={(data) => {
-                        formik.setFieldValue('scriptsData', data);
-                        setShowScriptsModal(false);
-                    }}
-                />
-            )}
+            {
+                showScriptsModal && (
+                    <ScriptsModal
+                        initialData={formik.values.scriptsData}
+                        onClose={() => setShowScriptsModal(false)}
+                        onSave={(data) => {
+                            formik.setFieldValue('scriptsData', data);
+                            setShowScriptsModal(false);
+                        }}
+                    />
+                )
+            }
 
             <style>{`
                 @keyframes fadeIn {
@@ -1259,26 +1330,459 @@ export default function CampaignDetails() {
             `}</style>
 
             {/* Action Buttons (Fixed Screen Bottom Right) */}
-            {activeTab === 'about' && createPortal(
-                <div className="fixed bottom-8 right-8 flex gap-4 z-50">
-                    <Button
-                        variant="primary"
-                        onClick={() => formik.handleSubmit()}
-                        isLoading={formik.isSubmitting}
-                        disabled={formik.isSubmitting || (!formik.dirty && !hasMediaChanges) || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign}
-                        className={((!formik.dirty && !hasMediaChanges) || isLowerThanClaimedAmount || isStatusUpdating || isEndingCampaign) && !formik.isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
-                    >
-                        {formik.isSubmitting ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                </div>,
-                document.body
-            )}
+            {
+                activeTab === 'about' && createPortal(
+                    <div className="fixed bottom-8 right-8 flex gap-4 z-50">
+                        {(formik.dirty || hasMediaChanges) && (
+                            <Button
+                                variant="ghost"
+                                onClick={handleResetChanges}
+                                disabled={formik.isSubmitting || isStatusUpdating || isEndingCampaign}
+                                className={`bg-white px-4 text-gray-900 border border-gray-200 hover:bg-gray-50 flex items-center gap-2 ${(formik.isSubmitting || isStatusUpdating || isEndingCampaign) ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                                Reset Changes
+                            </Button>
+                        )}
+                        <Button
+                            variant="primary"
+                            onClick={() => formik.handleSubmit()}
+                            isLoading={formik.isSubmitting}
+                            disabled={formik.isSubmitting || (!formik.dirty && !hasMediaChanges) || isStatusUpdating || isEndingCampaign}
+                            className={((!formik.dirty && !hasMediaChanges) || isStatusUpdating || isEndingCampaign) && !formik.isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
+                        >
+                            {formik.isSubmitting ? 'Saving...' : `Save Changes${unsavedChangesList.length > 0 ? ` (${unsavedChangesList.length})` : ''}`}
+                        </Button>
+                    </div>,
+                    document.body
+                )
+            }
 
             <UnsavedChangesModal
                 isOpen={showUnsavedChangesModal}
                 onClose={() => setShowUnsavedChangesModal(false)}
                 onConfirm={() => navigate('/campaigns')}
+                changes={unsavedChangesList}
             />
-        </div>
+
+            <Modal
+                isOpen={isIncreaseBudgetModalOpen}
+                onOpenChange={setIsIncreaseBudgetModalOpen}
+                size="5xl"
+                scrollBehavior="inside"
+                isDismissable={!isStatusUpdating && !formik.isSubmitting}
+                hideCloseButton={isStatusUpdating || formik.isSubmitting}
+            >
+                <ModalContent>
+                    {(onClose) => (
+                        <>
+                            <ModalHeader className="flex flex-col gap-1 px-8 pt-8">
+                                <span className="text-xl font-bold text-gray-900">Increase Budget Summary</span>
+                                <span className="text-sm font-normal text-gray-500">
+                                    You are increasing the total payout budget for your campaign.
+                                </span>
+                            </ModalHeader>
+                            <ModalBody className="p-8 mb-4">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+                                    <div className="flex flex-col items-start w-full lg:pr-8 pt-2">
+                                        <h3 className="text-xl mb-4 font-semibold text-gray-900 tracking-tight">{formik.values.name || 'Untitled Campaign'}</h3>
+
+                                        <div className="space-y-3 text-[15px] w-full">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500">Current Budget</span>
+                                                <span className="font-semibold text-gray-900">RM {currentTotalBudget.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500">New Total Budget</span>
+                                                <span className="font-[800] text-gray-900">RM {requestedTotalBudget.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mt-2 border-t border-gray-100 pt-3">
+                                                <span className="text-gray-500">Maximum Payout for 1 User</span>
+                                                <span className="font-semibold text-gray-900">RM {parseFloat(formik.values.maxPayout).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="text-xl font-semibold text-gray-900">Cost Summary</div>
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8">
+                                            <div className="space-y-6">
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between text-base">
+                                                        <span className="text-gray-500">Budget Increase</span>
+                                                        <span className="font-semibold text-gray-900">RM {budgetIncrease.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-6 border-t border-gray-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-lg font-bold text-gray-900">Total credits costs</span>
+                                                        <span className="text-2xl font-bold text-gray-900">RM {budgetIncrease.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-6 border-t border-gray-100">
+                                                    <div className="flex items-center justify-between text-base">
+                                                        <span className="text-gray-500">Credits remaining after update</span>
+                                                        <span className={`font-semibold ${estimatedRemainingCredits < 0 ? "text-red-500" : "text-gray-900"}`}>
+                                                            RM {estimatedRemainingCredits.toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                    {estimatedRemainingCredits < 0 && (
+                                                        <div className="rounded-xl bg-red-50 p-3 text-xs text-red-600 mt-2">
+                                                            You have insufficient credits. Please top up your balance.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ModalBody>
+                            <ModalFooter className="px-8 pb-8 pt-0">
+                                <div className="flex justify-between w-full items-center">
+                                    <div className="text-sm font-medium">
+                                        <span className="text-gray-500 mr-2">Current balance:</span>
+                                        <span className="text-gray-900 font-bold">Rm {business?.credit_balance?.toFixed(2) ?? '0.00'}</span>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={onClose}
+                                            disabled={isStatusUpdating || formik.isSubmitting}
+                                            className="px-6 py-3 font-semibold text-gray-600 hover:bg-gray-100 bg-white border border-gray-200"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            isLoading={isStatusUpdating || formik.isSubmitting}
+                                            onClick={async () => {
+                                                formik.setSubmitting(true);
+                                                await submitForm(formik.values, false);
+                                                formik.setSubmitting(false);
+                                            }}
+                                            disabled={isIncreaseBudgetDisabled || isStatusUpdating || formik.isSubmitting}
+                                            className={`px-8 py-3 font-bold ${(isIncreaseBudgetDisabled || isStatusUpdating || formik.isSubmitting) && !(isStatusUpdating || formik.isSubmitting) ? "opacity-50 cursor-not-allowed" : ""}`}
+                                        >
+                                            {isStatusUpdating || formik.isSubmitting ? 'Updating...' : 'Confirm & Update'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
+
+            {/* Pause Campaign Modal */}
+            <Modal
+                isOpen={isPauseModalOpen}
+                onOpenChange={setIsPauseModalOpen}
+                placement="center"
+                hideCloseButton
+                classNames={{
+                    base: "m-0 rounded-3xl max-w-xl w-[90vw] md:w-full",
+                    body: "p-0",
+                }}
+            >
+                <ModalContent>
+                    {(onClose) => (
+                        <div className="flex flex-col items-center pt-10 pb-8 px-12 text-center bg-white rounded-xl">
+                            <h3 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Pause Campaign</h3>
+                            <p className="text-gray-500 text-lg leading-relaxed font-medium mb-8 px-2 max-w-[480px]">
+                                Temporarily stop new applications while allowing existing creators to complete their work.
+                            </p>
+
+                            <div className="w-full bg-[#F4F6F8] rounded-2xl p-6 mb-8 space-y-7 text-left max-h-[45vh] overflow-y-auto hidden-scrollbar">
+                                <div className="flex gap-4">
+                                    <X className="w-5 h-5 text-gray-400 shrink-0 mt-1" />
+                                    <div className="flex flex-col gap-1.5">
+                                        <span className="text-base font-bold text-gray-700 leading-tight">Submissions Paused</span>
+                                        <p className="text-sm font-semibold text-gray-400 leading-relaxed">
+                                            New creators won't be able to discover or apply to this campaign.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <Check className="w-5 h-5 text-gray-400 shrink-0 mt-1" />
+                                    <div className="flex flex-col gap-1.5">
+                                        <span className="text-base font-bold text-gray-700 leading-tight">Finalize Ongoing Work</span>
+                                        <p className="text-sm font-semibold text-gray-400 leading-relaxed">
+                                            Creators already in progress can still submit their work and earn payouts.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2 w-full">
+                                <Button
+                                    className="w-full bg-[#1C1C1C] hover:bg-[#2C2C2C] border-none text-white h-12 rounded-xl text-sm font-bold shadow-none"
+                                    onClick={async () => {
+                                        try {
+                                            setIsStatusUpdating(true);
+                                            await updateCampaignStatus({
+                                                campaignId: campaignId as Id<"campaigns">,
+                                                status: 'paused'
+                                            });
+                                            addToast({
+                                                title: `Campaign paused successfully!`,
+                                                color: "success",
+                                            });
+                                            onClose();
+                                        } catch (error: any) {
+                                            console.error("Failed to pause campaign:", error);
+                                            addToast({
+                                                title: "Failed to pause campaign",
+                                                description: error.data?.message || error.message,
+                                                color: "danger",
+                                            });
+                                        } finally {
+                                            setIsStatusUpdating(false);
+                                        }
+                                    }}
+                                    isLoading={isStatusUpdating}
+                                >
+                                    Pause Campaign
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="w-full bg-transparent hover:bg-gray-50 text-gray-900 h-10 rounded-xl text-sm font-bold shadow-none"
+                                    onClick={onClose}
+                                    disabled={isStatusUpdating}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </ModalContent>
+            </Modal>
+
+            {/* End Campaign Modal */}
+            <Modal
+                isOpen={isEndModalOpen}
+                onOpenChange={setIsEndModalOpen}
+                placement="center"
+                hideCloseButton
+                classNames={{
+                    base: "m-0 rounded-3xl max-w-xl w-[90vw] md:w-full",
+                    body: "p-0",
+                }}
+            >
+                <ModalContent>
+                    {(onClose) => {
+                        const isNotPaused = campaign?.status !== 'paused';
+                        const hasPendingApprovals = (campaign?.pending_approvals ?? 0) > 0;
+                        const isBlocked = isNotPaused || hasPendingApprovals || hasChangesRequested;
+
+                        return (
+                            <div className="flex flex-col items-center pt-10 pb-8 px-12 text-center bg-white rounded-xl">
+                                <h3 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">End Campaign</h3>
+
+                                {isBlocked ? (
+                                    <div className="mb-6 w-full pt-2">
+                                        {isNotPaused ? (
+                                            <div className="rounded-xl border border-[#FFF3C2] bg-[#FFFBEA] p-6">
+                                                <p className="text-lg text-[#B45309] font-semibold leading-relaxed">
+                                                    You need to pause the campaign first before ending it early, since your campaign hasn't been fully claimed.
+                                                </p>
+                                            </div>
+                                        ) : hasPendingApprovals ? (
+                                            <div className="rounded-xl border border-red-100 bg-red-50 p-6">
+                                                <p className="text-lg text-red-600 font-semibold leading-relaxed">
+                                                    There are pending reviews. You must finish reviewing all submissions before you can end the campaign.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-xl border border-red-100 bg-red-50 p-6">
+                                                <p className="text-lg text-red-600 font-semibold leading-relaxed">
+                                                    There are applications with requested changes. You must resolve them before you can end the campaign.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-gray-500 text-lg leading-relaxed font-medium mb-8 px-2 max-w-[480px]">
+                                            Permanently close the campaign and settle all final accounts.
+                                        </p>
+
+                                        <div className="w-full bg-[#F4F6F8] rounded-2xl p-8 mb-8 space-y-8 text-left max-h-[50vh] overflow-y-auto hidden-scrollbar">
+                                            <div className="flex gap-5">
+                                                <RotateCcw className="w-6 h-6 text-gray-400 shrink-0 mt-1" />
+                                                <div className="flex flex-col gap-2">
+                                                    <span className="text-lg font-bold text-gray-700 leading-tight">7-Day Verification</span>
+                                                    <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
+                                                        Performance tracking continues for 7 days to ensure creators receive accurate view-based payouts.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-5">
+                                                <Wallet className="w-6 h-6 text-gray-400 shrink-0 mt-1" />
+                                                <div className="flex flex-col gap-2">
+                                                    <span className="text-lg font-bold text-gray-700 leading-tight">Budget Settlement</span>
+                                                    <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
+                                                        Any remaining funds will be safely returned to your wallet once the verification period concludes.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="flex flex-col gap-2 w-full">
+                                    {!isBlocked && (
+                                        <Button
+                                            className="w-full bg-[#E53935] hover:bg-[#D32F2F] border-none text-white h-12 rounded-xl text-sm font-bold shadow-none"
+                                            onClick={async () => {
+                                                try {
+                                                    setIsEndingCampaign(true);
+                                                    await updateCampaignStatus({
+                                                        campaignId: campaignId as Id<"campaigns">,
+                                                        status: 'completed'
+                                                    });
+                                                    addToast({
+                                                        title: "Campaign ended successfully!",
+                                                        color: "success",
+                                                    });
+                                                    onClose();
+                                                } catch (error: any) {
+                                                    console.error("Failed to end campaign:", error);
+                                                    addToast({
+                                                        title: "Failed to end campaign",
+                                                        description: error.data?.message || error.message,
+                                                        color: "danger",
+                                                    });
+                                                } finally {
+                                                    setIsEndingCampaign(false);
+                                                }
+                                            }}
+                                            isLoading={isEndingCampaign}
+                                        >
+                                            End Campaign
+                                        </Button>
+                                    )}
+                                    {isNotPaused ? (
+                                        <>
+                                            <Button
+                                                className="w-full bg-[#1C1C1C] hover:bg-[#2C2C2C] border-none text-white h-12 rounded-xl text-sm font-bold shadow-none"
+                                                onClick={() => {
+                                                    onClose();
+                                                    setIsPauseModalOpen(true);
+                                                }}
+                                            >
+                                                Pause Campaign
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full bg-transparent hover:bg-gray-50 text-gray-900 h-10 rounded-xl text-sm font-bold shadow-none"
+                                                onClick={onClose}
+                                            >
+                                                Cancel
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full bg-transparent hover:bg-gray-50 text-gray-900 h-10 rounded-xl text-sm font-bold shadow-none"
+                                            onClick={onClose}
+                                            disabled={isEndingCampaign}
+                                        >
+                                            {isBlocked ? 'Okay' : 'Cancel'}
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    }}
+                </ModalContent>
+            </Modal>
+
+            {/* Resume Campaign Modal */}
+            <Modal
+                isOpen={isResumeModalOpen}
+                onOpenChange={setIsResumeModalOpen}
+                placement="center"
+                hideCloseButton
+                classNames={{
+                    base: "m-0 rounded-3xl max-w-xl w-[90vw] md:w-full",
+                    body: "p-0",
+                }}
+            >
+                <ModalContent>
+                    {(onClose) => (
+                        <div className="flex flex-col items-center pt-10 pb-8 px-12 text-center bg-white rounded-xl">
+                            <h3 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Resume Campaign</h3>
+                            <p className="text-gray-500 text-lg leading-relaxed font-medium mb-8 px-2 max-w-[480px]">
+                                Make your campaign visible again and start accepting new applications.
+                            </p>
+
+                            <div className="w-full bg-[#F4F6F8] rounded-2xl p-8 mb-8 space-y-8 text-left max-h-[50vh] overflow-y-auto hidden-scrollbar">
+                                <div className="flex gap-5">
+                                    <Plus className="w-6 h-6 text-gray-400 shrink-0 mt-1" />
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-lg font-bold text-gray-700 leading-tight">Open Applications</span>
+                                        <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
+                                            Creators will be able to discover your campaign and submit new entries immediately.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-5">
+                                    <DollarSign className="w-6 h-6 text-gray-400 shrink-0 mt-1" />
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-lg font-bold text-gray-700 leading-tight">Project Continuity</span>
+                                        <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
+                                            Management continues seamlessly using your existing budget and payout settings.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2 w-full">
+                                <Button
+                                    className="w-full bg-[#1C1C1C] hover:bg-[#2C2C2C] border-none text-white h-12 rounded-xl text-sm font-bold shadow-none"
+                                    onClick={async () => {
+                                        try {
+                                            setIsStatusUpdating(true);
+                                            await updateCampaignStatus({
+                                                campaignId: campaignId as Id<"campaigns">,
+                                                status: 'active'
+                                            });
+                                            addToast({
+                                                title: `Campaign resumed successfully!`,
+                                                color: "success",
+                                            });
+                                            onClose();
+                                        } catch (error: any) {
+                                            console.error("Failed to resume campaign:", error);
+                                            addToast({
+                                                title: "Failed to resume campaign",
+                                                description: error.data?.message || error.message,
+                                                color: "danger",
+                                            });
+                                        } finally {
+                                            setIsStatusUpdating(false);
+                                        }
+                                    }}
+                                    isLoading={isStatusUpdating}
+                                >
+                                    Resume Campaign
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="w-full bg-transparent hover:bg-gray-50 text-gray-900 h-10 rounded-xl text-sm font-bold shadow-none"
+                                    onClick={onClose}
+                                    disabled={isStatusUpdating}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </ModalContent>
+            </Modal>
+        </div >
     );
 }
