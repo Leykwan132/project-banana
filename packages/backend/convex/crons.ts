@@ -150,41 +150,10 @@ export const runDailyScrape = internalAction({
 
                 // Save aggregated stats if we have valid data
                 if (hasValidData) {
-                    const stats = {
-                        views: totalViews,
-                        likes: totalLikes,
-                        comments: totalComments,
-                        shares: totalShares,
-                    };
                     console.log(`Saving aggregated stats for app ${app._id}: Views=${totalViews}, Likes=${totalLikes}, Comments=${totalComments}, Shares=${totalShares}`);
 
-                    // 1. App Analytics
-                    await ctx.runMutation(api.analytics.saveDailyAppStats, {
-                        applicationId: app._id,
-                        campaignId: app.campaign_id,
-                        ...stats
-                    });
-
-                    // 2. Campaign Analytics
-                    await ctx.runMutation(api.analytics.saveDailyCampaignStats, {
-                        campaignId: app.campaign_id,
-                        ...stats
-                    });
-
-                    // 3. Business Analytics
-                    await ctx.runMutation(api.analytics.saveDailyBusinessStats, {
-                        businessId: campaign.business_id,
-                        ...stats
-                    });
-
-                    // 4. Creator Analytics
-                    await ctx.runMutation(api.analytics.saveDailyCreatorStats, {
-                        userId: app.user_id,
-                        ...stats
-                    });
-
-                    // 5. Trigger application earning update and computation
-                    await ctx.runMutation(internal.applications.updateApplicationEarning, {
+                    // 1. Compute earnings first so we can propagate the delta to all analytics tables
+                    const earningResult = await ctx.runMutation(internal.applications.updateApplicationEarning, {
                         applicationId: app._id,
                         campaignId: app.campaign_id,
                         userCampaignStatusId: app.campaignStatusId,
@@ -193,6 +162,42 @@ export const runDailyScrape = internalAction({
                         comments: totalComments,
                         shares: totalShares,
                     });
+                    const totalEarnings = earningResult?.earnings ?? 0;
+                    console.log(`Earning delta for app ${app._id}: ${totalEarnings}`);
+
+                    const stats = {
+                        views: totalViews,
+                        likes: totalLikes,
+                        comments: totalComments,
+                        shares: totalShares,
+                        earnings: totalEarnings,
+                    };
+
+                    // 2. App Analytics
+                    await ctx.runMutation(api.analytics.saveDailyAppStats, {
+                        applicationId: app._id,
+                        campaignId: app.campaign_id,
+                        ...stats
+                    });
+
+                    // 3. Campaign Analytics
+                    await ctx.runMutation(api.analytics.saveDailyCampaignStats, {
+                        campaignId: app.campaign_id,
+                        ...stats
+                    });
+
+                    // 4. Business Analytics
+                    await ctx.runMutation(api.analytics.saveDailyBusinessStats, {
+                        businessId: campaign.business_id,
+                        ...stats
+                    });
+
+                    // 5. Creator Analytics
+                    await ctx.runMutation(api.analytics.saveDailyCreatorStats, {
+                        userId: app.user_id,
+                        ...stats
+                    });
+
                     console.log(`Successfully updated all database records for app ${app._id}`);
                 } else {
                     console.log(`No valid data to save for app ${app._id}`);

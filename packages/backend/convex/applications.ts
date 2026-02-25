@@ -305,6 +305,10 @@ export const updateApplicationEarning = internalMutation({
         const application = await ctx.db.get(args.applicationId);
         if (!application) return;
 
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) return;
+
+        const previousAppEarnings = application.earnings ?? 0;
         const previousViews = application.views ?? 0;
         const previousLikes = application.likes ?? 0;
         const previousComments = application.comments ?? 0;
@@ -319,23 +323,33 @@ export const updateApplicationEarning = internalMutation({
         const userCampaign = await ctx.db.get(args.userCampaignStatusId);
         if (!userCampaign) return;
 
-        const userCampaignViews = (userCampaign.views || 0) + viewsDelta;
-        const userCampaignLikes = (userCampaign.likes || 0) + likesDelta;
-        const userCampaignComments = (userCampaign.comments || 0) + commentsDelta;
-        const userCampaignShares = (userCampaign.shares || 0) + sharesDelta;
+        // Early exit: user already maxed out — stats still update but earnings are capped at maximum_payout
+        if (userCampaign.status === UserCampaignStatus.MaxedOut) {
+            await ctx.db.patch(args.applicationId, {
+                views: args.views,
+                likes: args.likes,
+                comments: args.comments,
+                shares: args.shares,
+                earnings: userCampaign.maximum_payout,
+                updated_at: now,
+            });
+            return { earnings: userCampaign.maximum_payout };
+        }
 
-        // 3. Get campaign and evaluate new earnings based on NEW aggregated views across all apps
-        const campaign = await ctx.db.get(args.campaignId);
-        if (!campaign) return;
+        const newCampaignViews = (userCampaign.views || 0) + viewsDelta;
+        const newCampaignLikes = (userCampaign.likes || 0) + likesDelta;
+        const newCampaignComments = (userCampaign.comments || 0) + commentsDelta;
+        const newCampaignShares = (userCampaign.shares || 0) + sharesDelta;
 
-        const newEarning = calculateEarning(
-            userCampaignViews,
+        // 3. Get campaign and evaluate new earnings based on this application's own scraped views
+        // This value has been capped by maximum payout.
+        const newApplicationEarnings = calculateEarning(
+            args.views,
             campaign.payout_thresholds,
             userCampaign.maximum_payout
         );
 
-        const existingEarning = userCampaign.total_earnings;
-        const earningDelta = Math.max(0, newEarning - existingEarning);
+        const earningDelta = Math.max(0, newApplicationEarnings - previousAppEarnings);
 
         // 4. Update application's own stats (for fast rendering/caching)
         await ctx.db.patch(args.applicationId, {
@@ -343,16 +357,16 @@ export const updateApplicationEarning = internalMutation({
             likes: args.likes,
             comments: args.comments,
             shares: args.shares,
-            earnings: newEarning,
+            earnings: newApplicationEarnings,
             updated_at: now,
         });
 
         // 5. Update user_campaign_status with latest accumulated stats
         const userCampaignPatch: Record<string, any> = {
-            views: userCampaignViews,
-            likes: userCampaignLikes,
-            comments: userCampaignComments,
-            shares: userCampaignShares,
+            views: newCampaignViews,
+            likes: newCampaignLikes,
+            comments: newCampaignComments,
+            shares: newCampaignShares,
             updated_at: now,
         };
 
@@ -361,6 +375,7 @@ export const updateApplicationEarning = internalMutation({
         // Cap the delta to available budget - never exceed total_budget
         const cappedDelta = Math.min(earningDelta, remainingBudget);
 
+        // Case 1: No budget left or no new earning
         if (cappedDelta <= 0) {
             // Still update stats even if no budget left or no new earning
             await ctx.db.patch(args.userCampaignStatusId, userCampaignPatch);
@@ -377,9 +392,10 @@ export const updateApplicationEarning = internalMutation({
                     });
                 }
             }
-            return;
+            return { earnings: previousAppEarnings };
         }
 
+        // Case 2: Budget left and new earning
         // 6. Update campaign budget_claimed
         const newBudgetClaimed = campaign.budget_claimed + cappedDelta;
         const campaignPatch: Record<string, any> = {
@@ -394,15 +410,13 @@ export const updateApplicationEarning = internalMutation({
         await ctx.db.patch(args.campaignId, campaignPatch);
 
         // 7. Update user_campaign_status with earnings + stats
-        const newTotalEarnings = userCampaign.total_earnings + cappedDelta;
-        const newStatus = newTotalEarnings >= userCampaign.maximum_payout
-            ? UserCampaignStatus.MaxedOut
-            : userCampaign.status;
+        const newCampaignEarnings = userCampaign.total_earnings + cappedDelta;
+        const isNowMaxedOut = newCampaignEarnings >= userCampaign.maximum_payout;
 
         await ctx.db.patch(args.userCampaignStatusId, {
             ...userCampaignPatch,
-            total_earnings: newTotalEarnings,
-            status: newStatus,
+            total_earnings: newCampaignEarnings,
+            status: isNowMaxedOut ? UserCampaignStatus.MaxedOut : userCampaign.status,
         });
 
         // 8. Update creator totals (views + earnings)
@@ -416,5 +430,7 @@ export const updateApplicationEarning = internalMutation({
                 total_earnings: (creator.total_earnings ?? 0) + cappedDelta,
             });
         }
+
+        return { earnings: cappedDelta };
     },
 });

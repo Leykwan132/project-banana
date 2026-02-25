@@ -251,6 +251,7 @@ export default defineSchema({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
         created_at: v.number(),
         updated_at: v.number(),
     })
@@ -264,6 +265,7 @@ export default defineSchema({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
         created_at: v.number(),
         updated_at: v.number(),
     }).index("by_business_date", ["business_id", "date"]),
@@ -277,6 +279,7 @@ export default defineSchema({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
         created_at: v.number(),
         updated_at: v.number(),
     })
@@ -290,6 +293,7 @@ export default defineSchema({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
         created_at: v.number(),
         updated_at: v.number(),
     }).index("by_user_date", ["user_id", "date"]),

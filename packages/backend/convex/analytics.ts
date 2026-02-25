@@ -114,8 +114,9 @@ export const getAppTotalStats = query({
         const likes = dailyStats.reduce((sum, day) => sum + day.likes, 0);
         const comments = dailyStats.reduce((sum, day) => sum + day.comments, 0);
         const shares = dailyStats.reduce((sum, day) => sum + day.shares, 0);
+        const earnings = dailyStats.reduce((sum, day) => sum + (day.earnings ?? 0), 0);
 
-        return { views, likes, comments, shares };
+        return { views, likes, comments, shares, earnings };
     }
 });
 
@@ -316,8 +317,9 @@ export const getCampaignTotalStats = query({
         const likes = dailyStats.reduce((sum, day) => sum + day.likes, 0);
         const comments = dailyStats.reduce((sum, day) => sum + day.comments, 0);
         const shares = dailyStats.reduce((sum, day) => sum + day.shares, 0);
+        const earnings = dailyStats.reduce((sum, day) => sum + (day.earnings ?? 0), 0);
 
-        return { views, likes, comments, shares };
+        return { views, likes, comments, shares, earnings };
     }
 });
 
@@ -341,8 +343,9 @@ export const getBusinessTotalStats = query({
         const likes = dailyStats.reduce((sum, day) => sum + day.likes, 0);
         const comments = dailyStats.reduce((sum, day) => sum + day.comments, 0);
         const shares = dailyStats.reduce((sum, day) => sum + day.shares, 0);
+        const earnings = dailyStats.reduce((sum, day) => sum + (day.earnings ?? 0), 0);
 
-        return { views, likes, comments, shares };
+        return { views, likes, comments, shares, earnings };
     }
 });
 
@@ -360,6 +363,7 @@ export const saveDailyAppStats = mutationWithTriggers({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
     },
     handler: async (ctx, args) => {
         const today = new Date().toISOString().split("T")[0] as string;
@@ -383,6 +387,7 @@ export const saveDailyAppStats = mutationWithTriggers({
                 likes: args.likes,
                 comments: args.comments,
                 shares: args.shares,
+                earnings: args.earnings,
                 updated_at: now,
             });
         } else {
@@ -396,6 +401,7 @@ export const saveDailyAppStats = mutationWithTriggers({
                 likes: args.likes,
                 comments: args.comments,
                 shares: args.shares,
+                earnings: args.earnings,
                 created_at: now,
                 updated_at: now,
             });
@@ -410,6 +416,7 @@ export const saveDailyCampaignStats = mutationWithTriggers({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
     },
     handler: async (ctx, args) => {
         const today = new Date().toISOString().split("T")[0] as string;
@@ -433,6 +440,7 @@ export const saveDailyCampaignStats = mutationWithTriggers({
                 likes: existing.likes + args.likes,
                 comments: existing.comments + args.comments,
                 shares: existing.shares + args.shares,
+                earnings: existing.earnings + args.earnings,
                 updated_at: now,
             });
         } else {
@@ -445,6 +453,7 @@ export const saveDailyCampaignStats = mutationWithTriggers({
                 likes: args.likes,
                 comments: args.comments,
                 shares: args.shares,
+                earnings: args.earnings,
                 created_at: now,
                 updated_at: now,
             });
@@ -459,6 +468,7 @@ export const saveDailyBusinessStats = mutationWithTriggers({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
     },
     handler: async (ctx, args) => {
         const today = new Date().toISOString().split("T")[0] as string;
@@ -479,6 +489,7 @@ export const saveDailyBusinessStats = mutationWithTriggers({
                 likes: existing.likes + args.likes,
                 comments: existing.comments + args.comments,
                 shares: existing.shares + args.shares,
+                earnings: existing.earnings + args.earnings,
                 updated_at: now,
             });
         } else {
@@ -490,6 +501,7 @@ export const saveDailyBusinessStats = mutationWithTriggers({
                 likes: args.likes,
                 comments: args.comments,
                 shares: args.shares,
+                earnings: args.earnings,
                 created_at: now,
                 updated_at: now,
             });
@@ -504,6 +516,7 @@ export const saveDailyCreatorStats = mutationWithTriggers({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
+        earnings: v.number(),
     },
     handler: async (ctx, args) => {
         const today = new Date().toISOString().split("T")[0] as string;
@@ -524,6 +537,7 @@ export const saveDailyCreatorStats = mutationWithTriggers({
                 likes: existing.likes + args.likes,
                 comments: existing.comments + args.comments,
                 shares: existing.shares + args.shares,
+                earnings: existing.earnings + args.earnings,
                 updated_at: now,
             });
         } else {
@@ -535,6 +549,7 @@ export const saveDailyCreatorStats = mutationWithTriggers({
                 likes: args.likes,
                 comments: args.comments,
                 shares: args.shares,
+                earnings: args.earnings,
                 created_at: now,
                 updated_at: now,
             });
