@@ -16,6 +16,7 @@ import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign
 import Button from '../../components/ui/Button';
 import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
 import { addToast } from "@heroui/toast";
+import { CampaignStatus } from '../../../../../../packages/backend/convex/constants';
 
 // Mock Analytics Data
 const performanceData = [
@@ -620,17 +621,20 @@ export default function CampaignDetails() {
                 </Button>
 
                 <div className="flex items-center gap-4">
-                    <div className="bg-[#F4F6F8] rounded-full px-4 py-2 flex items-center gap-3 h-10">
+                    <button
+                        onClick={() => navigate('/credits')}
+                        className="bg-[#F4F6F8] rounded-full px-4 py-2 flex items-center gap-3 h-10 hover:bg-gray-200 transition-colors"
+                    >
                         <div className="flex items-center gap-2">
                             <Wallet className="w-4 h-4 text-gray-500" />
                             <span className="text-sm font-medium text-gray-600">
                                 <span className="text-gray-900 font-bold">Rm {business?.credit_balance?.toFixed(2) ?? '0.00'}</span>
                             </span>
                         </div>
-                        <button className="w-5 h-5 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors">
+                        <div className="w-5 h-5 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors">
                             <Plus className="w-3 h-3" />
-                        </button>
-                    </div>
+                        </div>
+                    </button>
                 </div>
             </div>
 
@@ -1524,7 +1528,7 @@ export default function CampaignDetails() {
                                             setIsStatusUpdating(true);
                                             await updateCampaignStatus({
                                                 campaignId: campaignId as Id<"campaigns">,
-                                                status: 'paused'
+                                                status: CampaignStatus.Paused
                                             });
                                             addToast({
                                                 title: `Campaign paused successfully!`,
@@ -1641,7 +1645,7 @@ export default function CampaignDetails() {
                                                     setIsEndingCampaign(true);
                                                     await updateCampaignStatus({
                                                         campaignId: campaignId as Id<"campaigns">,
-                                                        status: 'completed'
+                                                        status: CampaignStatus.Cancelled
                                                     });
                                                     addToast({
                                                         title: "Campaign ended successfully!",
@@ -1748,7 +1752,7 @@ export default function CampaignDetails() {
                                             setIsStatusUpdating(true);
                                             await updateCampaignStatus({
                                                 campaignId: campaignId as Id<"campaigns">,
-                                                status: 'active'
+                                                status: CampaignStatus.Active
                                             });
                                             addToast({
                                                 title: `Campaign resumed successfully!`,
