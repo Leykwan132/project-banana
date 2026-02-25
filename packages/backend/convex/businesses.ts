@@ -101,8 +101,8 @@ export const createBusiness = mutation({
             credit_balance: 0,
             pending_approvals: 0,
             is_onboarded: false,
-            created_at: now,
             updated_at: now,
+            created_at: now,
         });
 
         return businessId;

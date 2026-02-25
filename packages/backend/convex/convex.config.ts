@@ -11,5 +11,6 @@ app.use(stripe);
 app.use(aggregate, { name: "aggregateCampaignAnalytics" });
 app.use(aggregate, { name: "aggregateBusinessAnalytics" });
 app.use(aggregate, { name: "aggregateApplicationAnalytics" });
+app.use(aggregate, { name: "aggregateCreatorAnalytics" });
 
 export default app;

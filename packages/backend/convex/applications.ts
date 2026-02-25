@@ -1,6 +1,7 @@
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { CampaignStatus, ApplicationStatus, UserCampaignStatus } from "./constants";
 // ============================================================
 // QUERIES
 // ============================================================
@@ -63,13 +64,16 @@ export const getTopApplicationsByCampaign = query({
 
         // 2. Fetch user details in parallel
         // 3. Enhance with application details
+
+
+        // TODO: fix this, it should query top posts by all users correctly.
         const results = await Promise.all(
             topStatuses.map(async (status) => {
                 // Fetch the application to get the post URL
                 const application = await ctx.db
                     .query("applications")
                     .withIndex("by_user_campaign", (q) => q.eq("user_id", status.user_id).eq("campaign_id", args.campaignId))
-                    .unique();
+                    .first();
 
                 return {
                     id: status._id, // Using status ID as unique key for list
@@ -93,7 +97,7 @@ export const getApplication = query({
     }
 });
 
-export const getApplicationByCampaignId = query({
+export const getNonEarningApplicationByCampaignId = query({
     args: { campaignId: v.id("campaigns") },
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
@@ -104,7 +108,8 @@ export const getApplicationByCampaignId = query({
             .withIndex("by_user_campaign", (q) =>
                 q.eq("user_id", user.subject).eq("campaign_id", args.campaignId)
             )
-            .unique();
+            .filter((q) => q.neq(q.field("status"), ApplicationStatus.Earning))
+            .first();
     },
 });
 
@@ -127,7 +132,6 @@ export const getMyApplicationsByCampaignWithStats = query({
             title: `Application ${applications.length - index}`,
             views: application.views ?? 0,
             likes: application.likes ?? 0,
-            saves: application.saves ?? 0,
             comments: application.comments ?? 0,
             shares: application.shares ?? 0,
             earnings: application.earnings ?? 0,
@@ -137,34 +141,49 @@ export const getMyApplicationsByCampaignWithStats = query({
 
 export const getApplicationsForEarningCheck = internalQuery({
     args: {
-        cursor: v.optional(v.string()),
-        numItems: v.optional(v.number()),
+        paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        const limit = args.numItems ?? 50; // Default batch size
-
+        console.log('querying applications for earning check...');
         // Find users/campaigns that are actively earning with pagination
         const earningStatusesResult = await ctx.db
             .query("user_campaign_status")
-            .withIndex("by_status", (q) => q.eq("status", "earning"))
-            .paginate({ cursor: args.cursor ?? null, numItems: limit });
-
+            .withIndex("by_status", (q) => q.eq("status", UserCampaignStatus.Earning))
+            .paginate(args.paginationOpts);
+        console.log('earningStatusesResult: ', earningStatusesResult);
         const applications = [];
 
         for (const status of earningStatusesResult.page) {
             // Find application for this user and campaign
-            const app = await ctx.db
-                .query("applications")
-                .withIndex("by_user_campaign", (q) => q.eq("user_id", status.user_id).eq("campaign_id", status.campaign_id))
-                .unique();
 
-            if (app) {
-                applications.push({
-                    ...app,
-                    campaignStatusId: status._id,
-                    userCampaignMaxPayout: status.maximum_payout,
-                    currentEarnings: status.total_earnings
-                });
+            const apps = await ctx.db
+                .query("applications")
+                .withIndex("by_user_campaign", (q) => q.eq("user_id", status.user_id).eq("campaign_id", status.campaign_id)).collect();
+
+
+            const campaign = await ctx.db.get(status.campaign_id);
+
+            if (!campaign) continue;
+
+            const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+
+            const isActive = campaign.status === CampaignStatus.Active || campaign.status === CampaignStatus.Paused;
+            const isCancelledWithinGracePeriod = campaign.status === CampaignStatus.Cancelled
+                && campaign.cancelled_at != null
+                && (now - campaign.cancelled_at) <= SEVEN_DAYS_MS;
+
+            if (apps && (isActive || isCancelledWithinGracePeriod)) {
+                for (const app of apps) {
+                    if (app.status === ApplicationStatus.Earning) {
+                        applications.push({
+                            ...app,
+                            campaignStatusId: status._id,
+                            userCampaignMaxPayout: status.maximum_payout,
+                            currentEarnings: status.total_earnings
+                        });
+                    }
+                }
             }
         }
 
@@ -196,11 +215,10 @@ export const createApplication = mutation({
         const applicationId = await ctx.db.insert("applications", {
             user_id: user.subject,
             campaign_id: args.campaignId,
-            status: "pending_submission",
+            status: ApplicationStatus.PendingSubmission,
             tracking_tag: trackingTag,
             views: 0,
             likes: 0,
-            saves: 0,
             comments: 0,
             shares: 0,
             earnings: 0,
@@ -230,9 +248,9 @@ export const updateApplicationStatus = mutation({
 
         await ctx.db.patch(args.applicationId, {
             status: args.status,
+            posted_at: args.status === ApplicationStatus.Earning ? Date.now() : undefined,
             ig_post_url: args.ig_post_url,
             tiktok_post_url: args.tiktok_post_url,
-            updated_at: Date.now(),
         });
     }
 });
@@ -241,67 +259,162 @@ export const updateApplicationStatus = mutation({
 // INTERNAL MUTATIONS (for cron jobs)
 // ============================================================
 
+/**
+ * Calculate earning based on cumulative threshold logic.
+ * Each threshold can be counted multiple times based on views.
+ * Processes thresholds from largest to smallest (greedy algorithm).
+ */
+function calculateEarning(
+    views: number,
+    thresholds: Array<{ views: number; payout: number }>,
+    maximumPayout: number
+): number {
+    // Sort thresholds by views descending (greedy: use largest first)
+    const sorted = [...thresholds].sort((a, b) => b.views - a.views);
+
+    let remainingViews = views;
+    let totalEarning = 0;
+
+    for (const threshold of sorted) {
+        if (remainingViews >= threshold.views) {
+            // How many times does this threshold fit?
+            const count = Math.floor(remainingViews / threshold.views);
+            totalEarning += count * threshold.payout;
+            remainingViews -= count * threshold.views;
+        }
+    }
+
+    // Cap at maximum payout
+    return Math.min(totalEarning, maximumPayout);
+}
+
 export const updateApplicationEarning = internalMutation({
     args: {
         applicationId: v.id("applications"),
         campaignId: v.id("campaigns"),
         userCampaignStatusId: v.id("user_campaign_status"),
-        newEarning: v.number(),
-        userCampaignMaxPayout: v.number(),
         views: v.number(),
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
     },
     handler: async (ctx, args) => {
-        // 1. Get current status to know existing earning
-        const status = await ctx.db.get(args.userCampaignStatusId);
-        if (!status) return;
+        const now = Date.now();
 
-        const existingEarning = status.total_earnings;
+        // 1. Get current application to compute deltas
+        const application = await ctx.db.get(args.applicationId);
+        if (!application) return;
 
-        // 2. Calculate delta (only positive deltas to prevent rollback)
-        const earningDelta = Math.max(0, args.newEarning - existingEarning);
+        const previousViews = application.views ?? 0;
+        const previousLikes = application.likes ?? 0;
+        const previousComments = application.comments ?? 0;
+        const previousShares = application.shares ?? 0;
 
-        // Keep per-application high-level stats cached for quick list rendering.
+        const viewsDelta = Math.max(0, args.views - previousViews);
+        const likesDelta = Math.max(0, args.likes - previousLikes);
+        const commentsDelta = Math.max(0, args.comments - previousComments);
+        const sharesDelta = Math.max(0, args.shares - previousShares);
+
+        // 2. Get current user campaign record to compute new accumulated values
+        const userCampaign = await ctx.db.get(args.userCampaignStatusId);
+        if (!userCampaign) return;
+
+        const userCampaignViews = (userCampaign.views || 0) + viewsDelta;
+        const userCampaignLikes = (userCampaign.likes || 0) + likesDelta;
+        const userCampaignComments = (userCampaign.comments || 0) + commentsDelta;
+        const userCampaignShares = (userCampaign.shares || 0) + sharesDelta;
+
+        // 3. Get campaign and evaluate new earnings based on NEW aggregated views across all apps
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) return;
+
+        const newEarning = calculateEarning(
+            userCampaignViews,
+            campaign.payout_thresholds,
+            userCampaign.maximum_payout
+        );
+
+        const existingEarning = userCampaign.total_earnings;
+        const earningDelta = Math.max(0, newEarning - existingEarning);
+
+        // 4. Update application's own stats (for fast rendering/caching)
         await ctx.db.patch(args.applicationId, {
             views: args.views,
             likes: args.likes,
             comments: args.comments,
             shares: args.shares,
-            earnings: args.newEarning,
-            updated_at: Date.now(),
+            earnings: newEarning,
+            updated_at: now,
         });
 
-        if (earningDelta === 0) return; // No earning delta to apply
-
-        // 3. Get campaign and check budget availability
-        const campaign = await ctx.db.get(args.campaignId);
-        if (!campaign) return; // Campaign not found
+        // 5. Update user_campaign_status with latest accumulated stats
+        const userCampaignPatch: Record<string, any> = {
+            views: userCampaignViews,
+            likes: userCampaignLikes,
+            comments: userCampaignComments,
+            shares: userCampaignShares,
+            updated_at: now,
+        };
 
         const remainingBudget = campaign.total_budget - campaign.budget_claimed;
 
         // Cap the delta to available budget - never exceed total_budget
         const cappedDelta = Math.min(earningDelta, remainingBudget);
 
-        if (cappedDelta <= 0) return; // No budget left
+        if (cappedDelta <= 0) {
+            // Still update stats even if no budget left or no new earning
+            await ctx.db.patch(args.userCampaignStatusId, userCampaignPatch);
 
-        // 4. Update campaign budget_claimed
-        await ctx.db.patch(args.campaignId, {
-            budget_claimed: campaign.budget_claimed + cappedDelta,
-            updated_at: Date.now(),
-        });
+            // Update creator totals (views only)
+            if (viewsDelta > 0) {
+                const creator = await ctx.db
+                    .query("creators")
+                    .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
+                    .unique();
+                if (creator) {
+                    await ctx.db.patch(creator._id, {
+                        total_views: (creator.total_views ?? 0) + viewsDelta,
+                    });
+                }
+            }
+            return;
+        }
 
-        // 5. Update user_campaign_status
-        const newTotalEarnings = status.total_earnings + cappedDelta;
-        const newStatus = newTotalEarnings >= args.userCampaignMaxPayout
-            ? "maxed_out"
-            : status.status;
+        // 6. Update campaign budget_claimed
+        const newBudgetClaimed = campaign.budget_claimed + cappedDelta;
+        const campaignPatch: Record<string, any> = {
+            budget_claimed: newBudgetClaimed,
+        };
+
+        // 6b. Mark campaign as completed if budget is fully claimed
+        if (newBudgetClaimed >= campaign.total_budget) {
+            campaignPatch.status = CampaignStatus.Completed;
+        }
+
+        await ctx.db.patch(args.campaignId, campaignPatch);
+
+        // 7. Update user_campaign_status with earnings + stats
+        const newTotalEarnings = userCampaign.total_earnings + cappedDelta;
+        const newStatus = newTotalEarnings >= userCampaign.maximum_payout
+            ? UserCampaignStatus.MaxedOut
+            : userCampaign.status;
 
         await ctx.db.patch(args.userCampaignStatusId, {
+            ...userCampaignPatch,
             total_earnings: newTotalEarnings,
             status: newStatus,
-            updated_at: Date.now(),
         });
+
+        // 8. Update creator totals (views + earnings)
+        const creator = await ctx.db
+            .query("creators")
+            .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
+            .unique();
+        if (creator) {
+            await ctx.db.patch(creator._id, {
+                total_views: (creator.total_views ?? 0) + viewsDelta,
+                total_earnings: (creator.total_earnings ?? 0) + cappedDelta,
+            });
+        }
     },
 });

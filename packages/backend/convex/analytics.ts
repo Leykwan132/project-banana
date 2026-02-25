@@ -52,10 +52,22 @@ const aggregateApplicationAnalytics = new TableAggregate<{
     ],
 });
 
+const aggregateCreatorAnalytics = new TableAggregate<{
+    Key: [string, string];
+    DataModel: DataModel;
+    TableName: "creator_analytics_daily";
+}>(components.aggregateCreatorAnalytics, {
+    sortKey: (doc) => [
+        doc.user_id,
+        doc.date,
+    ],
+});
+
 const triggers = new Triggers<DataModel>();
 triggers.register("campaign_analytics_daily", aggregateCampaignAnalytics.trigger());
 triggers.register("business_analytics_daily", aggregateBusinessAnalytics.trigger());
 triggers.register("app_analytics_daily", aggregateApplicationAnalytics.trigger());
+triggers.register("creator_analytics_daily", aggregateCreatorAnalytics.trigger());
 
 const mutationWithTriggers = customMutation(
     mutation,
@@ -343,6 +355,7 @@ export const getBusinessTotalStats = query({
 export const saveDailyAppStats = mutationWithTriggers({
     args: {
         applicationId: v.id("applications"),
+        campaignId: v.id("campaigns"),
         views: v.number(),
         likes: v.number(),
         comments: v.number(),
@@ -377,6 +390,7 @@ export const saveDailyAppStats = mutationWithTriggers({
             await ctx.db.insert("app_analytics_daily", {
                 user_id: application.user_id,
                 application_id: args.applicationId,
+                campaign_id: args.campaignId,
                 date: today,
                 views: args.views,
                 likes: args.likes,
@@ -471,6 +485,51 @@ export const saveDailyBusinessStats = mutationWithTriggers({
             // Insert new record
             await ctx.db.insert("business_analytics_daily", {
                 business_id: args.businessId,
+                date: today,
+                views: args.views,
+                likes: args.likes,
+                comments: args.comments,
+                shares: args.shares,
+                created_at: now,
+                updated_at: now,
+            });
+        }
+    },
+});
+
+export const saveDailyCreatorStats = mutationWithTriggers({
+    args: {
+        userId: v.string(),
+        views: v.number(),
+        likes: v.number(),
+        comments: v.number(),
+        shares: v.number(),
+    },
+    handler: async (ctx, args) => {
+        const today = new Date().toISOString().split("T")[0] as string;
+        const now = Date.now();
+
+        // Check if record exists for today
+        const existing = await ctx.db
+            .query("creator_analytics_daily")
+            .withIndex("by_user_date", (q) =>
+                q.eq("user_id", args.userId).eq("date", today)
+            )
+            .unique();
+
+        if (existing) {
+            // Update existing record (ADD to existing values for creator-level aggregation)
+            await ctx.db.patch(existing._id, {
+                views: existing.views + args.views,
+                likes: existing.likes + args.likes,
+                comments: existing.comments + args.comments,
+                shares: existing.shares + args.shares,
+                updated_at: now,
+            });
+        } else {
+            // Insert new record
+            await ctx.db.insert("creator_analytics_daily", {
+                user_id: args.userId,
                 date: today,
                 views: args.views,
                 likes: args.likes,

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { UserCampaignStatus } from "./constants";
 
 // ============================================================
 // QUERIES
@@ -82,7 +83,7 @@ export const createUserCampaignStatus = mutation({
 
         const now = Date.now();
         const statusId = await ctx.db.insert("user_campaign_status", {
-            user_id: String(user._id),
+            user_id: user.subject,
             campaign_id: args.campaignId,
             maximum_payout: args.maximumPayout,
             total_earnings: 0,
@@ -90,7 +91,7 @@ export const createUserCampaignStatus = mutation({
             comments: 0,
             shares: 0,
             views: 0,
-            status: "pending_review",
+            status: UserCampaignStatus.Earning,
             created_at: now,
             updated_at: now,
         });

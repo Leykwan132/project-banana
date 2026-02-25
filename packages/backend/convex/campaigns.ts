@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { ConvexError } from "convex/values";
 import { ERROR_CODES } from "./errors";
 import { generateDownloadUrl, generateUploadUrl } from "./s3";
+import { CampaignStatus } from "./constants";
 // ============================================================
 // QUERIES
 // ============================================================
@@ -234,9 +235,11 @@ export const updateCampaignStatus = mutation({
             });
         }
 
+        const now = Date.now();
         await ctx.db.patch(args.campaignId, {
             status: args.status,
-            updated_at: Date.now(),
+            cancelled_at: args.status === CampaignStatus.Cancelled ? now : undefined,
+            updated_at: now,
         });
     }
 });

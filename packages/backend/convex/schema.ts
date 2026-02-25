@@ -23,8 +23,8 @@ export default defineSchema({
         subscription_billing_cycle: v.optional(v.string()), // "monthly" | "annual"
         subscription_amount: v.optional(v.number()),
         is_onboarded: v.optional(v.boolean()),
-        created_at: v.number(),
         updated_at: v.number(),
+        created_at: v.number(),
     })
         .index("by_name", ["name"])
         .index("by_user", ["user_id"])
@@ -57,6 +57,7 @@ export default defineSchema({
         }))),
         pending_approvals: v.optional(v.number()),
         category: v.array(v.string()),
+        cancelled_at: v.optional(v.number()),
         created_at: v.number(),
         updated_at: v.number(),
     })
@@ -141,7 +142,6 @@ export default defineSchema({
         // Cached high-level analytics to avoid recomputing for list rendering
         views: v.optional(v.number()),
         likes: v.optional(v.number()),
-        saves: v.optional(v.number()),
         comments: v.optional(v.number()),
         shares: v.optional(v.number()),
         earnings: v.optional(v.number()),
@@ -271,6 +271,7 @@ export default defineSchema({
     app_analytics_daily: defineTable({
         user_id: v.string(), // Owner of the content
         application_id: v.id("applications"),
+        campaign_id: v.id("campaigns"),
         date: v.string(), // "YYYY-MM-DD" format
         views: v.number(),
         likes: v.number(),
@@ -281,4 +282,15 @@ export default defineSchema({
     })
         .index("by_user_date", ["user_id", "date"])
         .index("by_application_date", ["application_id", "date"]),
+
+    creator_analytics_daily: defineTable({
+        user_id: v.string(),
+        date: v.string(), // "YYYY-MM-DD" format
+        views: v.number(),
+        likes: v.number(),
+        comments: v.number(),
+        shares: v.number(),
+        created_at: v.number(),
+        updated_at: v.number(),
+    }).index("by_user_date", ["user_id", "date"]),
 });
