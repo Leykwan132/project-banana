@@ -234,8 +234,8 @@ export default function ApplicationDetailScreen() {
 
     const handleSubmit = async () => {
         setError('');
-        if (!instagramLink || !tiktokLink) {
-            setError('Please provide both Instagram and TikTok post URLs.');
+        if (!instagramLink && !tiktokLink) {
+            setError('Please provide at least one post URL (Instagram or TikTok).');
             return;
         }
 
@@ -248,24 +248,28 @@ export default function ApplicationDetailScreen() {
             }
         };
 
-        if (!isValidUrl(instagramLink)) {
-            setError('Please enter a valid URL for Instagram.');
-            return;
+        if (instagramLink) {
+            if (!isValidUrl(instagramLink)) {
+                setError('Please enter a valid URL for Instagram.');
+                return;
+            }
+
+            if (!instagramLink.toLowerCase().includes('instagram.com')) {
+                setError('The Instagram link must be from instagram.com.');
+                return;
+            }
         }
 
-        if (!instagramLink.toLowerCase().includes('instagram.com')) {
-            setError('The Instagram link must be from instagram.com.');
-            return;
-        }
+        if (tiktokLink) {
+            if (!isValidUrl(tiktokLink)) {
+                setError('Please enter a valid URL for TikTok.');
+                return;
+            }
 
-        if (!isValidUrl(tiktokLink)) {
-            setError('Please enter a valid URL for TikTok.');
-            return;
-        }
-
-        if (!tiktokLink.toLowerCase().includes('tiktok.com')) {
-            setError('The TikTok link must be from tiktok.com.');
-            return;
+            if (!tiktokLink.toLowerCase().includes('tiktok.com')) {
+                setError('The TikTok link must be from tiktok.com.');
+                return;
+            }
         }
 
         if (!resolvedCampaignId || !campaign) {
@@ -288,8 +292,8 @@ export default function ApplicationDetailScreen() {
                 updateApplicationStatus({
                     applicationId,
                     status: "earning",
-                    ig_post_url: instagramLink.trim(),
-                    tiktok_post_url: tiktokLink.trim(),
+                    ig_post_url: instagramLink ? instagramLink.trim() : undefined,
+                    tiktok_post_url: tiktokLink ? tiktokLink.trim() : undefined,
                 }),
                 createStatusPromise,
             ]);
@@ -820,9 +824,9 @@ export default function ApplicationDetailScreen() {
 
                                 {/* 2. Post url */}
                                 <View style={styles.inputSection}>
-                                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>2. Post url</ThemedText>
+                                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>2. Post url (Recommended to post on both)</ThemedText>
                                     <ThemedText style={styles.inputDescription}>
-                                        Paste the post url here. YOU <ThemedText type="defaultSemiBold">CANNOT</ThemedText> EDIT AFTER THIS.
+                                        Paste the post url here. Views will be totalled across platforms. YOU <ThemedText type="defaultSemiBold">CANNOT</ThemedText> EDIT AFTER THIS.
                                     </ThemedText>
 
                                     {/* Instagram */}
@@ -830,7 +834,7 @@ export default function ApplicationDetailScreen() {
                                         <FontAwesome5 name="instagram" size={24} color="#000" style={styles.inputIcon} />
                                         <TextInput
                                             style={styles.urlInput}
-                                            placeholder="https://www.instagram.com/..."
+                                            placeholder="https://www.instagram.com/... (Optional)"
                                             placeholderTextColor="#999"
                                             value={instagramLink}
                                             onChangeText={(text) => {
@@ -846,7 +850,7 @@ export default function ApplicationDetailScreen() {
                                         <FontAwesome5 name="tiktok" size={24} color="#000" style={styles.inputIcon} />
                                         <TextInput
                                             style={styles.urlInput}
-                                            placeholder="https://www.tiktok.com/..."
+                                            placeholder="https://www.tiktok.com/... (Optional)"
                                             placeholderTextColor="#999"
                                             value={tiktokLink}
                                             onChangeText={(text) => {

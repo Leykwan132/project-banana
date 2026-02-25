@@ -79,16 +79,16 @@ export default function CampaignDetailsScreen() {
 
     const campaign = useQuery(api.campaigns.getCampaign, { campaignId });
     const topApps = useQuery(api.applications.getTopApplicationsByCampaign, { campaignId });
-    const existingApplication = useQuery(api.applications.getApplicationByCampaignId, { campaignId });
+    const nonEarningExistingApplication = useQuery(api.applications.getNonEarningApplicationByCampaignId, { campaignId });
     const createApplication = useMutation(api.applications.createApplication);
     const generateCampaignImageAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
 
-    const isLoading = campaign === undefined || topApps === undefined || existingApplication === undefined;
+    const isLoading = campaign === undefined || topApps === undefined || nonEarningExistingApplication === undefined;
 
     const [isJoining, setIsJoining] = useState(false);
     const [createdApplicationId, setCreatedApplicationId] = useState<Id<"applications"> | null>(null);
     const [isFavorite, setIsFavorite] = useState(false);
-    const hasExistingNonEarningApplication = !!existingApplication && existingApplication.status !== "earning";
+    const hasExistingNonEarningApplication = !!nonEarningExistingApplication && nonEarningExistingApplication.status !== "earning";
 
     // Resolve cover photo
     const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -136,8 +136,8 @@ export default function CampaignDetailsScreen() {
 
     // Logic for join flow
     const handleJoin = async () => {
-        if (hasExistingNonEarningApplication && existingApplication) {
-            router.push(`/application/${existingApplication._id}`);
+        if (hasExistingNonEarningApplication && nonEarningExistingApplication) {
+            router.push(`/application/${nonEarningExistingApplication._id}`);
             return;
         }
 
@@ -546,7 +546,7 @@ export default function CampaignDetailsScreen() {
                             <Pressable
                                 style={styles.joinButton}
                                 onPress={() => {
-                                    const targetApplicationId = createdApplicationId ?? existingApplication?._id;
+                                    const targetApplicationId = createdApplicationId ?? nonEarningExistingApplication?._id;
                                     successSheetRef.current?.hide();
                                     if (targetApplicationId) {
                                         router.replace(`/application/${targetApplicationId}`);
