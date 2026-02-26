@@ -333,7 +333,14 @@ export const updateApplicationEarning = internalMutation({
                 earnings: userCampaign.maximum_payout,
                 updated_at: now,
             });
-            return { earnings: userCampaign.maximum_payout };
+            // No new earnings delta since already maxed; still propagate stat deltas.
+            return {
+                viewsDelta,
+                likesDelta,
+                commentsDelta,
+                sharesDelta,
+                earningsDelta: 0,
+            };
         }
 
         const newCampaignViews = (userCampaign.views || 0) + viewsDelta;
@@ -380,8 +387,8 @@ export const updateApplicationEarning = internalMutation({
             // Still update stats even if no budget left or no new earning
             await ctx.db.patch(args.userCampaignStatusId, userCampaignPatch);
 
-            // Update creator totals (views only)
-            if (viewsDelta > 0) {
+            // Update creator + business totals (views/likes/comments/shares only — delta)
+            if (viewsDelta > 0 || likesDelta > 0 || commentsDelta > 0 || sharesDelta > 0) {
                 const creator = await ctx.db
                     .query("creators")
                     .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
@@ -391,8 +398,27 @@ export const updateApplicationEarning = internalMutation({
                         total_views: (creator.total_views ?? 0) + viewsDelta,
                     });
                 }
+
+                // Increment business high-level stats by delta only
+                const business = await ctx.db.get(campaign.business_id);
+                if (business) {
+                    await ctx.db.patch(campaign.business_id, {
+                        total_views: (business.total_views ?? 0) + viewsDelta,
+                        total_likes: (business.total_likes ?? 0) + likesDelta,
+                        total_comments: (business.total_comments ?? 0) + commentsDelta,
+                        total_shares: (business.total_shares ?? 0) + sharesDelta,
+                        updated_at: now,
+                    });
+                }
             }
-            return { earnings: previousAppEarnings };
+            // Daily analytics expects deltas, not cumulative totals.
+            return {
+                viewsDelta,
+                likesDelta,
+                commentsDelta,
+                sharesDelta,
+                earningsDelta: 0,
+            };
         }
 
         // Case 2: Budget left and new earning
@@ -428,9 +454,28 @@ export const updateApplicationEarning = internalMutation({
             await ctx.db.patch(creator._id, {
                 total_views: (creator.total_views ?? 0) + viewsDelta,
                 total_earnings: (creator.total_earnings ?? 0) + cappedDelta,
+                balance: (creator.balance ?? 0) + cappedDelta,
             });
         }
 
-        return { earnings: cappedDelta };
+        // 9. Increment business high-level stats by delta only (views + earnings)
+        const business = await ctx.db.get(campaign.business_id);
+        if (business) {
+            await ctx.db.patch(campaign.business_id, {
+                total_views: (business.total_views ?? 0) + viewsDelta,
+                total_likes: (business.total_likes ?? 0) + likesDelta,
+                total_comments: (business.total_comments ?? 0) + commentsDelta,
+                total_shares: (business.total_shares ?? 0) + sharesDelta,
+                updated_at: now,
+            });
+        }
+
+        return {
+            viewsDelta,
+            likesDelta,
+            commentsDelta,
+            sharesDelta,
+            earningsDelta: cappedDelta,
+        };
     },
 });

@@ -28,7 +28,8 @@ export const getUserCampaignStatuses = query({
                     ...status,
                     campaign_name: campaign?.name ?? "Campaign",
                     company_name: campaign?.business_name ?? business?.name ?? "Company",
-                    campaign_image_url: campaign?.cover_photo_url ?? campaign?.logo_url ?? business?.logo_url,
+                    campaign_image_url: campaign?.logo_url ?? campaign?.cover_photo_url ?? business?.logo_url,
+                    campaign_logo_s3_key: campaign?.logo_s3_key ?? business?.logo_s3_key,
                 };
             })
         );

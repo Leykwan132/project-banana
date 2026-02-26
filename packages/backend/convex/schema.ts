@@ -15,6 +15,11 @@ export default defineSchema({
         size: v.optional(v.string()),
         credit_balance: v.number(),
         pending_approvals: v.optional(v.number()),
+        // High-level aggregate stats (updated by cron)
+        total_views: v.optional(v.number()),
+        total_likes: v.optional(v.number()),
+        total_comments: v.optional(v.number()),
+        total_shares: v.optional(v.number()),
         // Stripe subscription fields
         stripe_customer_id: v.optional(v.string()),
         stripe_subscription_id: v.optional(v.string()),
@@ -265,7 +270,7 @@ export default defineSchema({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
-        earnings: v.number(),
+        amount_spent: v.number(),
         created_at: v.number(),
         updated_at: v.number(),
     }).index("by_business_date", ["business_id", "date"]),

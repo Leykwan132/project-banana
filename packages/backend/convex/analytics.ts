@@ -94,6 +94,21 @@ const calculateEarningFromViews = (
     return Math.min(totalEarning, maximumPayout);
 };
 
+const formatDateKey = (date: Date) => date.toISOString().split("T")[0] as string;
+
+const getLast30DayWindow = () => {
+    const end = new Date();
+    end.setUTCHours(0, 0, 0, 0);
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - 29);
+    return {
+        start,
+        end,
+        startDate: formatDateKey(start),
+        endDate: formatDateKey(end),
+    };
+};
+
 export const getAppTotalStats = query({
     args: {
         applicationId: v.id("applications"),
@@ -136,26 +151,43 @@ export const getApplicationDailyStatsLast30Days = query({
         const campaign = await ctx.db.get(application.campaign_id);
         if (!campaign) return [];
 
-        const end = new Date();
-        end.setUTCHours(0, 0, 0, 0);
-        const start = new Date(end);
-        start.setUTCDate(start.getUTCDate() - 29);
+        const { start, startDate, endDate } = getLast30DayWindow();
 
-        const formatDateKey = (date: Date) => date.toISOString().split("T")[0] as string;
+        const rowsByDate = new Map<string, {
+            date: string;
+            views: number;
+            likes: number;
+            comments: number;
+            shares: number;
+        }>();
 
-        const startDate = formatDateKey(start);
-        const endDate = formatDateKey(end);
+        let cursor: string | undefined = undefined;
+        let isDone = false;
+        while (!isDone) {
+            const page = await aggregateApplicationAnalytics.paginate(ctx, {
+                bounds: {
+                    lower: {
+                        key: [user.subject, startDate],
+                        inclusive: true,
+                    },
+                    upper: {
+                        key: [user.subject, endDate],
+                        inclusive: true,
+                    },
+                },
+                cursor,
+                pageSize: 200,
+            });
 
-        const rows = await ctx.db
-            .query("app_analytics_daily")
-            .withIndex("by_application_date", (q) =>
-                q.eq("application_id", args.applicationId)
-                    .gte("date", startDate)
-                    .lte("date", endDate)
-            )
-            .collect();
+            const fetchedRows = await Promise.all(page.page.map((doc) => ctx.db.get(doc.id)));
+            for (const row of fetchedRows) {
+                if (!row || row.application_id !== args.applicationId) continue;
+                rowsByDate.set(row.date, row);
+            }
 
-        const rowByDate = new Map(rows.map((row) => [row.date, row]));
+            cursor = page.cursor;
+            isDone = page.isDone;
+        }
 
         let runningViews = 0;
         let runningLikes = 0;
@@ -176,7 +208,7 @@ export const getApplicationDailyStatsLast30Days = query({
             const current = new Date(start);
             current.setUTCDate(start.getUTCDate() + i);
             const key = formatDateKey(current);
-            const row = rowByDate.get(key);
+            const row = rowsByDate.get(key);
 
             if (row) {
                 runningViews = row.views;
@@ -209,91 +241,142 @@ export const getUserEarningsOverviewLast30Days = query({
         const user = await ctx.auth.getUserIdentity();
         if (!user) return { totalEarnings: 0, daily: [] as Array<{ date: string; timestamp: number; earnings: number }> };
 
-        const applications = await ctx.db
-            .query("applications")
+        const creator = await ctx.db
+            .query("creators")
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
-            .collect();
+            .unique();
 
-        const totalEarnings = applications.reduce(
-            (sum, app) => sum + (app.earnings ?? 0),
-            0
-        );
+        const totalEarnings = creator?.total_earnings ?? 0;
+        const { start, startDate, endDate } = getLast30DayWindow();
 
-        const end = new Date();
-        end.setUTCHours(0, 0, 0, 0);
-        const start = new Date(end);
-        start.setUTCDate(start.getUTCDate() - 29);
+        const creatorPrefixBounds = {
+            prefix: [user.subject] as [string],
+        };
 
-        const formatDateKey = (date: Date) => date.toISOString().split("T")[0] as string;
-        const startDate = formatDateKey(start);
-        const endDate = formatDateKey(end);
+        const rowCount = await aggregateCreatorAnalytics.count(ctx, {
+            bounds: creatorPrefixBounds,
+        });
 
-        const rows = await ctx.db
-            .query("app_analytics_daily")
-            .withIndex("by_user_date", (q) =>
-                q.eq("user_id", user.subject)
-                    .gte("date", startDate)
-                    .lte("date", endDate)
-            )
-            .collect();
+        const rowsByDate = new Map<string, { earnings: number }>();
+        if (rowCount > 0) {
+            const firstOffset = Math.max(0, rowCount - 30);
+            const firstInPage = await aggregateCreatorAnalytics.at(ctx, firstOffset, {
+                bounds: creatorPrefixBounds,
+            });
 
-        const appDateViews = new Map<string, Map<string, number>>();
-        for (const row of rows) {
-            if (!appDateViews.has(row.application_id)) {
-                appDateViews.set(row.application_id, new Map());
-            }
-            appDateViews.get(row.application_id)!.set(row.date, row.views);
-        }
+            const page = await aggregateCreatorAnalytics.paginate(ctx, {
+                bounds: {
+                    lower: {
+                        key: firstInPage.key,
+                        id: firstInPage.id,
+                        inclusive: true,
+                    },
+                    upper: {
+                        key: [user.subject, endDate],
+                        inclusive: true,
+                    },
+                },
+                pageSize: 30,
+            });
 
-        const campaignCache = new Map<string, { payout_thresholds: Array<{ views: number; payout: number }>; maximum_payout: number } | null>();
-        const dailyEarnings = Array.from({ length: 30 }, () => 0);
-
-        for (const app of applications) {
-            let campaign = campaignCache.get(app.campaign_id);
-            if (campaign === undefined) {
-                campaign = await ctx.db.get(app.campaign_id);
-                campaignCache.set(app.campaign_id, campaign);
-            }
-            if (!campaign) continue;
-
-            const viewsByDate = appDateViews.get(app._id) ?? new Map<string, number>();
-
-            let runningViews = 0;
-            let previousCumulativeEarning = 0;
-
-            for (let i = 0; i < 30; i++) {
-                const current = new Date(start);
-                current.setUTCDate(start.getUTCDate() + i);
-                const key = formatDateKey(current);
-                const dayViews = viewsByDate.get(key);
-
-                if (dayViews !== undefined) {
-                    runningViews = dayViews;
-                }
-
-                const cumulativeEarning = calculateEarningFromViews(
-                    runningViews,
-                    campaign.payout_thresholds,
-                    campaign.maximum_payout
-                );
-
-                const dailyIncrement = Math.max(0, cumulativeEarning - previousCumulativeEarning);
-                dailyEarnings[i] += dailyIncrement;
-                previousCumulativeEarning = cumulativeEarning;
+            const fetchedRows = await Promise.all(page.page.map((doc) => ctx.db.get(doc.id)));
+            for (const row of fetchedRows) {
+                if (!row) continue;
+                if (row.date < startDate || row.date > endDate) continue;
+                rowsByDate.set(row.date, { earnings: row.earnings ?? 0 });
             }
         }
 
-        const daily = dailyEarnings.map((earnings, i) => {
+        const daily = Array.from({ length: 30 }, (_, i) => {
             const current = new Date(start);
             current.setUTCDate(start.getUTCDate() + i);
+            const date = formatDateKey(current);
             return {
-                date: formatDateKey(current),
+                date,
                 timestamp: current.getTime(),
-                earnings,
+                earnings: rowsByDate.get(date)?.earnings ?? 0,
             };
         });
 
         return { totalEarnings, daily };
+    },
+});
+
+export const getCreatorDailyStatsLast30Days = query({
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return [];
+
+        const { start, startDate, endDate } = getLast30DayWindow();
+        const creatorPrefixBounds = {
+            prefix: [user.subject] as [string],
+        };
+
+        const rowCount = await aggregateCreatorAnalytics.count(ctx, {
+            bounds: creatorPrefixBounds,
+        });
+
+        const rowsByDate = new Map<
+            string,
+            {
+                views: number;
+                likes: number;
+                comments: number;
+                shares: number;
+                earnings: number;
+            }
+        >();
+
+        if (rowCount > 0) {
+            const firstOffset = Math.max(0, rowCount - 30);
+            const firstInPage = await aggregateCreatorAnalytics.at(ctx, firstOffset, {
+                bounds: creatorPrefixBounds,
+            });
+
+            const page = await aggregateCreatorAnalytics.paginate(ctx, {
+                bounds: {
+                    lower: {
+                        key: firstInPage.key,
+                        id: firstInPage.id,
+                        inclusive: true,
+                    },
+                    upper: {
+                        key: [user.subject, endDate],
+                        inclusive: true,
+                    },
+                },
+                pageSize: 30,
+            });
+
+            const fetchedRows = await Promise.all(page.page.map((doc) => ctx.db.get(doc.id)));
+            for (const row of fetchedRows) {
+                if (!row) continue;
+                if (row.date < startDate || row.date > endDate) continue;
+                rowsByDate.set(row.date, {
+                    views: row.views,
+                    likes: row.likes,
+                    comments: row.comments,
+                    shares: row.shares,
+                    earnings: row.earnings,
+                });
+            }
+        }
+
+        return Array.from({ length: 30 }, (_, i) => {
+            const current = new Date(start);
+            current.setUTCDate(start.getUTCDate() + i);
+            const date = formatDateKey(current);
+            const row = rowsByDate.get(date);
+            return {
+                date,
+                timestamp: current.getTime(),
+                views: row?.views ?? 0,
+                likes: row?.likes ?? 0,
+                comments: row?.comments ?? 0,
+                shares: row?.shares ?? 0,
+                earnings: row?.earnings ?? 0,
+            };
+        });
     },
 });
 
@@ -318,7 +401,6 @@ export const getCampaignTotalStats = query({
         const comments = dailyStats.reduce((sum, day) => sum + day.comments, 0);
         const shares = dailyStats.reduce((sum, day) => sum + day.shares, 0);
         const earnings = dailyStats.reduce((sum, day) => sum + (day.earnings ?? 0), 0);
-
         return { views, likes, comments, shares, earnings };
     }
 });
@@ -330,6 +412,14 @@ export const getBusinessTotalStats = query({
         endDate: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return { views: 0, likes: 0, comments: 0, shares: 0, earnings: 0 };
+
+        const business = await ctx.db.get(args.businessId);
+        if (!business || business.user_id !== user.subject) {
+            return { views: 0, likes: 0, comments: 0, shares: 0, earnings: 0 };
+        }
+
         const dailyStats = await ctx.db
             .query("business_analytics_daily")
             .withIndex("by_business_date", (q) =>
@@ -343,10 +433,199 @@ export const getBusinessTotalStats = query({
         const likes = dailyStats.reduce((sum, day) => sum + day.likes, 0);
         const comments = dailyStats.reduce((sum, day) => sum + day.comments, 0);
         const shares = dailyStats.reduce((sum, day) => sum + day.shares, 0);
-        const earnings = dailyStats.reduce((sum, day) => sum + (day.earnings ?? 0), 0);
+        const amount_spent = dailyStats.reduce((sum, day) => sum + (day.amount_spent ?? 0), 0);
 
-        return { views, likes, comments, shares, earnings };
+        return { views, likes, comments, shares, amount_spent };
     }
+});
+
+export const getBusinessDailyStatsLast30Days = query({
+    args: {
+        businessId: v.id("businesses"),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return [];
+
+        const business = await ctx.db.get(args.businessId);
+        if (!business || business.user_id !== user.subject) return [];
+
+        const end = new Date();
+        end.setUTCHours(0, 0, 0, 0);
+        const start = new Date(end);
+        start.setUTCDate(start.getUTCDate() - 29);
+
+        const formatDateKey = (date: Date) => date.toISOString().split("T")[0] as string;
+        const startDate = formatDateKey(start);
+        const endDate = formatDateKey(end);
+
+        const businessPrefixBounds = {
+            prefix: [args.businessId] as [string],
+        };
+
+        const rowCount = await aggregateBusinessAnalytics.count(ctx, {
+            bounds: businessPrefixBounds,
+        });
+
+        let rows: Array<{
+            date: string;
+            views: number;
+            likes: number;
+            comments: number;
+            shares: number;
+            amount_spent: number;
+        }> = [];
+
+        if (rowCount > 0) {
+            const firstOffset = Math.max(0, rowCount - 30);
+            const firstInPage = await aggregateBusinessAnalytics.at(ctx, firstOffset, {
+                bounds: businessPrefixBounds,
+            });
+
+            const page = await aggregateBusinessAnalytics.paginate(ctx, {
+                bounds: {
+                    lower: {
+                        key: firstInPage.key,
+                        id: firstInPage.id,
+                        inclusive: true,
+                    },
+                    upper: {
+                        key: [args.businessId, endDate],
+                        inclusive: true,
+                    },
+                },
+                pageSize: 30,
+            });
+
+            const fetchedRows = await Promise.all(
+                page.page.map((doc) => ctx.db.get(doc.id)),
+            );
+
+            rows = fetchedRows.filter((row): row is NonNullable<typeof row> => row !== null);
+        }
+
+        const rowByDate = new Map(
+            rows
+                .filter((row) => row.date >= startDate && row.date <= endDate)
+                .map((row) => [row.date, row]),
+        );
+
+        const result: Array<{
+            date: string;
+            timestamp: number;
+            views: number;
+            likes: number;
+            comments: number;
+            shares: number;
+            amount_spent: number;
+        }> = [];
+
+        for (let i = 0; i < 30; i++) {
+            const current = new Date(start);
+            current.setUTCDate(start.getUTCDate() + i);
+            const key = formatDateKey(current);
+            const row = rowByDate.get(key);
+
+            result.push({
+                date: key,
+                timestamp: current.getTime(),
+                views: row?.views ?? 0,
+                likes: row?.likes ?? 0,
+                comments: row?.comments ?? 0,
+                shares: row?.shares ?? 0,
+                amount_spent: row?.amount_spent ?? 0,
+            });
+        }
+
+        return result;
+    },
+});
+
+export const getCampaignDailyStatsLast30Days = query({
+    args: {
+        campaignId: v.id("campaigns"),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return [];
+
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) return [];
+
+        const business = await ctx.db.get(campaign.business_id);
+        if (!business || business.user_id !== user.subject) return [];
+
+        const { start, startDate, endDate } = getLast30DayWindow();
+        const campaignPrefixBounds = {
+            prefix: [campaign.business_id, args.campaignId] as [string, string],
+        };
+
+        const rowCount = await aggregateCampaignAnalytics.count(ctx, {
+            bounds: campaignPrefixBounds,
+        });
+
+        const rowsByDate = new Map<
+            string,
+            {
+                views: number;
+                likes: number;
+                comments: number;
+                shares: number;
+                earnings: number;
+            }
+        >();
+
+        if (rowCount > 0) {
+            const firstOffset = Math.max(0, rowCount - 30);
+            const firstInPage = await aggregateCampaignAnalytics.at(ctx, firstOffset, {
+                bounds: campaignPrefixBounds,
+            });
+
+            const page = await aggregateCampaignAnalytics.paginate(ctx, {
+                bounds: {
+                    lower: {
+                        key: firstInPage.key,
+                        id: firstInPage.id,
+                        inclusive: true,
+                    },
+                    upper: {
+                        key: [campaign.business_id, args.campaignId, endDate],
+                        inclusive: true,
+                    },
+                },
+                pageSize: 30,
+            });
+
+            const fetchedRows = await Promise.all(page.page.map((doc) => ctx.db.get(doc.id)));
+            for (const row of fetchedRows) {
+                if (!row) continue;
+                if (row.date < startDate || row.date > endDate) continue;
+                rowsByDate.set(row.date, {
+                    views: row.views,
+                    likes: row.likes,
+                    comments: row.comments,
+                    shares: row.shares,
+                    earnings: row.earnings,
+                });
+            }
+        }
+
+        return Array.from({ length: 30 }, (_, i) => {
+            const current = new Date(start);
+            current.setUTCDate(start.getUTCDate() + i);
+            const date = formatDateKey(current);
+            const row = rowsByDate.get(date);
+            return {
+                date,
+                timestamp: current.getTime(),
+                views: row?.views ?? 0,
+                likes: row?.likes ?? 0,
+                comments: row?.comments ?? 0,
+                shares: row?.shares ?? 0,
+                earnings: row?.earnings ?? 0,
+            };
+        });
+    },
 });
 
 
@@ -381,13 +660,13 @@ export const saveDailyAppStats = mutationWithTriggers({
             .unique();
 
         if (existing) {
-            // Update existing record
+            // Update existing record — add delta to accumulate across multiple apps / scrape runs
             await ctx.db.patch(existing._id, {
-                views: args.views,
-                likes: args.likes,
-                comments: args.comments,
-                shares: args.shares,
-                earnings: args.earnings,
+                views: existing.views + args.views,
+                likes: existing.likes + args.likes,
+                comments: existing.comments + args.comments,
+                shares: existing.shares + args.shares,
+                earnings: (existing.earnings ?? 0) + args.earnings,
                 updated_at: now,
             });
         } else {
@@ -468,7 +747,7 @@ export const saveDailyBusinessStats = mutationWithTriggers({
         likes: v.number(),
         comments: v.number(),
         shares: v.number(),
-        earnings: v.number(),
+        amount_spent: v.number(),
     },
     handler: async (ctx, args) => {
         const today = new Date().toISOString().split("T")[0] as string;
@@ -489,7 +768,7 @@ export const saveDailyBusinessStats = mutationWithTriggers({
                 likes: existing.likes + args.likes,
                 comments: existing.comments + args.comments,
                 shares: existing.shares + args.shares,
-                earnings: existing.earnings + args.earnings,
+                amount_spent: existing.amount_spent + args.amount_spent,
                 updated_at: now,
             });
         } else {
@@ -501,11 +780,41 @@ export const saveDailyBusinessStats = mutationWithTriggers({
                 likes: args.likes,
                 comments: args.comments,
                 shares: args.shares,
-                earnings: args.earnings,
+                amount_spent: args.amount_spent,
                 created_at: now,
                 updated_at: now,
             });
         }
+    },
+});
+
+// ============================================================
+// INTERNAL: Update business high-level aggregate totals
+// ============================================================
+
+export const updateBusinessHighLevelStats = internalMutation({
+    args: {
+        businessId: v.id("businesses"),
+    },
+    handler: async (ctx, args) => {
+        // Sum all daily rows for this business
+        const allDailyRows = await ctx.db
+            .query("business_analytics_daily")
+            .withIndex("by_business_date", (q) => q.eq("business_id", args.businessId))
+            .collect();
+
+        const totalViews = allDailyRows.reduce((sum, row) => sum + row.views, 0);
+        const totalLikes = allDailyRows.reduce((sum, row) => sum + row.likes, 0);
+        const totalComments = allDailyRows.reduce((sum, row) => sum + row.comments, 0);
+        const totalShares = allDailyRows.reduce((sum, row) => sum + row.shares, 0);
+
+        await ctx.db.patch(args.businessId, {
+            total_views: totalViews,
+            total_likes: totalLikes,
+            total_comments: totalComments,
+            total_shares: totalShares,
+            updated_at: Date.now(),
+        });
     },
 });
 

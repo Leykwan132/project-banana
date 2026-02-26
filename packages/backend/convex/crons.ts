@@ -152,8 +152,8 @@ export const runDailyScrape = internalAction({
                 if (hasValidData) {
                     console.log(`Saving aggregated stats for app ${app._id}: Views=${totalViews}, Likes=${totalLikes}, Comments=${totalComments}, Shares=${totalShares}`);
 
-                    // 1. Compute earnings first so we can propagate the delta to all analytics tables
-                    const earningResult = await ctx.runMutation(internal.applications.updateApplicationEarning, {
+                    // 1. Compute earnings and get deltas for all metrics
+                    const scrapeDeltas = await ctx.runMutation(internal.applications.updateApplicationEarning, {
                         applicationId: app._id,
                         campaignId: app.campaign_id,
                         userCampaignStatusId: app.campaignStatusId,
@@ -162,40 +162,55 @@ export const runDailyScrape = internalAction({
                         comments: totalComments,
                         shares: totalShares,
                     });
-                    const totalEarnings = earningResult?.earnings ?? 0;
-                    console.log(`Earning delta for app ${app._id}: ${totalEarnings}`);
 
-                    const stats = {
-                        views: totalViews,
-                        likes: totalLikes,
-                        comments: totalComments,
-                        shares: totalShares,
-                        earnings: totalEarnings,
-                    };
+                    // Deltas represent only new activity since the last scrape
+                    const viewsDelta = scrapeDeltas?.viewsDelta ?? 0;
+                    const likesDelta = scrapeDeltas?.likesDelta ?? 0;
+                    const commentsDelta = scrapeDeltas?.commentsDelta ?? 0;
+                    const sharesDelta = scrapeDeltas?.sharesDelta ?? 0;
+                    const earningsDelta = scrapeDeltas?.earningsDelta ?? 0;
 
-                    // 2. App Analytics
+                    console.log(`Deltas for app ${app._id}: views=${viewsDelta}, likes=${likesDelta}, comments=${commentsDelta}, shares=${sharesDelta}, earnings=${earningsDelta}`);
+
+                    // 2. App Analytics — additive delta (same as all other daily stats)
                     await ctx.runMutation(api.analytics.saveDailyAppStats, {
                         applicationId: app._id,
                         campaignId: app.campaign_id,
-                        ...stats
+                        views: viewsDelta,
+                        likes: likesDelta,
+                        comments: commentsDelta,
+                        shares: sharesDelta,
+                        earnings: earningsDelta,
                     });
 
-                    // 3. Campaign Analytics
+                    // 3. Campaign Analytics — additive, so pass deltas
                     await ctx.runMutation(api.analytics.saveDailyCampaignStats, {
                         campaignId: app.campaign_id,
-                        ...stats
+                        views: viewsDelta,
+                        likes: likesDelta,
+                        comments: commentsDelta,
+                        shares: sharesDelta,
+                        earnings: earningsDelta,
                     });
 
-                    // 4. Business Analytics
+                    // 4. Business Analytics — additive; amount_spent = amount spent per day (delta only)
                     await ctx.runMutation(api.analytics.saveDailyBusinessStats, {
                         businessId: campaign.business_id,
-                        ...stats
+                        views: viewsDelta,
+                        likes: likesDelta,
+                        comments: commentsDelta,
+                        shares: sharesDelta,
+                        amount_spent: earningsDelta,
                     });
 
-                    // 5. Creator Analytics
+                    // 5. Creator Analytics — additive, so pass deltas
                     await ctx.runMutation(api.analytics.saveDailyCreatorStats, {
                         userId: app.user_id,
-                        ...stats
+                        views: viewsDelta,
+                        likes: likesDelta,
+                        comments: commentsDelta,
+                        shares: sharesDelta,
+                        earnings: earningsDelta,
                     });
 
                     console.log(`Successfully updated all database records for app ${app._id}`);
@@ -214,7 +229,7 @@ export const runDailyScrape = internalAction({
 
 crons.cron(
     "daily scrape",
-    "15 0 * * *", // 12:15 AM
+    "15 16 * * *", // 12:15 AM SGT/MYT (16:15 UTC)
     (internal as any).crons.runDailyScrape,
 );
 
