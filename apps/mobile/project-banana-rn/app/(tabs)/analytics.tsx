@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl, Dimensions, TextInput, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Wallet, ChevronDown } from 'lucide-react-native';
+import { Wallet, ArrowDownWideNarrow, Eye, ThumbsUp, MessageCircle, Share2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LineChart, useLineChart } from 'react-native-wagmi-charts';
 import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanimated';
@@ -38,7 +38,7 @@ export default function AnalyticsScreen() {
     const insets = useSafeAreaInsets();
 
     const [refreshing, setRefreshing] = useState(false);
-    const [sortBy, setSortBy] = useState<string>('shares');
+    const [sortBy, setSortBy] = useState<string>('earnings');
     const sortSheetRef = useRef<ActionSheetRef>(null);
 
     const sortOptions = [
@@ -49,13 +49,62 @@ export default function AnalyticsScreen() {
         { label: 'Earnings', value: 'earnings' },
     ];
 
-    const overview = useQuery((api as any).analytics.getUserEarningsOverviewLast30Days) as
-        | { totalEarnings: number; daily: Array<{ timestamp: number; earnings: number }> }
+    const dailyStats = useQuery((api as any).analytics.getCreatorDailyStatsLast30Days) as
+        | Array<{ timestamp: number; views: number; likes: number; comments: number; shares: number; earnings: number }>
         | undefined;
-    const graphColor = '#FF4500'; // Gold for earnings
-    const mappedGraphData: GraphDataPoint[] = (overview?.daily ?? []).map((point) => ({
+
+    type MetricConfig = {
+        color: string;
+        label: string;
+        icon: React.ReactNode;
+        showCurrency: boolean;
+        getTotal: () => string;
+    };
+
+    const metricConfig: Record<string, MetricConfig> = {
+        views: {
+            color: '#FF4500',
+            label: 'Views',
+            icon: <Eye size={16} color="#666" />,
+            showCurrency: false,
+            getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.views, 0).toLocaleString(),
+        },
+        likes: {
+            color: '#FF4500',
+            label: 'Likes',
+            icon: <ThumbsUp size={16} color="#666" />,
+            showCurrency: false,
+            getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.likes, 0).toLocaleString(),
+        },
+        comments: {
+            color: '#FF4500',
+            label: 'Comments',
+            icon: <MessageCircle size={16} color="#666" />,
+            showCurrency: false,
+            getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.comments, 0).toLocaleString(),
+        },
+        shares: {
+            color: '#FF4500',
+            label: 'Shares',
+            icon: <Share2 size={16} color="#666" />,
+            showCurrency: false,
+            getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.shares, 0).toLocaleString(),
+        },
+        earnings: {
+            color: '#FF4500',
+            label: 'Earnings',
+            icon: <Wallet size={16} color="#666" />,
+            showCurrency: true,
+            getTotal: () => `RM ${(dailyStats ?? []).reduce((sum, d) => sum + d.earnings, 0).toLocaleString()}`,
+        },
+    };
+
+    const activeMetric = metricConfig[sortBy] ?? metricConfig['earnings'];
+    const graphColor = activeMetric.color;
+
+    const mappedGraphData: GraphDataPoint[] = (dailyStats ?? []).map((point) => ({
         timestamp: point.timestamp,
-        value: point.earnings,
+        value: point[sortBy as keyof typeof point] as number,
         label: '',
     }));
     const graphData = mappedGraphData.length > 0 ? mappedGraphData : [{
@@ -63,7 +112,7 @@ export default function AnalyticsScreen() {
         value: 0,
         label: '',
     }];
-    const totalEarningsLabel = `RM ${(overview?.totalEarnings ?? 0).toLocaleString()}`;
+    const totalLabel = activeMetric.getTotal();
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -121,15 +170,15 @@ export default function AnalyticsScreen() {
                             <LineChart.Provider data={graphData}>
                                 <View >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                        <Wallet size={16} color="#666" />
+                                        {activeMetric.icon}
                                         <ThemedText style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_500Medium' }}>
-                                            Earnings
+                                            {activeMetric.label}
                                         </ThemedText>
                                     </View>
                                     <InteractiveGraphValue
-                                        key="earnings"
-                                        totalValue={totalEarningsLabel}
-                                        showCurrency={true}
+                                        key={sortBy}
+                                        totalValue={totalLabel}
+                                        showCurrency={activeMetric.showCurrency}
                                     />
                                     <InteractiveGraphDate defaultText="Last 30 Days" />
                                 </View>
@@ -189,7 +238,7 @@ export default function AnalyticsScreen() {
                                 <ThemedText style={styles.filterButtonText}>
                                     {sortOptions.find(opt => opt.value === sortBy)?.label}
                                 </ThemedText>
-                                <ChevronDown size={16} color={Colors[colorScheme ?? 'light'].text} />
+                                <ArrowDownWideNarrow size={16} color={Colors[colorScheme ?? 'light'].text} />
                             </Pressable>
                         </View>
 
