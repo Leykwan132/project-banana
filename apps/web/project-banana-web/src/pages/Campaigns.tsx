@@ -46,11 +46,10 @@ const CampaignsSkeleton = () => {
         <div className="bg-white overflow-hidden">
             <div className="bg-[#F4F6F8] rounded-sm mt-2 grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <div className="col-span-5 pl-2">Campaigns</div>
+                <div className="col-span-1 flex items-center justify-center">Status</div>
                 <div className="col-span-1 flex items-center justify-center">Date Created</div>
                 <div className="col-span-1 flex items-center justify-center">Submissions</div>
-                <div className="col-span-1 flex items-center justify-center">Budget</div>
-                <div className="col-span-1 flex items-center justify-center">Claimed</div>
-                <div className="col-span-1 flex items-center justify-center">Status</div>
+                <div className="col-span-2 flex items-center justify-center">Budget Remaining</div>
             </div>
             <div className="divide-y divide-[#F4F6F8]">
                 {Array(5).fill(0).map((_, index) => (
@@ -61,11 +60,14 @@ const CampaignsSkeleton = () => {
                                 <Skeleton className="h-4 w-3/5 rounded-lg" />
                             </div>
                         </div>
+                        <div className="col-span-1 flex justify-center"><Skeleton className="h-6 w-16 rounded-full" /></div>
                         <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-16 rounded-lg" /></div>
                         <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-8 rounded-lg" /></div>
-                        <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-16 rounded-lg" /></div>
-                        <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-16 rounded-lg" /></div>
-                        <div className="col-span-1 flex justify-center"><Skeleton className="h-6 w-16 rounded-full" /></div>
+                        <div className="col-span-2 flex flex-col justify-center px-4 w-full gap-1.5">
+                            <div className="w-full flex justify-start"><Skeleton className="h-3 w-10 rounded-lg" /></div>
+                            <Skeleton className="h-1.5 w-full rounded-full" />
+                            <div className="w-full flex justify-end"><Skeleton className="h-3 w-10 rounded-lg" /></div>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -100,6 +102,8 @@ export default function Campaigns() {
         submissions: c.submissions || 0,
         budget: `Rm ${c.total_budget}`,
         claimed: `Rm ${c.budget_claimed}`,
+        rawBudget: c.total_budget || 0,
+        rawClaimed: c.budget_claimed || 0,
         status: c.status,
         icon: Layers, // Default icon for now
         iconColor: 'text-gray-600',
@@ -115,6 +119,8 @@ export default function Campaigns() {
         submissions: c.submissions || 0,
         budget: `Rm ${c.total_budget}`,
         claimed: `Rm ${c.budget_claimed}`,
+        rawBudget: c.total_budget || 0,
+        rawClaimed: c.budget_claimed || 0,
         status: c.status,
         icon: Check, // Default icon for completed
         iconColor: 'text-green-600',
@@ -238,20 +244,17 @@ export default function Campaigns() {
                             <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name')}>
                                 Campaigns <SortIcon sortConfig={ongoingSort} columnKey="name" />
                             </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status')}>
+                                Status <SortIcon sortConfig={ongoingSort} columnKey="status" />
+                            </div>
                             <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate')}>
                                 Date Created <SortIcon sortConfig={ongoingSort} columnKey="createdDate" />
                             </div>
                             <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions')}>
                                 Submissions <SortIcon sortConfig={ongoingSort} columnKey="submissions" />
                             </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget')}>
-                                Budget <SortIcon sortConfig={ongoingSort} columnKey="budget" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('claimed')}>
-                                Claimed <SortIcon sortConfig={ongoingSort} columnKey="claimed" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status')}>
-                                Status <SortIcon sortConfig={ongoingSort} columnKey="status" />
+                            <div className="col-span-2 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget')}>
+                                Budget Claimed <SortIcon sortConfig={ongoingSort} columnKey="budget" />
                             </div>
                         </div>
 
@@ -268,10 +271,6 @@ export default function Campaigns() {
                                         </div>
                                         <span className="font-semibold text-gray-900">{campaign.name}</span>
                                     </div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.budget}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.claimed}</div>
                                     <div className="col-span-1 flex items-center justify-center">
                                         <Chip
                                             color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
@@ -281,9 +280,26 @@ export default function Campaigns() {
                                                         <CheckIcon size={20} />
                                             }
                                             variant="flat"
+                                            className='font-semibold'
                                         >
                                             {campaign.status}
                                         </Chip>
+                                    </div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
+                                    <div className="col-span-2 flex flex-col justify-center px-4 w-full gap-1">
+                                        <div className={`w-full font-semibold text-left ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'text-green-500' : 'text-gray-900'}`}>
+                                            {campaign.claimed}
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-300 ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'bg-green-500' : 'bg-gray-900'}`}
+                                                style={{ width: `${Math.min(100, Math.max(0, (campaign.rawClaimed / (campaign.rawBudget || 1)) * 100))}%` }}
+                                            />
+                                        </div>
+                                        <div className="w-full font-medium text-gray-400 text-right">
+                                            {campaign.budget}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -308,20 +324,17 @@ export default function Campaigns() {
                             <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name', true)}>
                                 Campaigns <SortIcon sortConfig={pastSort} columnKey="name" />
                             </div>
+                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status', true)}>
+                                Status <SortIcon sortConfig={pastSort} columnKey="status" />
+                            </div>
                             <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate', true)}>
                                 Date Created <SortIcon sortConfig={pastSort} columnKey="createdDate" />
                             </div>
                             <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions', true)}>
                                 Submissions <SortIcon sortConfig={pastSort} columnKey="submissions" />
                             </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget', true)}>
-                                Budget <SortIcon sortConfig={pastSort} columnKey="budget" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('claimed', true)}>
-                                Claimed <SortIcon sortConfig={pastSort} columnKey="claimed" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status', true)}>
-                                Status <SortIcon sortConfig={pastSort} columnKey="status" />
+                            <div className="col-span-2 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget', true)}>
+                                Budget Remaining <SortIcon sortConfig={pastSort} columnKey="budget" />
                             </div>
                         </div>
 
@@ -338,10 +351,6 @@ export default function Campaigns() {
                                         </div>
                                         <span className="font-semibold text-gray-900">{campaign.name}</span>
                                     </div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.budget}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.claimed}</div>
                                     <div className="col-span-1 flex items-center justify-center">
                                         <Chip
                                             color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
@@ -354,6 +363,22 @@ export default function Campaigns() {
                                         >
                                             {campaign.status}
                                         </Chip>
+                                    </div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
+                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
+                                    <div className="col-span-2 flex flex-col justify-center px-4 w-full gap-1">
+                                        <div className={`w-full font-semibold text-left ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'text-green-500' : 'text-gray-900'}`}>
+                                            {campaign.claimed}
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-300 ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'bg-green-500' : 'bg-gray-900'}`}
+                                                style={{ width: `${Math.min(100, Math.max(0, (campaign.rawClaimed / (campaign.rawBudget || 1)) * 100))}%` }}
+                                            />
+                                        </div>
+                                        <div className="w-full font-medium text-gray-900 text-right">
+                                            {campaign.budget}
+                                        </div>
                                     </div>
                                 </div>
                             ))}

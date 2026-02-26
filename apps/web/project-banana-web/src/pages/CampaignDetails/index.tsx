@@ -18,16 +18,17 @@ import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
 import { addToast } from "@heroui/toast";
 import { CampaignStatus } from '../../../../../../packages/backend/convex/constants';
 
-// Mock Analytics Data
-const performanceData = [
-    { name: 'Jan', value1: 4000, value2: 2400 },
-    { name: 'Feb', value1: 3000, value2: 1398 },
-    { name: 'Mar', value1: 2000, value2: 9800 },
-    { name: 'Apr', value1: 2780, value2: 3908 },
-    { name: 'May', value1: 1890, value2: 4800 },
-    { name: 'Jun', value1: 2390, value2: 3800 },
-    { name: 'Jul', value1: 3490, value2: 4300 },
-];
+type CampaignAnalyticsMetric = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Earnings';
+
+const CAMPAIGN_ANALYTICS_METRICS: CampaignAnalyticsMetric[] = ['Views', 'Likes', 'Comments', 'Shares', 'Earnings'];
+
+const campaignMetricFieldMap: Record<CampaignAnalyticsMetric, 'views' | 'likes' | 'comments' | 'shares' | 'earnings'> = {
+    Views: 'views',
+    Likes: 'likes',
+    Comments: 'comments',
+    Shares: 'shares',
+    Earnings: 'earnings',
+};
 
 const bestPosts = [
     { name: 'Link...', value: 186999, maxValue: 200000 },
@@ -42,6 +43,29 @@ const bestCreators = [
     { name: 'Profile C', value: 186999, maxValue: 200000 },
     { name: 'Profile D', value: 186999, maxValue: 200000 },
 ];
+
+const formatDateLabel = (dateKey: string) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+    });
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        const value = Number(payload[0].value ?? 0);
+        return (
+            <div className="bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-xl flex flex-col items-center gap-1">
+                <p className="font-bold text-lg leading-none">{value.toLocaleString()}</p>
+                <p className="text-gray-400 text-xs font-medium">{label}</p>
+            </div>
+        );
+    }
+    return null;
+};
 
 // Helper for Analytics Lists
 const PerformanceItem = ({ name, value, maxValue }: { name: string, value: number, maxValue: number }) => (
@@ -244,6 +268,14 @@ export default function CampaignDetails() {
     const applications = useQuery(api.applications.getMyApplicationsByCampaignWithStats,
         campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
 
+    );
+    const campaignTotalStats = useQuery(
+        api.analytics.getCampaignTotalStats,
+        campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
+    );
+    const campaignDailyStats = useQuery(
+        api.analytics.getCampaignDailyStatsLast30Days,
+        campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
     );
     const hasChangesRequested = applications?.some(app => app.status === 'changes_requested') ?? false;
 
@@ -550,10 +582,53 @@ export default function CampaignDetails() {
     });
 
     // Analytics State
-    const [analyticsMetric, setAnalyticsMetric] = useState<'Views' | 'Likes' | 'Comments' | 'Shares'>('Views');
+    const [analyticsMetric, setAnalyticsMetric] = useState<CampaignAnalyticsMetric>('Views');
+    const [activeChartData, setActiveChartData] = useState<{ value: number; name: string } | null>(null);
     const hasCompanyLogo = !!(business?.logo_url || business?.logo_s3_key || companyLogoPreview);
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
     const hasMediaChanges = !!logoFile || !!coverFile || (campaign ? useCompanyLogo !== Boolean(campaign.use_company_logo) : false);
+    const isCampaignAnalyticsLoading = campaignTotalStats === undefined || campaignDailyStats === undefined;
+
+    const campaignAnalyticsTotals: Record<CampaignAnalyticsMetric, number> = {
+        Views: campaignTotalStats?.views ?? 0,
+        Likes: campaignTotalStats?.likes ?? 0,
+        Comments: campaignTotalStats?.comments ?? 0,
+        Shares: campaignTotalStats?.shares ?? 0,
+        Earnings: campaignTotalStats?.earnings ?? 0,
+    };
+
+    const campaignGraphData = useMemo(() => {
+        const metricField = campaignMetricFieldMap[analyticsMetric];
+        return (campaignDailyStats ?? []).map((point) => ({
+            name: formatDateLabel(point.date),
+            value: point[metricField],
+        }));
+    }, [campaignDailyStats, analyticsMetric]);
+    const latestCampaignGraphPoint = campaignGraphData[campaignGraphData.length - 1];
+
+    useEffect(() => {
+        setActiveChartData(null);
+    }, [analyticsMetric]);
+
+    const getCurrentMetricValue = () => {
+        if (activeChartData) return activeChartData.value.toLocaleString();
+        return (latestCampaignGraphPoint?.value ?? 0).toLocaleString();
+    };
+
+    const getCurrentMetricDateLabel = () => {
+        if (activeChartData) return activeChartData.name;
+        return latestCampaignGraphPoint?.name ?? 'Last 30 Days';
+    };
+
+    const CurrentMetricIcon = analyticsMetric === 'Views'
+        ? Eye
+        : analyticsMetric === 'Likes'
+            ? Star
+            : analyticsMetric === 'Comments'
+                ? MessageSquare
+                : analyticsMetric === 'Shares'
+                    ? RotateCcw
+                    : Wallet;
 
     const unsavedChangesList = useMemo(() => {
         const changes: { label: string; icon: any }[] = [];
@@ -1170,19 +1245,12 @@ export default function CampaignDetails() {
                     </form>
                 ) : (
                     <div className="space-y-8 animate-fadeIn">
-                        {/* Header Controls */}
-                        <div className="flex justify-end mb-4">
-                            <button className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-50">
-                                Daily <ChevronDown className="w-4 h-4" />
-                            </button>
-                        </div>
-
                         {/* Metrics Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {['Views', 'Likes', 'Comments', 'Shares'].map((metric) => (
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                            {CAMPAIGN_ANALYTICS_METRICS.map((metric) => (
                                 <div
                                     key={metric}
-                                    onClick={() => setAnalyticsMetric(metric as any)}
+                                    onClick={() => setAnalyticsMetric(metric)}
                                     className={`p-6 rounded-3xl border transition-all cursor-pointer ${analyticsMetric === metric
                                         ? 'bg-[#F9FAFB] border-black shadow-sm'
                                         : 'bg-white border-[#F4F6F8] hover:border-gray-200'
@@ -1190,14 +1258,14 @@ export default function CampaignDetails() {
                                 >
                                     <div className="text-gray-900 font-medium mb-4 text-sm">{metric}</div>
                                     <div className="text-3xl font-bold mb-2">
-                                        {metric === 'Views' ? '7,265' :
-                                            metric === 'Likes' ? '3,671' :
-                                                metric === 'Comments' ? '7,265' : '3,671'}
+                                        {campaignAnalyticsTotals[metric].toLocaleString()}
                                     </div>
-                                    <div className={`text-sm font-medium flex items-center gap-1 ${metric === 'Views' ? 'text-emerald-500' : 'text-gray-500'
-                                        }`}>
-                                        {metric === 'Views' ? '+11.01%' : '-0.03%'}
-                                        <span className="text-[10px]">↗</span>
+                                    <div className="text-xs font-medium text-gray-500">
+                                        As of {new Date().toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric'
+                                        })}
                                     </div>
                                 </div>
                             ))}
@@ -1205,51 +1273,84 @@ export default function CampaignDetails() {
 
                         {/* Chart Section */}
                         <div className="bg-[#F9FAFB] p-8 rounded-3xl">
-                            <div className="flex justify-between items-center mb-8">
-                                <div>
-                                    <span className={`inline-block px-3 py-1 bg-yellow-400 rounded-lg text-xs font-bold mb-2`}>
-                                        {analyticsMetric}
-                                    </span>
-                                    <h3 className="font-bold text-gray-900">Performance Overview</h3>
+                            <div className="flex flex-col mb-8 pointer-events-none">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <CurrentMetricIcon size={20} className="text-gray-500" />
+                                    <span className="text-gray-500 font-medium text-sm">{analyticsMetric}</span>
                                 </div>
+                                <h3 className="text-5xl font-bold text-gray-900 mb-2">
+                                    {getCurrentMetricValue()}
+                                </h3>
+                                <span className="text-gray-500 text-sm">
+                                    {getCurrentMetricDateLabel()}
+                                </span>
                             </div>
 
                             <div className="h-[300px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={performanceData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                        <XAxis
-                                            dataKey="name"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                                            dy={10}
-                                        />
-                                        <YAxis
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="value1"
-                                            stroke="#1C1C1C"
-                                            strokeWidth={2}
-                                            dot={false}
-                                        />
-                                        <Line
-                                            type="monotone"
-                                            dataKey="value2"
-                                            stroke="#9CA3AF"
-                                            strokeWidth={2}
-                                            strokeDasharray="5 5" // Dotted line for comparison
-                                            dot={false}
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
+                                {isCampaignAnalyticsLoading ? (
+                                    <div className="space-y-4 h-full flex flex-col justify-end">
+                                        <Skeleton className="h-4 w-3/5 rounded-lg" />
+                                        <Skeleton className="h-4 w-4/5 rounded-lg" />
+                                        <Skeleton className="h-4 w-2/5 rounded-lg" />
+                                        <Skeleton className="h-4 w-3/4 rounded-lg" />
+                                        <Skeleton className="h-4 w-1/2 rounded-lg" />
+                                        <Skeleton className="h-4 w-4/5 rounded-lg" />
+                                        <Skeleton className="h-4 w-3/5 rounded-lg" />
+                                    </div>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart
+                                            data={campaignGraphData}
+                                            onMouseMove={(e: any) => {
+                                                const point = e?.activePayload?.[0]?.payload;
+                                                if (point) {
+                                                    setActiveChartData({
+                                                        value: Number(point.value ?? 0),
+                                                        name: String(point.name ?? ''),
+                                                    });
+                                                }
+                                            }}
+                                            onMouseLeave={() => {
+                                                setActiveChartData(null);
+                                            }}
+                                            onClick={(e: any) => {
+                                                const point = e?.activePayload?.[0]?.payload;
+                                                if (point) {
+                                                    setActiveChartData({
+                                                        value: Number(point.value ?? 0),
+                                                        name: String(point.name ?? ''),
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                            <XAxis
+                                                dataKey="name"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                                                dy={10}
+                                            />
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                                            />
+                                            <Tooltip
+                                                content={<CustomTooltip />}
+                                                cursor={{ stroke: '#F4F6F8', strokeWidth: 2 }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="value"
+                                                stroke="#FF5722"
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{ r: 6, fill: '#FF5722', strokeWidth: 2, stroke: 'white' }}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                )}
                             </div>
                         </div>
 
