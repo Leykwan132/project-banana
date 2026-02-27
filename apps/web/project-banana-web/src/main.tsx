@@ -11,6 +11,7 @@ import { authClient } from "./lib/auth-client";
 
 
 import App from './App'
+import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Overview from './pages/Overview'
 import Campaigns from './pages/Campaigns'
@@ -47,6 +48,9 @@ createRoot(document.getElementById('root')!).render(
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<App />} />
+              <Route path="/business" element={<App />} />
+              <Route path="/pricing" element={<App />} />
+              <Route path="/login" element={<Login />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/overview" element={<Overview />} />
