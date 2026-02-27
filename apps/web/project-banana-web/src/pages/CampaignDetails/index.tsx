@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { Skeleton } from "@heroui/skeleton";
-import { ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Play } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Play } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -18,31 +18,17 @@ import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
 import { addToast } from "@heroui/toast";
 import { CampaignStatus } from '../../../../../../packages/backend/convex/constants';
 
-type CampaignAnalyticsMetric = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Earnings';
+type CampaignAnalyticsMetric = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Amount Spend';
 
-const CAMPAIGN_ANALYTICS_METRICS: CampaignAnalyticsMetric[] = ['Views', 'Likes', 'Comments', 'Shares', 'Earnings'];
+const CAMPAIGN_ANALYTICS_METRICS: CampaignAnalyticsMetric[] = ['Views', 'Likes', 'Comments', 'Shares', 'Amount Spend'];
 
 const campaignMetricFieldMap: Record<CampaignAnalyticsMetric, 'views' | 'likes' | 'comments' | 'shares' | 'earnings'> = {
     Views: 'views',
     Likes: 'likes',
     Comments: 'comments',
     Shares: 'shares',
-    Earnings: 'earnings',
+    'Amount Spend': 'earnings',
 };
-
-const bestPosts = [
-    { name: 'Link...', value: 186999, maxValue: 200000 },
-    { name: 'Link...', value: 186999, maxValue: 200000 },
-    { name: 'Link...', value: 186999, maxValue: 200000 },
-    { name: 'Link...', value: 186999, maxValue: 200000 },
-];
-
-const bestCreators = [
-    { name: 'Profile A', value: 186999, maxValue: 200000 },
-    { name: 'Profile B', value: 186999, maxValue: 200000 },
-    { name: 'Profile C', value: 186999, maxValue: 200000 },
-    { name: 'Profile D', value: 186999, maxValue: 200000 },
-];
 
 const formatDateLabel = (dateKey: string) => {
     const [year, month, day] = dateKey.split('-').map(Number);
@@ -54,34 +40,17 @@ const formatDateLabel = (dateKey: string) => {
     });
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-        const value = Number(payload[0].value ?? 0);
-        return (
-            <div className="bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-xl flex flex-col items-center gap-1">
-                <p className="font-bold text-lg leading-none">{value.toLocaleString()}</p>
-                <p className="text-gray-400 text-xs font-medium">{label}</p>
-            </div>
-        );
-    }
-    return null;
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+});
+
+const formatCampaignMetricValue = (metric: CampaignAnalyticsMetric, value: number) => {
+    if (metric === 'Amount Spend') return `RM ${currencyFormatter.format(value)}`;
+    return value.toLocaleString();
 };
 
-// Helper for Analytics Lists
-const PerformanceItem = ({ name, value, maxValue }: { name: string, value: number, maxValue: number }) => (
-    <div className="flex flex-col gap-2 mb-6 last:mb-0">
-        <div className="flex justify-between items-center text-sm">
-            <span className="font-bold text-gray-900">{name}</span>
-            <span className="font-bold text-gray-900">{value.toLocaleString()}</span>
-        </div>
-        <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
-            <div
-                className="h-full bg-black rounded-full"
-                style={{ width: `${(value / maxValue) * 100}%` }}
-            />
-        </div>
-    </div>
-);
+const normalizeExternalUrl = (url: string) => /^https?:\/\//i.test(url) ? url : `https://${url}`;
 
 const UnsavedChangesModal = ({ isOpen, onClose, onConfirm, changes = [] }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; changes?: { label: string; icon: any }[] }) => {
     if (!isOpen) return null;
@@ -212,7 +181,10 @@ const validationSchema = Yup.object({
 export default function CampaignDetails() {
     const { campaignId } = useParams();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'about' | 'analytics'>('about');
+    const [searchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState<'about' | 'analytics'>(
+        searchParams.get('tab') === 'analytics' ? 'analytics' : 'about'
+    );
 
     const campaign = useQuery(api.campaigns.getCampaign, { campaignId: campaignId as Id<"campaigns"> });
     const business = useQuery(api.businesses.getMyBusiness);
@@ -221,6 +193,15 @@ export default function CampaignDetails() {
     const generateCampaignImageUploadUrl = useAction(api.campaigns.generateCampaignImageUploadUrl);
     const generateCampaignImageAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
     const generateBusinessLogoAccessUrl = useAction(api.businesses.generateLogoAccessUrl);
+
+    useEffect(() => {
+        const tabParam = searchParams.get('tab');
+        if (tabParam === 'analytics') {
+            setActiveTab('analytics');
+        } else if (tabParam === 'about') {
+            setActiveTab('about');
+        }
+    }, [searchParams, campaignId]);
 
     // Modals State
     const [showThresholdModal, setShowThresholdModal] = useState(false);
@@ -276,6 +257,14 @@ export default function CampaignDetails() {
     const campaignDailyStats = useQuery(
         api.analytics.getCampaignDailyStatsLast30Days,
         campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
+    );
+    const campaignTopOverviewLists = useQuery(
+        api.analytics.getCampaignTopPostsByViews,
+        campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
+    );
+    const campaignTopCreatorsByViews = useQuery(
+        api.analytics.getCampaignTopCreatorsByViews,
+        campaignId ? { campaignId: campaignId as Id<"campaigns">, limit: 5 } : "skip"
     );
     const hasChangesRequested = applications?.some(app => app.status === 'changes_requested') ?? false;
 
@@ -588,13 +577,17 @@ export default function CampaignDetails() {
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
     const hasMediaChanges = !!logoFile || !!coverFile || (campaign ? useCompanyLogo !== Boolean(campaign.use_company_logo) : false);
     const isCampaignAnalyticsLoading = campaignTotalStats === undefined || campaignDailyStats === undefined;
+    const isCampaignTopPostsLoading = campaignTopOverviewLists === undefined;
+    const isCampaignTopCreatorsLoading = campaignTopCreatorsByViews === undefined;
+    const topCampaignPosts = campaignTopOverviewLists?.posts ?? [];
+    const topCampaignCreators = campaignTopCreatorsByViews ?? [];
 
     const campaignAnalyticsTotals: Record<CampaignAnalyticsMetric, number> = {
         Views: campaignTotalStats?.views ?? 0,
         Likes: campaignTotalStats?.likes ?? 0,
         Comments: campaignTotalStats?.comments ?? 0,
         Shares: campaignTotalStats?.shares ?? 0,
-        Earnings: campaignTotalStats?.earnings ?? 0,
+        'Amount Spend': campaignTotalStats?.earnings ?? 0,
     };
 
     const campaignGraphData = useMemo(() => {
@@ -610,14 +603,26 @@ export default function CampaignDetails() {
         setActiveChartData(null);
     }, [analyticsMetric]);
 
-    const getCurrentMetricValue = () => {
-        if (activeChartData) return activeChartData.value.toLocaleString();
-        return (latestCampaignGraphPoint?.value ?? 0).toLocaleString();
-    };
 
-    const getCurrentMetricDateLabel = () => {
-        if (activeChartData) return activeChartData.name;
-        return latestCampaignGraphPoint?.name ?? 'Last 30 Days';
+
+    const renderAnalyticsTooltip = (props: unknown) => {
+        if (!props || typeof props !== 'object') return null;
+        const active = Boolean((props as { active?: boolean }).active);
+        const payload = (props as { payload?: Array<{ value?: number }> }).payload;
+        const label = (props as { label?: string }).label;
+        if (!active || !payload || payload.length === 0) return null;
+
+        const value = Number(payload[0].value ?? 0);
+        const displayValue = analyticsMetric === 'Amount Spend'
+            ? `RM${currencyFormatter.format(value)} spent`
+            : `${value.toLocaleString()} ${analyticsMetric.toLowerCase()}`;
+
+        return (
+            <div className="bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-xl flex flex-col items-center gap-1">
+                <p className="font-bold text-lg leading-none">{displayValue}</p>
+                <p className="text-gray-400 text-xs font-medium">{label}</p>
+            </div>
+        );
     };
 
     const CurrentMetricIcon = analyticsMetric === 'Views'
@@ -1258,7 +1263,7 @@ export default function CampaignDetails() {
                                 >
                                     <div className="text-gray-900 font-medium mb-4 text-sm">{metric}</div>
                                     <div className="text-3xl font-bold mb-2">
-                                        {campaignAnalyticsTotals[metric].toLocaleString()}
+                                        {formatCampaignMetricValue(metric, campaignAnalyticsTotals[metric])}
                                     </div>
                                     <div className="text-xs font-medium text-gray-500">
                                         As of {new Date().toLocaleDateString('en-US', {
@@ -1276,13 +1281,17 @@ export default function CampaignDetails() {
                             <div className="flex flex-col mb-8 pointer-events-none">
                                 <div className="flex items-center gap-2 mb-4">
                                     <CurrentMetricIcon size={20} className="text-gray-500" />
-                                    <span className="text-gray-500 font-medium text-sm">{analyticsMetric}</span>
+                                    <span className="text-gray-500 font-medium text-sm">Total {analyticsMetric}</span>
                                 </div>
                                 <h3 className="text-5xl font-bold text-gray-900 mb-2">
-                                    {getCurrentMetricValue()}
+                                    {formatCampaignMetricValue(analyticsMetric, campaignAnalyticsTotals[analyticsMetric])}
                                 </h3>
                                 <span className="text-gray-500 text-sm">
-                                    {getCurrentMetricDateLabel()}
+                                    As of {new Date().toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                    })}
                                 </span>
                             </div>
 
@@ -1330,6 +1339,7 @@ export default function CampaignDetails() {
                                                 tickLine={false}
                                                 tick={{ fill: '#9CA3AF', fontSize: 12 }}
                                                 dy={10}
+                                                interval={2}
                                             />
                                             <YAxis
                                                 axisLine={false}
@@ -1337,7 +1347,7 @@ export default function CampaignDetails() {
                                                 tick={{ fill: '#9CA3AF', fontSize: 12 }}
                                             />
                                             <Tooltip
-                                                content={<CustomTooltip />}
+                                                content={renderAnalyticsTooltip}
                                                 cursor={{ stroke: '#F4F6F8', strokeWidth: 2 }}
                                             />
                                             <Line
@@ -1354,28 +1364,75 @@ export default function CampaignDetails() {
                             </div>
                         </div>
 
-                        {/* Best Performing Sections */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Campaigns / Posts */}
                             <div className="bg-[#F9FAFB] p-8 rounded-3xl">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h3 className="font-bold text-gray-900">Best Performing Posts</h3>
-                                    <span className="bg-yellow-400 px-3 py-1 rounded-lg text-xs font-bold">Likes</span>
+                                <div className="mb-6">
+                                    <h3 className="font-bold text-gray-900">Top Posts by Views</h3>
                                 </div>
-                                {bestPosts.map((item, i) => (
-                                    <PerformanceItem key={i} {...item} />
-                                ))}
+                                <div className="divide-y divide-gray-200">
+                                    {isCampaignTopPostsLoading ? (
+                                        Array.from({ length: 5 }).map((_, index) => (
+                                            <div key={index} className="py-4">
+                                                <Skeleton className="h-5 w-full rounded-lg" />
+                                            </div>
+                                        ))
+                                    ) : topCampaignPosts.length > 0 ? (
+                                        topCampaignPosts.map((post) => (
+                                            <a
+                                                key={post.applicationId}
+                                                href={normalizeExternalUrl(post.postUrl)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default hover:bg-gray-200/50 transition-colors"
+                                            >
+                                                <span className="text-sm font-semibold text-gray-900 truncate pr-3">
+                                                    {post.platform} post
+                                                </span>
+                                                <span className="flex items-center gap-4 shrink-0">
+                                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                                                        <Eye size={14} className="text-gray-400" />
+                                                        {post.views.toLocaleString()}
+                                                    </span>
+                                                    <ArrowUpRight size={16} className="text-gray-400" />
+                                                </span>
+                                            </a>
+                                        ))
+                                    ) : (
+                                        <p className="py-4 text-sm text-gray-500">No posted applications yet.</p>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Creators */}
                             <div className="bg-[#F9FAFB] p-8 rounded-3xl">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h3 className="font-bold text-gray-900">Best Performing Creators</h3>
-                                    <span className="bg-yellow-400 px-3 py-1 rounded-lg text-xs font-bold">Likes</span>
+                                <div className="mb-6">
+                                    <h3 className="font-bold text-gray-900">Top Performing Creators</h3>
                                 </div>
-                                {bestCreators.map((item, i) => (
-                                    <PerformanceItem key={i} {...item} />
-                                ))}
+                                <div className="divide-y divide-gray-200">
+                                    {isCampaignTopCreatorsLoading ? (
+                                        Array.from({ length: 5 }).map((_, index) => (
+                                            <div key={index} className="py-4">
+                                                <Skeleton className="h-5 w-full rounded-lg" />
+                                            </div>
+                                        ))
+                                    ) : topCampaignCreators.length > 0 ? (
+                                        topCampaignCreators.map((creator) => (
+                                            <div key={creator.userId} className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default hover:bg-gray-200/50 transition-colors">
+                                                <span className="text-sm font-semibold text-gray-900 truncate pr-3">
+                                                    {creator.creatorName}
+                                                </span>
+                                                <span className="flex items-center gap-4 shrink-0">
+                                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                                                        <Eye size={14} className="text-gray-400" />
+                                                        {creator.views.toLocaleString()}
+                                                    </span>
+                                                    <ArrowUpRight size={16} className="text-gray-400" />
+                                                </span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="py-4 text-sm text-gray-500">No creator analytics yet.</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

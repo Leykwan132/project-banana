@@ -55,7 +55,6 @@ export default function AnalyticsScreen() {
 
     type MetricConfig = {
         color: string;
-        label: string;
         icon: React.ReactNode;
         showCurrency: boolean;
         getTotal: () => string;
@@ -64,35 +63,30 @@ export default function AnalyticsScreen() {
     const metricConfig: Record<string, MetricConfig> = {
         views: {
             color: '#FF4500',
-            label: 'Views',
             icon: <Eye size={16} color="#666" />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.views, 0).toLocaleString(),
         },
         likes: {
             color: '#FF4500',
-            label: 'Likes',
             icon: <ThumbsUp size={16} color="#666" />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.likes, 0).toLocaleString(),
         },
         comments: {
             color: '#FF4500',
-            label: 'Comments',
             icon: <MessageCircle size={16} color="#666" />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.comments, 0).toLocaleString(),
         },
         shares: {
             color: '#FF4500',
-            label: 'Shares',
             icon: <Share2 size={16} color="#666" />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.shares, 0).toLocaleString(),
         },
         earnings: {
             color: '#FF4500',
-            label: 'Earnings',
             icon: <Wallet size={16} color="#666" />,
             showCurrency: true,
             getTotal: () => `RM ${(dailyStats ?? []).reduce((sum, d) => sum + d.earnings, 0).toLocaleString()}`,
@@ -101,6 +95,8 @@ export default function AnalyticsScreen() {
 
     const activeMetric = metricConfig[sortBy] ?? metricConfig['earnings'];
     const graphColor = activeMetric.color;
+    const selectedMetricLabel = sortOptions.find((opt) => opt.value === sortBy)?.label ?? 'Earnings';
+    const graphHeaderLabel = `Total ${selectedMetricLabel}`;
 
     const mappedGraphData: GraphDataPoint[] = (dailyStats ?? []).map((point) => ({
         timestamp: point.timestamp,
@@ -172,7 +168,7 @@ export default function AnalyticsScreen() {
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                         {activeMetric.icon}
                                         <ThemedText style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_500Medium' }}>
-                                            {activeMetric.label}
+                                            {graphHeaderLabel}
                                         </ThemedText>
                                     </View>
                                     <InteractiveGraphValue

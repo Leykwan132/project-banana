@@ -28,11 +28,11 @@ type DailyPoint = {
 };
 
 const TERMS_MAPPING: Record<MetricType, string> = {
-    earnings: 'Earnings',
-    views: 'Views',
-    shares: 'Shares',
-    likes: 'Likes',
-    comments: 'Comments',
+    earnings: 'Total Earnings',
+    views: 'Total Views',
+    shares: 'Total Shares',
+    likes: 'Total Likes',
+    comments: 'Total Comments',
 };
 
 const ICON_MAPPING = {
@@ -71,12 +71,31 @@ const formatCreatedAt = (timestamp: number) =>
         year: 'numeric',
     });
 
+const getYesterdayDateKeyUtc = () => {
+    const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() - 1);
+    return date.toISOString().split('T')[0] as string;
+};
+
+const formatDateKeyLabel = (dateKey: string) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString('en-MY', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC',
+    });
+};
+
 export default function ApplicationAnalyticsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const insets = useSafeAreaInsets();
 
     const [selectedMetric, setSelectedMetric] = useState<MetricType>('earnings');
+    const analyticsEndDate = useMemo(() => getYesterdayDateKeyUtc(), []);
 
     const applicationId = (id as Id<'applications'>) || undefined;
 
@@ -88,8 +107,12 @@ export default function ApplicationAnalyticsScreen() {
         api.analytics.getApplicationDailyStatsLast30Days,
         applicationId ? { applicationId } : 'skip'
     ) as DailyPoint[] | undefined;
+    const appTotalStats = useQuery(
+        api.analytics.getAppTotalStats,
+        applicationId ? { applicationId, endDate: analyticsEndDate } : 'skip'
+    );
 
-    const isLoading = application === undefined || dailyStats === undefined;
+    const isLoading = application === undefined || dailyStats === undefined || appTotalStats === undefined;
 
     if (application === null) {
         return (
@@ -104,12 +127,16 @@ export default function ApplicationAnalyticsScreen() {
     }
 
     const highLevelMetrics: Record<MetricType, number> = {
-        earnings: application?.earnings ?? 0,
-        views: application?.views ?? 0,
-        shares: application?.shares ?? 0,
-        likes: application?.likes ?? 0,
-        comments: application?.comments ?? 0,
+        earnings: appTotalStats?.earnings ?? application?.earnings ?? 0,
+        views: appTotalStats?.views ?? application?.views ?? 0,
+        shares: appTotalStats?.shares ?? application?.shares ?? 0,
+        likes: appTotalStats?.likes ?? application?.likes ?? 0,
+        comments: appTotalStats?.comments ?? application?.comments ?? 0,
     };
+    const asOfDateText = useMemo(() => {
+        const lastDateKey = dailyStats?.[dailyStats.length - 1]?.date ?? analyticsEndDate;
+        return `As of ${formatDateKeyLabel(lastDateKey)}`;
+    }, [dailyStats, analyticsEndDate]);
 
     const graphData = useMemo(() => {
         if (!dailyStats || dailyStats.length === 0) {
@@ -254,7 +281,7 @@ export default function ApplicationAnalyticsScreen() {
                                             totalValue={formatMetricValue(selectedMetric, highLevelMetrics[selectedMetric])}
                                             showCurrency={selectedMetric === 'earnings'}
                                         />
-                                        <InteractiveGraphDate defaultText="Last 30 Days" />
+                                        <InteractiveGraphDate defaultText={asOfDateText} />
                                     </View>
 
                                     <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>

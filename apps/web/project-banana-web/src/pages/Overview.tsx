@@ -2,45 +2,16 @@ import { useMemo, useState } from 'react';
 import { Authenticated, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Skeleton } from '@heroui/react';
+import { useNavigate } from 'react-router-dom';
 import {
     LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { Eye, Heart, MessageCircle, Share, Wallet } from 'lucide-react';
+import { ArrowUpRight, Eye, Heart, MessageCircle, Share, Wallet } from 'lucide-react';
 
 type MetricLabel = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Amount Spend';
 
 const METRICS: MetricLabel[] = ['Views', 'Likes', 'Comments', 'Shares', 'Amount Spend'];
-
-const campaignData = [
-    { name: 'Instagram Brand Awareness', value: 4500, maxValue: 5000 },
-    { name: 'TikTok Viral Challenge', value: 3200, maxValue: 5000 },
-    { name: 'Facebook Retargeting', value: 2800, maxValue: 5000 },
-    { name: 'YouTube Product Review', value: 2100, maxValue: 5000 },
-];
-
-const creatorData = [
-    { name: 'Sarah Jenkins', value: 9200, maxValue: 10000 },
-    { name: 'Mike Chen', value: 8500, maxValue: 10000 },
-    { name: 'Jessica Smith', value: 7100, maxValue: 10000 },
-    { name: 'David Wilson', value: 6800, maxValue: 10000 },
-];
-
-// Helper component for the list item
-const PerformanceItem = ({ name, value, maxValue }: { name: string, value: number, maxValue: number }) => (
-    <div className="flex flex-col gap-2 mb-6 last:mb-0">
-        <div className="flex justify-between items-center text-sm">
-            <span className="font-bold text-gray-900">{name}</span>
-            <span className="font-bold text-gray-900">{value.toLocaleString()}</span>
-        </div>
-        <div className="h-3 w-full bg-white rounded-full overflow-hidden">
-            <div
-                className="h-full bg-black rounded-full"
-                style={{ width: `${(value / maxValue) * 100}%` }}
-            />
-        </div>
-    </div>
-);
 
 const formatDateLabel = (dateKey: string) => {
     const [year, month, day] = dateKey.split('-').map(Number);
@@ -52,9 +23,27 @@ const formatDateLabel = (dateKey: string) => {
     });
 };
 
+const formatAsOfDateLabel = (dateKey: string) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC',
+    });
+};
+
+const getYesterdayDateKeyUtc = () => {
+    const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() - 1);
+    return date.toISOString().split('T')[0] as string;
+};
+
 const currencyFormatter = new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
 });
 
 const formatMetricValue = (metric: MetricLabel, value: number) => {
@@ -62,16 +51,7 @@ const formatMetricValue = (metric: MetricLabel, value: number) => {
     return value.toLocaleString();
 };
 
-const getChartPoint = (event: unknown) => {
-    if (!event || typeof event !== 'object') return null;
-    const point = (event as { activePayload?: Array<{ payload?: { value?: number; name?: string } }> })
-        .activePayload?.[0]?.payload;
-    if (!point) return null;
-    return {
-        value: Number(point.value ?? 0),
-        name: String(point.name ?? ''),
-    };
-};
+
 
 const getMetricValueFromRow = (
     row: { views: number; likes: number; comments: number; shares: number; amount_spent?: number; earnings?: number },
@@ -84,9 +64,14 @@ const getMetricValueFromRow = (
     return row.amount_spent ?? row.earnings ?? 0;
 };
 
+const normalizeExternalUrl = (url: string) => {
+    if (/^https?:\/\//i.test(url)) return url;
+    return `https://${url}`;
+};
+
 export default function Overview() {
+    const navigate = useNavigate();
     const [currentMetric, setCurrentMetric] = useState<MetricLabel>('Views');
-    const [activeChartData, setActiveChartData] = useState<{ value: number; name: string } | null>(null);
 
     // Check if user has a business
     const business = useQuery(api.businesses.getMyBusiness);
@@ -98,14 +83,20 @@ export default function Overview() {
         api.analytics.getBusinessTotalStats,
         business ? { businessId: business._id } : "skip"
     );
+    const topOverviewLists = useQuery(
+        api.analytics.getBusinessTopOverviewLists,
+        business ? { businessId: business._id, limit: 5 } : "skip"
+    );
     const subscription = useQuery(api.stripe.getSubscriptionDetails);
 
     // Loading state for charts
     const isLoading = business === undefined
         || subscription === undefined
         || (business ? businessDailyStats === undefined || businessTotalStats === undefined : false);
+    const isTopListsLoading = business === undefined || (business ? topOverviewLists === undefined : false);
+    const topCampaigns = topOverviewLists?.campaigns ?? [];
+    const topApplications = topOverviewLists?.applications ?? [];
 
-    const latestDailyStat = businessDailyStats?.[businessDailyStats.length - 1];
     const totalViews = businessTotalStats?.views ?? business?.total_views ?? 0;
     const totalAmountSpend = businessTotalStats?.amount_spent ?? 0;
 
@@ -124,17 +115,12 @@ export default function Overview() {
         }));
     }, [businessDailyStats, currentMetric]);
 
-    const latestChartPoint = chartData[chartData.length - 1];
+    const asOfDateLabel = useMemo(() => {
+        const latestDateKey = businessDailyStats?.[businessDailyStats.length - 1]?.date ?? getYesterdayDateKeyUtc();
+        return formatAsOfDateLabel(latestDateKey);
+    }, [businessDailyStats]);
 
-    const getCurrentValue = () => {
-        if (activeChartData) return formatMetricValue(currentMetric, activeChartData.value);
-        return formatMetricValue(currentMetric, latestChartPoint?.value ?? 0);
-    };
 
-    const getCurrentDateLabel = () => {
-        if (activeChartData) return activeChartData.name;
-        return latestChartPoint?.name ?? 'Last 30 Days';
-    };
 
     const renderTooltip = (props: unknown) => {
         if (!props || typeof props !== 'object') return null;
@@ -143,9 +129,17 @@ export default function Overview() {
         const label = (props as { label?: string }).label;
         if (active && payload && payload.length) {
             const value = Number(payload[0].value ?? 0);
+
+            let displayValue = '';
+            if (currentMetric === 'Amount Spend') {
+                displayValue = `RM${currencyFormatter.format(value)} spent`;
+            } else {
+                displayValue = `${value.toLocaleString()} ${currentMetric.toLowerCase()}`;
+            }
+
             return (
                 <div className="bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-xl flex flex-col items-center gap-1">
-                    <p className="font-bold text-lg leading-none">{formatMetricValue(currentMetric, value)}</p>
+                    <p className="font-bold text-lg leading-none">{displayValue}</p>
                     <p className="text-gray-400 text-xs font-medium">{label}</p>
                 </div>
             );
@@ -170,7 +164,6 @@ export default function Overview() {
                         key={label}
                         onClick={() => {
                             setCurrentMetric(label);
-                            setActiveChartData(null);
                         }}
                         className={`p-6 rounded-3xl border transition-all cursor-pointer ${currentMetric === label
                             ? 'bg-[#F9FAFB] border-black shadow-sm'
@@ -182,11 +175,7 @@ export default function Overview() {
                             <div className="text-3xl font-bold">{formatMetricValue(label, metricTotals[label])}</div>
                         </div>
                         <div className="text-xs font-medium text-gray-500">
-                            As of {new Date().toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                            })}
+                            As of {asOfDateLabel}
                         </div>
                     </div>
                 ))}
@@ -199,13 +188,15 @@ export default function Overview() {
                     <div className="flex flex-col mb-8 pointer-events-none">
                         <div className="flex items-center gap-2 mb-4">
                             <CurrentIcon size={20} className="text-gray-500" />
-                            <span className="text-gray-500 font-medium text-sm">{currentMetric}</span>
+                            <span className="text-gray-500 font-medium text-sm">
+                                {currentMetric === 'Amount Spend' ? 'Business total' : `Total ${currentMetric}`}
+                            </span>
                         </div>
                         <h3 className="text-5xl font-bold text-gray-900 mb-2">
-                            {getCurrentValue()}
+                            {formatMetricValue(currentMetric, metricTotals[currentMetric])}
                         </h3>
                         <span className="text-gray-500 text-sm">
-                            {getCurrentDateLabel()}
+                            As of {asOfDateLabel}
                         </span>
                     </div>
                     <div className="h-[300px] w-full">
@@ -223,21 +214,6 @@ export default function Overview() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart
                                     data={chartData}
-                                    onMouseMove={(event) => {
-                                        const point = getChartPoint(event);
-                                        if (point) {
-                                            setActiveChartData(point);
-                                        }
-                                    }}
-                                    onMouseLeave={() => {
-                                        setActiveChartData(null);
-                                    }}
-                                    onClick={(event) => {
-                                        const point = getChartPoint(event);
-                                        if (point) {
-                                            setActiveChartData(point);
-                                        }
-                                    }}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                                     <XAxis
@@ -246,6 +222,7 @@ export default function Overview() {
                                         tickLine={false}
                                         tick={{ fill: '#9CA3AF', fontSize: 12 }}
                                         dy={10}
+                                        interval={2}
                                     />
                                     <YAxis
                                         axisLine={false}
@@ -271,29 +248,78 @@ export default function Overview() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Best Performing Campaigns */}
                     <div className="bg-[#F9FAFB] p-8 rounded-3xl flex flex-col">
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="font-bold text-gray-900">Best Performing Campaigns</h3>
-                            <span className="bg-yellow-400 px-3 py-1 rounded-lg text-xs font-bold">Likes</span>
+                        <div className="mb-6">
+                            <h3 className="font-bold text-gray-900">Top Campaigns by Views</h3>
                         </div>
-                        <div className="flex flex-col">
-                            {campaignData.map((item, index) => (
-                                <PerformanceItem key={index} {...item} />
-                            ))}
+                        <div className="divide-y divide-gray-200">
+                            {isTopListsLoading ? (
+                                Array.from({ length: 5 }).map((_, index) => (
+                                    <div key={index} className="py-4">
+                                        <Skeleton className="h-5 w-full rounded-lg" />
+                                    </div>
+                                ))
+                            ) : topCampaigns.length > 0 ? (
+                                topCampaigns.map((campaign) => (
+                                    <button
+                                        key={campaign.campaignId}
+                                        type="button"
+                                        onClick={() => navigate(`/campaigns/${campaign.campaignId}?tab=analytics`)}
+                                        className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default hover:bg-gray-200/50 transition-colors"
+                                    >
+                                        <span className="text-sm font-semibold text-gray-900 truncate pr-3">
+                                            {campaign.campaignName}
+                                        </span>
+                                        <span className="flex items-center gap-4 shrink-0">
+                                            <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                                                <Eye size={14} className="text-gray-400" />
+                                                {campaign.views.toLocaleString()}
+                                            </span>
+                                            <ArrowUpRight size={16} className="text-gray-400" />
+                                        </span>
+                                    </button>
+                                ))
+                            ) : (
+                                <p className="py-4 text-sm text-gray-500">No campaign analytics yet.</p>
+                            )}
                         </div>
                     </div>
 
-                    {/* Best Performing Creators */}
                     <div className="bg-[#F9FAFB] p-8 rounded-3xl flex flex-col">
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="font-bold text-gray-900">Best Performing Creators</h3>
-                            <span className="bg-yellow-400 px-3 py-1 rounded-lg text-xs font-bold">Likes</span>
+                        <div className="mb-6">
+                            <h3 className="font-bold text-gray-900">Top Posts by Views</h3>
                         </div>
-                        <div className="flex flex-col">
-                            {creatorData.map((item, index) => (
-                                <PerformanceItem key={index} {...item} />
-                            ))}
+                        <div className="divide-y divide-gray-200">
+                            {isTopListsLoading ? (
+                                Array.from({ length: 5 }).map((_, index) => (
+                                    <div key={index} className="py-4">
+                                        <Skeleton className="h-5 w-full rounded-lg" />
+                                    </div>
+                                ))
+                            ) : topApplications.length > 0 ? (
+                                topApplications.map((application) => (
+                                    <a
+                                        key={application.applicationId}
+                                        href={application.postUrl ? normalizeExternalUrl(application.postUrl) : "#"}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default hover:bg-gray-200/50 transition-colors"
+                                    >
+                                        <span className="text-sm font-semibold text-gray-900 truncate pr-3">
+                                            {application.campaignName}
+                                        </span>
+                                        <span className="flex items-center gap-4 shrink-0">
+                                            <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                                                <Eye size={14} className="text-gray-400" />
+                                                {application.views.toLocaleString()}
+                                            </span>
+                                            <ArrowUpRight size={16} className="text-gray-400" />
+                                        </span>
+                                    </a>
+                                ))
+                            ) : (
+                                <p className="py-4 text-sm text-gray-500">No application links available yet.</p>
+                            )}
                         </div>
                     </div>
                 </div>
