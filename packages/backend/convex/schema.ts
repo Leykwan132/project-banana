@@ -276,6 +276,7 @@ export default defineSchema({
     }).index("by_business_date", ["business_id", "date"]),
 
     app_analytics_daily: defineTable({
+        business_id: v.optional(v.id("businesses")),
         user_id: v.string(), // Owner of the content
         application_id: v.id("applications"),
         campaign_id: v.id("campaigns"),
@@ -288,6 +289,7 @@ export default defineSchema({
         created_at: v.number(),
         updated_at: v.number(),
     })
+        .index("by_business_date", ["business_id", "date"])
         .index("by_user_date", ["user_id", "date"])
         .index("by_application_date", ["application_id", "date"]),
 

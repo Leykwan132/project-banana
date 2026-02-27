@@ -2,6 +2,36 @@ import { mutation, query, internalQuery, internalMutation } from "./_generated/s
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { CampaignStatus, ApplicationStatus, UserCampaignStatus } from "./constants";
+import { TableAggregate } from "@convex-dev/aggregate";
+import type { DataModel } from "./_generated/dataModel";
+import { components } from "./_generated/api";
+import { Triggers } from "convex-helpers/server/triggers";
+import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
+
+const aggregateApplicationByCampaign = new TableAggregate<{
+    Key: [string, number, string];
+    DataModel: DataModel;
+    TableName: "applications";
+}>((components as any).aggregateApplicationByCampaign, {
+    sortKey: (doc) => [
+        doc.campaign_id,
+        -(doc.views ?? 0),
+        doc._id,
+    ],
+});
+
+const triggers = new Triggers<DataModel>();
+triggers.register("applications", aggregateApplicationByCampaign.trigger());
+
+const mutationWithTriggers = customMutation(
+    mutation,
+    customCtx(triggers.wrapDB),
+);
+
+const internalMutationWithTriggers = customMutation(
+    internalMutation,
+    customCtx(triggers.wrapDB),
+);
 // ============================================================
 // QUERIES
 // ============================================================
@@ -199,7 +229,7 @@ export const getApplicationsForEarningCheck = internalQuery({
 // MUTATIONS
 // ============================================================
 
-export const createApplication = mutation({
+export const createApplication = mutationWithTriggers({
     args: {
         campaignId: v.id("campaigns"),
     },
@@ -230,7 +260,7 @@ export const createApplication = mutation({
     },
 });
 
-export const updateApplicationStatus = mutation({
+export const updateApplicationStatus = mutationWithTriggers({
     args: {
         applicationId: v.id("applications"),
         status: v.string(), // e.g. "ready_to_post", "earning"
@@ -288,7 +318,7 @@ function calculateEarning(
     return Math.min(totalEarning, maximumPayout);
 }
 
-export const updateApplicationEarning = internalMutation({
+export const updateApplicationEarning = internalMutationWithTriggers({
     args: {
         applicationId: v.id("applications"),
         campaignId: v.id("campaigns"),

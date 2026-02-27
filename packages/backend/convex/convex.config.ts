@@ -9,8 +9,12 @@ app.use(betterAuth);
 app.use(workOSAuthKit);
 app.use(stripe);
 app.use(aggregate, { name: "aggregateCampaignAnalytics" });
+app.use(aggregate, { name: "aggregateCampaignByBusiness" });
 app.use(aggregate, { name: "aggregateBusinessAnalytics" });
 app.use(aggregate, { name: "aggregateApplicationAnalytics" });
+app.use(aggregate, { name: "aggregateApplicationByBusiness" });
+app.use(aggregate, { name: "aggregateApplicationByCampaign" });
+app.use(aggregate, { name: "aggregateUserCampaignStatusByCampaign" });
 app.use(aggregate, { name: "aggregateCreatorAnalytics" });
 
 export default app;

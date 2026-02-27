@@ -1,7 +1,7 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { TableAggregate } from "@convex-dev/aggregate";
-import type { DataModel } from "./_generated/dataModel.js";
+import type { DataModel, Id } from "./_generated/dataModel.js";
 import { components } from "./_generated/api.js";
 
 import { Triggers } from "convex-helpers/server/triggers";
@@ -21,6 +21,19 @@ const aggregateCampaignAnalytics = new TableAggregate<{
     // we could alternatively use a namespace for this
     sortKey: (doc) => [
         doc.business_id,
+        doc.campaign_id,
+        doc.date,
+    ],
+});
+
+const aggregateCampaignByBusiness = new TableAggregate<{
+    Key: [string, number, string, string];
+    DataModel: DataModel;
+    TableName: "campaign_analytics_daily";
+}>((components as any).aggregateCampaignByBusiness, {
+    sortKey: (doc) => [
+        doc.business_id,
+        -doc.views,
         doc.campaign_id,
         doc.date,
     ],
@@ -52,6 +65,43 @@ const aggregateApplicationAnalytics = new TableAggregate<{
     ],
 });
 
+const aggregateApplicationByBusiness = new TableAggregate<{
+    Key: [string, number, string, string];
+    DataModel: DataModel;
+    TableName: "app_analytics_daily";
+}>((components as any).aggregateApplicationByBusiness, {
+    sortKey: (doc) => [
+        doc.business_id ?? "",
+        -doc.views,
+        doc.application_id,
+        doc.date,
+    ],
+});
+
+const aggregateApplicationByCampaign = new TableAggregate<{
+    Key: [string, number, string];
+    DataModel: DataModel;
+    TableName: "applications";
+}>((components as any).aggregateApplicationByCampaign, {
+    sortKey: (doc) => [
+        doc.campaign_id,
+        -(doc.views ?? 0),
+        doc._id,
+    ],
+});
+
+const aggregateUserCampaignStatusByCampaign = new TableAggregate<{
+    Key: [string, number, string];
+    DataModel: DataModel;
+    TableName: "user_campaign_status";
+}>((components as any).aggregateUserCampaignStatusByCampaign, {
+    sortKey: (doc) => [
+        doc.campaign_id,
+        -(doc.views ?? 0),
+        doc.user_id,
+    ],
+});
+
 const aggregateCreatorAnalytics = new TableAggregate<{
     Key: [string, string];
     DataModel: DataModel;
@@ -65,8 +115,12 @@ const aggregateCreatorAnalytics = new TableAggregate<{
 
 const triggers = new Triggers<DataModel>();
 triggers.register("campaign_analytics_daily", aggregateCampaignAnalytics.trigger());
+triggers.register("campaign_analytics_daily", aggregateCampaignByBusiness.trigger());
 triggers.register("business_analytics_daily", aggregateBusinessAnalytics.trigger());
 triggers.register("app_analytics_daily", aggregateApplicationAnalytics.trigger());
+triggers.register("app_analytics_daily", aggregateApplicationByBusiness.trigger());
+triggers.register("applications", aggregateApplicationByCampaign.trigger());
+triggers.register("user_campaign_status", aggregateUserCampaignStatusByCampaign.trigger());
 triggers.register("creator_analytics_daily", aggregateCreatorAnalytics.trigger());
 
 const mutationWithTriggers = customMutation(
@@ -96,9 +150,15 @@ const calculateEarningFromViews = (
 
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0] as string;
 
-const getLast30DayWindow = () => {
+const getAnalyticsAvailableEndDate = () => {
     const end = new Date();
     end.setUTCHours(0, 0, 0, 0);
+    end.setUTCDate(end.getUTCDate() - 1);
+    return end;
+};
+
+const getLast30DayWindow = () => {
+    const end = getAnalyticsAvailableEndDate();
     const start = new Date(end);
     start.setUTCDate(start.getUTCDate() - 29);
     return {
@@ -116,12 +176,13 @@ export const getAppTotalStats = query({
         endDate: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const defaultEndDate = formatDateKey(getAnalyticsAvailableEndDate());
         const dailyStats = await ctx.db
             .query("app_analytics_daily")
             .withIndex("by_application_date", (q) =>
                 q.eq("application_id", args.applicationId)
                     .gte("date", args.startDate ?? "0000-00-00")
-                    .lte("date", args.endDate ?? "9999-12-31")
+                    .lte("date", args.endDate ?? defaultEndDate)
             )
             .collect();
 
@@ -387,12 +448,13 @@ export const getCampaignTotalStats = query({
         endDate: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const defaultEndDate = formatDateKey(getAnalyticsAvailableEndDate());
         const dailyStats = await ctx.db
             .query("campaign_analytics_daily")
             .withIndex("by_campaign_date", (q) =>
                 q.eq("campaign_id", args.campaignId)
                     .gte("date", args.startDate ?? "0000-00-00")
-                    .lte("date", args.endDate ?? "9999-12-31")
+                    .lte("date", args.endDate ?? defaultEndDate)
             )
             .collect();
 
@@ -420,12 +482,13 @@ export const getBusinessTotalStats = query({
             return { views: 0, likes: 0, comments: 0, shares: 0, earnings: 0 };
         }
 
+        const defaultEndDate = formatDateKey(getAnalyticsAvailableEndDate());
         const dailyStats = await ctx.db
             .query("business_analytics_daily")
             .withIndex("by_business_date", (q) =>
                 q.eq("business_id", args.businessId)
                     .gte("date", args.startDate ?? "0000-00-00")
-                    .lte("date", args.endDate ?? "9999-12-31")
+                    .lte("date", args.endDate ?? defaultEndDate)
             )
             .collect();
 
@@ -439,6 +502,231 @@ export const getBusinessTotalStats = query({
     }
 });
 
+export const getBusinessTopOverviewLists = query({
+    args: {
+        businessId: v.id("businesses"),
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return { campaigns: [], applications: [] };
+
+        const business = await ctx.db.get(args.businessId);
+        if (!business || business.user_id !== user.subject) {
+            return { campaigns: [], applications: [] };
+        }
+
+        const limit = Math.min(10, Math.max(1, Math.floor(args.limit ?? 5)));
+        const topCampaignPage = await aggregateCampaignByBusiness.paginate(ctx, {
+            bounds: {
+                prefix: [args.businessId] as [Id<"businesses">],
+            },
+            pageSize: limit,
+        });
+
+        const topCampaignRows = (await Promise.all(
+            topCampaignPage.page.map((entry) => ctx.db.get(entry.id)),
+        )).filter((row): row is NonNullable<typeof row> => row !== null);
+
+        const campaigns = (
+            await Promise.all(
+                topCampaignRows.map(async (row) => {
+                    const campaign = await ctx.db.get(row.campaign_id);
+                    if (!campaign) return null;
+                    return {
+                        campaignId: campaign._id,
+                        campaignName: campaign.name,
+                        views: row.views,
+                    };
+                }),
+            )
+        ).filter((campaign): campaign is NonNullable<typeof campaign> => campaign !== null);
+
+        const topApplicationPage = await aggregateApplicationByBusiness.paginate(ctx, {
+            bounds: {
+                prefix: [args.businessId] as [Id<"businesses">],
+            },
+            pageSize: limit,
+        });
+
+        const topApplicationRows = (await Promise.all(
+            topApplicationPage.page.map((entry) => ctx.db.get(entry.id)),
+        )).filter((row): row is NonNullable<typeof row> => row !== null);
+
+        const topApplicationsRaw = (
+            await Promise.all(
+                topApplicationRows.map(async (row) => {
+                    const application = await ctx.db.get(row.application_id);
+                    if (!application) return null;
+
+                    const campaign = await ctx.db.get(row.campaign_id);
+                    if (!campaign) return null;
+
+                    const postUrl = application.tiktok_post_url ?? application.ig_post_url;
+                    if (!postUrl) return null;
+
+                    return {
+                        applicationId: application._id,
+                        campaignId: campaign._id,
+                        campaignName: campaign.name,
+                        postUrl,
+                        views: row.views,
+                    };
+                }),
+            )
+        ).filter((application): application is NonNullable<typeof application> => application !== null);
+
+        return {
+            campaigns,
+            applications: topApplicationsRaw,
+        };
+    },
+});
+
+export const getCampaignTopPostsByViews = query({
+    args: {
+        campaignId: v.id("campaigns"),
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return { posts: [], creators: [] };
+
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) return { posts: [], creators: [] };
+
+        const business = await ctx.db.get(campaign.business_id);
+        if (!business || business.user_id !== user.subject) {
+            return { posts: [], creators: [] };
+        }
+
+        const limit = 5;
+
+        const posts: Array<{
+            applicationId: Id<"applications">;
+            views: number;
+            postUrl: string;
+            platform: "TikTok" | "Instagram";
+        }> = [];
+
+        let cursor: string | undefined = undefined;
+        let isDone = false;
+
+        while (!isDone && posts.length < limit) {
+            const topApplicationPage = await aggregateApplicationByCampaign.paginate(ctx, {
+                bounds: {
+                    prefix: [args.campaignId] as [Id<"campaigns">],
+                },
+                cursor,
+                pageSize: Math.max(limit * 3, 15),
+            });
+
+            const applicationRows = (await Promise.all(
+                topApplicationPage.page.map((entry) => ctx.db.get(entry.id)),
+            )).filter((row): row is NonNullable<typeof row> => row !== null);
+
+            for (const application of applicationRows) {
+                const postUrl = application.tiktok_post_url ?? application.ig_post_url;
+                if (!postUrl) continue;
+
+                posts.push({
+                    applicationId: application._id,
+                    views: application.views ?? 0,
+                    postUrl,
+                    platform: application.tiktok_post_url ? "TikTok" : "Instagram",
+                });
+
+                if (posts.length >= limit) break;
+            }
+
+            cursor = topApplicationPage.cursor;
+            isDone = topApplicationPage.isDone;
+        }
+
+        // Fallback for environments where the aggregate is not backfilled yet.
+        if (posts.length === 0) {
+            const applications = await ctx.db
+                .query("applications")
+                .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
+                .collect();
+
+            const topPosts = applications
+                .flatMap((application) => {
+                    const postUrl = application.tiktok_post_url ?? application.ig_post_url;
+                    if (!postUrl) return [];
+
+                    return [{
+                        applicationId: application._id,
+                        views: application.views ?? 0,
+                        postUrl,
+                        platform: application.tiktok_post_url ? "TikTok" as const : "Instagram" as const,
+                    }];
+                })
+                .sort((a, b) => b.views - a.views)
+                .slice(0, limit);
+
+            return { posts: topPosts, creators: [] };
+        }
+
+        return { posts, creators: [] };
+    },
+});
+
+export const getCampaignTopCreatorsByViews = query({
+    args: {
+        campaignId: v.id("campaigns"),
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) return [];
+
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) return [];
+
+        const business = await ctx.db.get(campaign.business_id);
+        if (!business || business.user_id !== user.subject) return [];
+
+        const limit = Math.min(10, Math.max(1, Math.floor(args.limit ?? 5)));
+
+        const topCreatorPage = await aggregateUserCampaignStatusByCampaign.paginate(ctx, {
+            bounds: {
+                prefix: [args.campaignId] as [Id<"campaigns">],
+            },
+            pageSize: limit,
+        });
+
+        const topCreatorRows = (await Promise.all(
+            topCreatorPage.page.map((entry) => ctx.db.get(entry.id)),
+        )).filter((row): row is NonNullable<typeof row> => row !== null);
+
+        let creators = topCreatorRows.map((status) => ({
+            userId: status.user_id,
+            creatorName: `Creator ${status.user_id.slice(-6)}`,
+            views: status.views ?? 0,
+        }));
+
+        // Fallback for environments where the new aggregate is not backfilled yet.
+        if (creators.length === 0) {
+            const campaignStatuses = await ctx.db
+                .query("user_campaign_status")
+                .withIndex("by_campaign_earnings", (q) => q.eq("campaign_id", args.campaignId))
+                .collect();
+
+            creators = campaignStatuses
+                .map((status) => ({
+                    userId: status.user_id,
+                    creatorName: `Creator ${status.user_id.slice(-6)}`,
+                    views: status.views ?? 0,
+                }))
+                .sort((a, b) => b.views - a.views)
+                .slice(0, limit);
+        }
+
+        return creators;
+    },
+});
+
 export const getBusinessDailyStatsLast30Days = query({
     args: {
         businessId: v.id("businesses"),
@@ -450,14 +738,7 @@ export const getBusinessDailyStatsLast30Days = query({
         const business = await ctx.db.get(args.businessId);
         if (!business || business.user_id !== user.subject) return [];
 
-        const end = new Date();
-        end.setUTCHours(0, 0, 0, 0);
-        const start = new Date(end);
-        start.setUTCDate(start.getUTCDate() - 29);
-
-        const formatDateKey = (date: Date) => date.toISOString().split("T")[0] as string;
-        const startDate = formatDateKey(start);
-        const endDate = formatDateKey(end);
+        const { start, startDate, endDate } = getLast30DayWindow();
 
         const businessPrefixBounds = {
             prefix: [args.businessId] as [string],
@@ -650,6 +931,8 @@ export const saveDailyAppStats = mutationWithTriggers({
 
         const application = await ctx.db.get(args.applicationId);
         if (!application) throw new Error("Application not found");
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) throw new Error("Campaign not found");
 
         // Check if record exists for today
         const existing = await ctx.db
@@ -667,11 +950,13 @@ export const saveDailyAppStats = mutationWithTriggers({
                 comments: existing.comments + args.comments,
                 shares: existing.shares + args.shares,
                 earnings: (existing.earnings ?? 0) + args.earnings,
+                business_id: campaign.business_id,
                 updated_at: now,
             });
         } else {
             // Insert new record
             await ctx.db.insert("app_analytics_daily", {
+                business_id: campaign.business_id,
                 user_id: application.user_id,
                 application_id: args.applicationId,
                 campaign_id: args.campaignId,
