@@ -91,11 +91,13 @@ export default defineSchema({
         amount: v.number(),
         status: v.string(), // "pending" | "completed" | "failed"
         type: v.string(), // "top_up" | "campaign_spend" | "refund"
+        campaign_id: v.optional(v.id("campaigns")),
         reference: v.optional(v.string()),
         created_at: v.number(),
     })
         .index("by_business", ["business_id"])
-        .index("by_status", ["status"]),
+        .index("by_status", ["status"])
+        .index("by_business_type", ["business_id", "type"]),
 
     topup_orders: defineTable({
         business_id: v.id("businesses"),

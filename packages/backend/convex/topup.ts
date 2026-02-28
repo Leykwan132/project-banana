@@ -106,6 +106,92 @@ export const getTopUpCount = query({
     },
 });
 
+// Used for the Credits page "Past Spending" tab
+export const getPastCreditSpending = query({
+    args: {
+        paginationOpts: paginationOptsValidator,
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+
+        if (!user) {
+            return {
+                page: [],
+                isDone: true,
+                continueCursor: "",
+            };
+        }
+
+        const business = await ctx.db
+            .query("businesses")
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
+            .unique();
+
+        if (!business) {
+            return {
+                page: [],
+                isDone: true,
+                continueCursor: "",
+            };
+        }
+
+        const result = await ctx.db
+            .query("credits")
+            .withIndex("by_business_type", (q) =>
+                q.eq("business_id", business._id).eq("type", "campaign_spend")
+            )
+            .order("desc")
+            .paginate(args.paginationOpts);
+
+        // Enrich each credit record with the campaign name
+        const enrichedPage = await Promise.all(
+            result.page.map(async (credit) => {
+                let campaign_name = "Unknown Campaign";
+                if (credit.campaign_id) {
+                    const campaign = await ctx.db.get(credit.campaign_id);
+                    if (campaign) {
+                        campaign_name = campaign.name;
+                    }
+                }
+                return {
+                    ...credit,
+                    campaign_name,
+                };
+            })
+        );
+
+        return {
+            ...result,
+            page: enrichedPage,
+        };
+    },
+});
+
+export const getSpendingCount = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity();
+
+        if (!user) return 0;
+
+        const business = await ctx.db
+            .query("businesses")
+            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
+            .unique();
+
+        if (!business) return 0;
+
+        const records = await ctx.db
+            .query("credits")
+            .withIndex("by_business_type", (q) =>
+                q.eq("business_id", business._id).eq("type", "campaign_spend")
+            )
+            .collect();
+
+        return records.length;
+    },
+});
+
 export const getOrder = query({
     args: { orderId: v.string() },
     handler: async (ctx, args) => {

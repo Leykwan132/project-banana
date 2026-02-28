@@ -142,27 +142,9 @@ export const createCampaign = mutation({
                     required: args.total_budget
                 });
             }
-
-            // Deduct credits immediately? Or reserve them?
-            // For now, let's deduct them to "hold" the budget.
-            // In a real system, you might have 'reserved_balance' vs 'available_balance'.
-
-            // Transaction for budget dedication
-            await ctx.db.patch(business._id, {
-                credit_balance: business.credit_balance - args.total_budget,
-                updated_at: now,
-            });
-
-            await ctx.db.insert("credits", {
-                business_id: business._id,
-                amount: -args.total_budget,
-                status: "completed",
-                type: "campaign_spend", // reserving budget
-                created_at: now,
-                reference: `campaign_launch:${args.name}`,
-            });
         }
 
+        // Insert campaign first so we have the ID for the credit record
         const campaignId = await ctx.db.insert("campaigns", {
             business_id: args.businessId,
             name: args.name,
@@ -184,6 +166,24 @@ export const createCampaign = mutation({
             business_name: args.business_name,
             category: args.category,
         });
+
+        // Deduct credits if active
+        if (args.status === "active") {
+            await ctx.db.patch(business._id, {
+                credit_balance: business.credit_balance - args.total_budget,
+                updated_at: now,
+            });
+
+            await ctx.db.insert("credits", {
+                business_id: business._id,
+                amount: -args.total_budget,
+                status: "completed",
+                type: "campaign_spend",
+                campaign_id: campaignId,
+                created_at: now,
+                reference: `campaign_launch:${args.name}`,
+            });
+        }
 
         return campaignId;
     },
@@ -230,6 +230,7 @@ export const updateCampaignStatus = mutation({
                 amount: -campaign.total_budget,
                 status: "completed",
                 type: "campaign_spend",
+                campaign_id: args.campaignId,
                 created_at: now,
                 reference: `campaign_launch:${campaign.name}`,
             });
@@ -318,6 +319,7 @@ export const updateCampaign = mutation({
                 amount: -additionalBudget,
                 status: "completed",
                 type: "campaign_spend",
+                campaign_id: args.campaignId,
                 created_at: now,
                 reference: `campaign_update:${args.name}`,
             });

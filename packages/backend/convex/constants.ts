@@ -19,3 +19,15 @@ export enum UserCampaignStatus {
     MaxedOut = "maxed_out",
     PendingReview = "pending_review",
 }
+
+export enum CreditStatus {
+    Pending = "pending",
+    Completed = "completed",
+    Failed = "failed",
+}
+
+export enum CreditType {
+    TopUp = "top_up",
+    CampaignSpend = "campaign_spend",
+    Refund = "refund",
+}
