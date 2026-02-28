@@ -55,7 +55,15 @@ export function PastPayoutListItem({
                             )}
                             <ThemedText type="defaultSemiBold" style={styles.name}>{campaignName}</ThemedText>
                         </View>
-                        <ThemedText type="defaultSemiBold" style={styles.amount}>{amount}</ThemedText>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={[
+                                styles.amount,
+                                amount.startsWith('-') && { color: '#D32F2F' }
+                            ]}
+                        >
+                            {amount}
+                        </ThemedText>
                     </View>
                 </View>
 
@@ -69,7 +77,7 @@ export function PastPayoutListItem({
                     <View style={styles.dateContainer}>
                         <Calendar size={16} color={Colors[colorScheme ?? 'light'].icon} style={styles.icon} />
                         <ThemedText style={styles.date}>
-                            {['Pending', 'Processing'].includes(status || '') ? 'Requested on ' : 'Paid on '}{date}
+                            {['Pending', 'Processing'].includes(status || '') ? 'Requested on ' : status ? 'Withdraw on ' : 'Paid on '}{date}
                         </ThemedText>
                     </View>
                 </View>
