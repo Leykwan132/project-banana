@@ -25,6 +25,10 @@ import Credits from './pages/Credits'
 import TopUp from './pages/TopUp'
 import Subscription from './pages/Subscription'
 import { DashboardLayout } from './components/DashboardLayout'
+import { AdminLayout } from './components/AdminLayout'
+import AdminBankApprovals from './pages/admin/AdminBankApprovals'
+import AdminSubmissions from './pages/admin/AdminSubmissions'
+import AdminPayouts from './pages/admin/AdminPayouts'
 import { HeroUIProvider } from "@heroui/react";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string, {
@@ -64,6 +68,12 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/credits" element={<Credits />} />
                 <Route path="/credits/topup" element={<TopUp />} />
                 <Route path="/subscription" element={<Subscription />} />
+              </Route>
+              <Route element={<AdminLayout />}>
+                <Route path="/admin" element={null} />
+                <Route path="/admin/bank-approvals" element={<AdminBankApprovals />} />
+                <Route path="/admin/submissions" element={<AdminSubmissions />} />
+                <Route path="/admin/payouts" element={<AdminPayouts />} />
               </Route>
             </Routes>
           </BrowserRouter>

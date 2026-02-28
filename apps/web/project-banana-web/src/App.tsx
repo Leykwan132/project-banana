@@ -1,6 +1,7 @@
-import { ChevronDown, Github, Instagram, Linkedin, Twitter } from 'lucide-react';
+import { ChevronDown, Github, Instagram, Linkedin, Twitter, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { authClient } from './lib/auth-client';
 import PlanSelector from './components/PlanSelector';
 import BusinessLanding from './landing/business/BusinessLanding';
 import CreatorLanding from './landing/creator/CreatorLanding';
@@ -30,9 +31,8 @@ const pricingFaqs: PricingFaq[] = [
 ];
 
 function Footer() {
-    const location = useLocation();
-    const isBusiness = location.pathname.startsWith('/business');
-    const isPricing = location.pathname.startsWith('/pricing');
+    const { data: session } = authClient.useSession();
+    const isAuthenticated = !!session?.user;
 
     return (
         <footer className="border-t border-gray-100 bg-white py-12 text-sm text-gray-500">
@@ -72,7 +72,13 @@ function Footer() {
                                 For Creators
                             </Link>
                         </li>
-                        {(isBusiness || isPricing) && (
+                        {isAuthenticated ? (
+                            <li>
+                                <Link to="/overview" className="transition-colors hover:text-gray-900">
+                                    Go to dashboard
+                                </Link>
+                            </li>
+                        ) : (
                             <li>
                                 <Link to="/login" className="transition-colors hover:text-gray-900">
                                     Log In
@@ -171,6 +177,8 @@ export default function App() {
     const location = useLocation();
     const isBusiness = location.pathname.startsWith('/business');
     const isPricing = location.pathname.startsWith('/pricing');
+    const { data: session } = authClient.useSession();
+    const isAuthenticated = !!session?.user;
 
     return (
         <div className="flex min-h-screen flex-col bg-white font-sans text-gray-900">
@@ -203,7 +211,12 @@ export default function App() {
 
                         <div className="hidden h-4 w-px bg-gray-200 md:block" />
 
-                        {(isBusiness || isPricing) && (
+                        {isAuthenticated ? (
+                            <Link to="/overview" className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+                                Go to dashboard
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                        ) : (
                             <Link to="/login" className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
                                 Log in
                             </Link>
