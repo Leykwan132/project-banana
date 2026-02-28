@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap } from 'lucide-react';
-import { useAuth } from '@workos-inc/authkit-react';
+import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap, Loader2 } from 'lucide-react';
+import { authClient } from '../lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
@@ -17,14 +18,22 @@ const account = [
 ];
 
 export function Sidebar() {
-    const { signOut } = useAuth();
     const navigate = useNavigate();
     const business = useQuery(api.businesses.getMyBusiness);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
     const handleLogout = async () => {
+        setIsLoggingOut(true);
         try {
-            await signOut();
+            await authClient.signOut({
+                fetchOptions: {
+                    onSuccess: () => {
+                        navigate("/", { replace: true });
+                    },
+                },
+            });
         } finally {
-            navigate('/', { replace: true });
+            setIsLoggingOut(false);
         }
     };
 
@@ -93,10 +102,15 @@ export function Sidebar() {
             <div className="border-t border-[#F4F6F8] p-4">
                 <button
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                    disabled={isLoggingOut}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <LogOut className="h-4 w-4" />
-                    <span>Log out</span>
+                    {isLoggingOut ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <LogOut className="h-4 w-4" />
+                    )}
+                    <span>{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
                 </button>
             </div>
         </div>
