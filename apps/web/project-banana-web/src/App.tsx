@@ -178,6 +178,7 @@ export default function App() {
     const isBusiness = location.pathname.startsWith('/business');
     const isPricing = location.pathname.startsWith('/pricing');
     const { data: session } = authClient.useSession();
+    console.log(session);
     const isAuthenticated = !!session?.user;
 
     return (
