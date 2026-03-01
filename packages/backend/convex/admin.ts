@@ -259,7 +259,6 @@ export const approveWithdrawal = mutation({
 
         await ctx.db.patch(args.withdrawalId, {
             status: "completed",
-            processed_at: Date.now(),
         });
     },
 });
@@ -280,7 +279,6 @@ export const rejectWithdrawal = mutation({
 
         await ctx.db.patch(args.withdrawalId, {
             status: "failed",
-            processed_at: Date.now(),
         });
 
         // Refund the amount to the creator's balance
