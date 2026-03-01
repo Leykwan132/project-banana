@@ -205,21 +205,21 @@ export default defineSchema({
 
     withdrawals: defineTable({
         user_id: v.string(),
+        bank_account_id: v.id("bank_accounts"), // optional for backwards compat with legacy records
         amount: v.number(),
         status: v.string(), // "pending" | "processing" | "completed" | "failed"
-        bank_account: v.string(),
-        bank_name: v.string(),
-        requested_at: v.number(),
-        processed_at: v.optional(v.number()),
+        billplz_payment_order_id: v.optional(v.string()),
         created_at: v.number(),
     })
         .index("by_user", ["user_id"])
-        .index("by_status", ["status"]),
+        .index("by_status", ["status"])
+        .index("by_billplz_payment_order", ["billplz_payment_order_id"]),
 
     bank_accounts: defineTable({
         user_id: v.string(),
         bank_name: v.string(),
-        account_holder_name: v.optional(v.string()),
+        bank_code: v.optional(v.string()), // SWIFT bank code (e.g. "MBBEMYKL")
+        account_holder_name: v.string(),
         account_number: v.string(),
         status: v.string(), // "pending_review" | "verified" | "rejected"
         proof_document_s3_key: v.optional(v.string()),

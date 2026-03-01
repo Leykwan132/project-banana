@@ -62,7 +62,6 @@ export const getMySubscription = query({
 
         if (!business) return null;
 
-        console.log('plan config', PLAN_CONFIG[business.subscription_plan_type as PlanType])
         return {
             subscriptionId: business.stripe_subscription_id,
             status: business.subscription_status,

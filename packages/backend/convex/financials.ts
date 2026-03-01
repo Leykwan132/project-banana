@@ -77,20 +77,14 @@ export const getBalance = query({
 export const createWithdrawal = mutation({
     args: {
         amount: v.number(),
+        bankAccountId: v.id("bank_accounts"),
     },
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
 
         if (!user) throw new Error("User not found");
 
-        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
-        const bankAccount = creator?.bank_account;
-        const bankName = creator?.bank_name;
-        if (!bankAccount || !bankName) {
-            throw new Error("Please add bank details to your profile first");
-        }
         // Check balance
-        // This duplicates logic in getBalance, ideally extracted helper
         const withdrawals = await ctx.db
             .query("withdrawals")
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
@@ -103,6 +97,7 @@ export const createWithdrawal = mutation({
             return sum;
         }, 0);
 
+        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
         const currentBalance = (creator?.total_earnings ?? 0) - totalWithdrawn;
 
         if (args.amount > currentBalance) {
@@ -112,11 +107,9 @@ export const createWithdrawal = mutation({
         const now = Date.now();
         await ctx.db.insert("withdrawals", {
             user_id: user.subject,
+            bank_account_id: args.bankAccountId,
             amount: args.amount,
             status: "processing",
-            bank_account: bankAccount,
-            bank_name: bankName,
-            requested_at: now,
             created_at: now,
         });
     },

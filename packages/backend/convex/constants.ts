@@ -31,3 +31,14 @@ export enum CreditType {
     CampaignSpend = "campaign_spend",
     Refund = "refund",
 }
+
+export enum WithdrawalStatus {
+    Pending = "pending",
+    Processing = "processing",
+    Completed = "completed",
+    Failed = "failed",
+    Refunded = "refunded",
+}
+
+/** Payment gateway fee charged per withdrawal (RM 1.10) */
+export const PAYOUT_GATEWAY_FEE = 1.10;
