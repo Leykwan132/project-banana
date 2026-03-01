@@ -1,10 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { authComponent } from "./auth";
-import { api, components, internal } from "./_generated/api";
-import { getCreatorByUserId } from "./creators";
+import { api } from "./_generated/api";
 import { ErrorType } from "./errors";
+import { PAYOUT_GATEWAY_FEE } from "./constants";
 
 // ============================================================
 // QUERIES
@@ -109,6 +108,7 @@ export const createWithdrawal = mutation({
             user_id: user.subject,
             bank_account_id: args.bankAccountId,
             amount: args.amount,
+            gateway_fee: PAYOUT_GATEWAY_FEE,
             status: "processing",
             created_at: now,
         });

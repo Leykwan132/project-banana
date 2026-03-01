@@ -41,6 +41,15 @@ export const getPayout = query({
 // ============================================================
 
 /**
+ * Fetch the current payout gateway fee from constants
+ */
+export const getPayoutGatewayFee = query({
+    handler: async () => {
+        return PAYOUT_GATEWAY_FEE;
+    },
+});
+
+/**
  * Get all withdrawals for the current authenticated user
  */
 export const getUserWithdrawals = query({
@@ -61,6 +70,7 @@ export const getUserWithdrawals = query({
                 const bankAccount = await ctx.db.get(w.bank_account_id);
                 return {
                     ...w,
+                    gateway_fee: w.gateway_fee ?? PAYOUT_GATEWAY_FEE,
                     bank_name: bankAccount?.bank_name ?? null,
                     account_number: bankAccount?.account_number ?? null,
                     account_holder_name: bankAccount?.account_holder_name ?? null,
@@ -334,6 +344,7 @@ export const internalProcessWithdrawal = internalMutation({
     args: {
         userId: v.string(),
         amount: v.number(),
+        gatewayFee: v.number(),
         bankAccountId: v.id("bank_accounts"),
         billplzPaymentOrderId: v.optional(v.string()),
     },
@@ -352,12 +363,12 @@ export const internalProcessWithdrawal = internalMutation({
         }
 
         const now = Date.now();
-        // Store the user-requested amount. The gateway fee (PAYOUT_GATEWAY_FEE) is
-        // derived from the constant at display time — no need to persist it separately.
+        // Store the user-requested amount and the gateway fee at the time of withdrawal.
         const withdrawalId = await ctx.db.insert("withdrawals", {
             user_id: args.userId,
             bank_account_id: args.bankAccountId,
             amount: args.amount,
+            gateway_fee: args.gatewayFee,
             status: WithdrawalStatus.Processing,
             billplz_payment_order_id: args.billplzPaymentOrderId,
             created_at: now,
@@ -421,6 +432,7 @@ export const requestWithdrawal = action({
         return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
             userId: user.subject,
             amount: args.amount,
+            gatewayFee: PAYOUT_GATEWAY_FEE,
             bankAccountId: args.bankAccountId,
             billplzPaymentOrderId: paymentOrder.id,
         });

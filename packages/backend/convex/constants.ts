@@ -40,5 +40,5 @@ export enum WithdrawalStatus {
     Refunded = "refunded",
 }
 
-/** Payment gateway fee charged per withdrawal (RM 1.10) */
-export const PAYOUT_GATEWAY_FEE = 1.10;
+/** Payment gateway fee charged per withdrawal */
+export const PAYOUT_GATEWAY_FEE = parseFloat(process.env.BILLPLZ_PAYOUT_GATEWAY_FEE || "1.10");
