@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap, Loader2, Landmark } from 'lucide-react';
+import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap, Loader2, Landmark, Building2 } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -14,6 +14,7 @@ const navigation = [
 const account = [
     { name: 'Credits', href: '/credits', icon: CreditCard },
     { name: 'Withdrawals', href: '/withdrawals', icon: Landmark },
+    { name: 'Bank Accounts', href: '/bank-accounts', icon: Building2 },
     { name: 'Subscription', href: '/subscription', icon: Zap },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];

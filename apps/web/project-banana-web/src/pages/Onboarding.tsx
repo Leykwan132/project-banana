@@ -87,11 +87,11 @@ export default function Onboarding() {
         setIsCreating(true);
 
         try {
-            let s3Key = undefined;
+            let r2Key = undefined;
 
             if (file) {
                 // 1. Get Upload URL
-                const { uploadUrl, s3Key: key } = await generateUploadUrl({ contentType: file.type });
+                const { uploadUrl, r2Key: key } = await generateUploadUrl({ contentType: file.type });
 
                 // 2. Upload File
                 const result = await fetch(uploadUrl, {
@@ -103,7 +103,7 @@ export default function Onboarding() {
                 if (!result.ok) {
                     throw new Error("Failed to upload image");
                 }
-                s3Key = key;
+                r2Key = key;
             }
 
             // 3. Create Business
@@ -111,7 +111,7 @@ export default function Onboarding() {
                 name,
                 industry: industry === 'Other' ? customIndustry || 'Other' : industry,
                 size,
-                logo_s3_key: s3Key,
+                logo_r2_key: r2Key,
             });
 
             // Show checking animation/loading state

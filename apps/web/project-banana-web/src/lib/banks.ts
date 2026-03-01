@@ -19,7 +19,7 @@ export const BANK_OPTIONS: BankOption[] = [
     { name: 'Hong Leong Bank', swiftCode: 'HLBBMYKL', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/HongLeongBank/HongLeongBank_V1_SQU.svg' },
     { name: 'HSBC Bank', swiftCode: 'HBMBMYKL', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/HSBC/HSBC_V1_SQU.svg' },
     { name: 'Kuwait Finance House', swiftCode: 'KFHOMYKL', logo: 'https://www.kfh.com.my/dam/jcr:55529bc9-2ad5-4959-8595-d833303b8b88/kfhm-logo.png' },
-    { name: 'Maybank (Malayan Banking )', swiftCode: 'MBBEMYKL', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/Maybank/MayBank_V1_SQU.svg' },
+    { name: 'Maybank (Malayan Banking)', swiftCode: 'MBBEMYKL', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/Maybank/MayBank_V1_SQU.svg' },
     { name: 'MBSB Bank', swiftCode: '', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRcGYvy4oKtI8SRJvW5_jSSn8oailuEhDn4xQ&s' },
     { name: 'OCBC Bank', swiftCode: 'OCBCMYKL', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/OCBC/OCBC_V1_SQU.svg' },
     { name: 'Public Bank Berhad', swiftCode: 'PBBEMYKL', logo: 'https://raw.githubusercontent.com/SnorSnor9998/Payment-Icon/master/Banks/PublicBank/PublicBank_V1_SQU.svg' },
