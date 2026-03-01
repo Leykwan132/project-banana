@@ -96,13 +96,13 @@ export default function AdminPayouts() {
                                     </div>
                                 </div>
                                 <div className="col-span-1">
-                                    <p className="text-sm text-gray-700 truncate">{withdrawal.bank_name}</p>
+                                    <p className="text-sm text-gray-700 truncate">{withdrawal.bank_account_id}</p>
                                 </div>
                                 <div className="col-span-1">
-                                    <p className="text-sm text-gray-500 font-mono">****{withdrawal.bank_account.slice(-4)}</p>
+                                    <p className="text-sm text-gray-500 font-mono">—</p>
                                 </div>
                                 <div className="col-span-1">
-                                    <p className="text-xs text-gray-500">{new Date(withdrawal.requested_at).toLocaleDateString()}</p>
+                                    <p className="text-xs text-gray-500">{new Date(withdrawal.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <div className="col-span-1 flex items-center justify-end gap-2">
                                     <button
