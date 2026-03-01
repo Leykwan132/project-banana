@@ -19,19 +19,19 @@ function getRandomFallback(seed: string) {
     return FALLBACK_IMAGES[seed.length % FALLBACK_IMAGES.length];
 }
 
-// Sub-component: resolves cover photo URL (s3 signed url → direct url → fallback)
-function CampaignCoverImage({ campaign }: { campaign: { _id: string; name: string; cover_photo_s3_key?: string; cover_photo_url?: string } }) {
+// Sub-component: resolves cover photo URL (R2 signed url -> direct url -> fallback)
+function CampaignCoverImage({ campaign }: { campaign: { _id: string; name: string; cover_photo_r2_key?: string; cover_photo_url?: string } }) {
     const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
 
     const [src, setSrc] = useState<string | null>(
-        !campaign.cover_photo_s3_key ? (campaign.cover_photo_url || getRandomFallback(campaign._id)) : null
+        !campaign.cover_photo_r2_key ? (campaign.cover_photo_url || getRandomFallback(campaign._id)) : null
     );
 
     useEffect(() => {
-        if (!campaign.cover_photo_s3_key) return;
+        if (!campaign.cover_photo_r2_key) return;
 
         let cancelled = false;
-        generateAccessUrl({ s3Key: campaign.cover_photo_s3_key })
+        generateAccessUrl({ r2Key: campaign.cover_photo_r2_key })
             .then((url) => {
                 if (!cancelled) setSrc(url || campaign.cover_photo_url || getRandomFallback(campaign._id));
             })
@@ -40,7 +40,7 @@ function CampaignCoverImage({ campaign }: { campaign: { _id: string; name: strin
             });
 
         return () => { cancelled = true; };
-    }, [campaign.cover_photo_s3_key, campaign.cover_photo_url, campaign._id, generateAccessUrl]);
+    }, [campaign.cover_photo_r2_key, campaign.cover_photo_url, campaign._id, generateAccessUrl]);
 
     return (
         <div className="mt-4 w-full aspect-video rounded-sm overflow-hidden bg-gray-100">

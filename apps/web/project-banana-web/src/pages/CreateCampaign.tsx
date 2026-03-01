@@ -615,6 +615,34 @@ export default function CreateCampaign() {
     const [useCompanyLogo, setUseCompanyLogo] = useState(false);
 
     useEffect(() => {
+        if (!logoFile) {
+            setLogoPreview(null);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(logoFile);
+        setLogoPreview(objectUrl);
+
+        return () => {
+            URL.revokeObjectURL(objectUrl);
+        };
+    }, [logoFile]);
+
+    useEffect(() => {
+        if (!coverFile) {
+            setCoverPreview(null);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(coverFile);
+        setCoverPreview(objectUrl);
+
+        return () => {
+            URL.revokeObjectURL(objectUrl);
+        };
+    }, [coverFile]);
+
+    useEffect(() => {
         const loadCompanyLogo = async () => {
             if (!business) {
                 setCompanyLogoPreview(null);
@@ -622,23 +650,18 @@ export default function CreateCampaign() {
                 return;
             }
 
-            if (business.logo_url) {
-                setCompanyLogoPreview(business.logo_url);
-                return;
-            }
-
-            if (business.logo_s3_key) {
+            if (business.logo_r2_key) {
                 try {
                     const signedUrl = await generateBusinessLogoAccessUrl({ businessId: business._id });
-                    setCompanyLogoPreview(signedUrl ?? null);
+                    setCompanyLogoPreview(signedUrl ?? business.logo_url ?? null);
                 } catch (error) {
                     console.error("Failed to fetch company logo preview:", error);
-                    setCompanyLogoPreview(null);
+                    setCompanyLogoPreview(business.logo_url ?? null);
                 }
                 return;
             }
 
-            setCompanyLogoPreview(null);
+            setCompanyLogoPreview(business.logo_url ?? null);
             setUseCompanyLogo(false);
         };
 
@@ -646,22 +669,22 @@ export default function CreateCampaign() {
     }, [business, generateBusinessLogoAccessUrl]);
 
     const uploadCampaignImage = async (file: File, imageType: "logo" | "cover") => {
-        const { uploadUrl, s3Key } = await generateCampaignImageUploadUrl({
+        const { uploadUrl, r2Key } = await generateCampaignImageUploadUrl({
             contentType: file.type,
             imageType,
         });
 
         const result = await fetch(uploadUrl, {
             method: "PUT",
-            body: file,
             headers: { "Content-Type": file.type },
+            body: file,
         });
 
         if (!result.ok) {
             throw new Error(`Failed to upload campaign ${imageType}`);
         }
 
-        return s3Key;
+        return r2Key;
     };
 
     const formik = useFormik({
@@ -694,13 +717,13 @@ export default function CreateCampaign() {
             }
 
             try {
-                const hasCompanyLogo = !!(business.logo_url || business.logo_s3_key);
+                const hasCompanyLogo = !!(business.logo_url || business.logo_r2_key);
                 const shouldUseCompanyLogo = useCompanyLogo && hasCompanyLogo;
 
-                const uploadedLogoS3Key = !shouldUseCompanyLogo && logoFile
+                const uploadedLogoR2Key = !shouldUseCompanyLogo && logoFile
                     ? await uploadCampaignImage(logoFile, "logo")
                     : undefined;
-                const uploadedCoverS3Key = coverFile
+                const uploadedCoverR2Key = coverFile
                     ? await uploadCampaignImage(coverFile, "cover")
                     : undefined;
 
@@ -710,8 +733,8 @@ export default function CreateCampaign() {
                     status: "active",
                     name: values.name,
                     logo_url: shouldUseCompanyLogo ? business.logo_url : undefined,
-                    logo_s3_key: shouldUseCompanyLogo ? business.logo_s3_key : uploadedLogoS3Key,
-                    cover_photo_s3_key: uploadedCoverS3Key,
+                    logo_r2_key: shouldUseCompanyLogo ? business.logo_r2_key : uploadedLogoR2Key,
+                    cover_photo_r2_key: uploadedCoverR2Key,
                     total_budget: parseFloat(values.totalPayouts) || 0,
                     asset_links: values.assets,
                     maximum_payout: parseFloat(values.maxPayout) || 0,
@@ -771,7 +794,7 @@ export default function CreateCampaign() {
         setIsScriptsModalOpen(false);
     };
 
-    const hasCompanyLogo = !!(business?.logo_url || business?.logo_s3_key || companyLogoPreview);
+    const hasCompanyLogo = !!(business?.logo_url || business?.logo_r2_key || companyLogoPreview);
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
     const businessPlanType = (business?.subscription_plan_type ?? 'free').toLowerCase();
     const isFreePlan = businessPlanType === 'free';
@@ -1304,7 +1327,6 @@ export default function CreateCampaign() {
                                         const file = e.target.files?.[0];
                                         if (!file) return;
                                         setLogoFile(file);
-                                        setLogoPreview(URL.createObjectURL(file));
                                         setUseCompanyLogo(false);
                                     }}
                                 />
@@ -1349,7 +1371,6 @@ export default function CreateCampaign() {
                                         const file = e.target.files?.[0];
                                         if (!file) return;
                                         setCoverFile(file);
-                                        setCoverPreview(URL.createObjectURL(file));
                                     }}
                                 />
                             </label>

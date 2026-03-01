@@ -24,13 +24,13 @@ export default function ReviewSubmission() {
 
     const generateVideoAccessUrl = useAction(api.submissions.generateVideoAccessUrl);
 
-    // Load video URL from S3 or fallback to video_url
+    // Load video URL from R2 or fallback to video_url
     useEffect(() => {
         let isMounted = true;
 
         const loadVideoUrl = async () => {
             if (!submission) return;
-            if (submission.s3_key) {
+            if (submission.r2_key) {
                 setLoadingUrl(true);
                 try {
                     const signedUrl = await generateVideoAccessUrl({ submissionId: submissionId as Id<"submissions"> });
@@ -51,7 +51,7 @@ export default function ReviewSubmission() {
         return () => {
             isMounted = false;
         };
-    }, [submission?._id, submission?.s3_key, submission?.video_url, submissionId]);
+    }, [submission?._id, submission?.r2_key, submission?.video_url, submissionId]);
 
     const [successAction, setSuccessAction] = useState<'approved' | 'changes_requested' | null>(null);
 
@@ -247,4 +247,3 @@ export default function ReviewSubmission() {
         </div>
     );
 }
-

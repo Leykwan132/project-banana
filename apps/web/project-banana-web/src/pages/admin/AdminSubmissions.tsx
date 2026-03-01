@@ -47,11 +47,11 @@ export default function AdminSubmissions() {
 
     // Load video when a submission is selected
     useEffect(() => {
-        if (!selectedDetail?.s3_key || videoUrls[selectedDetail._id]) return;
+        if (!selectedDetail?.r2_key || videoUrls[selectedDetail._id]) return;
         const loadVideo = async () => {
             setLoadingVideo(selectedDetail._id);
             try {
-                const url = await generateVideoUrl({ s3Key: selectedDetail.s3_key! });
+                const url = await generateVideoUrl({ r2Key: selectedDetail.r2_key! });
                 if (url) setVideoUrls((prev) => ({ ...prev, [selectedDetail._id]: url }));
             } catch (e) {
                 console.error('Failed to load video:', e);
@@ -59,7 +59,7 @@ export default function AdminSubmissions() {
             setLoadingVideo(null);
         };
         void loadVideo();
-    }, [selectedDetail?._id, selectedDetail?.s3_key]);
+    }, [selectedDetail?._id, selectedDetail?.r2_key]);
 
     const handleApprove = async (id: Id<"submissions">) => {
         setActionLoading(id);

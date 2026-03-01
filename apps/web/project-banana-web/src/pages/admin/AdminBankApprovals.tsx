@@ -36,14 +36,14 @@ export default function AdminBankApprovals() {
         }
     };
 
-    const handleViewProof = async (accountId: string, s3Key: string) => {
+    const handleViewProof = async (accountId: string, r2Key: string) => {
         if (proofUrls[accountId]) {
             setExpandedId(expandedId === accountId ? null : accountId);
             return;
         }
         setLoadingProof(accountId);
         try {
-            const url = await generateProofUrl({ s3Key });
+            const url = await generateProofUrl({ r2Key });
             setProofUrls((prev) => ({ ...prev, [accountId]: url }));
             setExpandedId(accountId);
         } catch (e) {
@@ -110,9 +110,9 @@ export default function AdminBankApprovals() {
                                         <p className="text-xs text-gray-400 mt-0.5 font-mono">User: {account.user_id.slice(0, 16)}...</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {account.proof_document_s3_key && (
+                                        {account.proof_document_r2_key && (
                                             <button
-                                                onClick={() => handleViewProof(account._id, account.proof_document_s3_key!)}
+                                                onClick={() => handleViewProof(account._id, account.proof_document_r2_key!)}
                                                 disabled={loadingProof === account._id}
                                                 className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-2 transition-colors"
                                             >

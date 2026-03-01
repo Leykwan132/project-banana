@@ -42,8 +42,8 @@ export default function Settings() {
                 return;
             }
 
-            // 2. If we have an S3 key, fetch a new presigned URL.
-            if (business.logo_s3_key) {
+            // 2. If we have an R2 key, fetch a new presigned URL.
+            if (business.logo_r2_key) {
                 generateLogoUrl({ businessId: business._id })
                     .then((url) => {
                         if (url) {
