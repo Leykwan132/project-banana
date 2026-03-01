@@ -54,24 +54,24 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  useEffect(() => {
-    if (!loaded || isSessionPending) return;
+  // useEffect(() => {
+  //   if (!loaded || isSessionPending) return;
 
-    const isOnOnboarding = segments[0] === "welcome";
+  //   const isOnOnboarding = segments[0] === "welcome";
 
-    if (!session && !isOnOnboarding) {
-      router.replace("/welcome");
-      return;
-    }
+  //   if (!session && !isOnOnboarding) {
+  //     router.replace("/welcome");
+  //     return;
+  //   }
 
-    if (session && isOnOnboarding) {
-      router.replace("/(tabs)");
-    }
-  }, [loaded, isSessionPending, segments, session, router]);
+  //   if (session && isOnOnboarding) {
+  //     router.replace("/(tabs)");
+  //   }
+  // }, [loaded, isSessionPending, segments, session, router]);
 
-  if (!loaded) {
-    return null;
-  }
+  // if (!loaded) {
+  //   return null;
+  // }
 
   return (
 
