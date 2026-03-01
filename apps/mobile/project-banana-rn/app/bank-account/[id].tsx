@@ -67,7 +67,7 @@ export default function BankAccountDetailsScreen() {
 
         const loadProof = async () => {
             if (!bankAccountId || bankAccount === undefined) return;
-            const proofKey = bankAccount?.proof_document_s3_key;
+            const proofKey = bankAccount?.proof_document_r2_key;
             if (!proofKey) {
                 setRemoteProofFile(null);
                 setIsProofLoading(false);
@@ -86,7 +86,7 @@ export default function BankAccountDetailsScreen() {
                     return;
                 }
 
-                const signedUrl = await generateProofAccessUrl({ s3Key: proofKey });
+                const signedUrl = await generateProofAccessUrl({ r2Key: proofKey });
                 if (cancelled) return;
 
                 if (!signedUrl) {
@@ -113,7 +113,7 @@ export default function BankAccountDetailsScreen() {
         return () => {
             cancelled = true;
         };
-    }, [bankAccountId, bankAccount?._id, bankAccount?.proof_document_s3_key, generateProofAccessUrl]);
+    }, [bankAccountId, bankAccount?._id, bankAccount?.proof_document_r2_key, generateProofAccessUrl]);
 
     const proofFileToDisplay = uploadedFile ?? remoteProofFile;
 
@@ -184,7 +184,7 @@ export default function BankAccountDetailsScreen() {
                 uploadedFile.mimeType ??
                 (uploadedFile.type === 'pdf' ? 'application/pdf' : 'image/jpeg');
 
-            const { uploadUrl, s3Key } = await generateProofUploadUrl({ contentType });
+            const { uploadUrl, r2Key } = await generateProofUploadUrl({ contentType });
 
             const fileResponse = await fetch(uploadedFile.uri);
             if (!fileResponse.ok) {
@@ -197,21 +197,22 @@ export default function BankAccountDetailsScreen() {
                 headers: { 'Content-Type': contentType },
                 body: fileBuffer,
             });
+
             if (!uploadResponse.ok) {
                 throw new Error(`Proof upload failed with status ${uploadResponse.status}`);
             }
 
             const previousProofKey = await resubmitBankAccountProof({
                 bankAccountId,
-                newProofKey: s3Key,
+                newProofKey: r2Key,
             });
 
             if (
                 previousProofKey &&
-                previousProofKey !== s3Key &&
+                previousProofKey !== r2Key &&
                 previousProofKey.startsWith('bank-proofs/')
             ) {
-                deleteProofObject({ s3Key: previousProofKey }).catch((error) => {
+                deleteProofObject({ r2Key: previousProofKey }).catch((error) => {
                     console.warn('Failed to delete old bank proof object:', error);
                 });
             }

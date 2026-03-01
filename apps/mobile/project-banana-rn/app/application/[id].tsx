@@ -117,17 +117,19 @@ export default function ApplicationDetailScreen() {
 
     useEffect(() => {
         if (!campaign) return;
-        const s3Key = campaign.logo_s3_key;
+        const r2Key = campaign.logo_r2_key;
         const directUrl = campaign.logo_url ?? null;
 
-        if (!s3Key) {
+        if (!r2Key) {
             setFinalLogoUrl(directUrl);
             setIsLogoLoading(false);
             return;
         }
 
         let cancelled = false;
-        generateAccessUrl({ s3Key })
+        setIsLogoLoading(true);
+        setFinalLogoUrl(null);
+        generateAccessUrl({ r2Key })
             .then((url) => {
                 if (!cancelled) {
                     setFinalLogoUrl(url || directUrl);
@@ -142,7 +144,7 @@ export default function ApplicationDetailScreen() {
             });
 
         return () => { cancelled = true; };
-    }, [campaign?.logo_s3_key, campaign?.logo_url]);
+    }, [campaign?.logo_r2_key, campaign?.logo_url, generateAccessUrl]);
 
     // Video upload state - single sheet with steps
     const [selectedVideoUri, setSelectedVideoUri] = useState<string | null>(null);
@@ -195,7 +197,7 @@ export default function ApplicationDetailScreen() {
 
         try {
             const contentType = selectedVideoMimeType ?? "video/mp4";
-            const { uploadUrl, s3Key } = await generateVideoUploadUrl({
+            const { uploadUrl, r2Key } = await generateVideoUploadUrl({
                 contentType,
             });
 
@@ -203,25 +205,22 @@ export default function ApplicationDetailScreen() {
             if (!fileResponse.ok) {
                 throw new Error("Unable to read selected video file.");
             }
-            const fileBuffer = await fileResponse.arrayBuffer();
+            const fileBlob = await fileResponse.blob();
 
             const uploadResponse = await fetch(uploadUrl, {
                 method: "PUT",
                 headers: {
                     "Content-Type": contentType,
                 },
-                body: fileBuffer,
+                body: fileBlob,
             });
             if (!uploadResponse.ok) {
-                throw new Error(`S3 upload failed with status ${uploadResponse.status}`);
+                throw new Error(`Video upload failed with status ${uploadResponse.status}`);
             }
-
-            const uploadedObjectUrl = uploadUrl.split("?")[0];
 
             await createSubmission({
                 applicationId,
-                video_url: uploadedObjectUrl,
-                s3_key: s3Key,
+                r2_key: r2Key,
             });
 
             setReviewStep('done');

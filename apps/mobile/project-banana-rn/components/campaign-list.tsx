@@ -103,7 +103,7 @@ export function CampaignList() {
                 payout: payoutPer1k.toString(),
                 maxPayout: campaign.maximum_payout.toString(),
                 logoUrl: campaign.logo_url || null,
-                logoS3Key: campaign.logo_s3_key || null,
+                logoR2Key: campaign.logo_r2_key || null,
                 isTrending: campaign.submissions > 1000, // Calculate trending based on claimed budget
                 category: campaign.category || 'for-you', // You'll need to add category field to schema
             };
@@ -214,7 +214,7 @@ export function CampaignList() {
                             payout={campaign.payout}
                             maxPayout={campaign.maxPayout}
                             logoUrl={campaign.logoUrl}
-                            logoS3Key={campaign.logoS3Key}
+                            logoR2Key={campaign.logoR2Key}
                             isTrending={campaign.isTrending}
                             onPress={() => handlePress(campaign.id)}
                         />

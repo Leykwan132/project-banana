@@ -68,7 +68,7 @@ export function CampaignsAnalyticList({ sortBy = 'shares' }: CampaignsAnalyticLi
             name: status.campaign_name,
             companyName: status.company_name,
             logoUrl: status.campaign_image_url,
-            logoS3Key: status.campaign_logo_s3_key,
+            logoR2Key: status.campaign_logo_r2_key,
             views: formatNumber(status.views || 0),
             likes: formatNumber(status.likes || 0),
             comments: formatNumber(status.comments || 0),
@@ -157,7 +157,7 @@ export function CampaignsAnalyticList({ sortBy = 'shares' }: CampaignsAnalyticLi
                             name={campaign.name}
                             companyName={campaign.companyName}
                             logoUrl={campaign.logoUrl}
-                            logoS3Key={campaign.logoS3Key}
+                            logoR2Key={campaign.logoR2Key}
                             views={campaign.views}
                             likes={campaign.likes}
                             comments={campaign.comments}

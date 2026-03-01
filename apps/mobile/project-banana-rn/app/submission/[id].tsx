@@ -67,30 +67,34 @@ export default function SubmissionDetailScreen() {
     const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!latestFeedback) return;
-        const s3Key = latestFeedback.authorLogoS3Key;
+        if (!latestFeedback) {
+            setFinalLogoUrl(null);
+            return;
+        }
+        const r2Key = latestFeedback.authorLogoR2Key;
         const directUrl = latestFeedback.authorLogoUrl ?? null;
 
-        if (!s3Key) {
+        if (!r2Key) {
             setFinalLogoUrl(directUrl);
             return;
         }
 
         let cancelled = false;
-        generateCampaignImageAccessUrl({ s3Key })
+        generateCampaignImageAccessUrl({ r2Key })
             .then((url) => { if (!cancelled) setFinalLogoUrl(url || directUrl); })
             .catch(() => { if (!cancelled) setFinalLogoUrl(directUrl); });
 
         return () => { cancelled = true; };
-    }, [latestFeedback?.authorLogoS3Key, latestFeedback?.authorLogoUrl]);
+    }, [latestFeedback?.authorLogoR2Key, latestFeedback?.authorLogoUrl, generateCampaignImageAccessUrl]);
 
     useEffect(() => {
         let isMounted = true;
 
         const loadVideoUrl = async () => {
             if (!submission) return;
-            if (submission.s3_key) {
+            if (submission.r2_key) {
                 setLoadingUrl(true);
+                setVideoUrl(null);
                 try {
                     const signedUrl = await generateVideoAccessUrl({ submissionId });
                     if (isMounted) setVideoUrl(signedUrl);
@@ -110,7 +114,7 @@ export default function SubmissionDetailScreen() {
         return () => {
             isMounted = false;
         };
-    }, [submission?._id, submission?.s3_key, submission?.video_url, submissionId]);
+    }, [submission?._id, submission?.r2_key, submission?.video_url, submissionId, generateVideoAccessUrl]);
 
     const videoPlayer = useVideoPlayer(videoUrl ?? "", (player) => {
         player.loop = false;

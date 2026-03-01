@@ -10,7 +10,7 @@ import { api } from '../../../../packages/backend/convex/_generated/api';
 
 interface CampaignListItemProps {
     logoUrl?: string | null;
-    logoS3Key?: string | null;
+    logoR2Key?: string | null;
     name: string;
     companyName?: string;
     claimed: number;
@@ -23,7 +23,7 @@ interface CampaignListItemProps {
 
 export function CampaignListItem({
     logoUrl,
-    logoS3Key,
+    logoR2Key,
     name,
     companyName = 'Company Name', // Default for now
     claimed,
@@ -38,13 +38,16 @@ export function CampaignListItem({
     const textColor = Colors[colorScheme ?? 'light'].text;
 
     const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
-    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoS3Key ? (logoUrl || null) : null);
+    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoR2Key ? (logoUrl || null) : null);
 
     useEffect(() => {
-        if (!logoS3Key) return;
+        if (!logoR2Key) {
+            setFinalLogoUrl(logoUrl || null);
+            return;
+        }
 
         let cancelled = false;
-        generateAccessUrl({ s3Key: logoS3Key })
+        generateAccessUrl({ r2Key: logoR2Key })
             .then((url) => {
                 if (!cancelled) setFinalLogoUrl(url || logoUrl || null);
             })
@@ -53,7 +56,7 @@ export function CampaignListItem({
             });
 
         return () => { cancelled = true; };
-    }, [logoS3Key, logoUrl, generateAccessUrl]);
+    }, [logoR2Key, logoUrl, generateAccessUrl]);
 
     return (
         <Pressable

@@ -100,7 +100,7 @@ export function ApplicationList() {
                 status: mapStatus(app.status),
                 createdOn: formattedDate,
                 logoUrl: app.campaignLogoUrl || null,
-                logoS3Key: app.campaignLogoS3Key || null,
+                logoR2Key: app.campaignLogoR2Key || null,
             };
         });
     }, [results]);
@@ -169,7 +169,7 @@ export function ApplicationList() {
                             businessName={app.businessName || 'Company Name'}
                             createdOn={app.createdOn}
                             logoUrl={app.logoUrl}
-                            logoS3Key={app.logoS3Key}
+                            logoR2Key={app.logoR2Key}
                             onPress={() => router.push({
                                 pathname: '/application/[id]',
                                 params: { id: app.id, campaignId: app.campaignId }

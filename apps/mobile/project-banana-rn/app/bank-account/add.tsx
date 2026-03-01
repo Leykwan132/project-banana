@@ -178,7 +178,7 @@ export default function AddBankAccountScreen() {
                 uploadedFile.mimeType ??
                 (uploadedFile.type === 'pdf' ? 'application/pdf' : 'image/jpeg');
 
-            const { uploadUrl, s3Key } = await generateProofUploadUrl({ contentType });
+            const { uploadUrl, r2Key } = await generateProofUploadUrl({ contentType });
 
             const fileResponse = await fetch(uploadedFile.uri);
             if (!fileResponse.ok) {
@@ -199,7 +199,7 @@ export default function AddBankAccountScreen() {
                 bankName,
                 accountHolderName: accountHolderName.trim(),
                 accountNumber: accountNumber.trim(),
-                proofDocumentKey: s3Key,
+                proofDocumentKey: r2Key,
             });
             setIsLoading(false);
             setSubmitStep('pending');

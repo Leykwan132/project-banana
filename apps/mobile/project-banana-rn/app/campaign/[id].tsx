@@ -94,31 +94,33 @@ export default function CampaignDetailsScreen() {
     const [coverUrl, setCoverUrl] = useState<string | null>(null);
     useEffect(() => {
         if (!campaign) return;
-        if (campaign.cover_photo_s3_key) {
+        if (campaign.cover_photo_r2_key) {
             let cancelled = false;
-            generateCampaignImageAccessUrl({ s3Key: campaign.cover_photo_s3_key })
+            setCoverUrl(null);
+            generateCampaignImageAccessUrl({ r2Key: campaign.cover_photo_r2_key })
                 .then(url => { if (!cancelled) setCoverUrl(url || campaign.cover_photo_url || null); })
                 .catch(() => { if (!cancelled) setCoverUrl(campaign.cover_photo_url || null); });
             return () => { cancelled = true; };
         } else {
             setCoverUrl(campaign.cover_photo_url || null);
         }
-    }, [campaign?.cover_photo_s3_key, campaign?.cover_photo_url]);
+    }, [campaign?.cover_photo_r2_key, campaign?.cover_photo_url, generateCampaignImageAccessUrl]);
 
     // Resolve campaign logo
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     useEffect(() => {
         if (!campaign) return;
-        if (campaign.logo_s3_key) {
+        if (campaign.logo_r2_key) {
             let cancelled = false;
-            generateCampaignImageAccessUrl({ s3Key: campaign.logo_s3_key })
+            setLogoUrl(null);
+            generateCampaignImageAccessUrl({ r2Key: campaign.logo_r2_key })
                 .then(url => { if (!cancelled) setLogoUrl(url || campaign.logo_url || null); })
                 .catch(() => { if (!cancelled) setLogoUrl(campaign.logo_url || null); });
             return () => { cancelled = true; };
         } else {
             setLogoUrl(campaign.logo_url || null);
         }
-    }, [campaign?.logo_s3_key, campaign?.logo_url]);
+    }, [campaign?.logo_r2_key, campaign?.logo_url, generateCampaignImageAccessUrl]);
 
     // Fade-in animations when images resolve
     const coverOpacity = useSharedValue(0);
@@ -181,7 +183,7 @@ export default function CampaignDetailsScreen() {
             {/* Header / Cover Image Area */}
             <View style={styles.coverContainer}>
                 {(() => {
-                    const coverIsLoading = campaign === undefined || (!!campaign?.cover_photo_s3_key && coverUrl === null);
+                    const coverIsLoading = campaign === undefined || (!!campaign?.cover_photo_r2_key && coverUrl === null);
                     if (coverIsLoading) {
                         return <SkeletonBlock style={[styles.coverImage, { borderRadius: 0 }]} />;
                     }
@@ -218,7 +220,7 @@ export default function CampaignDetailsScreen() {
                         {!isLoading && campaign ? (
                             <>
                                 <View style={styles.logoContainer}>
-                                    {campaign.logo_s3_key && logoUrl === null ? (
+                                    {campaign.logo_r2_key && logoUrl === null ? (
                                         <SkeletonBlock style={styles.logoPlaceholder} />
                                     ) : logoUrl ? (
                                         <Animated.View style={logoAnimStyle}>

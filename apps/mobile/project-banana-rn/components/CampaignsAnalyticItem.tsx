@@ -10,7 +10,7 @@ import { api } from '../../../../packages/backend/convex/_generated/api';
 
 interface CampaignsAnalyticListProps {
     logoUrl?: string;
-    logoS3Key?: string;
+    logoR2Key?: string;
     name: string;
     companyName?: string;
     views: string;
@@ -22,7 +22,7 @@ interface CampaignsAnalyticListProps {
 
 export function CampaignsAnalyticItem({
     logoUrl,
-    logoS3Key,
+    logoR2Key,
     name,
     companyName = 'Company Name',
     views,
@@ -36,13 +36,13 @@ export function CampaignsAnalyticItem({
     const textColor = Colors[colorScheme ?? 'light'].text;
 
     const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
-    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoS3Key ? (logoUrl || null) : null);
+    const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoR2Key ? (logoUrl || null) : null);
 
     useEffect(() => {
-        if (!logoS3Key) return;
+        if (!logoR2Key) return;
 
         let cancelled = false;
-        generateAccessUrl({ s3Key: logoS3Key })
+        generateAccessUrl({ r2Key: logoR2Key })
             .then((url) => {
                 if (!cancelled) setFinalLogoUrl(url || logoUrl || null);
             })
@@ -51,7 +51,7 @@ export function CampaignsAnalyticItem({
             });
 
         return () => { cancelled = true; };
-    }, [logoS3Key, logoUrl, generateAccessUrl]);
+    }, [logoR2Key, logoUrl, generateAccessUrl]);
 
     return (
         <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
