@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError } from "convex/values";
 import { ERROR_CODES } from "./errors";
-import { generateDownloadUrl, generateUploadUrl } from "./s3";
+import { generateDownloadUrl, generateUploadUrl } from "./r2";
 import { CampaignStatus } from "./constants";
 // ============================================================
 // QUERIES
@@ -14,6 +14,7 @@ export const getCampaign = query({
     handler: async (ctx, args) => {
         const campaign = await ctx.db.get(args.campaignId);
         if (!campaign) return null;
+        const business = await ctx.db.get(campaign.business_id);
 
         const pendingApprovals = (await ctx.db
             .query("applications")
@@ -23,6 +24,8 @@ export const getCampaign = query({
 
         return {
             ...campaign,
+            logo_url: campaign.logo_url ?? business?.logo_url,
+            logo_r2_key: campaign.logo_r2_key ?? business?.logo_r2_key,
             pendingApprovals,
         };
     },
@@ -51,22 +54,29 @@ export const getActiveCampaigns = query({
             .order("desc")
             .paginate(args.paginationOpts);
 
+        const page = await Promise.all(
+            result.page.map(async (campaign) => {
+                const business = await ctx.db.get(campaign.business_id);
+                return {
+                    campaignId: campaign._id,
+                    name: campaign.name,
+                    cover_photo_url: campaign.cover_photo_url,
+                    cover_photo_r2_key: campaign.cover_photo_r2_key,
+                    logo_url: campaign.logo_url ?? business?.logo_url,
+                    logo_r2_key: campaign.logo_r2_key ?? business?.logo_r2_key,
+                    payout_threshold: campaign.payout_thresholds[0],
+                    maximum_payout: campaign.maximum_payout,
+                    submissions: campaign.submissions,
+                    category: campaign.category,
+                    business_name: campaign.business_name,
+                };
+            })
+        );
+
         return {
             isDone: result.isDone,
             continueCursor: result.continueCursor,
-            page: result.page.map((campaign) => ({
-                campaignId: campaign._id,
-                name: campaign.name,
-                cover_photo_url: campaign.cover_photo_url,
-                cover_photo_s3_key: campaign.cover_photo_s3_key,
-                logo_url: campaign.logo_url,
-                logo_s3_key: campaign.logo_s3_key,
-                payout_threshold: campaign.payout_thresholds[0],
-                maximum_payout: campaign.maximum_payout,
-                submissions: campaign.submissions,
-                category: campaign.category,
-                business_name: campaign.business_name,
-            })),
+            page,
         };
     },
 });
@@ -100,9 +110,9 @@ export const createCampaign = mutation({
         status: v.string(),
         name: v.string(),
         logo_url: v.optional(v.string()),
-        logo_s3_key: v.optional(v.string()),
+        logo_r2_key: v.optional(v.string()),
         cover_photo_url: v.optional(v.string()),
-        cover_photo_s3_key: v.optional(v.string()),
+        cover_photo_r2_key: v.optional(v.string()),
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),
@@ -149,9 +159,9 @@ export const createCampaign = mutation({
             business_id: args.businessId,
             name: args.name,
             logo_url: args.logo_url,
-            logo_s3_key: args.logo_s3_key,
+            logo_r2_key: args.logo_r2_key,
             cover_photo_url: args.cover_photo_url,
-            cover_photo_s3_key: args.cover_photo_s3_key,
+            cover_photo_r2_key: args.cover_photo_r2_key,
             total_budget: args.total_budget,
             budget_claimed: 0, // Starts at 0
             status: args.status, // "active" or "draft"
@@ -250,10 +260,10 @@ export const updateCampaign = mutation({
         campaignId: v.id("campaigns"),
         name: v.string(),
         logo_url: v.optional(v.string()),
-        logo_s3_key: v.optional(v.string()),
+        logo_r2_key: v.optional(v.string()),
         use_company_logo: v.optional(v.boolean()),
         cover_photo_url: v.optional(v.string()),
-        cover_photo_s3_key: v.optional(v.string()),
+        cover_photo_r2_key: v.optional(v.string()),
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
         maximum_payout: v.number(),
@@ -331,10 +341,10 @@ export const updateCampaign = mutation({
         await ctx.db.patch(args.campaignId, {
             name: args.name,
             logo_url: args.logo_url,
-            logo_s3_key: args.logo_s3_key,
+            logo_r2_key: args.logo_r2_key,
             use_company_logo: args.use_company_logo,
             cover_photo_url: args.cover_photo_url,
-            cover_photo_s3_key: args.cover_photo_s3_key,
+            cover_photo_r2_key: args.cover_photo_r2_key,
             total_budget: args.total_budget,
             category: args.category,
             asset_links: args.asset_links,
@@ -362,16 +372,16 @@ export const generateCampaignImageUploadUrl = action({
 
         const key = crypto.randomUUID();
         const prefix = args.imageType === "logo" ? "campaign-logos" : "campaign-covers";
-        const s3Key = `${prefix}/${key}`;
-        const uploadUrl = await generateUploadUrl(s3Key, args.contentType);
+        const r2Key = `${prefix}/${key}`;
+        const uploadUrl = await generateUploadUrl(r2Key, args.contentType);
 
-        return { uploadUrl, s3Key };
+        return { uploadUrl, r2Key };
     },
 });
 
 export const generateCampaignImageAccessUrl = action({
     args: {
-        s3Key: v.string(),
+        r2Key: v.string(),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -380,13 +390,14 @@ export const generateCampaignImageAccessUrl = action({
         }
 
         const isAllowedPrefix =
-            args.s3Key.startsWith("campaign-logos/") ||
-            args.s3Key.startsWith("campaign-covers/");
+            args.r2Key.startsWith("campaign-logos/") ||
+            args.r2Key.startsWith("campaign-covers/") ||
+            args.r2Key.startsWith("logos/");
 
         if (!isAllowedPrefix) {
             throw new Error("Invalid campaign image key");
         }
 
-        return await generateDownloadUrl(args.s3Key);
+        return await generateDownloadUrl(args.r2Key);
     },
 });

@@ -1,8 +1,89 @@
 import { mutation, query, action } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { generateUploadUrl, generateDownloadUrl } from "./s3";
-import { api } from "./_generated/api";
+import { generateUploadUrl, generateDownloadUrl } from "./r2";
+import type { Doc, Id } from "./_generated/dataModel";
+
+const getAdminEmails = () => {
+    try {
+        return JSON.parse(process.env.ADMIN_USER_IDS || "[]") as string[];
+    } catch (error) {
+        console.error("Failed to parse ADMIN_USER_IDS", error);
+        return [];
+    }
+};
+
+const isAdminIdentity = (identity: { email?: string | null } | null) => {
+    return !!identity?.email && getAdminEmails().includes(identity.email);
+};
+
+const getSubmissionAccess = async (ctx: any, submissionId: Id<"submissions">) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+        return {
+            identity: null,
+            submission: null,
+            campaign: null,
+            business: null,
+            canAccess: false,
+            canReview: false,
+        };
+    }
+
+    const submission = await ctx.db.get(submissionId);
+    if (!submission) {
+        return {
+            identity,
+            submission: null,
+            campaign: null,
+            business: null,
+            canAccess: false,
+            canReview: false,
+        };
+    }
+
+    const campaign = await ctx.db.get(submission.campaign_id);
+    const business = campaign ? await ctx.db.get(campaign.business_id) : null;
+    const isOwner = submission.user_id === identity.subject;
+    const isBusinessOwner = business?.user_id === identity.subject;
+    const isAdmin = isAdminIdentity(identity);
+
+    return {
+        identity,
+        submission,
+        campaign,
+        business,
+        canAccess: isOwner || isBusinessOwner || isAdmin,
+        canReview: isBusinessOwner || isAdmin,
+    };
+};
+
+const canAccessApplicationSubmissions = async (ctx: any, applicationId: Id<"applications">) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return false;
+
+    const application = await ctx.db.get(applicationId);
+    if (!application) return false;
+    if (application.user_id === identity.subject || isAdminIdentity(identity)) return true;
+
+    const campaign = await ctx.db.get(application.campaign_id);
+    if (!campaign) return false;
+
+    const business = await ctx.db.get(campaign.business_id);
+    return business?.user_id === identity.subject;
+};
+
+const canReviewCampaignSubmissions = async (ctx: any, campaignId: Id<"campaigns">) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return false;
+    if (isAdminIdentity(identity)) return true;
+
+    const campaign = await ctx.db.get(campaignId);
+    if (!campaign) return false;
+
+    const business = await ctx.db.get(campaign.business_id);
+    return business?.user_id === identity.subject;
+};
 
 // ============================================================
 // QUERIES
@@ -11,10 +92,11 @@ import { api } from "./_generated/api";
 export const getSubmissionsByApplication = query({
     args: { applicationId: v.id("applications") },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
-            return []; // Or throw, but for queries usually return empty or null
+        const canAccess = await canAccessApplicationSubmissions(ctx, args.applicationId);
+        if (!canAccess) {
+            return [];
         }
+
         return await ctx.db
             .query("submissions")
             .withIndex("by_application", (q) => q.eq("application_id", args.applicationId))
@@ -26,10 +108,11 @@ export const getSubmissionsByApplication = query({
 export const getSubmissionsByCampaignId = query({
     args: { campaignId: v.id("campaigns") },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
+        const canReview = await canReviewCampaignSubmissions(ctx, args.campaignId);
+        if (!canReview) {
             return [];
         }
+
         return await ctx.db
             .query("submissions")
             .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
@@ -42,19 +125,19 @@ export const getSubmissionsByCampaignId = query({
 export const getSubmission = query({
     args: { submissionId: v.id("submissions") },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
+        const access = await getSubmissionAccess(ctx, args.submissionId);
+        if (!access.canAccess) {
             return null;
         }
-        return await ctx.db.get(args.submissionId);
+        return access.submission;
     }
 });
 
 export const getLatestSubmissionFeedback = query({
     args: { submissionId: v.id("submissions") },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
+        const access = await getSubmissionAccess(ctx, args.submissionId);
+        if (!access.canAccess || !access.submission) {
             return null;
         }
 
@@ -70,30 +153,25 @@ export const getLatestSubmissionFeedback = query({
 
         if (!latestReview || !latestReview.feedback) return null;
 
-        const submission = await ctx.db.get(args.submissionId);
         let authorName = "Business";
         let authorLogoUrl = null;
-        let authorLogoS3Key = null;
+        let authorLogoR2Key = null;
 
-        if (submission) {
-            const campaign = await ctx.db.get(submission.campaign_id);
-            if (campaign) {
-                if (campaign.business_name) {
-                    authorName = campaign.business_name;
-                } else {
-                    const business = await ctx.db.get(campaign.business_id);
-                    if (business) authorName = business.name;
-                }
-                authorLogoUrl = campaign.logo_url ?? null;
-                authorLogoS3Key = campaign.logo_s3_key ?? null;
+        if (access.campaign) {
+            if (access.campaign.business_name) {
+                authorName = access.campaign.business_name;
+            } else if (access.business) {
+                authorName = access.business.name;
             }
+            authorLogoUrl = access.campaign.logo_url ?? access.business?.logo_url ?? null;
+            authorLogoR2Key = access.campaign.logo_r2_key ?? access.business?.logo_r2_key ?? null;
         }
 
         return {
             text: latestReview.feedback,
             authorName,
             authorLogoUrl,
-            authorLogoS3Key,
+            authorLogoR2Key,
             createdAt: latestReview.reviewed_at ?? latestReview.created_at,
         };
     },
@@ -107,13 +185,14 @@ export const createSubmission = mutation({
     args: {
         applicationId: v.id("applications"),
         video_url: v.optional(v.string()), // Optional now
-        s3_key: v.optional(v.string()),    // New
+        r2_key: v.optional(v.string()),    // New
     },
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity(); if (!user) throw new Error("Unauthenticated call to mutation");
 
         const application = await ctx.db.get(args.applicationId);
         if (!application) throw new Error("Application not found");
+        if (application.user_id !== user.subject) throw new Error("Unauthorized");
 
         const now = Date.now();
 
@@ -131,7 +210,7 @@ export const createSubmission = mutation({
             campaign_id: application.campaign_id,
             user_id: user.subject,
             video_url: args.video_url,
-            s3_key: args.s3_key,
+            r2_key: args.r2_key,
             status: "pending_review",
             created_at: now,
             updated_at: now,
@@ -173,11 +252,11 @@ export const approveSubmission = mutation({
         feedback: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await ctx.auth.getUserIdentity();
-        if (!user) throw new Error("Unauthenticated call");
-
-        const submission = await ctx.db.get(args.submissionId);
-        if (!submission) throw new Error("Submission not found");
+        const access = await getSubmissionAccess(ctx, args.submissionId);
+        if (!access.identity) throw new Error("Unauthenticated call");
+        if (!access.submission) throw new Error("Submission not found");
+        if (!access.canReview) throw new Error("Unauthorized");
+        const submission = access.submission;
 
         // Only process if status is pending_review to avoid double decrement
         if (submission.status !== "pending_review") {
@@ -197,7 +276,7 @@ export const approveSubmission = mutation({
         // Create Review Record
         await ctx.db.insert("submission_reviews", {
             submission_id: args.submissionId,
-            reviewer_id: user.subject,
+            reviewer_id: access.identity.subject,
             feedback: args.feedback,
             action: "approved",
             reviewed_at: now,
@@ -212,14 +291,14 @@ export const approveSubmission = mutation({
         });
 
         // Decrement Campaign Pending Approvals
-        const campaign = await ctx.db.get(submission.campaign_id);
+        const campaign = await ctx.db.get(submission.campaign_id) as Doc<"campaigns"> | null;
         if (campaign && (campaign.pending_approvals ?? 0) > 0) {
             await ctx.db.patch(submission.campaign_id, {
                 pending_approvals: (campaign.pending_approvals ?? 1) - 1,
             });
 
             // Decrement Business Pending Approvals
-            const business = await ctx.db.get(campaign.business_id);
+            const business = await ctx.db.get(campaign.business_id) as Doc<"businesses"> | null;
             if (business && (business.pending_approvals ?? 0) > 0) {
                 await ctx.db.patch(campaign.business_id, {
                     pending_approvals: (business.pending_approvals ?? 1) - 1,
@@ -236,11 +315,11 @@ export const requestChanges = mutation({
         feedback: v.string(), // Required for changes request
     },
     handler: async (ctx, args) => {
-        const user = await ctx.auth.getUserIdentity();
-        if (!user) throw new Error("Unauthenticated call");
-
-        const submission = await ctx.db.get(args.submissionId);
-        if (!submission) throw new Error("Submission not found");
+        const access = await getSubmissionAccess(ctx, args.submissionId);
+        if (!access.identity) throw new Error("Unauthenticated call");
+        if (!access.submission) throw new Error("Submission not found");
+        if (!access.canReview) throw new Error("Unauthorized");
+        const submission = access.submission;
 
         if (submission.status !== "pending_review") {
             if (submission.status === "changes_requested") return;
@@ -258,7 +337,7 @@ export const requestChanges = mutation({
         // Create Review Record
         await ctx.db.insert("submission_reviews", {
             submission_id: args.submissionId,
-            reviewer_id: user.subject,
+            reviewer_id: access.identity.subject,
             feedback: args.feedback,
             action: "changes_requested",
             reviewed_at: now,
@@ -272,14 +351,14 @@ export const requestChanges = mutation({
         });
 
         // Decrement Campaign Pending Approvals
-        const campaign = await ctx.db.get(submission.campaign_id);
+        const campaign = await ctx.db.get(submission.campaign_id) as Doc<"campaigns"> | null;
         if (campaign && (campaign.pending_approvals ?? 0) > 0) {
             await ctx.db.patch(submission.campaign_id, {
                 pending_approvals: (campaign.pending_approvals ?? 1) - 1,
             });
 
             // Decrement Business Pending Approvals
-            const business = await ctx.db.get(campaign.business_id);
+            const business = await ctx.db.get(campaign.business_id) as Doc<"businesses"> | null;
             if (business && (business.pending_approvals ?? 0) > 0) {
                 await ctx.db.patch(campaign.business_id, {
                     pending_approvals: (business.pending_approvals ?? 1) - 1,
@@ -302,9 +381,15 @@ export const generateVideoUploadUrl = action({
         if (identity === null) {
             throw new Error("Unauthenticated call to action");
         }
-        const key = crypto.randomUUID();
+        const extension =
+            args.contentType === "video/quicktime"
+                ? "mov"
+                : args.contentType.includes("webm")
+                    ? "webm"
+                    : "mp4";
+        const key = `submission-videos/${identity.subject}/${crypto.randomUUID()}.${extension}`;
         const uploadUrl = await generateUploadUrl(key, args.contentType);
-        return { uploadUrl, s3Key: key };
+        return { uploadUrl, r2Key: key };
     },
 });
 
@@ -313,16 +398,15 @@ export const generateVideoAccessUrl = action({
         submissionId: v.id("submissions"),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (identity === null) {
+        const access = await getSubmissionAccess(ctx, args.submissionId);
+        if (!access.identity) {
             throw new Error("Unauthenticated call to action");
         }
-        const submission = await ctx.runQuery(api.submissions.getSubmission, { submissionId: args.submissionId });
-        if (!submission || !submission.s3_key) {
+        if (!access.canAccess || !access.submission || !access.submission.r2_key) {
             return null; // Handle missing submission or key
         }
 
-        const url = await generateDownloadUrl(submission.s3_key);
+        const url = await generateDownloadUrl(access.submission.r2_key);
         return url;
     },
 });

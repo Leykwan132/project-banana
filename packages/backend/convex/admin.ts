@@ -1,7 +1,7 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { generateDownloadUrl } from "./s3";
+import { generateDownloadUrl } from "./r2";
 import { WithdrawalSourceType } from "./constants";
 
 // ============================================================
@@ -184,11 +184,11 @@ export const rejectBankAccount = mutation({
  */
 export const generateAdminProofAccessUrl = action({
     args: {
-        s3Key: v.string(),
+        r2Key: v.string(),
     },
     handler: async (ctx, args) => {
         await assertAdmin(ctx);
-        return await generateDownloadUrl(args.s3Key);
+        return await generateDownloadUrl(args.r2Key);
     },
 });
 
@@ -197,11 +197,11 @@ export const generateAdminProofAccessUrl = action({
  */
 export const generateAdminVideoAccessUrl = action({
     args: {
-        s3Key: v.string(),
+        r2Key: v.string(),
     },
     handler: async (ctx, args) => {
         await assertAdmin(ctx);
-        return await generateDownloadUrl(args.s3Key);
+        return await generateDownloadUrl(args.r2Key);
     },
 });
 

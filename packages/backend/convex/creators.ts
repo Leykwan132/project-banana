@@ -2,7 +2,6 @@ import { internalMutation, internalQuery, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { ErrorType } from "./errors";
 
-
 export const getCreatorById = query({
     args: { creatorId: v.id("creators") },
     handler: async (ctx, args) => {

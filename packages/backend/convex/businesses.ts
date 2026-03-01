@@ -1,5 +1,5 @@
 import { mutation, query, action, internalMutation } from "./_generated/server";
-import { generateUploadUrl, generateDownloadUrl } from "./s3";
+import { generateUploadUrl, generateDownloadUrl } from "./r2";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
@@ -72,7 +72,7 @@ export const createBusiness = mutation({
     args: {
         name: v.string(),
         logo_url: v.optional(v.string()),
-        logo_s3_key: v.optional(v.string()),
+        logo_r2_key: v.optional(v.string()),
         industry: v.optional(v.string()),
         size: v.optional(v.string()),
     },
@@ -95,7 +95,7 @@ export const createBusiness = mutation({
             user_id: user.subject,
             name: args.name,
             logo_url: args.logo_url,
-            logo_s3_key: args.logo_s3_key,
+            logo_r2_key: args.logo_r2_key,
             industry: args.industry,
             size: args.size,
             credit_balance: 0,
@@ -114,7 +114,7 @@ export const updateBusiness = mutation({
         businessId: v.id("businesses"),
         name: v.optional(v.string()),
         logo_url: v.optional(v.string()),
-        logo_s3_key: v.optional(v.string()),
+        logo_r2_key: v.optional(v.string()),
         industry: v.optional(v.string()),
         size: v.optional(v.string()),
     },
@@ -145,7 +145,7 @@ export const updateBusiness = mutation({
         await ctx.db.patch(args.businessId, {
             name: args.name,
             logo_url: args.logo_url,
-            logo_s3_key: args.logo_s3_key,
+            logo_r2_key: args.logo_r2_key,
             industry: args.industry,
             size: args.size,
             updated_at: Date.now(),
@@ -229,9 +229,9 @@ export const generateLogoUploadUrl = action({
         }
         const key = crypto.randomUUID();
         // Assume logos are stored in a 'logos/' prefix
-        const s3Key = `logos/${key}`;
-        const uploadUrl = await generateUploadUrl(s3Key, args.contentType);
-        return { uploadUrl, s3Key };
+        const r2Key = `logos/${key}`;
+        const uploadUrl = await generateUploadUrl(r2Key, args.contentType);
+        return { uploadUrl, r2Key };
     },
 });
 
@@ -245,11 +245,11 @@ export const generateLogoAccessUrl = action({
         // But to be safe, let's check if the business exists.
         const business = await ctx.runQuery(api.businesses.getBusiness, { businessId: args.businessId });
 
-        if (!business || !business.logo_s3_key) {
+        if (!business || !business.logo_r2_key) {
             return null;
         }
 
-        const url = await generateDownloadUrl(business.logo_s3_key);
+        const url = await generateDownloadUrl(business.logo_r2_key);
         return url;
     },
 });

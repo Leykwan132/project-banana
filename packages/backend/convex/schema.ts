@@ -10,7 +10,7 @@ export default defineSchema({
         user_id: v.string(), // Owner
         name: v.string(),
         logo_url: v.optional(v.string()), // Legacy/External URL
-        logo_s3_key: v.optional(v.string()), // S3 Key
+        logo_r2_key: v.optional(v.string()), // R2 Key
         industry: v.optional(v.string()),
         size: v.optional(v.string()),
         credit_balance: v.number(),
@@ -40,10 +40,10 @@ export default defineSchema({
         business_id: v.id("businesses"),
         name: v.string(),
         logo_url: v.optional(v.string()),
-        logo_s3_key: v.optional(v.string()),
+        logo_r2_key: v.optional(v.string()),
         use_company_logo: v.optional(v.boolean()),
         cover_photo_url: v.optional(v.string()),
-        cover_photo_s3_key: v.optional(v.string()),
+        cover_photo_r2_key: v.optional(v.string()),
         total_budget: v.number(),
         budget_claimed: v.number(),
         submissions: v.number(),
@@ -165,7 +165,7 @@ export default defineSchema({
         user_id: v.string(),
         campaign_id: v.id("campaigns"),
         video_url: v.optional(v.string()),
-        s3_key: v.optional(v.string()),
+        r2_key: v.optional(v.string()),
         status: v.string(), // "pending_submission" | "pending_review" | "changes_requested" | "ready_to_post" | "earning"
         created_at: v.number(),
         type: v.string(), // "video" | "image" | "carousel"
@@ -225,7 +225,7 @@ export default defineSchema({
         account_holder_name: v.string(),
         account_number: v.string(),
         status: v.string(), // "pending_review" | "verified" | "rejected"
-        proof_document_s3_key: v.optional(v.string()),
+        proof_document_r2_key: v.optional(v.string()),
         created_at: v.number(),
         updated_at: v.number(),
     })

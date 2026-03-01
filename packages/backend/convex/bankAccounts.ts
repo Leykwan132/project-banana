@@ -1,6 +1,6 @@
 import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { deleteObject, generateDownloadUrl, generateUploadUrl } from "./s3";
+import { deleteObject, generateDownloadUrl, generateUploadUrl } from "./r2";
 
 // ============================================================
 // BANK ACCOUNT QUERIES
@@ -56,7 +56,7 @@ export const getBankAccount = query({
         const legacyProofKey = (account as any).proof_document_url as string | undefined;
         return {
             ...account,
-            proof_document_s3_key: account.proof_document_s3_key ?? legacyProofKey,
+            proof_document_r2_key: account.proof_document_r2_key ?? legacyProofKey,
         };
     },
 });
@@ -89,8 +89,8 @@ export const createBankAccount = mutation({
             account_holder_name: args.accountHolderName,
             account_number: args.accountNumber,
             status: "pending_review",
-            // Stores S3 object key
-            proof_document_s3_key: args.proofDocumentKey,
+            // Stores R2 object key
+            proof_document_r2_key: args.proofDocumentKey,
             created_at: now,
             updated_at: now,
         });
@@ -112,11 +112,11 @@ export const resubmitBankAccountProof = mutation({
         if (!account) throw new Error("Bank account not found");
         if (account.user_id !== user.subject) throw new Error("Unauthorized");
 
-        const previousProofKey = account.proof_document_s3_key;
+        const previousProofKey = account.proof_document_r2_key;
 
         await ctx.db.patch(args.bankAccountId, {
             status: "pending_review",
-            proof_document_s3_key: args.newProofKey,
+            proof_document_r2_key: args.newProofKey,
             updated_at: Date.now(),
         });
 
@@ -143,15 +143,15 @@ export const generateProofUploadUrl = action({
                         ? "webp"
                         : "jpg";
 
-        const s3Key = `bank-proofs/${identity.subject}/${crypto.randomUUID()}.${extension}`;
-        const uploadUrl = await generateUploadUrl(s3Key, args.contentType);
-        return { uploadUrl, s3Key };
+        const r2Key = `bank-proofs/${identity.subject}/${crypto.randomUUID()}.${extension}`;
+        const uploadUrl = await generateUploadUrl(r2Key, args.contentType);
+        return { uploadUrl, r2Key };
     },
 });
 
 export const generateProofAccessUrl = action({
     args: {
-        s3Key: v.string(),
+        r2Key: v.string(),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -161,28 +161,28 @@ export const generateProofAccessUrl = action({
         // New keys are namespaced by user. Keep this protection for namespaced keys.
         // Legacy keys may not follow this format, so allow them for backward compatibility.
         if (
-            args.s3Key.startsWith("bank-proofs/") &&
-            !args.s3Key.startsWith(`bank-proofs/${identity.subject}/`)
+            args.r2Key.startsWith("bank-proofs/") &&
+            !args.r2Key.startsWith(`bank-proofs/${identity.subject}/`)
         ) {
             throw new Error("Unauthorized proof access");
         }
-        return await generateDownloadUrl(args.s3Key);
+        return await generateDownloadUrl(args.r2Key);
     },
 });
 
 export const deleteProofObject = action({
     args: {
-        s3Key: v.string(),
+        r2Key: v.string(),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
         if (identity === null) {
             throw new Error("Unauthenticated call to action");
         }
-        if (!args.s3Key.startsWith(`bank-proofs/${identity.subject}/`)) {
+        if (!args.r2Key.startsWith(`bank-proofs/${identity.subject}/`)) {
             throw new Error("Unauthorized proof deletion");
         }
 
-        await deleteObject(args.s3Key);
+        await deleteObject(ctx, args.r2Key);
     },
 });

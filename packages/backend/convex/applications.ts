@@ -51,11 +51,11 @@ export const getMyApplications = query({
         const pageWithDetails = await Promise.all(
             applications.page.map(async (app) => {
                 const campaign = await ctx.db.get(app.campaign_id);
+                const business = campaign?.business_id ? await ctx.db.get(campaign.business_id) : null;
                 let businessName = campaign?.business_name;
 
                 // Fallback to fetching business if name not denormalized
-                if (!businessName && campaign?.business_id) {
-                    const business = await ctx.db.get(campaign.business_id);
+                if (!businessName) {
                     businessName = business?.name;
                 }
 
@@ -64,8 +64,8 @@ export const getMyApplications = query({
                     campaignName: campaign?.name,
                     businessName,
                     campaignCoverPhotoUrl: campaign?.cover_photo_url ?? campaign?.logo_url,
-                    campaignLogoUrl: campaign?.logo_url,
-                    campaignLogoS3Key: campaign?.logo_s3_key,
+                    campaignLogoUrl: campaign?.logo_url ?? business?.logo_url,
+                    campaignLogoR2Key: campaign?.logo_r2_key ?? business?.logo_r2_key,
                 };
             })
         );
