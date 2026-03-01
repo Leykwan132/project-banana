@@ -2,6 +2,7 @@ import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { generateDownloadUrl } from "./s3";
+import { WithdrawalSourceType } from "./constants";
 
 // ============================================================
 // ADMIN AUTH HELPER
@@ -280,6 +281,17 @@ export const rejectWithdrawal = mutation({
         await ctx.db.patch(args.withdrawalId, {
             status: "failed",
         });
+
+        if (withdrawal.source_type === WithdrawalSourceType.Business && withdrawal.business_id) {
+            const business = await ctx.db.get(withdrawal.business_id);
+            if (business) {
+                await ctx.db.patch(business._id, {
+                    credit_balance: business.credit_balance + withdrawal.amount,
+                    updated_at: Date.now(),
+                });
+            }
+            return;
+        }
 
         // Refund the amount to the creator's balance
         const creator = await ctx.db

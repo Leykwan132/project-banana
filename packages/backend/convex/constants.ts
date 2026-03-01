@@ -40,5 +40,10 @@ export enum WithdrawalStatus {
     Refunded = "refunded",
 }
 
+export enum WithdrawalSourceType {
+    Creator = "creator",
+    Business = "business",
+}
+
 /** Payment gateway fee charged per withdrawal */
 export const PAYOUT_GATEWAY_FEE = parseFloat(process.env.BILLPLZ_PAYOUT_GATEWAY_FEE || "1.10");

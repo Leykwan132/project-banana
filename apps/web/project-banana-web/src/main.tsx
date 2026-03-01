@@ -24,6 +24,7 @@ import Settings from './pages/Settings'
 import Credits from './pages/Credits'
 import TopUp from './pages/TopUp'
 import Subscription from './pages/Subscription'
+import Withdrawals from './pages/Withdrawals'
 import { DashboardLayout } from './components/DashboardLayout'
 import { AdminLayout } from './components/AdminLayout'
 import AdminBankApprovals from './pages/admin/AdminBankApprovals'
@@ -66,6 +67,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/approvals/:id/submission/:submissionId" element={<ReviewSubmission />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/credits" element={<Credits />} />
+                <Route path="/withdrawals" element={<Withdrawals />} />
                 <Route path="/credits/topup" element={<TopUp />} />
                 <Route path="/subscription" element={<Subscription />} />
               </Route>

@@ -71,6 +71,7 @@ export const getBankAccount = query({
 export const createBankAccount = mutation({
     args: {
         bankName: v.string(),
+        bankCode: v.optional(v.string()),
         accountHolderName: v.string(),
         accountNumber: v.string(),
         proofDocumentKey: v.optional(v.string()),
@@ -84,6 +85,7 @@ export const createBankAccount = mutation({
         const bankAccountId = await ctx.db.insert("bank_accounts", {
             user_id: user.subject,
             bank_name: args.bankName,
+            bank_code: args.bankCode,
             account_holder_name: args.accountHolderName,
             account_number: args.accountNumber,
             status: "pending_review",
