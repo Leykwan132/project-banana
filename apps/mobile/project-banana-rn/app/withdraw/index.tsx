@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import LottieView from 'lottie-react-native';
-import { useMutation, useQuery, useAction } from 'convex/react';
+import { useQuery, useAction } from 'convex/react';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -20,6 +20,7 @@ import { BANK_OPTIONS } from '@/constants/banks';
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
 
 const BankAccountSkeleton = () => {
     const opacity = useSharedValue(0.35);
@@ -57,12 +58,13 @@ export default function WithdrawScreen() {
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
     const actionSheetRef = useRef<ActionSheetRef>(null);
-    const [confirmStep, setConfirmStep] = useState<'review' | 'success' | 'failed'>('review');
+    const [confirmStep, setConfirmStep] = useState<'review' | 'success' | 'failed' | 'insufficient_balance'>('review');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [withdrawErrorMessage, setWithdrawErrorMessage] = useState('Something went wrong while creating your withdrawal request.');
     const requestWithdrawal = useAction(api.payouts.requestWithdrawal);
 
+    const gatewayFee = useQuery(api.payouts.getPayoutGatewayFee) ?? 0;
     const balanceData = useQuery(api.users.getUserBalance);
     const bankAccountsData = useQuery(api.bankAccounts.getActiveBankAccounts);
     const isBankAccountsLoading = bankAccountsData === undefined;
@@ -88,7 +90,7 @@ export default function WithdrawScreen() {
     const currentBalance = balanceData?.balance ?? 0;
 
     const handleMax = () => {
-        setAmount(currentBalance.toString());
+        setAmount(currentBalance.toFixed(2));
         setError('');
     };
 
@@ -115,15 +117,18 @@ export default function WithdrawScreen() {
         try {
             await requestWithdrawal({
                 amount: parsedAmount,
-                bankAccount: selectedBank.accountNumber,
-                bankName: selectedBank.bankName,
+                bankAccountId: selectedBank.id as any,
             });
             setIsLoading(false);
             setConfirmStep('success');
         } catch (mutationError: any) {
             setIsLoading(false);
-            setWithdrawErrorMessage(mutationError?.message ?? 'Please try again.');
-            setConfirmStep('failed');
+            const errorData = mutationError?.data;
+            if (errorData?.code === 6002) {
+                setConfirmStep('insufficient_balance');
+            } else {
+                setConfirmStep('failed');
+            }
         }
     };
 
@@ -164,13 +169,20 @@ export default function WithdrawScreen() {
                             keyboardType="numeric"
                             placeholderTextColor="#999"
                         />
+
                         <Pressable onPress={handleMax} style={styles.maxButton}>
                             <ThemedText style={styles.maxButtonText}>Max</ThemedText>
                         </Pressable>
                     </View>
-                    <View style={styles.inputFooter}>
-                        <ThemedText style={styles.errorText}>{error}</ThemedText>
-                        <ThemedText style={styles.noteText}>Estimated payout 3-5 days</ThemedText>
+                    {error ? (
+                        <View style={styles.inputFooter}>
+                            <ThemedText style={styles.errorText}>{error}</ThemedText>
+                        </View>
+                    ) : null}
+                    <View style={styles.feeNotice}>
+                        <ThemedText style={styles.feeNoticeText}>
+                            A gateway fee of RM {gatewayFee.toFixed(2)} will be charged per withdrawal.
+                        </ThemedText>
                     </View>
                 </View>
 
@@ -264,27 +276,32 @@ export default function WithdrawScreen() {
                         <View>
                             <ThemedText type="subtitle" style={styles.sheetTitle}>Review Withdrawal</ThemedText>
 
-                            <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>Amount</ThemedText>
-                                <ThemedText type="defaultSemiBold">Rm {amount || '0'}</ThemedText>
-                            </View>
-                            <View style={styles.divider} />
-
+                            {/* Bank info */}
                             <View style={styles.reviewRow}>
                                 <ThemedText style={styles.reviewLabel}>Bank</ThemedText>
                                 <ThemedText type="defaultSemiBold">{bankAccounts.find(b => b.id === selectedBankId)?.bankName}</ThemedText>
                             </View>
-                            <View style={styles.divider} />
-
                             <View style={styles.reviewRow}>
                                 <ThemedText style={styles.reviewLabel}>Account</ThemedText>
                                 <ThemedText type="defaultSemiBold">{bankAccounts.find(b => b.id === selectedBankId)?.accountNumber}</ThemedText>
                             </View>
+
                             <View style={styles.divider} />
 
+                            {/* Amount breakdown */}
                             <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>Estimated Payout</ThemedText>
-                                <ThemedText type="defaultSemiBold">3-5 business days</ThemedText>
+                                <ThemedText style={styles.reviewLabel}>Amount</ThemedText>
+                                <ThemedText type="defaultSemiBold">Rm {amount || '0'}</ThemedText>
+                            </View>
+                            <View style={styles.reviewRow}>
+                                <ThemedText style={styles.reviewLabel}>Gateway Fee</ThemedText>
+                                <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- Rm {gatewayFee.toFixed(2)}</ThemedText>
+                            </View>
+                            <View style={styles.reviewRow}>
+                                <ThemedText style={styles.reviewLabel}>You'll Receive</ThemedText>
+                                <ThemedText type="defaultSemiBold" style={{ color: '#2E7D32' }}>
+                                    Rm {Math.max(0, parseFloat(amount || '0') - gatewayFee).toFixed(2)}
+                                </ThemedText>
                             </View>
 
                             <Pressable
@@ -310,7 +327,7 @@ export default function WithdrawScreen() {
                                 style={{ width: 150, height: 150 }}
                             />
                             <ThemedText type="subtitle" style={styles.successTitle}>Withdrawal Processing</ThemedText>
-                            <ThemedText style={styles.successSubtitle}>You should receive within 3-5 days</ThemedText>
+                            <ThemedText style={styles.successSubtitle}>Withdrawal request submitted</ThemedText>
 
                             <Pressable
                                 style={[styles.confirmButton, { marginTop: 32, width: '100%' }]}
@@ -322,6 +339,28 @@ export default function WithdrawScreen() {
                                 <ThemedText style={styles.confirmButtonText}>Done</ThemedText>
                             </Pressable>
                         </View>
+                    ) : confirmStep === 'insufficient_balance' ? (
+                        <View style={styles.successContainer}>
+                            <LottieView
+                                source={require('../../assets/lotties/failed.json')}
+                                autoPlay
+                                loop={false}
+                                style={{ width: 150, height: 150 }}
+                            />
+                            <ThemedText type="subtitle" style={styles.successTitle}>Insufficient Balance</ThemedText>
+                            <ThemedText style={styles.successSubtitle}>
+                                Your balance is insufficient.
+                            </ThemedText>
+
+                            <Pressable
+                                style={[styles.confirmButton, { marginTop: 32, width: '100%' }]}
+                                onPress={() => setConfirmStep('review')}
+                            >
+                                <ThemedText style={styles.confirmButtonText}>Adjust Amount</ThemedText>
+                            </Pressable>
+
+
+                        </View>
                     ) : (
                         <View style={styles.successContainer}>
                             <LottieView
@@ -331,7 +370,7 @@ export default function WithdrawScreen() {
                                 style={{ width: 150, height: 150 }}
                             />
                             <ThemedText type="subtitle" style={styles.successTitle}>Withdrawal Failed</ThemedText>
-                            <ThemedText style={styles.successSubtitle}>{withdrawErrorMessage}</ThemedText>
+                            <ThemedText style={styles.successSubtitle}>Something went wrong with your withdrawal request.</ThemedText>
 
                             <Pressable
                                 style={[styles.confirmButton, { marginTop: 32, width: '100%' }]}
@@ -342,9 +381,9 @@ export default function WithdrawScreen() {
 
                             <Pressable
                                 style={[styles.confirmButtonSecondary, { width: '100%', marginTop: 12 }]}
-                                onPress={() => actionSheetRef.current?.hide()}
+                                onPress={() => Linking.openURL('mailto:support@youniq.com?subject=Withdrawal Issue')}
                             >
-                                <ThemedText style={styles.confirmButtonSecondaryText}>Dismiss</ThemedText>
+                                <ThemedText style={styles.confirmButtonSecondaryText}>Contact Support</ThemedText>
                             </Pressable>
                         </View>
                     )}
@@ -441,6 +480,19 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#666',
         fontFamily: 'GoogleSans_400Regular',
+    },
+
+    feeNotice: {
+        backgroundColor: '#FFF8E1',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginTop: 12,
+    },
+    feeNoticeText: {
+        fontSize: 12,
+        color: '#F57F17',
+        fontFamily: 'GoogleSans_500Medium',
     },
     maxButton: {
         backgroundColor: '#F0F0F0',
@@ -594,6 +646,7 @@ const styles = StyleSheet.create({
     divider: {
         height: 1,
         backgroundColor: '#F0F0F0',
+        marginVertical: 16,
     },
     successContainer: {
         alignItems: 'center',

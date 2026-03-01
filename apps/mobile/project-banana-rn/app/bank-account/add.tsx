@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { View, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, ChevronDown, Upload, Eye, CheckCircle, Search, Camera, FileText, Image as ImageIcon, Pencil } from 'lucide-react-native';
+import { ChevronLeft, ChevronDown, Upload, Eye, Check, Search, Camera, FileText, Image as ImageIcon, Pencil } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { Image } from 'expo-image';
@@ -401,7 +401,7 @@ export default function AddBankAccountScreen() {
 
                     <ScrollView
                         ref={bankScrollViewRef}
-                        style={{ maxHeight: 550 }}
+                        contentContainerStyle={{ paddingBottom: 80 }}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                     >
@@ -421,7 +421,7 @@ export default function AddBankAccountScreen() {
                                     </ThemedText>
                                 </View>
                                 {bank.name === bankName && (
-                                    <CheckCircle size={20} color="#000" />
+                                    <Check size={20} color="#000" />
                                 )}
                             </Pressable>
                         ))}

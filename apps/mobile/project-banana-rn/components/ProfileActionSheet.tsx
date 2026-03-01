@@ -2,7 +2,7 @@ import { View, StyleSheet, Pressable, Image, ActivityIndicator } from 'react-nat
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Landmark, Settings, LogOut, Gift } from 'lucide-react-native';
+import { Landmark, Settings, LogOut, Gift, User as UserIcon } from 'lucide-react-native';
 
 import { useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
@@ -34,7 +34,7 @@ export function ProfileActionSheet({
 
     const profileData = {
         name: user?.name ?? "User",
-        avatar: user?.image ?? "https://i.pravatar.cc/150",
+        avatar: user?.image,
         memberSince: user?.createdAt ? new Date(user.createdAt).getFullYear().toString() : new Date().getFullYear().toString(),
         stats: {
             campaigns: campaignsCount,
@@ -55,7 +55,7 @@ export function ProfileActionSheet({
             await authClient.signOut({
                 fetchOptions: {
                     onSuccess: () => {
-                        actionSheetRef.current?.hide();
+                        router.replace('/welcome');
                         setIsLoggingOut(false);
                         // No manual redirect needed — _layout.tsx auth guard
                         // detects session === null and redirects to /welcome automatically
@@ -77,10 +77,14 @@ export function ProfileActionSheet({
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
                     <View style={styles.avatarContainer}>
-                        <Image
-                            source={{ uri: profileData.avatar }}
-                            style={styles.avatar}
-                        />
+                        {profileData.avatar ? (
+                            <Image
+                                source={{ uri: profileData.avatar }}
+                                style={styles.avatar}
+                            />
+                        ) : (
+                            <UserIcon size={40} color="#999" />
+                        )}
                     </View>
                     <ThemedText type="subtitle" style={styles.name}>{profileData.name}</ThemedText>
                     <ThemedText style={styles.memberSince}>Member since {profileData.memberSince}</ThemedText>
@@ -172,6 +176,8 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         marginBottom: 12,
         backgroundColor: '#f0f0f0',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     avatar: {
         width: '100%',

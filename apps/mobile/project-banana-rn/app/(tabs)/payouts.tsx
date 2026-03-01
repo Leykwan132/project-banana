@@ -30,6 +30,8 @@ interface Transaction {
     campaignName: string;
     date: string;
     amount: string;
+    rawAmount?: number;      // original requested withdrawal amount (for fee breakdown)
+    gatewayFee?: number;     // fee stored on the withdrawal record
     status?: ApplicationStatus;
     bankName?: string;
     accountNumber?: string;
@@ -128,11 +130,13 @@ export default function PayoutsScreen() {
         return withdrawalsData.map((withdrawal) => ({
             id: withdrawal._id,
             campaignName: 'Withdraw',
-            date: formatDate(withdrawal.requested_at),
+            date: formatDate(withdrawal.created_at),
             amount: formatAmount(withdrawal.amount, false),
+            rawAmount: withdrawal.amount,
+            gatewayFee: withdrawal.gateway_fee,
             status: (withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)) as ApplicationStatus,
-            bankName: withdrawal.bank_name,
-            accountNumber: maskAccountNumber(withdrawal.bank_account),
+            bankName: withdrawal.bank_name ?? undefined,
+            accountNumber: withdrawal.account_number ?? undefined,
         }));
     }, [withdrawalsData]);
 
@@ -203,34 +207,84 @@ export default function PayoutsScreen() {
         ));
     };
 
+    const renderCustomWithdrawalContent = () => {
+        if (!selectedTransaction || selectedTransaction.campaignName !== 'Withdraw') return null;
+
+        const requested = selectedTransaction.rawAmount ?? 0;
+        const actualFee = selectedTransaction.gatewayFee ?? 0;
+        const received = Math.max(0, requested - actualFee);
+        const isPendingOrProcessing = ['Pending', 'Processing'].includes(selectedTransaction.status || '');
+
+        return (
+            <View>
+                {/* Date & Status */}
+                <View style={styles.reviewRow}>
+                    <ThemedText style={styles.reviewLabel}>Date</ThemedText>
+                    <ThemedText type="defaultSemiBold">{selectedTransaction.date}</ThemedText>
+                </View>
+
+                {selectedTransaction.status && (
+                    <View style={styles.reviewRow}>
+                        <View>
+                            <ThemedText style={styles.reviewLabel}>Status</ThemedText>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <ThemedText type="defaultSemiBold" style={{ color: isPendingOrProcessing ? '#F57C00' : '#2E7D32' }}>
+                                {selectedTransaction.status}
+                            </ThemedText>
+                            {isPendingOrProcessing && (
+                                <ThemedText style={styles.noteText}>Estimated arrival: 2-5 days</ThemedText>
+                            )}
+                        </View>
+                    </View>
+                )}
+
+                <View style={styles.divider} />
+
+                {/* Bank info */}
+                {selectedTransaction.bankName && (
+                    <View style={styles.reviewRow}>
+                        <ThemedText style={styles.reviewLabel}>Bank</ThemedText>
+                        <ThemedText type="defaultSemiBold">{selectedTransaction.bankName}</ThemedText>
+                    </View>
+                )}
+                {selectedTransaction.accountNumber && (
+                    <View style={styles.reviewRow}>
+                        <ThemedText style={styles.reviewLabel}>Account</ThemedText>
+                        <ThemedText type="defaultSemiBold">{maskAccountNumber(selectedTransaction.accountNumber)}</ThemedText>
+                    </View>
+                )}
+
+                <View style={styles.divider} />
+
+                {/* Amount breakdown */}
+                <View style={styles.reviewRow}>
+                    <ThemedText style={styles.reviewLabel}>Requested Amount</ThemedText>
+                    <ThemedText type="defaultSemiBold">RM {requested.toFixed(2)}</ThemedText>
+                </View>
+                <View style={styles.reviewRow}>
+                    <ThemedText style={styles.reviewLabel}>Gateway Fee</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {actualFee.toFixed(2)}</ThemedText>
+                </View>
+                <View style={styles.reviewRow}>
+                    <ThemedText style={styles.reviewLabel}>Amount Received</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={{ color: '#2E7D32', fontSize: 18 }}>
+                        RM {received.toFixed(2)}
+                    </ThemedText>
+                </View>
+            </View>
+        );
+    };
+
     const sheetDetails = useMemo((): DetailItem[] => {
-        if (!selectedTransaction) return [];
+        if (!selectedTransaction || selectedTransaction.campaignName === 'Withdraw') return [];
 
         const details: DetailItem[] = [];
 
-        if (selectedTransaction.campaignName !== 'Withdraw') {
-            // Payout: Campaign, Date, Amount
-            details.push({ label: 'Campaign', value: selectedTransaction.campaignName });
-            details.push({ label: 'Date', value: selectedTransaction.date });
-            details.push({ label: 'Amount', value: selectedTransaction.amount });
-        } else {
-            // Withdrawal: Date, Amount, Bank, Account Number, Status
-            details.push({ label: 'Date', value: selectedTransaction.date });
-            details.push({ label: 'Amount', value: selectedTransaction.amount });
-            if (selectedTransaction.bankName) details.push({ label: 'Bank', value: selectedTransaction.bankName });
-            if (selectedTransaction.accountNumber) details.push({ label: 'Account Number', value: selectedTransaction.accountNumber });
-            if (selectedTransaction.status) {
-                const isPendingOrProcessing = ['Pending', 'Processing'].includes(selectedTransaction.status);
-                details.push({
-                    label: 'Status',
-                    value: selectedTransaction.status,
-                    valueStyle: {
-                        color: isPendingOrProcessing ? '#F57C00' : '#2E7D32'
-                    },
-                    note: isPendingOrProcessing ? 'Estimated arrival: 2-5 days' : undefined
-                });
-            }
-        }
+        // Payout: Campaign, Date, Amount (Withdrawal is handled via customContent)
+        details.push({ label: 'Campaign', value: selectedTransaction.campaignName });
+        details.push({ label: 'Date', value: selectedTransaction.date });
+        details.push({ label: 'Amount', value: selectedTransaction.amount });
 
         return details;
     }, [selectedTransaction]);
@@ -298,6 +352,7 @@ export default function PayoutsScreen() {
                 actionSheetRef={actionSheetRef}
                 title={selectedTransaction?.campaignName === 'Withdraw' ? "Withdrawal Details" : "Payout Details"}
                 details={sheetDetails}
+                customContent={renderCustomWithdrawalContent()}
                 onCancel={showCancelButton ? handleCancelWithdrawal : undefined}
             />
         </View>
@@ -356,5 +411,26 @@ const styles = StyleSheet.create({
     lottie: {
         width: 150,
         height: 150,
+    },
+    reviewRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+    },
+    reviewLabel: {
+        fontSize: 16,
+        color: '#666',
+        fontFamily: 'GoogleSans_400Regular',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#F0F0F0',
+        marginVertical: 4,
+    },
+    noteText: {
+        fontSize: 12,
+        color: '#666',
+        marginTop: 4,
+        fontFamily: 'GoogleSans_400Regular',
     },
 });

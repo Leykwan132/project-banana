@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { View, StyleSheet, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell } from 'lucide-react-native';
+import { Bell, User as UserIcon } from 'lucide-react-native';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import { useQuery } from 'convex/react';
 
@@ -55,10 +55,16 @@ export function Header({ title }: HeaderProps) {
                     </View>
                 </Pressable>
                 <Pressable onPress={() => actionSheetRef.current?.show()}>
-                    <Image
-                        source={{ uri: user?.image || 'https://github.com/shadcn.png' }}
-                        style={styles.avatar}
-                    />
+                    {user?.image ? (
+                        <Image
+                            source={{ uri: user.image }}
+                            style={styles.avatar}
+                        />
+                    ) : (
+                        <View style={[styles.avatar, styles.fallbackAvatar]}>
+                            <UserIcon size={24} color="#999" />
+                        </View>
+                    )}
                 </Pressable>
             </View>
 
@@ -119,6 +125,13 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20,
         overflow: 'hidden',
+    },
+    fallbackAvatar: {
+        backgroundColor: '#F0F0F0',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E5E5',
     },
     avatarImage: {
         width: '100%',

@@ -5,7 +5,9 @@ import {
     AlertCircle,
     CheckCheck,
     CircleCheck,
-    Star
+    Star,
+    Check,
+    BadgeCheck
 } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -81,11 +83,9 @@ export const getStatusConfig = (status?: ApplicationStatus) => {
         case 'Paid':
         case 'Completed':
             return {
-                bg: '#E8F5E9',
                 text: '#2E7D32',
-                border: '#2E7D32',
-                icon: CheckCheck,
-                iconColor: '#2E7D32'
+                icon: BadgeCheck,
+                iconColor: '#4CAF50',
             };
         case 'Processing':
             return {
@@ -126,7 +126,7 @@ export function ApplicationStatusBadge({ status, style }: ApplicationStatusBadge
 
     return (
         <View style={[styles.statusBadge, style]}>
-            <StatusIcon size={14} fill={iconColor} />
+            <StatusIcon size={14} fill={iconColor} fillOpacity={0.5} />
             <ThemedText style={styles.statusText}>
                 {status}
             </ThemedText>

@@ -19,6 +19,8 @@ interface TransactionDetailsSheetProps {
     details: DetailItem[];
     onCancel?: () => Promise<void> | void;
     cancelText?: string;
+    /** Optional fully-custom content that replaces the default detail rows */
+    customContent?: React.ReactNode;
 }
 
 export function TransactionDetailsSheet({
@@ -27,6 +29,7 @@ export function TransactionDetailsSheet({
     details,
     onCancel,
     cancelText = "Cancel Withdrawal",
+    customContent,
 }: TransactionDetailsSheetProps) {
     const insets = useSafeAreaInsets();
     const [view, setView] = useState<'details' | 'confirm' | 'success'>('details');
@@ -44,7 +47,6 @@ export function TransactionDetailsSheet({
             setView('success');
         } catch (error) {
             console.error(error);
-            // Handle error state if needed
         } finally {
             setIsLoading(false);
         }
@@ -52,7 +54,6 @@ export function TransactionDetailsSheet({
 
     const handleDismiss = () => {
         actionSheetRef.current?.hide();
-        // Reset state after sheet closes
         setTimeout(() => {
             setView('details');
             setIsLoading(false);
@@ -66,22 +67,26 @@ export function TransactionDetailsSheet({
                     <>
                         <ThemedText type="subtitle" style={styles.sheetTitle}>{title}</ThemedText>
 
-                        {details.map((item, index) => (
-                            <View key={index}>
-                                <View style={styles.detailRow}>
-                                    <View>
-                                        <ThemedText style={styles.detailLabel}>{item.label}</ThemedText>
+                        {customContent ? (
+                            customContent
+                        ) : (
+                            details.map((item, index) => (
+                                <View key={index}>
+                                    <View style={styles.detailRow}>
+                                        <View>
+                                            <ThemedText style={styles.detailLabel}>{item.label}</ThemedText>
+                                        </View>
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <ThemedText type="defaultSemiBold" style={item.valueStyle}>{item.value}</ThemedText>
+                                            {item.note && (
+                                                <ThemedText style={styles.noteText}>{item.note}</ThemedText>
+                                            )}
+                                        </View>
                                     </View>
-                                    <View style={{ alignItems: 'flex-end' }}>
-                                        <ThemedText type="defaultSemiBold" style={item.valueStyle}>{item.value}</ThemedText>
-                                        {item.note && (
-                                            <ThemedText style={styles.noteText}>{item.note}</ThemedText>
-                                        )}
-                                    </View>
+                                    <View style={styles.divider} />
                                 </View>
-                                <View style={styles.divider} />
-                            </View>
-                        ))}
+                            ))
+                        )}
 
                         {onCancel && (
                             <Pressable
