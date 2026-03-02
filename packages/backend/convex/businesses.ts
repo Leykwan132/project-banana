@@ -1,6 +1,6 @@
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { mutation, query, action, internalMutation, internalAction } from "./_generated/server";
 import { generateUploadUrl, generateDownloadUrl } from "./r2";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 
@@ -68,18 +68,17 @@ export const getOnboardingStatus = query({
 // MUTATIONS
 // ============================================================
 
-export const createBusiness = mutation({
+/** Internal mutation that handles the DB write for createBusiness. */
+export const createBusinessRecord = internalMutation({
     args: {
+        userId: v.string(),
         name: v.string(),
         logo_url: v.optional(v.string()),
         logo_r2_key: v.optional(v.string()),
         industry: v.optional(v.string()),
         size: v.optional(v.string()),
     },
-    handler: async (ctx, args) => {
-        const user = await ctx.auth.getUserIdentity();
-        if (!user) throw new Error("Unauthenticated call to mutation");
-
+    handler: async (ctx, args): Promise<import("./_generated/dataModel").Id<"businesses">> => {
         // Check if name exists
         const existing = await ctx.db
             .query("businesses")
@@ -91,8 +90,8 @@ export const createBusiness = mutation({
         }
 
         const now = Date.now();
-        const businessId = await ctx.db.insert("businesses", {
-            user_id: user.subject,
+        return await ctx.db.insert("businesses", {
+            user_id: args.userId,
             name: args.name,
             logo_url: args.logo_url,
             logo_r2_key: args.logo_r2_key,
@@ -104,10 +103,42 @@ export const createBusiness = mutation({
             updated_at: now,
             created_at: now,
         });
+    },
+});
+
+export const createBusiness = action({
+    args: {
+        name: v.string(),
+        logo_url: v.optional(v.string()),
+        logo_r2_key: v.optional(v.string()),
+        industry: v.optional(v.string()),
+        size: v.optional(v.string()),
+    },
+    handler: async (ctx, args): Promise<import("./_generated/dataModel").Id<"businesses">> => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) throw new Error("Unauthenticated call to action");
+
+        const businessId = await ctx.runMutation(internal.businesses.createBusinessRecord, {
+            userId: user.subject,
+            name: args.name,
+            logo_url: args.logo_url,
+            logo_r2_key: args.logo_r2_key,
+            industry: args.industry,
+            size: args.size,
+        });
+
+        // Add to Loops contact list & send welcome email (fire and forget)
+        const email = user.email;
+        const firstName = user.givenName ?? user.name?.split(' ')[0] ?? args.name;
+        if (email) {
+            ctx.runAction(internal.emails.internalAddContact, { email, firstName }).catch(console.error);
+            ctx.runAction(internal.emails.sendWelcomeEmail, { email, firstName }).catch(console.error);
+        }
 
         return businessId;
     },
 });
+
 
 export const updateBusiness = mutation({
     args: {

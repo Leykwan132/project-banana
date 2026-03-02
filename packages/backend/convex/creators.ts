@@ -1,6 +1,7 @@
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { ErrorType } from "./errors";
+import { internal } from "./_generated/api";
 
 export const getCreatorById = query({
     args: { creatorId: v.id("creators") },
@@ -32,9 +33,13 @@ export const internalGetCreatorByUserId = internalQuery({
 
 
 export const createCreatorByUserId = internalMutation({
-    args: { userId: v.string() },
+    args: {
+        userId: v.string(),
+        email: v.optional(v.string()),
+        firstName: v.optional(v.string()),
+    },
     handler: async (ctx, args) => {
-        return await ctx.db.insert("creators", {
+        const creatorId = await ctx.db.insert("creators", {
             user_id: args.userId,
             is_deleted: false,
             is_onboarded: false,
@@ -42,6 +47,20 @@ export const createCreatorByUserId = internalMutation({
             total_earnings: 0,
             balance: 0,
         });
+
+        // Add to Loops contact list & send welcome email (fire and forget)
+        if (args.email) {
+            await ctx.scheduler.runAfter(0, internal.emails.internalAddContact, {
+                email: args.email,
+                firstName: args.firstName,
+            });
+            await ctx.scheduler.runAfter(0, internal.emails.sendWelcomeEmail, {
+                email: args.email,
+                firstName: args.firstName ?? args.userId,
+            });
+        }
+
+        return creatorId;
     },
 });
 
