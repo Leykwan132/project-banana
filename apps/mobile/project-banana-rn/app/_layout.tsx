@@ -24,7 +24,7 @@ import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "@/lib/auth-client"
 import Toast from 'react-native-toast-message';
 import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary';
-
+import { NotificationProvider } from '@/context/NotificationContext';
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL as string, {
@@ -74,23 +74,24 @@ export default function RootLayout() {
   // }
 
   return (
-
-    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <GestureHandlerRootView>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <GlobalErrorBoundary>
-            <Stack initialRouteName="welcome">
-              <Stack.Screen name="welcome" options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="auto" />
-          </GlobalErrorBoundary>
-        </ThemeProvider>
-        <Toast />
-      </GestureHandlerRootView>
-    </ConvexBetterAuthProvider>
+    <NotificationProvider>
+      <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+        <GestureHandlerRootView>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <GlobalErrorBoundary>
+              <Stack initialRouteName="welcome">
+                <Stack.Screen name="welcome" options={{ headerShown: false }} />
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <StatusBar style="auto" />
+            </GlobalErrorBoundary>
+          </ThemeProvider>
+          <Toast />
+        </GestureHandlerRootView>
+      </ConvexBetterAuthProvider>
+    </NotificationProvider>
 
   );
 }
