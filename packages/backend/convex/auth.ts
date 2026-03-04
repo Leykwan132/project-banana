@@ -116,7 +116,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     return {
         trustedOrigins: [
             "myapp://",
-            "projectbananarn://",
+            "projectbanana://",
             // Development mode - Expo's exp:// scheme with local IP ranges
             "exp://",                      // Trust all Expo URLs (prefix matching)
             "exp://**",                    // Trust all Expo URLs (wildcard matching)

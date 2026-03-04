@@ -130,12 +130,16 @@ export default defineSchema({
 
     creators: defineTable({
         user_id: v.string(),
+        name: v.string(),
+        username: v.optional(v.string()),
+        signup_goal: v.optional(v.array(v.string())),
+        referral_source: v.optional(v.string()),
         is_deleted: v.optional(v.boolean()),
-        is_onboarded: v.optional(v.boolean()),
         total_views: v.optional(v.number()),
         total_earnings: v.optional(v.number()),
         balance: v.optional(v.number()),
-    }).index("by_user", ["user_id"]),
+    }).index("by_user", ["user_id"])
+        .index("by_username", ["username"]),
 
     applications: defineTable({
         user_id: v.string(),

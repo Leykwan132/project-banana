@@ -26,7 +26,6 @@ export const getUser = query({
         return {
             ...user,
             isDeleted: creator?.is_deleted ?? false,
-            isOnboarded: creator?.is_onboarded ?? false,
             profile_pic_url: creator?.profile_pic_url ?? null,
             total_views: creator?.total_views ?? 0,
             total_earnings: totalEarnings, // Use calculated earnings
@@ -139,39 +138,3 @@ export const updateUser = mutation({
     },
 });
 
-// Get onboarding status for the current user
-export const getOnboardingStatus = query({
-    args: {},
-    handler: async (ctx) => {
-        const user = await ctx.auth.getUserIdentity();
-        if (!user) {
-            return { isOnboarded: false };
-        }
-
-        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
-        return { isOnboarded: creator?.is_onboarded ?? false };
-    },
-});
-
-// Set user as onboarded (called from webhook after first subscription)
-export const setUserOnboarded = mutation({
-    args: {
-        authId: v.string(),
-        isOnboarded: v.optional(v.boolean()),
-    },
-    handler: async (ctx, args) => {
-        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: args.authId });
-        if (!creator) throw new Error("Creator record not found");
-
-        if (args.isOnboarded === undefined) {
-            return { success: true };
-        }
-
-        await ctx.db.patch(creator._id, {
-            is_onboarded: args.isOnboarded,
-            updated_at: Date.now(),
-        });
-
-        return { success: true };
-    },
-});

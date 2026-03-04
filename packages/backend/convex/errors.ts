@@ -41,6 +41,11 @@ export const ErrorType = {
         message: "Insufficient credits",
         severity: "medium",
     },
+    USERNAME_TAKEN: {
+        code: 6004,
+        message: "This username is already taken",
+        severity: "low",
+    },
 } as const;
 
 export const ERROR_CODES = ErrorType;
