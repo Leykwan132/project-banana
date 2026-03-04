@@ -582,9 +582,10 @@ export default function CreateCampaign() {
 
     const validationSchema = useMemo(() => Yup.object({
         name: Yup.string().required('Please enter a campaign name'),
-        category: Yup.array().min(1, 'Please select at least one category'),
+        category: Yup.array().min(1, 'Please select a category'),
         totalPayouts: Yup.number()
             .required('Please enter a valid total budget')
+            .min(500, 'Minimum total payout is Rm 500')
             .positive('Please enter a valid total budget'),
         assets: Yup.string().url('Please enter a valid URL'),
         maxPayout: Yup.number()
@@ -965,6 +966,7 @@ export default function CreateCampaign() {
                                     value={formik.values.totalPayouts}
                                     onChange={formik.handleChange}
                                     onBlur={formik.handleBlur}
+                                    min={500}
                                     className={`w-full bg-[#F4F6F8] rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all ${formik.touched.totalPayouts && formik.errors.totalPayouts ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
                                 />
                             </div>
@@ -981,7 +983,7 @@ export default function CreateCampaign() {
                                 Category
                                 <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
                             </label>
-                            <p className="text-sm text-gray-500 mb-4">Select the content categories for your campaign.</p>
+                            <p className="text-sm text-gray-500 mb-4">Select one content category for your campaign.</p>
                         </div>
                         <div className="flex flex-wrap gap-4">
                             {CAMPAIGN_CATEGORIES.map((cat) => {
@@ -993,18 +995,12 @@ export default function CreateCampaign() {
                                         tabIndex={0}
                                         key={cat.id}
                                         onClick={() => {
-                                            const newCategories = isSelected
-                                                ? formik.values.category.filter((c) => c !== cat.label)
-                                                : [...formik.values.category, cat.label];
-                                            formik.setFieldValue('category', newCategories);
+                                            formik.setFieldValue('category', isSelected ? [] : [cat.label]);
                                         }}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' || e.key === ' ') {
                                                 e.preventDefault();
-                                                const newCategories = isSelected
-                                                    ? formik.values.category.filter((c) => c !== cat.label)
-                                                    : [...formik.values.category, cat.label];
-                                                formik.setFieldValue('category', newCategories);
+                                                formik.setFieldValue('category', isSelected ? [] : [cat.label]);
                                             }
                                         }}
                                         className={`relative flex flex-col items-center justify-center gap-3 p-4 w-36 aspect-3/4 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'border-black bg-gray-50 scale-[1.02]' : 'border-gray-100 bg-white hover:border-gray-200'}`}

@@ -860,18 +860,12 @@ export default function CampaignDetails() {
                                                 tabIndex={0}
                                                 key={cat.id}
                                                 onClick={() => {
-                                                    const newCategories = isSelected
-                                                        ? formik.values.category.filter((c: string) => c !== cat.label)
-                                                        : [...formik.values.category, cat.label];
-                                                    formik.setFieldValue('category', newCategories);
+                                                    formik.setFieldValue('category', isSelected ? [] : [cat.label]);
                                                 }}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter' || e.key === ' ') {
                                                         e.preventDefault();
-                                                        const newCategories = isSelected
-                                                            ? formik.values.category.filter((c: string) => c !== cat.label)
-                                                            : [...formik.values.category, cat.label];
-                                                        formik.setFieldValue('category', newCategories);
+                                                        formik.setFieldValue('category', isSelected ? [] : [cat.label]);
                                                     }
                                                 }}
                                                 className={`relative flex flex-col items-center justify-center gap-3 p-4 w-36 aspect-3/4 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'border-black bg-gray-50 scale-[1.02]' : 'border-gray-100 bg-white hover:border-gray-200'}`}

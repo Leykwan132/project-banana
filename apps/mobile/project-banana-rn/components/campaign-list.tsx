@@ -22,9 +22,7 @@ import { api } from '../../../../packages/backend/convex/_generated/api';
 
 import { CAMPAIGN_CATEGORIES } from '@/constants/campaignCategories';
 
-const CATEGORY_OPTIONS = [
-    ...CAMPAIGN_CATEGORIES.map(c => ({ label: c.label, value: c.id, icon: c.icon }))
-];
+
 
 const SORT_OPTIONS = [
     { label: 'Pay per 1k view', value: 'payout-view' },
@@ -142,6 +140,27 @@ export function CampaignList() {
         });
     }, [filteredCampaigns, selectedSort]);
 
+    const categoryOptionsWithCounts = useMemo(() => {
+        const counts = processedCampaigns.reduce((acc, campaign) => {
+            const categoryMatch = CAMPAIGN_CATEGORIES.find(c =>
+                Array.isArray(campaign.category)
+                    ? (campaign.category.includes(c.label) || campaign.category.includes(c.id))
+                    : (campaign.category === c.label || campaign.category === c.id)
+            );
+
+            if (categoryMatch) {
+                acc[categoryMatch.id] = (acc[categoryMatch.id] || 0) + 1;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+
+        return CAMPAIGN_CATEGORIES.map(c => ({
+            label: `${c.label} (${counts[c.id] || 0})`,
+            value: c.id,
+            icon: c.icon
+        }));
+    }, [processedCampaigns]);
+
     return (
         <View style={styles.container}>
             {/* Filter Section */}
@@ -159,10 +178,10 @@ export function CampaignList() {
                         onPress={() => categorySheetRef.current?.show()}
                     >
                         <ThemedText style={styles.filterButtonText}>
-                            {selectedCategory ? CATEGORY_OPTIONS.find(c => c.value === selectedCategory)?.label : 'Category'}
+                            {selectedCategory ? categoryOptionsWithCounts.find(c => c.value === selectedCategory)?.label : 'Category'}
                         </ThemedText>
                         {(() => {
-                            const SelectedIcon = selectedCategory ? CATEGORY_OPTIONS.find(c => c.value === selectedCategory)?.icon : Filter;
+                            const SelectedIcon = selectedCategory ? categoryOptionsWithCounts.find(c => c.value === selectedCategory)?.icon : Filter;
                             return SelectedIcon ? <SelectedIcon size={14} color={Colors[colorScheme ?? 'light'].text} /> : null;
                         })()}
                     </Pressable>
@@ -225,7 +244,7 @@ export function CampaignList() {
             <SelectionSheet
                 actionSheetRef={categorySheetRef}
                 title="Select Category"
-                options={CATEGORY_OPTIONS}
+                options={categoryOptionsWithCounts}
                 selectedOption={selectedCategory}
                 onSelect={handleCategorySelect}
                 onReset={() => setSelectedCategory(null)}
