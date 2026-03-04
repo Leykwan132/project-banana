@@ -442,7 +442,7 @@ export default function OnboardingScreen() {
                     <View style={styles.brandingLogoContainer}>
                         <ThemedText type="title" style={styles.brandingLogoText}>✦</ThemedText>
                     </View>
-                    <ThemedText type="defaultSemiBold" style={styles.brandingAppName}>Youniq</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={styles.brandingAppName}>Lumina</ThemedText>
                 </View>
 
                 <View style={styles.backPlaceholder} />

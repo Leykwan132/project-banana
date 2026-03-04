@@ -186,7 +186,7 @@ export default function PayoutsScreen() {
                     </ThemedText>
                     <ThemedText style={styles.emptyStateSubtext}>
                         {selectedIndex === 0
-                            ? 'Payouts by Youniq are made at the start of every month.'
+                            ? 'Payouts by Lumina are made at the start of every month.'
                             : 'Request a withdrawal to see it here'
                         }
                     </ThemedText>

@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { View, StyleSheet, Image, Pressable } from 'react-native';
+import { View, StyleSheet, Image as RNImage, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Bell, User as UserIcon } from 'lucide-react-native';
 import { ActionSheetRef } from "react-native-actions-sheet";
@@ -34,10 +35,12 @@ export function Header({ title }: HeaderProps) {
                     <ThemedText type="title" style={styles.headerTitle}>{title}</ThemedText>
                 ) : (
                     <>
-                        <View style={styles.logoContainer}>
-                            <ThemedText type="title" style={styles.logoText}>✦</ThemedText>
-                        </View>
-                        <ThemedText type="defaultSemiBold" style={styles.appName}>Youniq</ThemedText>
+                        <Image
+                            source={require('@/assets/images/icon.svg')}
+                            style={styles.logoContainer}
+                            contentFit="contain"
+                        />
+                        <ThemedText type="defaultSemiBold" style={styles.appName}>Lumina</ThemedText>
                     </>
                 )}
             </View>
@@ -56,7 +59,7 @@ export function Header({ title }: HeaderProps) {
                 </Pressable>
                 <Pressable onPress={() => actionSheetRef.current?.show()}>
                     {user?.image ? (
-                        <Image
+                        <RNImage
                             source={{ uri: user.image }}
                             style={styles.avatar}
                         />
@@ -90,10 +93,7 @@ const styles = StyleSheet.create({
     logoContainer: {
         width: 32,
         height: 32,
-        borderRadius: 16,
-        backgroundColor: '#000',
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 8,
     },
     logoText: {
         color: '#fff',

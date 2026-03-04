@@ -1,5 +1,6 @@
 import { View, StyleSheet, Pressable } from 'react-native';
-import { Flower, ArrowRight } from 'lucide-react-native';
+import { ArrowRight } from 'lucide-react-native';
+import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 
@@ -23,7 +24,11 @@ export function PayoutCard({
             disabled={!onPress}
         >
             <View style={styles.iconContainer}>
-                <Flower size={24} color="#000" />
+                <Image
+                    source={require('@/assets/images/icon-dark.svg')}
+                    style={styles.iconImage}
+                    contentFit="contain"
+                />
             </View>
 
             <View style={styles.content}>
@@ -62,12 +67,17 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 28,
         backgroundColor: '#FFF',
         alignItems: 'center',
         justifyContent: 'center',
+        padding: 6,
+    },
+    iconImage: {
+        width: '80%',
+        height: '80%',
     },
     content: {
         gap: 2,

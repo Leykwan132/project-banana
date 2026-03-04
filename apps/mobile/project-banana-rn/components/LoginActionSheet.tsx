@@ -1,4 +1,5 @@
-import { View, StyleSheet, Pressable, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { AntDesign } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -145,13 +146,12 @@ export function LoginActionSheet({
                 </View>
             ) : (
                 <View style={styles.container}>
-                    <View style={styles.logoContainer}>
-                        <Image
-                            source={require('@/assets/images/app-icon.png')}
-                            style={styles.logoImage}
-                        />
-                    </View>
-                    <ThemedText type="subtitle" style={styles.title}>Welcome to Youniq</ThemedText>
+                    <Image
+                        source={require('@/assets/images/icon.svg')}
+                        style={styles.logoContainer}
+                        contentFit="contain"
+                    />
+                    <ThemedText type="subtitle" style={styles.title}>Welcome to Lumina</ThemedText>
                     <ThemedText style={styles.subtitle}>Sign in to start earning from your content.</ThemedText>
 
                     <View style={styles.buttonContainer}>
@@ -216,19 +216,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     logoContainer: {
-        width: 80,
-        height: 80,
+        width: 60,
+        height: 60,
         borderRadius: 20,
         marginBottom: 20,
-        overflow: 'hidden',
-        backgroundColor: '#000',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    logoImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'contain',
     },
     title: {
         fontSize: 24,

@@ -381,7 +381,7 @@ export default function WithdrawScreen() {
 
                             <Pressable
                                 style={[styles.confirmButtonSecondary, { width: '100%', marginTop: 12 }]}
-                                onPress={() => Linking.openURL('mailto:support@youniq.com?subject=Withdrawal Issue')}
+                                onPress={() => Linking.openURL('mailto:support@Lumina.com?subject=Withdrawal Issue')}
                             >
                                 <ThemedText style={styles.confirmButtonSecondaryText}>Contact Support</ThemedText>
                             </Pressable>

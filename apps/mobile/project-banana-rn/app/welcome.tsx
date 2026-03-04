@@ -5,6 +5,7 @@ import {
     StyleSheet,
     View, Image,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -119,10 +120,12 @@ export default function WelcomeScreen() {
     return (
         <View style={styles.container}>
             <View style={[styles.brandingContainer, { paddingTop: insets.top + 20 }]}>
-                <View style={styles.brandingLogoContainer}>
-                    <ThemedText type="title" style={styles.brandingLogoText}>✦</ThemedText>
-                </View>
-                <ThemedText type="defaultSemiBold" style={styles.brandingAppName}>Youniq</ThemedText>
+                <ExpoImage
+                    source={require('@/assets/images/icon.svg')}
+                    style={styles.brandingLogoContainer}
+                    contentFit="contain"
+                />
+                <ThemedText type="defaultSemiBold" style={styles.brandingAppName}>Lumina</ThemedText>
             </View>
             <Carousel
                 autoplay
@@ -177,10 +180,7 @@ const styles = StyleSheet.create({
     brandingLogoContainer: {
         width: 32,
         height: 32,
-        borderRadius: 16,
-        backgroundColor: '#000',
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 8,
     },
     brandingLogoText: {
         color: '#fff',

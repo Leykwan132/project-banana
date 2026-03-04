@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
+import StatusBadge from '../components/ui/StatusBadge';
 
 const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -18,29 +19,6 @@ const formatDate = (timestamp: number) => {
         hour12: true
     });
 };
-
-const getStatusStyle = (status: string) => {
-    switch (status) {
-        case 'completed':
-        case 'verified':
-            return 'text-green-600 bg-green-50 px-2 py-1 rounded';
-        case 'failed':
-        case 'canceled':
-        case 'rejected':
-            return 'text-red-600 bg-red-50 px-2 py-1 rounded';
-        case 'processing':
-        case 'pending':
-            return 'text-blue-600 bg-blue-50 px-2 py-1 rounded';
-        default:
-            return 'text-yellow-600 bg-yellow-50 px-2 py-1 rounded';
-    }
-};
-
-const toStatusLabel = (status: string) =>
-    status
-        .split('_')
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
 
 export default function Withdrawals() {
     const navigate = useNavigate();
@@ -151,9 +129,7 @@ export default function Withdrawals() {
                                             {formatCurrency(deposit)}
                                         </div>
                                         <div className="col-span-1 flex items-center justify-center font-medium">
-                                            <span className={`px-2 py-1 text-xs capitalize ${getStatusStyle(withdrawal.status)}`}>
-                                                {toStatusLabel(withdrawal.status)}
-                                            </span>
+                                            <StatusBadge status={withdrawal.status || 'unknown'} />
                                         </div>
                                     </div>
                                 );

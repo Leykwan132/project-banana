@@ -1,4 +1,5 @@
-import { View, StyleSheet, Pressable, Image } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 import { ReactNode, useState } from 'react';
 
@@ -33,7 +34,7 @@ const bannerConfigs = {
     },
     how_it_works: {
         backgroundColor: '#E1F5FE',
-        defaultTitle: 'New to Youniq?',
+        defaultTitle: 'New to Lumina?',
         defaultDescription: 'See how it works',
     },
 };
@@ -58,9 +59,9 @@ export function Banner({ type, title, description, icon, onPress }: BannerProps)
                     <View style={styles.iconContainer}>
                         {icon || (
                             <Image
-                                source={require('@/assets/images/app-icon.png')}
+                                source={require('@/assets/images/icon.svg')}
                                 style={styles.appIcon}
-                                resizeMode="contain"
+                                contentFit="contain"
                             />
                         )}
                     </View>
@@ -111,8 +112,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     appIcon: {
-        width: 48,
-        height: 48,
+        width: 36,
+        height: 36,
         borderRadius: 12,
     },
     contentContainer: {
