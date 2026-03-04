@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
 import {
     Dimensions,
-    ImageBackground,
     Pressable,
     StyleSheet,
     View, Image,
@@ -10,11 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
     Carousel, PageControlPosition,
-    TouchableOpacity
 } from 'react-native-ui-lib';
-
 import { ActionSheetRef } from 'react-native-actions-sheet';
-
 import { ThemedText } from '@/components/themed-text';
 import { LoginActionSheet } from '@/components/LoginActionSheet';
 import { authClient } from "@/lib/auth-client";
@@ -114,13 +110,7 @@ export default function WelcomeScreen() {
     const handleLogin = useCallback(() => {
         console.log('pressing login')
         loginActionSheetRef.current?.show();
-
     }, []);
-
-    const onActualLogin = useCallback(() => {
-        router.replace('/(tabs)');
-    }, []);
-
 
     const onChangePage = useCallback((page: number) => {
         setCurrentPage(page);
@@ -160,7 +150,6 @@ export default function WelcomeScreen() {
             </View>
             <LoginActionSheet
                 actionSheetRef={loginActionSheetRef}
-                onLogin={onActualLogin}
             />
         </View>
     );
