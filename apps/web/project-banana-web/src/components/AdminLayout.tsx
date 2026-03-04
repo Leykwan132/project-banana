@@ -176,7 +176,7 @@ export function AdminLayout() {
                 <div className="p-6 border-b border-gray-100">
                     <div className="flex items-center gap-2">
                         <Shield className="w-5 h-5 text-gray-900" />
-                        <span className="font-bold text-gray-900 tracking-tight">Youniq Admin</span>
+                        <span className="font-bold text-gray-900 tracking-tight">Lumina Admin</span>
                     </div>
                 </div>
                 <nav className="flex-1 p-3 space-y-1">

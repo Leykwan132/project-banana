@@ -1,5 +1,6 @@
 import { authClient } from "../lib/auth-client";
 import { Link } from "react-router-dom";
+import iconDark from "../assets/icon-dark.svg";
 
 export default function Login() {
     const signIn = async () => {
@@ -14,13 +15,13 @@ export default function Login() {
         <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 relative">
             <div className="absolute top-6 left-6 md:top-10 md:left-10 flex items-center gap-2 font-semibold">
                 <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-                    <img src="/banana-icon.png" alt="Youniq" className="h-6 w-6 object-contain" />
-                    <span className="text-gray-900 tracking-tight text-lg">Youniq</span>
+                    <img src={iconDark} alt="Lumina" className="h-6 w-6 object-contain" />
+                    <span className="text-gray-900 tracking-tight text-lg">Lumina</span>
                 </Link>
             </div>
 
             <div className="w-full max-w-[320px] text-center">
-                <h1 className="text-2xl font-bold tracking-tight text-gray-900">Welcome to Youniq</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900">Welcome to Lumina</h1>
                 <p className="text-[15px] text-gray-500 mb-8 mt-1">The best way to run UGC.</p>
 
                 <div className="flex flex-col gap-2.5">

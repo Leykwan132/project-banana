@@ -5,6 +5,7 @@ import { authClient } from './lib/auth-client';
 import PlanSelector from './components/PlanSelector';
 import BusinessLanding from './landing/business/BusinessLanding';
 import CreatorLanding from './landing/creator/CreatorLanding';
+import iconDark from './assets/icon-dark.svg';
 
 type PricingFaq = {
     question: string;
@@ -39,8 +40,8 @@ function Footer() {
             <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 md:grid-cols-4">
                 <div className="col-span-2 space-y-4">
                     <div className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
-                        <img src="/banana-icon.png" alt="Youniq" className="h-6 w-6 object-contain" />
-                        <span className="text-lg tracking-tight">Youniq</span>
+                        <img src={iconDark} alt="Lumina" className="h-6 w-6 object-contain" />
+                        <span className="text-lg tracking-tight">Lumina</span>
                     </div>
                     <p className="max-w-xs leading-relaxed">The operating layer for modern UGC execution, from brief to payout.</p>
                     <div className="flex gap-4 pt-2">
@@ -111,7 +112,7 @@ function Footer() {
             </div>
 
             <div className="mx-auto mt-12 flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-gray-100 px-6 pt-12 md:flex-row">
-                <p>© {new Date().getFullYear()} Youniq. All rights reserved.</p>
+                <p>© {new Date().getFullYear()} Lumina. All rights reserved.</p>
                 <span className="flex items-center gap-1.5">
                     <div className="h-2 w-2 rounded-full bg-green-500" />
                     All systems operational
@@ -185,8 +186,8 @@ export default function App() {
             <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
                 <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
                     <Link to="/" className="flex items-center gap-2 font-semibold">
-                        <img src="/banana-icon.png" alt="Youniq" className="h-8 w-8 object-contain" />
-                        <span className="text-xl tracking-tight">Youniq</span>
+                        <img src={iconDark} alt="Lumina" className="h-8 w-8 object-contain" />
+                        <span className="text-xl tracking-tight">Lumina</span>
                     </Link>
 
                     <div className="flex items-center gap-6">

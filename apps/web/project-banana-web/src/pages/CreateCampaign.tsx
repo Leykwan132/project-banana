@@ -19,6 +19,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
 import { addToast } from "@heroui/toast";
 import Button from '../components/ui/Button';
 import { CAMPAIGN_CATEGORIES } from '../lib/campaignCategories';
+import iconDark from '../assets/icon-dark.svg';
 
 export interface Threshold {
     views: string;
@@ -1558,8 +1559,8 @@ export default function CreateCampaign() {
                                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-black/10" />
-                            <div className="absolute bottom-12 right-8 bg-white/20 backdrop-blur-md p-1 rounded-full border border-white/20">
-                                <img src="/banana-icon.png" alt="Banana" className="w-14 h-14 object-contain" />
+                            <div className="absolute bottom-12 right-8 bg-white/20 backdrop-blur-md p-2 rounded-full border border-white/20">
+                                <img src={iconDark} alt="Banana" className="w-8 h-8 object-contain" />
                             </div>
                         </div>
                     </div>

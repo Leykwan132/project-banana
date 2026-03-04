@@ -5,15 +5,11 @@ import { Landmark, Loader2, Plus, ChevronLeft } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { addToast } from '@heroui/toast';
 import { BANK_OPTIONS } from '../lib/banks';
-import { Chip } from "@heroui/chip";
+import StatusBadge from '../components/ui/StatusBadge';
 
 type ProofFile = File | null;
 
-const toStatusLabel = (status: string) =>
-    status
-        .split('_')
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
+
 
 export default function BankAccounts() {
     const business = useQuery(api.businesses.getMyBusiness);
@@ -321,13 +317,7 @@ export default function BankAccounts() {
                                             ****{account.account_number.slice(-4)}
                                         </div>
                                         <div className="col-span-3 flex items-center justify-center">
-                                            <Chip
-                                                color={account.status === 'verified' ? 'success' : account.status === 'rejected' ? 'danger' : 'warning'}
-                                                variant="flat"
-                                                className='font-semibold'
-                                            >
-                                                {toStatusLabel(account.status)}
-                                            </Chip>
+                                            <StatusBadge status={account.status || 'unknown'} />
                                         </div>
                                     </div>
                                 );

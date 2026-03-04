@@ -8,6 +8,7 @@ import ReactPlayer from 'react-player';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import Button from '../components/ui/Button';
+import iconDark from '../assets/icon-dark.svg';
 
 export default function ReviewSubmission() {
     const navigate = useNavigate();
@@ -187,8 +188,8 @@ export default function ReviewSubmission() {
                     <div className="bg-white rounded-xl w-full max-w-[600px] p-10 shadow-2xl relative overflow-hidden flex flex-col animate-scaleIn">
 
                         {/* Top Left Icon */}
-                        <div className="w-14 h-14 rounded-full border border-gray-100 flex items-center justify-center mb-8 shadow-sm">
-                            <img src="/banana-icon.png" alt="Banana" className="w-10 h-10 object-contain" />
+                        <div className="w-12 h-12 rounded-full border border-gray-100 flex items-center justify-center mb-8 shadow-sm">
+                            <img src={iconDark} alt="Banana" className="w-8 h-8 object-contain" />
                         </div>
 
                         {/* Title & Description */}

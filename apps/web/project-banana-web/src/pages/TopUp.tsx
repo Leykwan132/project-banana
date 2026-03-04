@@ -5,6 +5,7 @@ import { useAction } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import { addToast } from "@heroui/toast";
+import icon from '../assets/icon.svg';
 
 export default function TopUp() {
     const navigate = useNavigate();
@@ -106,8 +107,8 @@ export default function TopUp() {
                         <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1 border border-gray-100">
                             <ul className="list-disc list-inside space-y-0.5 ml-1">
                                 <li>Credits are <span className="font-medium text-gray-700">non-refundable</span></li>
-                                <li>Youniq will absorb <span className="font-medium text-gray-700">all payment processing fees</span>.</li>
-                                <li>Youniq will handle <span className="font-medium text-gray-700">all payout</span> to the users.</li>
+                                <li>Lumina will absorb <span className="font-medium text-gray-700">all payment processing fees</span>.</li>
+                                <li>Lumina will handle <span className="font-medium text-gray-700">all payout</span> to the users.</li>
                             </ul>
                         </div>
                     </div>
@@ -118,7 +119,7 @@ export default function TopUp() {
                     {/* Placeholder for Graphic/Image - keeping it minimal or using existing assets */}
                     <div className="bg-[#1C1C1C] rounded-3xl p-12 w-full aspect-square flex items-center justify-center shadow-2xl relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-black opacity-50"></div>
-                        <img src="/banana-icon.png" alt="Banana" className="w-32 h-32 object-contain relative z-10" />
+                        <img src={icon} alt="Banana" className="w-32 h-32 object-contain relative z-10" />
                         <div className="absolute bottom-12 left-12 right-12 text-white/50 text-sm text-center z-10">
                             Secure payments powered by Billplz
                         </div>

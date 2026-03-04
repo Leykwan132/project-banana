@@ -5,9 +5,8 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 import { Layers, Check, Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
-import { Chip } from "@heroui/chip";
 import { Skeleton } from "@heroui/skeleton";
-import { CheckIcon, ActiveIcon, PausedIcon } from '../components/Icons';
+import StatusBadge from '../components/ui/StatusBadge';
 
 // Empty State Component
 const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
@@ -272,18 +271,7 @@ export default function Campaigns() {
                                         <span className="font-semibold text-gray-900">{campaign.name}</span>
                                     </div>
                                     <div className="col-span-1 flex items-center justify-center">
-                                        <Chip
-                                            color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
-                                            startContent={
-                                                campaign.status === 'active' ? <ActiveIcon size={20} /> :
-                                                    campaign.status === 'paused' ? <PausedIcon size={20} /> :
-                                                        <CheckIcon size={20} />
-                                            }
-                                            variant="flat"
-                                            className='font-semibold'
-                                        >
-                                            {campaign.status}
-                                        </Chip>
+                                        <StatusBadge status={campaign.status} />
                                     </div>
                                     <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
                                     <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
@@ -352,17 +340,7 @@ export default function Campaigns() {
                                         <span className="font-semibold text-gray-900">{campaign.name}</span>
                                     </div>
                                     <div className="col-span-1 flex items-center justify-center">
-                                        <Chip
-                                            color={campaign.status === 'active' ? 'success' : campaign.status === 'paused' ? 'warning' : 'default'}
-                                            startContent={
-                                                campaign.status === 'active' ? <ActiveIcon size={20} /> :
-                                                    campaign.status === 'paused' ? <PausedIcon size={20} /> :
-                                                        <CheckIcon size={20} />
-                                            }
-                                            variant="flat"
-                                        >
-                                            {campaign.status}
-                                        </Chip>
+                                        <StatusBadge status={campaign.status} />
                                     </div>
                                     <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
                                     <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>

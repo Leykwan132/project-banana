@@ -233,7 +233,7 @@ export default function CreatorLanding() {
                             Get paid faster for content brands can actually use.
                         </h1>
                         <p className="mt-6 max-w-xl text-xl text-gray-600">
-                            Youniq connects creators with verified briefs, keeps approvals organized, and releases secure payouts after delivery.
+                            Lumina connects creators with verified briefs, keeps approvals organized, and releases secure payouts after delivery.
                         </p>
                         <Link
                             to="/login"

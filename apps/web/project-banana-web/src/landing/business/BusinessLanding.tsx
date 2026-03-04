@@ -232,7 +232,7 @@ export default function BusinessLanding() {
                 <div className="max-w-4xl">
                     <h1 className="text-4xl font-medium tracking-tight text-gray-900 sm:text-5xl md:text-[3.25rem] md:leading-[1.1]">
                         Built for performance marketing teams,<br className="hidden md:block" />
-                        Youniq is the best way to run UGC.
+                        Lumina is the best way to run UGC.
                     </h1>
                     <Link
                         to="/login"

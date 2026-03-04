@@ -4,6 +4,7 @@ import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, 
 import { authClient } from '../lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
+import iconDark from '../assets/icon-dark.svg';
 
 const navigation = [
     { name: 'Overview', href: '/overview', icon: LayoutDashboard },
@@ -42,9 +43,9 @@ export function Sidebar() {
     return (
         <div className="flex h-screen w-64 flex-col border-r border-[#F4F6F8] bg-white">
             <div className="flex h-16 items-center px-6">
-                <div className="flex items-center gap-1 font-semibold">
-                    <img src="/banana-icon.png" alt="Banana" className="w-10 h-10 object-contain" />
-                    <span className="text-gray-900 tracking-tight">Youniq</span>
+                <div className="flex items-center gap-2 font-semibold">
+                    <img src={iconDark} alt="Banana" className="w-6 h-6 object-contain" />
+                    <span className="text-gray-900 tracking-tight">Lumina</span>
                 </div>
             </div>
 

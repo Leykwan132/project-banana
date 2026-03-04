@@ -17,6 +17,7 @@ import Button from '../../components/ui/Button';
 import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
 import { addToast } from "@heroui/toast";
 import { CampaignStatus } from '../../../../../../packages/backend/convex/constants';
+import StatusBadge from '../../components/ui/StatusBadge';
 
 type CampaignAnalyticsMetric = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Amount Spend';
 
@@ -725,14 +726,7 @@ export default function CampaignDetails() {
                         <h1 className="text-3xl font-bold text-gray-900">{formik.values.name || 'Campaign Details'}</h1>
 
                         <div className="flex items-center gap-3">
-                            <span className={`px-3 py-1 rounded-full border text-sm font-semibold capitalize ${campaign.status === 'active'
-                                ? 'bg-green-50 text-green-700 border-green-200'
-                                : campaign.status === 'paused'
-                                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                                    : 'bg-gray-50 text-gray-700 border-gray-200'
-                                }`}>
-                                {campaign.status}
-                            </span>
+                            <StatusBadge status={campaign.status} />
                         </div>
                     </div>
                     {campaign.status !== 'completed' && (

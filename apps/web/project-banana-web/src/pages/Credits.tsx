@@ -1,9 +1,11 @@
-import { ArrowRight, Loader2, Link as LinkIcon } from 'lucide-react';
+import { Coins, CreditCard, ChevronLeft, ChevronRight, ArrowRight, Loader2 } from 'lucide-react';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from "@heroui/pagination";
+import iconDark from '../assets/icon-dark.svg';
+import StatusBadge from '../components/ui/StatusBadge';
 
 import { useState } from 'react';
 
@@ -46,23 +48,6 @@ export default function Credits() {
             minute: 'numeric',
             hour12: true
         });
-    };
-
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'succeeded':
-            case 'paid':
-            case 'completed':
-                return 'text-green-600 bg-green-50 px-2 py-1 rounded';
-            case 'failed':
-            case 'canceled':
-                return 'text-red-600 bg-red-50 px-2 py-1 rounded';
-            case 'processing':
-            case 'pending':
-                return 'text-blue-600 bg-blue-50 px-2 py-1 rounded';
-            default:
-                return 'text-yellow-600 bg-yellow-50 px-2 py-1 rounded';
-        }
     };
 
     const ITEMS_PER_PAGE = 10;
@@ -109,8 +94,8 @@ export default function Credits() {
                 <div className="w-full max-w-lg">
                     <div className="bg-[#1C1C1C] text-white p-8 rounded-xl flex flex-col justify-between min-h-[300px] shadow-xl shadow-black/10 relative">
                         {/* Icon */}
-                        <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center">
-                            <img src="/banana-icon.png" alt="Banana" className="w-12 h-12 object-contain" />
+                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                            <img src={iconDark} alt="Banana" className="w-8 h-8 object-contain" />
                         </div>
 
                         {/* Bottom Section */}
@@ -145,8 +130,8 @@ export default function Credits() {
                             <button
                                 onClick={() => handleTabChange("topups")}
                                 className={`font-bold text-lg transition-colors relative pb-1 ${activeTab === "topups"
-                                        ? 'text-gray-900 border-b-2 border-gray-900'
-                                        : 'text-gray-400 hover:text-gray-600'
+                                    ? 'text-gray-900 border-b-2 border-gray-900'
+                                    : 'text-gray-400 hover:text-gray-600'
                                     }`}
                             >
                                 Past Topups
@@ -154,8 +139,8 @@ export default function Credits() {
                             <button
                                 onClick={() => handleTabChange("spending")}
                                 className={`font-bold text-lg transition-colors relative pb-1 ${activeTab === "spending"
-                                        ? 'text-gray-900 border-b-2 border-gray-900'
-                                        : 'text-gray-400 hover:text-gray-600'
+                                    ? 'text-gray-900 border-b-2 border-gray-900'
+                                    : 'text-gray-400 hover:text-gray-600'
                                     }`}
                             >
                                 Past Spending
@@ -187,7 +172,7 @@ export default function Credits() {
                             <div className="bg-[#F4F6F8] w-[70%] rounded-lg mt-2 grid grid-cols-4 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider select-none">
                                 <div className="col-span-1 pl-2">Date</div>
                                 <div className="col-span-1 flex items-center justify-center">Amount</div>
-                                <div className="col-span-1 flex items-center justify-center">Link</div>
+                                <div className="col-span-1 flex items-center justify-center">Payment Link</div>
                                 <div className="col-span-1 flex items-center justify-center">Status</div>
                             </div>
 
@@ -219,18 +204,16 @@ export default function Credits() {
                                                             href={item.billplz_url}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium text-sm border border-blue-200 hover:border-blue-400 rounded-md px-3 py-1.5 transition-colors"
+                                                            className="text-gray-900 hover:text-black underline font-medium text-sm transition-colors"
                                                         >
-                                                            Link <LinkIcon className="w-3 h-3" />
+                                                            Payment link
                                                         </a>
                                                     ) : (
                                                         <span className="text-gray-400 text-sm">-</span>
                                                     )}
                                                 </div>
                                                 <div className="col-span-1 flex items-center justify-center font-medium">
-                                                    <span className={getStatusStyle(item.status)}>
-                                                        {item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : 'Unknown'}
-                                                    </span>
+                                                    <StatusBadge status={item.status || 'unknown'} />
                                                 </div>
                                             </div>
                                         ))}
@@ -287,9 +270,7 @@ export default function Credits() {
                                                     - Rm {Math.abs(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </div>
                                                 <div className="col-span-1 flex items-center justify-center font-medium">
-                                                    <span className={getStatusStyle(item.status)}>
-                                                        {item.status ? (item.status.charAt(0).toUpperCase() + item.status.slice(1)) : 'Unknown'}
-                                                    </span>
+                                                    <StatusBadge status={item.status || 'unknown'} />
                                                 </div>
                                             </div>
                                         ))}
