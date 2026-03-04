@@ -37,7 +37,7 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const { data: session, isPending: isSessionPending } = authClient.useSession();
-  const [loaded] = useFonts({
+  const [loaded, error] = useFonts({
     GoogleSans_400Regular,
     GoogleSans_400Regular_Italic,
     GoogleSans_500Medium,
@@ -49,29 +49,14 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded || error) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, error]);
 
-  // useEffect(() => {
-  //   if (!loaded || isSessionPending) return;
-
-  //   const isOnOnboarding = segments[0] === "welcome";
-
-  //   if (!session && !isOnOnboarding) {
-  //     router.replace("/welcome");
-  //     return;
-  //   }
-
-  //   if (session && isOnOnboarding) {
-  //     router.replace("/(tabs)");
-  //   }
-  // }, [loaded, isSessionPending, segments, session, router]);
-
-  // if (!loaded) {
-  //   return null;
-  // }
+  if (!loaded && !error) {
+    return null;
+  }
 
   return (
     <NotificationProvider>

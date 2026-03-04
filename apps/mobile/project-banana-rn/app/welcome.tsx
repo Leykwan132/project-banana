@@ -109,7 +109,6 @@ export default function WelcomeScreen() {
     }, []);
 
     const handleLogin = useCallback(() => {
-        console.log('pressing login')
         loginActionSheetRef.current?.show();
     }, []);
 
