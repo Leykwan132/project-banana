@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SegmentedControl } from 'react-native-ui-lib';
 import { useRouter } from 'expo-router';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import Animated, {
@@ -65,7 +64,6 @@ export default function PayoutsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const insets = useSafeAreaInsets();
-    const [selectedIndex, setSelectedIndex] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const actionSheetRef = useRef<ActionSheetRef>(null);
@@ -75,10 +73,8 @@ export default function PayoutsScreen() {
     const isBalanceLoading = creatorData === undefined;
     const balance = creatorData?.balance ?? 0;
 
-    // Fetch payouts and withdrawals
-    const payoutsData = useQuery(api.payouts.getUserPayouts);
+    // Fetch withdrawals
     const withdrawalsData = useQuery(api.payouts.getUserWithdrawals);
-    const isPayoutsLoading = payoutsData === undefined;
     const isWithdrawalsLoading = withdrawalsData === undefined;
 
     const onRefresh = useCallback(() => {
@@ -107,16 +103,6 @@ export default function PayoutsScreen() {
         return `${sign}RM ${absAmount.toFixed(0)}`;
     };
 
-    // Format payouts for display
-    const formattedPayouts: Transaction[] = useMemo(() => {
-        if (!payoutsData) return [];
-        return payoutsData.map((payout) => ({
-            id: payout._id,
-            campaignName: 'Campaign Name', // TODO: Join with campaigns/applications table
-            date: formatDate(payout.created_at),
-            amount: formatAmount(payout.amount, true),
-        }));
-    }, [payoutsData]);
     // Mask account number helper
     const maskAccountNumber = (accountNumber: string): string => {
         if (accountNumber.length <= 4) return accountNumber;
@@ -158,7 +144,7 @@ export default function PayoutsScreen() {
     };
 
     const renderList = () => {
-        const isLoading = selectedIndex === 0 ? isPayoutsLoading : isWithdrawalsLoading;
+        const isLoading = isWithdrawalsLoading;
 
         if (isLoading) {
             return (
@@ -170,7 +156,7 @@ export default function PayoutsScreen() {
             );
         }
 
-        const data = selectedIndex === 0 ? formattedPayouts : formattedWithdrawals;
+        const data = formattedWithdrawals;
 
         if (data.length === 0) {
             return (
@@ -182,13 +168,10 @@ export default function PayoutsScreen() {
                         style={styles.lottie}
                     />
                     <ThemedText style={styles.emptyStateText}>
-                        {selectedIndex === 0 ? 'No payouts yet' : 'No withdrawals yet'}
+                        No withdrawals yet
                     </ThemedText>
                     <ThemedText style={styles.emptyStateSubtext}>
-                        {selectedIndex === 0
-                            ? 'Payouts by Lumina are made at the start of every month.'
-                            : 'Request a withdrawal to see it here'
-                        }
+                        Request a withdrawal to see it here
                     </ThemedText>
                 </View>
             );
@@ -319,22 +302,10 @@ export default function PayoutsScreen() {
                     />
                 </View>
 
-                {/* Segmented Control */}
-                <View style={styles.section}>
-                    <SegmentedControl
-                        segments={[{ label: 'Payouts' }, { label: 'Withdrawals' }]}
-                        onChangeIndex={(index: number) => setSelectedIndex(index)}
-                        backgroundColor={Colors[colorScheme ?? 'light'].background}
-                        activeBackgroundColor={Colors[colorScheme ?? 'light'].tint}
-                        activeColor={Colors[colorScheme ?? 'light'].background}
-                        style={{ height: 45 }}
-                    />
-                </View>
-
                 {/* List */}
                 <View style={styles.section}>
                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                        {selectedIndex === 0 ? 'Past Payouts' : 'Withdrawal History'}
+                        Withdrawal History
                     </ThemedText>
 
                     <View style={styles.list}>
