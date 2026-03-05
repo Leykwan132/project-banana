@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { generateUploadUrl, generateDownloadUrl } from "./r2";
 import type { Doc, Id } from "./_generated/dataModel";
+import { posthog } from "./posthog";
 
 const getAdminEmails = () => {
     try {
@@ -242,7 +243,7 @@ export const createSubmission = mutation({
             }
         }
 
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: user.subject,
             event: "video_submitted",
             properties: { submissionId, applicationId: args.applicationId }

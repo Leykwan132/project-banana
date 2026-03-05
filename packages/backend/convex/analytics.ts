@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { TableAggregate } from "@convex-dev/aggregate";
 import type { DataModel, Id } from "./_generated/dataModel.js";
 import { components } from "./_generated/api.js";
-
+import { posthog } from "./posthog";
 import { Triggers } from "convex-helpers/server/triggers";
 import {
     customCtx,
@@ -1154,7 +1154,6 @@ export const saveDailyCreatorStats = mutationWithTriggers({
 // ============================================================
 // POSTHOG TRACKING
 // ============================================================
-import { posthog } from "./posthog";
 
 export const trackEvent = internalAction({
     args: {
@@ -1163,11 +1162,10 @@ export const trackEvent = internalAction({
         properties: v.optional(v.any()),
     },
     handler: async (ctx, args) => {
-        posthog.capture({
+        posthog.capture(ctx, {
             distinctId: args.distinctId,
             event: args.event,
             properties: args.properties,
         });
-        await posthog.flush();
     },
 });

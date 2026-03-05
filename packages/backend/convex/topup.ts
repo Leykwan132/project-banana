@@ -2,6 +2,7 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { api, internal } from "./_generated/api";
+import { posthog } from "./posthog";
 
 // ============================================================
 // QUERIES
@@ -329,7 +330,7 @@ export const processWebhookPayment = mutation({
             created_at: now,
         });
 
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: order.business_id,
             event: "top_up_completed",
             properties: {
@@ -443,7 +444,7 @@ export const processBillplzWebhook = internalMutation({
                 created_at: now,
             });
 
-            await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            await posthog.capture(ctx, {
                 distinctId: order.business_id,
                 event: "top_up_completed",
                 properties: {

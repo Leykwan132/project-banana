@@ -2,6 +2,7 @@ import { action, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { deleteObject, generateDownloadUrl, generateUploadUrl } from "./r2";
+import { posthog } from "./posthog";
 
 // ============================================================
 // BANK ACCOUNT QUERIES
@@ -96,7 +97,7 @@ export const createBankAccount = mutation({
             updated_at: now,
         });
 
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: user.subject,
             event: "bank_account_added",
             properties: {

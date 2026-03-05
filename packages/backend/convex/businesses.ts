@@ -3,6 +3,7 @@ import { generateUploadUrl, generateDownloadUrl } from "./r2";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { posthog } from "./posthog";
 
 // ============================================================
 // QUERIES
@@ -104,7 +105,7 @@ export const createBusinessRecord = internalMutation({
             created_at: now,
         });
 
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: businessId,
             event: "business_created",
             properties: {
@@ -254,7 +255,7 @@ export const setBusinessOnboarded = internalMutation({
         });
 
         if (args.isOnboarded) {
-            await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            await posthog.capture(ctx, {
                 distinctId: business._id,
                 event: "business_onboarding_completed",
             });

@@ -1,6 +1,7 @@
 import { cronJobs } from "convex/server";
 import { internalAction } from "./_generated/server";
 import { internal, api } from "./_generated/api";
+import { posthog } from "./posthog";
 
 const crons = cronJobs();
 
@@ -213,7 +214,7 @@ export const runDailyScrape = internalAction({
                         earnings: earningsDelta,
                     });
 
-                    await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+                    await posthog.capture(ctx, {
                         distinctId: app.user_id,
                         event: "daily_scrape_calculated",
                         properties: {

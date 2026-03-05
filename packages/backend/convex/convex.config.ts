@@ -6,6 +6,7 @@ import betterAuth from "@convex-dev/better-auth/convex.config";
 import r2 from "@convex-dev/r2/convex.config.js";
 import loops from "@devwithbobby/loops/convex.config";
 import pushNotifications from "@convex-dev/expo-push-notifications/convex.config.js";
+import posthog from "@posthog/convex/convex.config.js";
 
 const app = defineApp();
 app.use(betterAuth);
@@ -14,6 +15,7 @@ app.use(stripe);
 app.use(r2);
 app.use(loops);
 app.use(pushNotifications);
+app.use(posthog);
 app.use(aggregate, { name: "aggregateCampaignAnalytics" });
 app.use(aggregate, { name: "aggregateCampaignByBusiness" });
 app.use(aggregate, { name: "aggregateBusinessAnalytics" });

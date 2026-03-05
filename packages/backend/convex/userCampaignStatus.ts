@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { UserCampaignStatus } from "./constants";
+import { posthog } from "./posthog";
 
 // ============================================================
 // QUERIES
@@ -98,7 +99,7 @@ export const createUserCampaignStatus = mutation({
             updated_at: now,
         });
 
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: user.subject,
             event: "campaign_enrolled",
             properties: {

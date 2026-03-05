@@ -6,6 +6,7 @@ import { ConvexError } from "convex/values";
 import { ERROR_CODES } from "./errors";
 import { generateDownloadUrl, generateUploadUrl } from "./r2";
 import { CampaignStatus } from "./constants";
+import { posthog } from "./posthog";
 // ============================================================
 // QUERIES
 // ============================================================
@@ -69,7 +70,7 @@ export const getActiveCampaigns = query({
                     maximum_payout: campaign.maximum_payout,
                     submissions: campaign.submissions,
                     category: campaign.category,
-                    business_name: campaign.business_name,
+                    business_name: business?.name,
                 };
             })
         );
@@ -196,7 +197,7 @@ export const createCampaign = mutation({
             });
         }
 
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: args.businessId,
             event: "campaign_created",
             properties: {

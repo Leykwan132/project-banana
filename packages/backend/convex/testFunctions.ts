@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { posthog } from "./posthog";
 
 export const listNumbers = query({
     args: {
@@ -21,7 +21,7 @@ export const testTrackEvent = mutation({
         const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("Unauthenticated call");
 
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: user.subject,
             event: "test_event",
             properties: {

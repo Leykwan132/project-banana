@@ -2,6 +2,7 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { ConvexError, v } from "convex/values";
 import { ErrorType } from "./errors";
 import { internal } from "./_generated/api";
+import { posthog } from "./posthog";
 
 export const getCreatorById = query({
     args: { creatorId: v.id("creators") },
@@ -113,7 +114,7 @@ export const completeOnboarding = mutation({
         }
 
         // Track Onboarding
-        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+        await posthog.capture(ctx, {
             distinctId: creatorId,
             event: "onboarding_completed",
             properties: {

@@ -1,10 +1,5 @@
-import { PostHog } from 'posthog-node'
+// convex/posthog.ts
+import { PostHog } from "@posthog/convex";
+import { components } from "./_generated/api";
 
-export const posthog = new PostHog(
-    'phc_Eg1WmAo9rYJfbI3V46iDdWyC6setYTdu6aj8fJmkp6F',
-    {
-        host: 'https://us.i.posthog.com',
-        flushAt: 1,
-        flushInterval: 0
-    }
-)
+export const posthog = new PostHog(components.posthog);
