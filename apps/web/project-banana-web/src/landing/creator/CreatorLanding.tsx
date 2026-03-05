@@ -4,6 +4,16 @@ import { Link } from 'react-router-dom';
 
 const SHARED_VIDEO_URL = '/1.webm';
 
+const TRUSTED_BRANDS = [
+    { name: 'My', url: 'https://static.wikia.nocookie.net/logopedia/images/7/72/.my.png/revision/latest?cb=20220802130206' },
+    { name: 'AirAsia', url: 'https://static.wikia.nocookie.net/logopedia/images/7/7e/AirAsia_MOVE_New_Logo.png/revision/latest/scale-to-width-down/1000?cb=20240326091935' },
+    { name: 'Digi', url: 'https://static.wikia.nocookie.net/logopedia/images/f/f3/Digi_Telecommunications_logo.svg/revision/latest?cb=20190402142637' },
+    { name: 'Tourism Malaysia', url: 'https://static.wikia.nocookie.net/logopedia/images/5/5e/Tourism-malaysia-m.png/revision/latest?cb=20150319083345' },
+    { name: 'Proton', url: 'https://static.wikia.nocookie.net/logopedia/images/a/af/Proton_2019.png/revision/latest?cb=20190926041839' },
+    { name: 'Julie\'s', url: 'https://static.wikia.nocookie.net/logopedia/images/3/32/Julie%27s_2020.png/revision/latest?cb=20201125211352' },
+    { name: 'Munchy\'s', url: 'https://static.wikia.nocookie.net/logopedia/images/0/06/Munchy%27s_2020_Logo.png/revision/latest/scale-to-width-down/1000?cb=20220104083843' }
+];
+
 type CreatorVideoCard = {
     title: string;
     description: string;
@@ -11,20 +21,20 @@ type CreatorVideoCard = {
 
 const creatorDashboardCards: CreatorVideoCard[] = [
     {
-        title: '1. Campaign feed',
-        description: 'Discover open opportunities.',
+        title: '1. Browse campaigns',
+        description: 'Discover campaigns you want to join.',
     },
     {
-        title: '2. Submission inbox',
-        description: 'Ship final content.',
+        title: '2. Submit your content',
+        description: 'Create and submit your video for approval.',
     },
     {
-        title: '3. Payment tracker',
-        description: 'Real-time payout tracking.',
+        title: '3. Post on social media',
+        description: 'Post your approved video on IG or TikTok.',
     },
     {
-        title: '4. Performance snapshots',
-        description: 'Review performance insights.',
+        title: '4. Track your earnings',
+        description: 'See your views, earnings, and growth.',
     },
 ];
 
@@ -35,20 +45,16 @@ type AlternatingFeature = {
 
 const newCreatorFeatures: AlternatingFeature[] = [
     {
-        title: 'Premium campaign feed',
-        description: 'Access exclusive opportunities from top brands and claim the jobs that fit your style.',
+        title: 'Open campaigns',
+        description: 'Jobs are open to anyone that can create regardless of follower count.',
     },
     {
-        title: 'Streamlined submission inbox',
-        description: 'Upload your drafts, receive clear feedback, and get your content approved faster.',
+        title: 'Real-time analytics',
+        description: 'Track your content performance and earnings in real-time.',
     },
     {
-        title: 'Guaranteed 48-hour payouts',
-        description: 'Never chase an invoice again. Get paid securely as soon as your content is approved.',
-    },
-    {
-        title: 'Grow your portfolio',
-        description: 'Build your reputation on the platform and unlock higher-paying campaigns over time.',
+        title: 'Secure payouts',
+        description: 'Get paid securely based on your content performance.',
     }
 ];
 
@@ -121,15 +127,15 @@ function CreatorHowItWorksSection({ title, cards }: { title: string; cards: Crea
         <section className="py-20">
             <div className="mx-auto max-w-7xl px-6">
                 <h2 className="mb-10 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">{title}</h2>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
                     {cards.map((card) => (
-                        <article key={card.title} className="relative aspect-video overflow-hidden rounded-2xl border border-gray-200">
+                        <article key={card.title} className="relative aspect-4/3 md:aspect-4/5 lg:aspect-3/4 overflow-hidden rounded-2xl border border-gray-200">
                             <video autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover">
                                 <source src={SHARED_VIDEO_URL} type="video/webm" />
                             </video>
-                            <div className="absolute left-0 top-0 p-6 md:p-8">
+                            <div className="absolute left-0 top-0 p-5 md:p-6 w-full">
                                 <p className="mb-2 text-sm font-medium text-black/80">{card.title}</p>
-                                <h3 className="max-w-md text-xl font-bold leading-tight tracking-tight text-black md:text-2xl">{card.description}</h3>
+                                <h3 className="text-lg font-bold leading-tight tracking-tight text-black">{card.description}</h3>
                             </div>
                         </article>
                     ))}
@@ -140,21 +146,21 @@ function CreatorHowItWorksSection({ title, cards }: { title: string; cards: Crea
 }
 
 function CreatorTrustedBrands() {
-    const brands = ['Stripe', 'OpenAI', 'Linear', 'Datadog', 'NVIDIA', 'Figma', 'Ramp', 'Adobe'];
-
     return (
-        <section className="py-24 md:py-32">
+        <section className="py-16 md:py-20">
             <p className="mb-8 text-center text-[15px] font-medium text-gray-600">
-                Trusted by local companies
+                Create for brands you love
             </p>
-            <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-3 px-6 md:flex-nowrap md:gap-4">
-                {brands.map((brand) => (
-                    <div
-                        key={brand}
-                        className="flex h-18 w-full max-w-36 shrink-0 items-center justify-center rounded-xl bg-[#f9f9f9] text-lg font-bold tracking-tight text-gray-900 md:max-w-none md:flex-1"
-                    >
-                        {brand}
-                    </div>
+            <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-8 px-6 md:gap-16">
+                {TRUSTED_BRANDS.map((brand) => (
+                    brand.url ? (
+                        <div
+                            key={brand.name}
+                            className="flex h-12 md:h-16 w-auto items-center justify-center shrink-0 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300"
+                        >
+                            <img src={brand.url} alt={brand.name} className="h-full w-auto object-contain" />
+                        </div>
+                    ) : null
                 ))}
             </div>
         </section>
@@ -223,17 +229,17 @@ function CreatorFaqSection() {
 export default function CreatorLanding() {
     return (
         <div className="animate-in fade-in duration-500">
-            <section className="mx-auto w-full max-w-7xl px-6 pb-20 pt-20 md:pt-24">
+            <section className="mx-auto w-full max-w-7xl px-6 pt-20 md:pt-24">
                 <div className="grid items-center gap-12 md:grid-cols-2 lg:gap-16">
                     <div>
                         <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
-                            <Sparkles className="h-3.5 w-3.5" /> Built for serious UGC creators
+                            <Sparkles className="h-3.5 w-3.5" /> Built for Malaysian creators
                         </div>
                         <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 md:text-6xl">
-                            Get paid faster for content brands can actually use.
+                            Get paid with views.
                         </h1>
                         <p className="mt-6 max-w-xl text-xl text-gray-600">
-                            Lumina connects creators with verified briefs, keeps approvals organized, and releases secure payouts after delivery.
+                            Lumina is a open platform for creators like you to earn.
                         </p>
                         <Link
                             to="/login"
@@ -244,9 +250,7 @@ export default function CreatorLanding() {
                     </div>
 
                     <div className="flex items-center justify-center relative w-full h-full max-w-sm mx-auto">
-                        <div className="relative flex aspect-9/16 w-full max-w-sm items-center justify-center rounded-[2.2rem] border-12 border-gray-100 bg-gray-50 shadow-2xl z-10">
-                            <ImageIcon className="h-14 w-14 text-gray-400" />
-                        </div>
+                        <img src="/creator-home.svg" alt="Creator Home Screen" className="w-full h-full z-10" />
                     </div>
                 </div>
             </section>
@@ -264,14 +268,13 @@ export default function CreatorLanding() {
             <CreatorFaqSection />
 
             <section className="border-t border-gray-100 bg-gray-50 py-24 text-center">
-                <div className="mx-auto max-w-3xl px-6">
-                    <h2 className="text-4xl font-bold tracking-tight text-gray-900 md:text-6xl">Start landing better UGC work today</h2>
-                    <p className="mt-4 text-lg text-gray-600">Create once, deliver with confidence, and get paid on time.</p>
+                <div className="mx-auto px-6">
+                    <h2 className="text-4xl font-bold tracking-tight text-gray-900 md:text-6xl">If you can create, you're in.</h2>
                     <Link
                         to="/login"
                         className="mt-8 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-black"
                     >
-                        Download the app <Download className="h-5 w-5" />
+                        Download Lumina<Download className="h-5 w-5" />
                     </Link>
                 </div>
             </section>

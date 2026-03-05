@@ -79,6 +79,7 @@ export default function Overview() {
         api.analytics.getBusinessDailyStatsLast30Days,
         business ? { businessId: business._id } : "skip"
     );
+
     const businessTotalStats = useQuery(
         api.analytics.getBusinessTotalStats,
         business ? { businessId: business._id } : "skip"

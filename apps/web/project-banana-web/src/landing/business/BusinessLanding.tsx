@@ -4,6 +4,16 @@ import { Link } from 'react-router-dom';
 
 const SHARED_VIDEO_URL = '/1.webm';
 
+const TRUSTED_BRANDS = [
+    { name: 'My', url: 'https://static.wikia.nocookie.net/logopedia/images/7/72/.my.png/revision/latest?cb=20220802130206' },
+    { name: 'AirAsia', url: 'https://static.wikia.nocookie.net/logopedia/images/7/7e/AirAsia_MOVE_New_Logo.png/revision/latest/scale-to-width-down/1000?cb=20240326091935' },
+    { name: 'Digi', url: 'https://static.wikia.nocookie.net/logopedia/images/f/f3/Digi_Telecommunications_logo.svg/revision/latest?cb=20190402142637' },
+    { name: 'Tourism Malaysia', url: 'https://static.wikia.nocookie.net/logopedia/images/5/5e/Tourism-malaysia-m.png/revision/latest?cb=20150319083345' },
+    { name: 'Proton', url: 'https://static.wikia.nocookie.net/logopedia/images/a/af/Proton_2019.png/revision/latest?cb=20190926041839' },
+    { name: 'Julie\'s', url: 'https://static.wikia.nocookie.net/logopedia/images/3/32/Julie%27s_2020.png/revision/latest?cb=20201125211352' },
+    { name: 'Munchy\'s', url: 'https://static.wikia.nocookie.net/logopedia/images/0/06/Munchy%27s_2020_Logo.png/revision/latest/scale-to-width-down/1000?cb=20220104083843' }
+];
+
 type BusinessVideoCard = {
     title: string;
     description: string;
@@ -125,15 +135,15 @@ function BusinessHowItWorksSection({ title, cards }: { title: string; cards: Bus
         <section className="py-16 md:py-24">
             <div className="mx-auto max-w-7xl px-6">
                 <h2 className="mb-10 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">{title}</h2>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
                     {cards.map((card) => (
-                        <article key={card.title} className="relative aspect-video overflow-hidden rounded-2xl border border-gray-200">
+                        <article key={card.title} className="relative aspect-4/3 md:aspect-4/5 lg:aspect-3/4 overflow-hidden rounded-2xl border border-gray-200">
                             <video autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover">
                                 <source src={SHARED_VIDEO_URL} type="video/webm" />
                             </video>
-                            <div className="absolute left-0 top-0 p-6 md:p-8">
+                            <div className="absolute left-0 top-0 p-5 md:p-6 w-full">
                                 <p className="mb-2 text-sm font-medium text-black/80">{card.title}</p>
-                                <h3 className="max-w-md text-xl font-bold leading-tight tracking-tight text-black md:text-2xl">{card.description}</h3>
+                                <h3 className="text-lg font-bold leading-tight tracking-tight text-black">{card.description}</h3>
                             </div>
                         </article>
                     ))}
@@ -144,21 +154,21 @@ function BusinessHowItWorksSection({ title, cards }: { title: string; cards: Bus
 }
 
 function BusinessTrustedBrands() {
-    const brands = ['Stripe', 'OpenAI', 'Linear', 'Datadog', 'NVIDIA', 'Figma', 'Ramp', 'Adobe'];
-
     return (
         <section className="py-4">
             <p className="mb-8 text-center text-[15px] font-medium text-gray-600">
-                Trusted by local companies
+                Trusted by top brands
             </p>
-            <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-3 px-6 md:flex-nowrap md:gap-4">
-                {brands.map((brand) => (
-                    <div
-                        key={brand}
-                        className="flex h-24 w-full max-w-36 shrink-0 items-center justify-center rounded-xl bg-[#f9f9f9] text-lg font-bold tracking-tight text-gray-900 md:max-w-none md:flex-1"
-                    >
-                        {brand}
-                    </div>
+            <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-8 px-6 md:gap-16">
+                {TRUSTED_BRANDS.map((brand) => (
+                    brand.url ? (
+                        <div
+                            key={brand.name}
+                            className="flex h-12 md:h-16 w-auto items-center justify-center shrink-0 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-300"
+                        >
+                            <img src={brand.url} alt={brand.name} className="h-full w-auto object-contain" />
+                        </div>
+                    ) : null
                 ))}
             </div>
         </section>
