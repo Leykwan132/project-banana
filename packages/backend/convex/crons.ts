@@ -213,6 +213,19 @@ export const runDailyScrape = internalAction({
                         earnings: earningsDelta,
                     });
 
+                    await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+                        distinctId: app.user_id,
+                        event: "daily_scrape_calculated",
+                        properties: {
+                            applicationId: app._id,
+                            viewsDelta,
+                            likesDelta,
+                            commentsDelta,
+                            sharesDelta,
+                            earningsDelta,
+                        }
+                    });
+
                     console.log(`Successfully updated all database records for app ${app._id}`);
                 } else {
                     console.log(`No valid data to save for app ${app._id}`);

@@ -90,7 +90,7 @@ export const createBusinessRecord = internalMutation({
         }
 
         const now = Date.now();
-        return await ctx.db.insert("businesses", {
+        const businessId = await ctx.db.insert("businesses", {
             user_id: args.userId,
             name: args.name,
             logo_url: args.logo_url,
@@ -103,6 +103,18 @@ export const createBusinessRecord = internalMutation({
             updated_at: now,
             created_at: now,
         });
+
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: businessId,
+            event: "business_created",
+            properties: {
+                name: args.name,
+                industry: args.industry,
+                size: args.size,
+            }
+        });
+
+        return businessId;
     },
 });
 
@@ -240,6 +252,13 @@ export const setBusinessOnboarded = internalMutation({
             is_onboarded: args.isOnboarded,
             updated_at: Date.now(),
         });
+
+        if (args.isOnboarded) {
+            await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+                distinctId: business._id,
+                event: "business_onboarding_completed",
+            });
+        }
 
         return { success: true };
     },

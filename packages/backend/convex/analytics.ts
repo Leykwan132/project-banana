@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { TableAggregate } from "@convex-dev/aggregate";
 import type { DataModel, Id } from "./_generated/dataModel.js";
@@ -1148,5 +1148,26 @@ export const saveDailyCreatorStats = mutationWithTriggers({
                 updated_at: now,
             });
         }
+    },
+});
+
+// ============================================================
+// POSTHOG TRACKING
+// ============================================================
+import { posthog } from "./posthog";
+
+export const trackEvent = internalAction({
+    args: {
+        distinctId: v.string(),
+        event: v.string(),
+        properties: v.optional(v.any()),
+    },
+    handler: async (ctx, args) => {
+        posthog.capture({
+            distinctId: args.distinctId,
+            event: args.event,
+            properties: args.properties,
+        });
+        await posthog.flush();
     },
 });

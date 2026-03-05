@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { UserCampaignStatus } from "./constants";
 
@@ -95,6 +96,14 @@ export const createUserCampaignStatus = mutation({
             status: UserCampaignStatus.Earning,
             created_at: now,
             updated_at: now,
+        });
+
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: user.subject,
+            event: "campaign_enrolled",
+            properties: {
+                campaignId: args.campaignId,
+            }
         });
 
         return statusId;

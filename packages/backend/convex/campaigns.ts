@@ -1,4 +1,5 @@
 import { action, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError } from "convex/values";
@@ -194,6 +195,18 @@ export const createCampaign = mutation({
                 reference: `campaign_launch:${args.name}`,
             });
         }
+
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: args.businessId,
+            event: "campaign_created",
+            properties: {
+                campaignId: campaignId,
+                name: args.name,
+                total_budget: args.total_budget,
+                category: args.category,
+                maximum_payout: args.maximum_payout,
+            }
+        });
 
         return campaignId;
     },

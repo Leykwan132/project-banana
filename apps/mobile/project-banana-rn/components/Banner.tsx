@@ -2,6 +2,7 @@ import { View, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight } from 'lucide-react-native';
 import { ReactNode, useState } from 'react';
+import { usePostHog } from 'posthog-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { HowItWorksModal } from '@/components/HowItWorksModal';
@@ -42,8 +43,10 @@ const bannerConfigs = {
 export function Banner({ type, title, description, icon, onPress }: BannerProps) {
     const config = bannerConfigs[type];
     const [showHowItWorks, setShowHowItWorks] = useState(false);
+    const posthog = usePostHog();
 
     const handlePress = () => {
+        posthog.capture('banner_opened', { banner_type: type });
         if (type === 'how_it_works') {
             setShowHowItWorks(true);
         } else if (onPress) {

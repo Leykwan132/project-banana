@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { ChartSpline, Flower, Grip, House, ScrollText, WalletMinimal } from 'lucide-react-native';
+import { ChartSpline, Grip, House, ScrollText, WalletMinimal } from 'lucide-react-native';
+import { Image as ExpoImage } from 'expo-image';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -37,7 +38,13 @@ export default function TabLayout() {
         name="posts"
         options={{
           title: 'Posts',
-          tabBarIcon: ({ color }) => <Flower size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <ExpoImage
+              source={require('@/assets/images/icon-dark.svg')}
+              style={{ width: 24, height: 24, tintColor: color }}
+              contentFit="contain"
+            />
+          ),
         }}
       />
       <Tabs.Screen

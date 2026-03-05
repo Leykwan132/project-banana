@@ -14,6 +14,7 @@ import LottieView from 'lottie-react-native';
 import { CampaignsAnalyticItem } from '@/components/CampaignsAnalyticItem';
 import { ThemedText } from '@/components/themed-text';
 import { api } from '../../../../packages/backend/convex/_generated/api';
+import { usePostHog } from 'posthog-react-native';
 
 const CampaignAnalyticSkeleton = () => {
     const opacity = useSharedValue(0.3);
@@ -44,6 +45,7 @@ interface CampaignsAnalyticListProps {
 
 export function CampaignsAnalyticList({ sortBy = 'shares' }: CampaignsAnalyticListProps) {
     const router = useRouter();
+    const posthog = usePostHog();
 
     // Fetch all user campaign statuses
     const statuses = useQuery(api.userCampaignStatus.getUserCampaignStatuses);
@@ -151,7 +153,14 @@ export function CampaignsAnalyticList({ sortBy = 'shares' }: CampaignsAnalyticLi
                 sortedCampaigns.map((campaign) => (
                     <Pressable
                         key={campaign.id}
-                        onPress={() => router.push(`/campaign-analytics/${campaign.campaignId}`)}
+                        onPress={() => {
+                            posthog.capture('analytics_campaign_clicked', {
+                                campaign_id: campaign.campaignId,
+                                campaign_name: campaign.name,
+                                company_name: campaign.companyName,
+                            });
+                            router.push(`/campaign-analytics/${campaign.campaignId}`);
+                        }}
                     >
                         <CampaignsAnalyticItem
                             name={campaign.name}

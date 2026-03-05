@@ -1,4 +1,5 @@
 import { action, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { deleteObject, generateDownloadUrl, generateUploadUrl } from "./r2";
 
@@ -93,6 +94,15 @@ export const createBankAccount = mutation({
             proof_document_r2_key: args.proofDocumentKey,
             created_at: now,
             updated_at: now,
+        });
+
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: user.subject,
+            event: "bank_account_added",
+            properties: {
+                bank_name: args.bankName,
+                bank_code: args.bankCode,
+            },
         });
 
         return bankAccountId;

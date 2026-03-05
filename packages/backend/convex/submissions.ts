@@ -1,4 +1,5 @@
 import { mutation, query, action } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { generateUploadUrl, generateDownloadUrl } from "./r2";
@@ -240,6 +241,12 @@ export const createSubmission = mutation({
                 });
             }
         }
+
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: user.subject,
+            event: "video_submitted",
+            properties: { submissionId, applicationId: args.applicationId }
+        });
 
         return submissionId;
     },

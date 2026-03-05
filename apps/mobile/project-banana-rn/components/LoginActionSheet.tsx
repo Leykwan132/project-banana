@@ -1,11 +1,13 @@
-import { View, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, Alert, ActivityIndicator, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { AntDesign } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useConvex } from 'convex/react';
 import LottieView from 'lottie-react-native';
+import { usePostHog } from 'posthog-react-native'
+import Constants from 'expo-constants';
 
 import { ThemedText } from '@/components/themed-text';
 import { authClient } from "@/lib/auth-client";
@@ -26,6 +28,8 @@ export function LoginActionSheet({
     const [isAppleLoading, setIsAppleLoading] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const convex = useConvex();
+    const posthog = usePostHog();
+    const signupMethodRef = useRef<'google' | 'apple'>('google');
 
     /** Returns true only when the creator record doesn't exist yet (new user). Re-throws any other error. */
     const checkIsNewUser = async (): Promise<boolean> => {
@@ -49,6 +53,39 @@ export function LoginActionSheet({
         await new Promise((resolve) => setTimeout(resolve, 1500));
         try {
             const isNew = await checkIsNewUser();
+
+            // Identify user in PostHog
+            const currentSession = await authClient.getSession();
+            if (currentSession.data?.user) {
+                posthog.identify(currentSession.data.user.id, {
+                    email: currentSession.data.user.email,
+                    name: currentSession.data.user.name,
+                    device_type: Platform.OS,
+                    app_version: Constants.expoConfig?.version ?? 'unknown',
+                });
+            }
+
+            // Capture signup event for new users only
+            if (isNew) {
+                posthog.capture('signup', {
+                    signup_method: signupMethodRef.current,
+                });
+            }
+
+            // Register super properties — attached to every future event
+            let isTestUser = false;
+            try {
+                const creator = await convex.query(api.creators.getCreator, {});
+                isTestUser = !!(creator as any)?.is_test_user;
+            } catch (_) { /* new user, no creator yet */ }
+
+            posthog.register({
+                is_test_user: isTestUser,
+                domain_host: __DEV__ ? 'expo-dev' : 'production',
+                device_type: Platform.OS,
+                app_version: Constants.expoConfig?.version ?? 'unknown',
+            });
+
             router.replace(isNew ? '/onboarding' : '/(tabs)');
         } catch (error) {
             setIsLoggingIn(false);
@@ -57,6 +94,7 @@ export function LoginActionSheet({
     };
 
     const handleAppleLogin = async () => {
+        signupMethodRef.current = 'apple';
         setIsAppleLoading(true);
         try {
             const { data, error } = await authClient.signIn.social({
@@ -88,6 +126,7 @@ export function LoginActionSheet({
     };
 
     const handleGoogleLogin = async () => {
+        signupMethodRef.current = 'google';
         setIsGoogleLoading(true);
         try {
             const { data, error } = await authClient.signIn.social({
@@ -96,14 +135,11 @@ export function LoginActionSheet({
                 newUserCallbackURL: "/onboarding",
             });
 
-            console.log("data", data)
-            console.log("error", error)
             if (error) {
                 setIsGoogleLoading(false);
                 Alert.alert("Login Failed", "There was an error signing in with Google. Please try again.");
                 return;
             }
-
 
             // Verify session was created
             const session = await authClient.getSession();

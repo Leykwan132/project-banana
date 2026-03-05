@@ -20,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   ConvexReactClient,
 } from "convex/react";
+import { PostHogProvider } from 'posthog-react-native'
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "@/lib/auth-client"
 import Toast from 'react-native-toast-message';
@@ -59,24 +60,31 @@ export default function RootLayout() {
   }
 
   return (
-    <NotificationProvider>
-      <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-        <GestureHandlerRootView>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <GlobalErrorBoundary>
-              <Stack initialRouteName="welcome">
-                <Stack.Screen name="welcome" options={{ headerShown: false }} />
-                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-              </Stack>
-              <StatusBar style="auto" />
-            </GlobalErrorBoundary>
-          </ThemeProvider>
-          <Toast />
-        </GestureHandlerRootView>
-      </ConvexBetterAuthProvider>
-    </NotificationProvider>
-
+    <PostHogProvider
+      apiKey="phc_Eg1WmAo9rYJfbI3V46iDdWyC6setYTdu6aj8fJmkp6F"
+      options={{
+        host: "https://us.i.posthog.com",
+      }}
+      autocapture
+    >
+      <NotificationProvider>
+        <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+          <GestureHandlerRootView>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <GlobalErrorBoundary>
+                <Stack initialRouteName="welcome">
+                  <Stack.Screen name="welcome" options={{ headerShown: false }} />
+                  <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+                </Stack>
+                <StatusBar style="auto" />
+              </GlobalErrorBoundary>
+            </ThemeProvider>
+            <Toast />
+          </GestureHandlerRootView>
+        </ConvexBetterAuthProvider>
+      </NotificationProvider>
+    </PostHogProvider>
   );
 }

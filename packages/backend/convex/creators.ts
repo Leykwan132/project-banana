@@ -20,52 +20,6 @@ export const getCreatorByUserId = query({
     },
 });
 
-
-export const internalGetCreatorByUserId = internalQuery({
-    args: { userId: v.string() },
-    handler: async (ctx, args) => {
-        return await ctx.db
-            .query("creators")
-            .withIndex("by_user", (q: any) => q.eq("user_id", args.userId))
-            .unique();
-    },
-});
-
-
-export const createCreatorByUserId = internalMutation({
-    args: {
-        userId: v.string(),
-        email: v.optional(v.string()),
-        firstName: v.string(),
-    },
-    handler: async (ctx, args) => {
-        const creatorId = await ctx.db.insert("creators", {
-            user_id: args.userId,
-            name: args.firstName,
-            is_deleted: false,
-            total_views: 0,
-            total_earnings: 0,
-            balance: 0,
-        });
-
-        // Add to Loops contact list & send welcome email (fire and forget)
-        if (args.email) {
-            await ctx.scheduler.runAfter(0, internal.emails.internalAddContact, {
-                email: args.email,
-                firstName: args.firstName,
-            });
-            await ctx.scheduler.runAfter(0, internal.emails.sendWelcomeEmail, {
-                email: args.email,
-                firstName: args.firstName,
-            });
-        }
-
-        return creatorId;
-    },
-});
-
-
-
 export const getCreator = query({
     args: {},
     handler: async (ctx, args) => {
@@ -157,6 +111,17 @@ export const completeOnboarding = mutation({
                 firstName: user.name ?? args.username,
             });
         }
+
+        // Track Onboarding
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: creatorId,
+            event: "onboarding_completed",
+            properties: {
+                username: usernameLower,
+                signup_goal: args.signupGoal,
+                referral_source: args.referralSource,
+            }
+        });
 
         return creatorId;
     },

@@ -135,6 +135,7 @@ export default defineSchema({
         signup_goal: v.optional(v.array(v.string())),
         referral_source: v.optional(v.string()),
         is_deleted: v.optional(v.boolean()),
+        is_test_user: v.optional(v.boolean()),
         total_views: v.optional(v.number()),
         total_earnings: v.optional(v.number()),
         balance: v.optional(v.number()),

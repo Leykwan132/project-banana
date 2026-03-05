@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 export const listNumbers = query({
     args: {
@@ -12,4 +13,22 @@ export const listNumbers = query({
             numbers: 12,
         };
     },
+});
+
+export const testTrackEvent = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) throw new Error("Unauthenticated call");
+
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: user.subject,
+            event: "test_event",
+            properties: {
+                test_property: "test_value"
+            }
+        });
+
+        return "Event scheduled!";
+    }
 });

@@ -11,6 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { authClient } from "@/lib/auth-client";
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePostHog } from 'posthog-react-native';
 
 interface ProfileActionSheetProps {
     actionSheetRef: React.RefObject<ActionSheetRef | null>;
@@ -23,6 +24,7 @@ export function ProfileActionSheet({
     const colorScheme = useColorScheme();
     const iconColor = Colors[colorScheme ?? 'light'].text;
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const posthog = usePostHog();
 
     // Dynamic Data
     const { data: session } = authClient.useSession();
@@ -55,6 +57,7 @@ export function ProfileActionSheet({
             await authClient.signOut({
                 fetchOptions: {
                     onSuccess: () => {
+                        posthog.reset();
                         router.replace('/welcome');
                         setIsLoggingOut(false);
                         // No manual redirect needed — _layout.tsx auth guard

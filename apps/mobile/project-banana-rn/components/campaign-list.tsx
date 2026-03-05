@@ -19,6 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../packages/backend/convex/_generated/api';
+import { usePostHog } from 'posthog-react-native';
 
 import { CAMPAIGN_CATEGORIES } from '@/constants/campaignCategories';
 
@@ -72,7 +73,14 @@ export function CampaignList() {
 
     const isLoading = status === 'LoadingFirstPage';
 
-    const handlePress = (id: string) => {
+    const posthog = usePostHog();
+
+    const handlePress = (id: string, campaignName?: string, companyName?: string) => {
+        posthog.capture('campaign_item_selected', {
+            campaign_id: id,
+            campaign_name: campaignName ?? '',
+            company_name: companyName ?? '',
+        });
         router.push(`/campaign/${id}`);
     };
 
@@ -235,7 +243,7 @@ export function CampaignList() {
                             logoUrl={campaign.logoUrl}
                             logoR2Key={campaign.logoR2Key}
                             isTrending={campaign.isTrending}
-                            onPress={() => handlePress(campaign.id)}
+                            onPress={() => handlePress(campaign.id, campaign.name, campaign.companyName)}
                         />
                     ))
                 )}

@@ -329,6 +329,15 @@ export const processWebhookPayment = mutation({
             created_at: now,
         });
 
+        await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+            distinctId: order.business_id,
+            event: "top_up_completed",
+            properties: {
+                amount: order.amount,
+                provider: "razorpay",
+            }
+        });
+
         return { success: true, newBalance };
     },
 });
@@ -432,6 +441,15 @@ export const processBillplzWebhook = internalMutation({
                 type: "top_up",
                 reference: args.billplzId,
                 created_at: now,
+            });
+
+            await ctx.scheduler.runAfter(0, internal.analytics.trackEvent, {
+                distinctId: order.business_id,
+                event: "top_up_completed",
+                properties: {
+                    amount: order.amount,
+                    provider: "billplz",
+                }
             });
 
             return { success: true };
