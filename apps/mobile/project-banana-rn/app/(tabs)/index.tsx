@@ -3,7 +3,8 @@ import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '@/components/Header';
-import { Banner } from '@/components/Banner';
+import { BannerCarousel } from '@/components/BannerCarousel';
+import { BannerType } from '@/components/Banner';
 import { CampaignList } from '@/components/campaign-list';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -38,8 +39,7 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Banner type="how_it_works" />
-        {/* <Banner type="referral" /> */}
+        <BannerCarousel types={[BannerType.HOW_IT_WORKS]} />
         <CampaignList />
       </ScrollView>
     </View>

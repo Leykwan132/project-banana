@@ -1,91 +1,105 @@
-import { View, StyleSheet, Pressable } from 'react-native';
-import { Image } from 'expo-image';
-import { ChevronRight } from 'lucide-react-native';
-import { ReactNode, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
 import { usePostHog } from 'posthog-react-native';
+import { ArrowRight } from 'lucide-react-native';
 
-import { ThemedText } from '@/components/themed-text';
 import { HowItWorksModal } from '@/components/HowItWorksModal';
+import { ThemedText } from '@/components/themed-text';
 
-export type BannerType = 'referral' | 'cashback' | 'promo' | 'how_it_works';
+export enum BannerType {
+    HOW_IT_WORKS = 'how_it_works',
+    REFERRAL = 'referral',
+    CASHBACK = 'cashback',
+    PROMO = 'promo',
+}
 
 interface BannerProps {
     type: BannerType;
     title?: string;
     description?: string;
-    icon?: ReactNode;
-    onPress?: () => void;
 }
 
-const bannerConfigs = {
-    referral: {
-        backgroundColor: '#E8F5E9',
-        defaultTitle: 'Invite a friend',
-        defaultDescription: 'to Cashon!',
+const defaultConfigs: Record<BannerType, { title: string, description: string, bg: string, titleColor: string, descColor: string }> = {
+    [BannerType.HOW_IT_WORKS]: {
+        title: 'New here?',
+        description: 'Learn how Lumina help you earn with making online contents.',
+        bg: '#5A8BEB',
+        titleColor: '#C4E1FF',
+        descColor: '#FFFFFF',
     },
-    cashback: {
-        backgroundColor: '#FFF8E1',
-        defaultTitle: 'Get Flat',
-        defaultDescription: '₹100 Cashback',
+    [BannerType.REFERRAL]: {
+        title: 'Invite Friends',
+        description: 'Share Lumina and earn more together.',
+        bg: '#6C5CE7',
+        titleColor: '#E8E5FF',
+        descColor: '#FFFFFF',
     },
-    promo: {
-        backgroundColor: '#E3F2FD',
-        defaultTitle: 'Special Offer',
-        defaultDescription: 'Limited Time!',
+    [BannerType.CASHBACK]: {
+        title: 'Get Cashback',
+        description: 'Earn real cash on your daily purchases.',
+        bg: '#F39C12',
+        titleColor: '#FFF1E0',
+        descColor: '#FFFFFF',
     },
-    how_it_works: {
-        backgroundColor: '#E1F5FE',
-        defaultTitle: 'New to Lumina?',
-        defaultDescription: 'See how it works',
+    [BannerType.PROMO]: {
+        title: 'Special Promo',
+        description: 'Don\'t miss out on these limited time offers.',
+        bg: '#E84393',
+        titleColor: '#FFE0F0',
+        descColor: '#FFFFFF',
     },
 };
 
-export function Banner({ type, title, description, icon, onPress }: BannerProps) {
-    const config = bannerConfigs[type];
+export function Banner({ type, title, description }: BannerProps) {
     const [showHowItWorks, setShowHowItWorks] = useState(false);
     const posthog = usePostHog();
 
+    const config = defaultConfigs[type];
+    const displayTitle = title || config.title;
+    const displayDescription = description || config.description;
+
     const handlePress = () => {
         posthog.capture('banner_opened', { banner_type: type });
-        if (type === 'how_it_works') {
-            setShowHowItWorks(true);
-        } else if (onPress) {
-            onPress();
+
+        switch (type) {
+            case BannerType.HOW_IT_WORKS:
+                setShowHowItWorks(true);
+                break;
+            case BannerType.REFERRAL:
+                // TODO: Navigate to referral screen
+                break;
+            case BannerType.CASHBACK:
+                // TODO: Navigate to cashback screen
+                break;
+            case BannerType.PROMO:
+                // TODO: Navigate to promo screen
+                break;
         }
     };
 
     return (
         <>
-            <Pressable style={styles.container} onPress={handlePress}>
-                <View style={styles.banner}>
-                    {/* Left: Icon with colored background */}
-                    <View style={styles.iconContainer}>
-                        {icon || (
-                            <Image
-                                source={require('@/assets/images/icon.svg')}
-                                style={styles.appIcon}
-                                contentFit="contain"
-                            />
-                        )}
-                    </View>
-
-                    {/* Right: Black section with title and arrow */}
-                    <View style={styles.contentContainer}>
-                        <View style={styles.titleContainer}>
-                            <ThemedText style={styles.title}>
-                                {title || config.defaultTitle}
-                            </ThemedText>
-                            <ThemedText style={styles.description}>
-                                {description || config.defaultDescription}
-                            </ThemedText>
-                        </View>
-
-                        <View style={styles.arrowContainer}>
-                            <ChevronRight size={24} color="#FFFFFF" />
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={handlePress}
+                style={[styles.container, { backgroundColor: config.bg }]}
+            >
+                <View style={styles.content}>
+                    <View style={styles.titleRow}>
+                        <ThemedText style={[styles.title, { color: config.titleColor }]}>
+                            {displayTitle}
+                        </ThemedText>
+                        <View style={styles.badge}>
+                            <ArrowRight size={12} color="#FFFFFF" strokeWidth={3} />
                         </View>
                     </View>
+                    <ThemedText style={[styles.description, { color: config.descColor }]}>
+                        {displayDescription}
+                    </ThemedText>
                 </View>
-            </Pressable>
+                {/* Simulated bottom shadow to match the screenshot's depth */}
+                <View style={styles.bottomShadow} />
+            </TouchableOpacity>
 
             <HowItWorksModal
                 visible={showHowItWorks}
@@ -97,57 +111,60 @@ export function Banner({ type, title, description, icon, onPress }: BannerProps)
 
 const styles = StyleSheet.create({
     container: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-    },
-    banner: {
-        borderWidth: 1,
-        borderColor: '#EEEEEE',
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 16,
+        flex: 1,
+        borderRadius: 20,
         overflow: 'hidden',
+        justifyContent: 'center',
+        paddingTop: 24,
+        paddingBottom: 32,
+        paddingHorizontal: 24,
+        position: 'relative',
     },
-    iconContainer: {
-        width: 64,
-        height: 64,
+    content: {
+        alignItems: 'center',
+        zIndex: 2,
+    },
+    titleRow: {
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    appIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-    },
-    contentContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#000000',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 12,
-    },
-    titleContainer: {
-        flex: 1,
+        marginBottom: 4,
+        gap: 8,
     },
     title: {
-        fontSize: 13,
-        fontFamily: 'GoogleSans_400Regular',
-        color: '#FFFFFF',
-        lineHeight: 18,
-        marginBottom: 2,
-    },
-    description: {
-        fontSize: 18,
+        fontSize: 32,
         fontFamily: 'GoogleSans_700Bold',
-        color: '#FFFFFF',
-        lineHeight: 24,
+        letterSpacing: -0.5,
+        textAlign: 'center',
+        flexShrink: 1,
+        lineHeight: 42,
     },
-    arrowContainer: {
-        width: 24,
-        height: 24,
+    badge: {
+        width: 20,
+        height: 20,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
+        // Slight nudge to align visually with the large text
+        marginTop: 2,
+    },
+    description: {
+        fontSize: 16,
+        fontFamily: 'GoogleSans_400Regular',
+        textAlign: 'center',
+        lineHeight: 22,
+        paddingHorizontal: 24,
+    },
+    bottomShadow: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 12,
+        backgroundColor: 'rgba(0, 0, 0, 0.15)',
+        zIndex: 1,
     },
 });

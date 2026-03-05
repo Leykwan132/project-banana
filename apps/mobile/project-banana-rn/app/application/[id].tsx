@@ -823,9 +823,9 @@ export default function ApplicationDetailScreen() {
 
                                 {/* 2. Post url */}
                                 <View style={styles.inputSection}>
-                                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>2. Post url (Recommended to post on both)</ThemedText>
+                                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>2. Copy & Paste your post url</ThemedText>
                                     <ThemedText style={styles.inputDescription}>
-                                        Paste the post url here. Views will be totalled across platforms. YOU <ThemedText type="defaultSemiBold">CANNOT</ThemedText> EDIT AFTER THIS.
+                                        You <ThemedText type="defaultSemiBold">CANNOT</ThemedText> edit urls after submission.
                                     </ThemedText>
 
                                     {/* Instagram */}
@@ -859,6 +859,7 @@ export default function ApplicationDetailScreen() {
                                             autoCapitalize="none"
                                         />
                                     </View>
+                                    <ThemedText style={styles.tipText}>Tips: post both to get accumulated views</ThemedText>
 
                                     {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
                                 </View>
@@ -1479,4 +1480,11 @@ const styles = StyleSheet.create({
         height: 150,
     },
 
+    tipText: {
+        fontSize: 12,
+        fontFamily: 'GoogleSans_400Regular',
+        color: '#666',
+        marginTop: 4,
+        marginLeft: 4,
+    },
 });

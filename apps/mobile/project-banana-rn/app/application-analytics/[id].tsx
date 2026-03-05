@@ -103,6 +103,8 @@ export default function ApplicationAnalyticsScreen() {
         api.applications.getApplication,
         applicationId ? { applicationId } : 'skip'
     );
+
+    console.log(application);
     const dailyStats = useQuery(
         api.analytics.getApplicationDailyStatsLast30Days,
         applicationId ? { applicationId } : 'skip'
@@ -127,11 +129,11 @@ export default function ApplicationAnalyticsScreen() {
     }
 
     const highLevelMetrics: Record<MetricType, number> = {
-        earnings: appTotalStats?.earnings ?? application?.earnings ?? 0,
-        views: appTotalStats?.views ?? application?.views ?? 0,
-        shares: appTotalStats?.shares ?? application?.shares ?? 0,
-        likes: appTotalStats?.likes ?? application?.likes ?? 0,
-        comments: appTotalStats?.comments ?? application?.comments ?? 0,
+        earnings: application?.earnings ?? 0,
+        views: application?.views ?? 0,
+        shares: application?.shares ?? 0,
+        likes: application?.likes ?? 0,
+        comments: application?.comments ?? 0,
     };
     const asOfDateText = useMemo(() => {
         const lastDateKey = dailyStats?.[dailyStats.length - 1]?.date ?? analyticsEndDate;

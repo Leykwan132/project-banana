@@ -3,10 +3,11 @@ import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '@/components/Header';
-import { Banner } from '@/components/Banner';
+import { Banner, BannerType } from '@/components/Banner';
 import { ApplicationList } from '@/components/ApplicationList';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BannerCarousel } from '@/components/BannerCarousel';
 
 export default function PostsScreen() {
     const colorScheme = useColorScheme();
@@ -40,9 +41,7 @@ export default function PostsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                <View style={styles.bannerContainer}>
-                    <Banner type="referral" />
-                </View>
+                <BannerCarousel types={[BannerType.REFERRAL]} />
                 <ApplicationList />
             </ScrollView>
         </View>
