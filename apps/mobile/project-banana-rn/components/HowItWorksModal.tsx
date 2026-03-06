@@ -15,6 +15,7 @@ import {
     Hash,
     X,
 } from 'lucide-react-native';
+import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
 
@@ -25,11 +26,18 @@ interface HowItWorksModalProps {
     onDismiss: () => void;
 }
 
+const onboardCampaignImage = require('@/assets/images/onboard-campaign.png');
+const onboardRequirementImage = require('@/assets/images/onboard-requirement.png');
+const onboardSubmitVideoImage = require('@/assets/images/onboard-submit-video.png');
+const onboardReviewImage = require('@/assets/images/onboard-review.png');
+const onboardPostImage = require('@/assets/images/onboard-post.png');
+
 interface StepData {
     id: string;
     icon: React.ReactNode;
     title: string;
     description: string;
+    image: any;
 }
 
 const ICON_SIZE = 32;
@@ -41,30 +49,35 @@ const steps: StepData[] = [
         icon: <Search size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Explore Campaigns',
         description: 'See the campaigns pay per view and max payouts.',
+        image: onboardCampaignImage,
     },
     {
         id: '2',
         icon: <FileText size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Check Requirements',
         description: 'Review the requirements (scripts, assets, etc).',
+        image: onboardRequirementImage,
     },
     {
         id: '3',
         icon: <Video size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Create & Submit Video',
         description: 'Create your video and upload it for review.',
+        image: onboardSubmitVideoImage,
     },
     {
         id: '4',
         icon: <CheckCircle size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Brand Review',
         description: 'The brand reviews and approves your content.',
+        image: onboardReviewImage,
     },
     {
         id: '5',
         icon: <Hash size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Post & Share Link',
         description: 'Publish with the hashtag and submit your post link.',
+        image: onboardPostImage,
     }
 ];
 
@@ -77,7 +90,11 @@ function StepCard({ step }: StepCardProps) {
         <View style={styles.card}>
             {/* Image placeholder area */}
             <View style={styles.imagePlaceholder}>
-
+                <Image
+                    source={step.image}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                />
             </View>
 
             {/* Content */}
