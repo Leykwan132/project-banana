@@ -2,8 +2,6 @@ import { ChevronDown, ImageIcon, Sparkles, Download } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const SHARED_VIDEO_URL = '/1.webm';
-
 const TRUSTED_BRANDS = [
     { name: 'My', url: 'https://static.wikia.nocookie.net/logopedia/images/7/72/.my.png/revision/latest?cb=20220802130206' },
     { name: 'AirAsia', url: 'https://static.wikia.nocookie.net/logopedia/images/7/7e/AirAsia_MOVE_New_Logo.png/revision/latest/scale-to-width-down/1000?cb=20240326091935' },
@@ -14,84 +12,85 @@ const TRUSTED_BRANDS = [
     { name: 'Munchy\'s', url: 'https://static.wikia.nocookie.net/logopedia/images/0/06/Munchy%27s_2020_Logo.png/revision/latest/scale-to-width-down/1000?cb=20220104083843' }
 ];
 
-type CreatorVideoCard = {
+type CreatorStepCard = {
     title: string;
     description: string;
+    image: string;
 };
 
-const creatorDashboardCards: CreatorVideoCard[] = [
+const creatorDashboardCards: CreatorStepCard[] = [
     {
         title: '1. Browse campaigns',
         description: 'Discover campaigns you want to join.',
+        image: '/landing-creator-step-campaigns.png',
     },
     {
         title: '2. Submit your content',
         description: 'Create and submit your video for approval.',
+        image: '/landing-creator-step-review.png',
     },
     {
         title: '3. Post on social media',
         description: 'Post your approved video on IG or TikTok.',
+        image: '/landing-creator-step-post.png',
     },
     {
         title: '4. Track your earnings',
         description: 'See your views, earnings, and growth.',
+        image: '/landing-creator-step-earnings.png',
     },
 ];
 
 type AlternatingFeature = {
     title: string;
     description: string;
+    image?: string;
 };
 
 const newCreatorFeatures: AlternatingFeature[] = [
     {
         title: 'Open campaigns',
         description: 'Jobs are open to anyone that can create regardless of follower count.',
+        image: '/landing-creator-campaign.svg',
     },
     {
         title: 'Real-time analytics',
         description: 'Track your content performance and earnings in real-time.',
+        image: '/landing-creator-analytics.svg',
     },
     {
         title: 'Secure payouts',
         description: 'Get paid securely based on your content performance.',
+        image: '/landing-creator-payout.svg',
     }
 ];
 
-const creatorTestimonials = [
-    {
-        quote: 'I used to chase brands in DMs. Now I open one dashboard, claim a brief, and start shooting.',
-        author: 'Alicia M.',
-        role: 'UGC Creator',
-    },
-    {
-        quote: 'The escrow flow is the biggest win. I know exactly when I will get paid after approval.',
-        author: 'Darren P.',
-        role: 'Tech Creator',
-    },
-    {
-        quote: 'Feedback is clear and organized, so I spend more time creating and less time managing messages.',
-        author: 'Nina R.',
-        role: 'Lifestyle Creator',
-    },
-];
+const creatorTestimonials: { quote: string; author: string; role: string }[] = [];
 
 const creatorFaqs = [
     {
-        question: 'How do creators get paid?',
-        answer: 'Each campaign budget is secured in escrow. After brand approval, payout is released to your connected account.',
+        question: 'Can I start with a new account?',
+        answer: 'Yes. Views are all that matter.',
     },
     {
-        question: 'Do I need a large following to join?',
-        answer: 'No. Brands can filter by niche, content quality, and fit. Strong creators of all sizes can land work.',
+        question: 'Can I have multiple applications for the same campaign?',
+        answer: 'Yes as long as the previous one has been approved then you can submit a new one.',
     },
     {
-        question: 'Can I track all my active submissions?',
-        answer: 'Yes. Your dashboard shows each campaign stage from draft, revisions, approval, and payout.',
+        question: 'Is there a fee for the withdrawals?',
+        answer: 'There is no platform fee but there will be a RM1.10 gateway fee charged by the payment provider.',
     },
     {
-        question: 'Is there a platform fee for creators?',
-        answer: 'Creators keep their agreed campaign payout. No hidden percentage is taken from your earnings.',
+        question: 'What campaign can I join?',
+        answer: 'You can join any campaign that is on the platform.',
+    },
+    {
+        question: 'How to get my post get paid?',
+        answer: 'When you join a campaign there are requirements set by the brands. You should read through and only then submit. Every submission needs to be approved to get monetized. After approval, you must include a tracking tag in your post description and copy the post URL back to our platform so we can track its performance.',
+    },
+    {
+        question: 'How do I track the earning of my post?',
+        answer: 'Lumina updates earnings on a daily basis. We refresh the data at midnight every day for the previous day\'s performance.',
     },
 ];
 
@@ -109,10 +108,14 @@ function CreatorAlternatingFeaturesSection() {
                                 <h3 className="text-3xl font-medium tracking-tight text-gray-900 md:text-[2.5rem] md:leading-tight">{feature.title}</h3>
                                 <p className="mt-6 text-xl text-gray-500">{feature.description}</p>
                             </div>
-                            <div className="flex-1 w-full bg-[#EBEAE5] rounded-2xl p-6 md:p-12 flex items-center justify-center">
-                                <div className="w-full aspect-4/3 rounded-xl shadow-2xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden relative">
-                                    <ImageIcon className="w-12 h-12 text-gray-400" />
-                                </div>
+                            <div className="flex-1 w-full bg-[#EBEAE5] rounded-2xl flex items-center justify-center overflow-hidden">
+                                {feature.image ? (
+                                    <img src={feature.image} alt={feature.title} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-white flex items-center justify-center">
+                                        <ImageIcon className="w-12 h-12 text-gray-400" />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -122,21 +125,26 @@ function CreatorAlternatingFeaturesSection() {
     );
 }
 
-function CreatorHowItWorksSection({ title, cards }: { title: string; cards: CreatorVideoCard[] }) {
+function CreatorHowItWorksSection({ title, cards }: { title: string; cards: CreatorStepCard[] }) {
     return (
         <section className="py-20">
-            <div className="mx-auto max-w-7xl px-6">
-                <h2 className="mb-10 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">{title}</h2>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
+            <div className="mx-auto max-w-[88rem] px-6">
+                <h2 className="mb-12 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">{title}</h2>
+                <div className="grid grid-cols-1 gap-6 lg:gap-8 md:grid-cols-4">
                     {cards.map((card) => (
-                        <article key={card.title} className="relative aspect-4/3 md:aspect-4/5 lg:aspect-3/4 overflow-hidden rounded-2xl border border-gray-200">
-                            <video autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover">
-                                <source src={SHARED_VIDEO_URL} type="video/webm" />
-                            </video>
-                            <div className="absolute left-0 top-0 p-5 md:p-6 w-full">
-                                <p className="mb-2 text-sm font-medium text-black/80">{card.title}</p>
-                                <h3 className="text-lg font-bold leading-tight tracking-tight text-black">{card.description}</h3>
+                        <article key={card.title} className="overflow-hidden rounded-[2rem] bg-[#F9FAFB] flex flex-col">
+                            <div className="flex-1 pb-0 p-6 md:p-10 md:pb-0 w-full flex flex-col justify-start z-10 relative">
+                                <h3 className="text-[1.35rem] font-semibold leading-tight tracking-tight text-gray-900 mb-3">{card.title}</h3>
+                                <p className="text-[1.05rem] text-gray-600 leading-relaxed">{card.description}</p>
                             </div>
+                            <div className="w-full aspect-4/3 overflow-hidden">
+                                <img
+                                    src={card.image}
+                                    alt={card.title}
+                                    className="w-full h-full object-cover object-center"
+                                />
+                            </div>
+
                         </article>
                     ))}
                 </div>
@@ -146,6 +154,10 @@ function CreatorHowItWorksSection({ title, cards }: { title: string; cards: Crea
 }
 
 function CreatorTrustedBrands() {
+    if (TRUSTED_BRANDS.length === 0) {
+        return null;
+    }
+
     return (
         <section className="py-16 md:py-20">
             <p className="mb-8 text-center text-[15px] font-medium text-gray-600">
@@ -168,6 +180,10 @@ function CreatorTrustedBrands() {
 }
 
 function CreatorTestimonialSection() {
+    if (creatorTestimonials.length === 0) {
+        return null;
+    }
+
     return (
         <section className="border-y border-gray-100 bg-gray-50 py-20">
             <div className="mx-auto max-w-7xl px-6">

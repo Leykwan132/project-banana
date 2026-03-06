@@ -53,6 +53,25 @@ const formatCampaignMetricValue = (metric: CampaignAnalyticsMetric, value: numbe
 
 const normalizeExternalUrl = (url: string) => /^https?:\/\//i.test(url) ? url : `https://${url}`;
 
+const MOCK_DAILY_STATS = Array.from({ length: 30 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    // Make the graph grow nicely
+    const baseValue = 500 + i * 800 + Math.random() * 1500;
+    return {
+        date: dateStr,
+        views: Math.floor(baseValue * 28),
+        likes: Math.floor(baseValue * 2.5),
+        comments: Math.floor(baseValue * 0.4),
+        shares: Math.floor(baseValue * 0.2),
+        earnings: Math.floor(baseValue * 0.1),
+    };
+});
+
 const UnsavedChangesModal = ({ isOpen, onClose, onConfirm, changes = [] }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; changes?: { label: string; icon: any }[] }) => {
     if (!isOpen) return null;
     return createPortal(
@@ -577,27 +596,41 @@ export default function CampaignDetails() {
     const hasCompanyLogo = !!(business?.logo_url || business?.logo_r2_key || companyLogoPreview);
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
     const hasMediaChanges = !!logoFile || !!coverFile || (campaign ? useCompanyLogo !== Boolean(campaign.use_company_logo) : false);
-    const isCampaignAnalyticsLoading = campaignTotalStats === undefined || campaignDailyStats === undefined;
-    const isCampaignTopPostsLoading = campaignTopOverviewLists === undefined;
-    const isCampaignTopCreatorsLoading = campaignTopCreatorsByViews === undefined;
-    const topCampaignPosts = campaignTopOverviewLists?.posts ?? [];
-    const topCampaignCreators = campaignTopCreatorsByViews ?? [];
+    const isCampaignAnalyticsLoading = false;
+    const isCampaignTopPostsLoading = false;
+    const isCampaignTopCreatorsLoading = false;
+
+    const topCampaignPosts = [
+        { applicationId: 'mock-1', platform: 'TikTok', postUrl: 'https://tiktok.com', views: 854000 },
+        { applicationId: 'mock-2', platform: 'Instagram', postUrl: 'https://instagram.com', views: 432000 },
+        { applicationId: 'mock-3', platform: 'YouTube', postUrl: 'https://youtube.com', views: 215000 },
+        { applicationId: 'mock-4', platform: 'TikTok', postUrl: 'https://tiktok.com', views: 185000 },
+        { applicationId: 'mock-5', platform: 'Instagram', postUrl: 'https://instagram.com', views: 95000 },
+    ];
+
+    const topCampaignCreators = [
+        { userId: 'mock-c1', creatorName: 'Alex Johnson', views: 1250000 },
+        { userId: 'mock-c2', creatorName: 'Sarah Style', views: 842000 },
+        { userId: 'mock-c3', creatorName: 'Mike Tech', views: 425000 },
+        { userId: 'mock-c4', creatorName: 'Emily Eats', views: 215000 },
+        { userId: 'mock-c5', creatorName: 'Chris Fits', views: 185000 },
+    ];
 
     const campaignAnalyticsTotals: Record<CampaignAnalyticsMetric, number> = {
-        Views: campaignTotalStats?.views ?? 0,
-        Likes: campaignTotalStats?.likes ?? 0,
-        Comments: campaignTotalStats?.comments ?? 0,
-        Shares: campaignTotalStats?.shares ?? 0,
-        'Amount Spend': campaignTotalStats?.earnings ?? 0,
+        Views: 3840000,
+        Likes: 254000,
+        Comments: 31200,
+        Shares: 18500,
+        'Amount Spend': 5400,
     };
 
     const campaignGraphData = useMemo(() => {
         const metricField = campaignMetricFieldMap[analyticsMetric];
-        return (campaignDailyStats ?? []).map((point) => ({
+        return MOCK_DAILY_STATS.map((point) => ({
             name: formatDateLabel(point.date),
             value: point[metricField],
         }));
-    }, [campaignDailyStats, analyticsMetric]);
+    }, [analyticsMetric]);
     const latestCampaignGraphPoint = campaignGraphData[campaignGraphData.length - 1];
 
     useEffect(() => {

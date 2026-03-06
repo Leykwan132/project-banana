@@ -15,19 +15,23 @@ type PricingFaq = {
 const pricingFaqs: PricingFaq[] = [
     {
         question: 'Are there creator fees?',
-        answer: 'No. Creator payouts are not reduced by hidden platform percentages.',
+        answer: "No it's an open platform, we are allowing everyone to participate.",
     },
     {
-        question: 'How does pay-as-you-go work?',
-        answer: 'You fund campaign budgets as needed and pay the applicable platform fee at checkout.',
+        question: 'Does it cost money to create a campaign?',
+        answer: 'Yes it depends on which plans you are on. The free plan would require a one-time RM300 payment and for each campaign.',
     },
     {
         question: 'Can we change plans later?',
-        answer: 'Yes. You can upgrade or downgrade from billing settings based on your campaign volume.',
+        answer: 'Yes you can do that.',
     },
     {
-        question: 'Do you support enterprise pricing?',
-        answer: 'Yes. High-volume teams can request custom terms and support.',
+        question: 'Can I refund my credits?',
+        answer: 'Yes there will be a RM1.10 gateway service fee charge by the payment gateway provider.',
+    },
+    {
+        question: 'Will that be a free trial?',
+        answer: 'Yes there will be a 14-day free trial.',
     },
 ];
 

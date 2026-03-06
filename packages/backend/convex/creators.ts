@@ -30,13 +30,11 @@ export const getCreator = query({
             throw new ConvexError(ErrorType.NOT_AUTHENTICATED);
         }
 
-        console.log("user", user)
         const creator = await ctx.db
             .query("creators")
             .withIndex("by_user", (q: any) => q.eq("user_id", user.subject))
             .unique();
 
-        console.log("creator", creator)
         if (!creator) {
             throw new ConvexError(ErrorType.CREATOR_NOT_FOUND);
         }

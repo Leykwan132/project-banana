@@ -1,8 +1,7 @@
-import { ArrowRight, ChevronDown, ImageIcon } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const SHARED_VIDEO_URL = '/1.webm';
 
 const TRUSTED_BRANDS = [
     { name: 'My', url: 'https://static.wikia.nocookie.net/logopedia/images/7/72/.my.png/revision/latest?cb=20220802130206' },
@@ -17,54 +16,59 @@ const TRUSTED_BRANDS = [
 type BusinessVideoCard = {
     title: string;
     description: string;
+    image: string;
 };
 
 
 
 const teamDashboardCards: BusinessVideoCard[] = [
     {
-        title: '1. Creator sourcing',
-        description: 'Shortlist creators in minutes.',
+        title: '1. Create Campaigns',
+        description: 'Set up requirements for the campaigns.',
+        image: '/landing-creator-step-campaigns.png',
     },
     {
-        title: '2. Brief and asset control',
-        description: 'One shared workspace.',
+        title: '2. Review submissions',
+        description: 'Review all the submission by the creators.',
+        image: '/landing-creator-step-review.png',
     },
     {
-        title: '3. Approval command center',
-        description: 'One single view queue.',
+        title: '3. Track performance',
+        description: 'Real-time performance tracking.',
+        image: '/landing-biz-step-analytics.png',
     },
     {
-        title: '4. Spend and ROI visibility',
-        description: 'Track campaign progress.',
+        title: '4. Automated payouts',
+        description: 'Lumina handles the payment to the creators.',
+        image: '/landing-creator-step-earnings.png',
     },
 ];
 
 type AlternatingFeature = {
     title: string;
     description: string;
+    image: string;
 };
 
 const newBusinessFeatures: AlternatingFeature[] = [
     {
-        title: 'Seamless campaign management',
-        description: 'Manage all your UGC campaigns in one place. Streamline your workflow from sourcing to payment.',
+        title: 'Easy Campaign Setup',
+        description: 'Launch your first campaigns under 5 minutes.',
+        image: '/landing-setup-campaign.png',
     },
     {
-        title: 'Automated creator sourcing',
-        description: 'Find the perfect creators for your brand using our advanced discovery engine and vetted network.',
+        title: 'Automated tracking & payouts',
+        description: 'Lumina tracks posts performance & handles payouts automatically.',
+        image: '/landing-automated-payout.png',
     },
     {
-        title: 'Secure escrow payouts',
-        description: 'Protect your budget with escrow-backed payments that only release when you approve the content.',
-    },
-    {
-        title: 'Comprehensive performance analytics',
+        title: 'Real-time performance analytics',
         description: 'Track the ROI of every piece of content with real-time performance data and actionable insights.',
+        image: '/landing-analytics.png',
     }
 ];
 
-const businessTestimonials = [
+const businessTestimonials: { quote: string; author: string; role: string }[] = [
     {
         quote: 'We replaced three tools and a spreadsheet stack. Campaign setup and approvals are dramatically faster.',
         author: 'Mia Tan',
@@ -86,20 +90,20 @@ const businessTestimonials = [
 
 const businessFaqs = [
     {
-        question: 'How quickly can we launch a campaign?',
-        answer: 'Most teams can publish a campaign the same day after creating a brief and budget.',
+        question: 'Do I have to manually pay the creators?',
+        answer: 'No Lumina will handle all the payment automatically.',
     },
     {
-        question: 'Can we approve content before creators publish?',
-        answer: 'Yes. Drafts are submitted to your approval queue first so your team controls what goes live.',
+        question: 'Does it cost to create a campaign?',
+        answer: "For three-tier yes, it's RM 300 flat. Otherwise every tier has the limit and available active campaign.",
     },
     {
-        question: 'How are creator payments managed?',
-        answer: 'Budget is secured in escrow, and payout is released only after your team approves delivery.',
+        question: 'What platform is supported?',
+        answer: 'TikTok and Instagram.',
     },
     {
-        question: 'Will this work for both in-house teams and agencies?',
-        answer: 'Yes. The dashboard supports multi-campaign operations for brands, agencies, and lean growth teams.',
+        question: 'How is the content approved?',
+        answer: 'When the user submits, it will need to be reviewed; then only it will be calculated.',
     },
 ];
 
@@ -117,10 +121,8 @@ function BusinessAlternatingFeaturesSection() {
                                 <h3 className="text-3xl font-medium tracking-tight text-gray-900 md:text-[2.5rem] md:leading-tight">{feature.title}</h3>
                                 <p className="mt-6 text-xl text-gray-500">{feature.description}</p>
                             </div>
-                            <div className="flex-1 w-full bg-[#EBEAE5] rounded-2xl p-6 md:p-12 flex items-center justify-center">
-                                <div className="w-full aspect-4/3 rounded-xl shadow-2xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden relative">
-                                    <ImageIcon className="w-12 h-12 text-gray-400" />
-                                </div>
+                            <div className="flex-1 w-full flex items-center justify-center">
+                                <img src={feature.image} alt={feature.title} className="w-full h-auto object-contain" />
                             </div>
                         </div>
                     </div>
@@ -132,18 +134,22 @@ function BusinessAlternatingFeaturesSection() {
 
 function BusinessHowItWorksSection({ title, cards }: { title: string; cards: BusinessVideoCard[] }) {
     return (
-        <section className="py-16 md:py-24">
-            <div className="mx-auto max-w-7xl px-6">
-                <h2 className="mb-10 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">{title}</h2>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
+        <section className="py-20">
+            <div className="mx-auto max-w-352 px-6">
+                <h2 className="mb-12 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">{title}</h2>
+                <div className="grid grid-cols-1 gap-6 lg:gap-8 md:grid-cols-4">
                     {cards.map((card) => (
-                        <article key={card.title} className="relative aspect-4/3 md:aspect-4/5 lg:aspect-3/4 overflow-hidden rounded-2xl border border-gray-200">
-                            <video autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover">
-                                <source src={SHARED_VIDEO_URL} type="video/webm" />
-                            </video>
-                            <div className="absolute left-0 top-0 p-5 md:p-6 w-full">
-                                <p className="mb-2 text-sm font-medium text-black/80">{card.title}</p>
-                                <h3 className="text-lg font-bold leading-tight tracking-tight text-black">{card.description}</h3>
+                        <article key={card.title} className="overflow-hidden rounded-4xl bg-[#F9FAFB] flex flex-col">
+                            <div className="flex-1 pb-0 p-6 md:p-10 md:pb-0 w-full flex flex-col justify-start z-10 relative">
+                                <h3 className="text-[1.35rem] font-semibold leading-tight tracking-tight text-gray-900 mb-3">{card.title}</h3>
+                                <p className="text-[1.05rem] text-gray-600 leading-relaxed">{card.description}</p>
+                            </div>
+                            <div className="w-full aspect-4/3 overflow-hidden">
+                                <img
+                                    src={card.image}
+                                    alt={card.title}
+                                    className="w-full h-full object-cover object-center"
+                                />
                             </div>
                         </article>
                     ))}
@@ -154,6 +160,10 @@ function BusinessHowItWorksSection({ title, cards }: { title: string; cards: Bus
 }
 
 function BusinessTrustedBrands() {
+    if (TRUSTED_BRANDS.length === 0) {
+        return null;
+    }
+
     return (
         <section className="py-4">
             <p className="mb-8 text-center text-[15px] font-medium text-gray-600">
@@ -176,6 +186,10 @@ function BusinessTrustedBrands() {
 }
 
 function BusinessTestimonialsSection() {
+    if (businessTestimonials.length === 0) {
+        return null;
+    }
+
     return (
         <section className="border-y border-gray-100 bg-gray-50 py-20">
             <div className="mx-auto max-w-7xl px-6">
@@ -241,8 +255,8 @@ export default function BusinessLanding() {
             <section className="mx-auto w-full max-w-7xl px-6 pb-12 pt-16 md:pt-24">
                 <div className="max-w-4xl">
                     <h1 className="text-4xl font-medium tracking-tight text-gray-900 sm:text-5xl md:text-[3.25rem] md:leading-[1.1]">
-                        Built for performance marketing teams,<br className="hidden md:block" />
-                        Lumina is the best way to run UGC.
+                        Get UGC distribution from Day 1.<br className="hidden md:block" />
+                        Only at Lumina.
                     </h1>
                     <Link
                         to="/login"
@@ -253,8 +267,8 @@ export default function BusinessLanding() {
                 </div>
 
                 <div className="mt-12 w-full">
-                    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 flex items-center justify-center shadow-sm">
-                        <ImageIcon className="h-12 w-12 text-gray-400" />
+                    <div className="relative h-full w-full overflow-hidden">
+                        <img src="/biz-hero.png" alt="Lumina dashboard" className="h-full w-full object-cover" />
                     </div>
                 </div>
             </section>
@@ -263,7 +277,7 @@ export default function BusinessLanding() {
                 <BusinessTrustedBrands />
             </div>
 
-            <BusinessHowItWorksSection title="How the app works" cards={teamDashboardCards} />
+            <BusinessHowItWorksSection title="How Lumina works" cards={teamDashboardCards} />
 
             <BusinessAlternatingFeaturesSection />
 
