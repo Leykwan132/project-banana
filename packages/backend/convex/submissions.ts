@@ -1,7 +1,6 @@
-import { mutation, query, action } from "./_generated/server";
+import { mutation, query, action, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
 import { generateUploadUrl, generateDownloadUrl } from "./r2";
 import type { Doc, Id } from "./_generated/dataModel";
 import { posthog } from "./posthog";
@@ -31,7 +30,6 @@ const getSubmissionAccess = async (ctx: any, submissionId: Id<"submissions">) =>
             canReview: false,
         };
     }
-
     const submission = await ctx.db.get(submissionId);
     if (!submission) {
         return {
@@ -401,20 +399,51 @@ export const generateVideoUploadUrl = action({
     },
 });
 
+// Internal query for actions to fetch submission r2_key + access flags
+// (actions have no ctx.db, so db reads must be delegated to a query via ctx.runQuery)
+export const getSubmissionR2Key = internalQuery({
+    args: {
+        submissionId: v.id("submissions"),
+        userId: v.string(),
+        userEmail: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const submission = await ctx.db.get(args.submissionId);
+        if (!submission) return null;
+
+        const campaign = await ctx.db.get(submission.campaign_id);
+        const business = campaign ? await ctx.db.get(campaign.business_id) : null;
+
+        const isOwner = submission.user_id === args.userId;
+        const isBusinessOwner = business?.user_id === args.userId;
+        const isAdmin = !!args.userEmail && getAdminEmails().includes(args.userEmail);
+        const canAccess = isOwner || isBusinessOwner || isAdmin;
+
+        return canAccess ? (submission.r2_key ?? null) : null;
+    },
+});
+
 export const generateVideoAccessUrl = action({
     args: {
         submissionId: v.id("submissions"),
     },
     handler: async (ctx, args) => {
-        const access = await getSubmissionAccess(ctx, args.submissionId);
-        if (!access.identity) {
+        // ctx.auth works in actions; ctx.db does not
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
             throw new Error("Unauthenticated call to action");
         }
-        if (!access.canAccess || !access.submission || !access.submission.r2_key) {
-            return null; // Handle missing submission or key
-        }
 
-        const url = await generateDownloadUrl(access.submission.r2_key);
+        // Delegate the db read to an internalQuery so it gets a proper ctx.db
+        const r2Key = await ctx.runQuery(internal.submissions.getSubmissionR2Key, {
+            submissionId: args.submissionId,
+            userId: identity.subject,
+            userEmail: identity.email ?? undefined,
+        });
+
+        if (!r2Key) return null;
+
+        const url = await generateDownloadUrl(r2Key);
         return url;
     },
 });
