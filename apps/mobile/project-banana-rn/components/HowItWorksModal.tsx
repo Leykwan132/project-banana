@@ -14,6 +14,7 @@ import {
     CheckCircle,
     Hash,
     X,
+    Instagram,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 
@@ -26,6 +27,7 @@ interface HowItWorksModalProps {
     onDismiss: () => void;
 }
 
+const onboardPublicImage = require('@/assets/images/onboard-ig.png');
 const onboardCampaignImage = require('@/assets/images/onboard-campaign.png');
 const onboardRequirementImage = require('@/assets/images/onboard-requirement.png');
 const onboardSubmitVideoImage = require('@/assets/images/onboard-submit-video.png');
@@ -46,34 +48,41 @@ const ICON_COLOR = '#FC4C02';
 const steps: StepData[] = [
     {
         id: '1',
+        icon: <Instagram size={ICON_SIZE} color={ICON_COLOR} />,
+        title: 'Public Instagram Account',
+        description: 'Ensure your Instagram account is public.',
+        image: onboardPublicImage,
+    },
+    {
+        id: '2',
         icon: <Search size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Explore Campaigns',
         description: 'See the campaigns pay per view and max payouts.',
         image: onboardCampaignImage,
     },
     {
-        id: '2',
+        id: '3',
         icon: <FileText size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Check Requirements',
         description: 'Review the requirements (scripts, assets, etc).',
         image: onboardRequirementImage,
     },
     {
-        id: '3',
+        id: '4',
         icon: <Video size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Create & Submit Video',
         description: 'Create your video and upload it for review.',
         image: onboardSubmitVideoImage,
     },
     {
-        id: '4',
+        id: '5',
         icon: <CheckCircle size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Brand Review',
         description: 'The brand reviews and approves your content.',
         image: onboardReviewImage,
     },
     {
-        id: '5',
+        id: '6',
         icon: <Hash size={ICON_SIZE} color={ICON_COLOR} />,
         title: 'Post & Share Link',
         description: 'Publish with the hashtag and submit your post link.',
