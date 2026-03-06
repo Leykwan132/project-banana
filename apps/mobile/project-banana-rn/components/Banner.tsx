@@ -4,6 +4,8 @@ import { usePostHog } from 'posthog-react-native';
 import { ArrowRight } from 'lucide-react-native';
 
 import { HowItWorksModal } from '@/components/HowItWorksModal';
+import { NewAccountModal } from '@/components/NewAccountModal';
+import { CreatorCampaignModal } from '@/components/CreatorCampaignModal';
 import { ThemedText } from '@/components/themed-text';
 
 export enum BannerType {
@@ -11,6 +13,8 @@ export enum BannerType {
     REFERRAL = 'referral',
     CASHBACK = 'cashback',
     PROMO = 'promo',
+    NEW_ACCOUNT = 'new_account',
+    CREATOR_CAMPAIGN = 'creator_campaign',
 }
 
 interface BannerProps {
@@ -48,10 +52,26 @@ const defaultConfigs: Record<BannerType, { title: string, description: string, b
         titleColor: '#FFE0F0',
         descColor: '#FFFFFF',
     },
+    [BannerType.NEW_ACCOUNT]: {
+        title: 'Starting Fresh?',
+        description: 'Tips to warm up and grow your brand-new account.',
+        bg: '#00897B',
+        titleColor: '#B2DFDB',
+        descColor: '#FFFFFF',
+    },
+    [BannerType.CREATOR_CAMPAIGN]: {
+        title: 'Creator Campaign',
+        description: 'Get guaranteed payouts for every approved video.',
+        bg: '#F39C12',
+        titleColor: '#FFF1E0',
+        descColor: '#FFFFFF',
+    },
 };
 
 export function Banner({ type, title, description }: BannerProps) {
     const [showHowItWorks, setShowHowItWorks] = useState(false);
+    const [showNewAccount, setShowNewAccount] = useState(false);
+    const [showCreatorCampaign, setShowCreatorCampaign] = useState(false);
     const posthog = usePostHog();
 
     const config = defaultConfigs[type];
@@ -73,6 +93,12 @@ export function Banner({ type, title, description }: BannerProps) {
                 break;
             case BannerType.PROMO:
                 // TODO: Navigate to promo screen
+                break;
+            case BannerType.NEW_ACCOUNT:
+                setShowNewAccount(true);
+                break;
+            case BannerType.CREATOR_CAMPAIGN:
+                setShowCreatorCampaign(true);
                 break;
         }
     };
@@ -104,6 +130,16 @@ export function Banner({ type, title, description }: BannerProps) {
             <HowItWorksModal
                 visible={showHowItWorks}
                 onDismiss={() => setShowHowItWorks(false)}
+            />
+
+            <NewAccountModal
+                visible={showNewAccount}
+                onDismiss={() => setShowNewAccount(false)}
+            />
+
+            <CreatorCampaignModal
+                visible={showCreatorCampaign}
+                onDismiss={() => setShowCreatorCampaign(false)}
             />
         </>
     );
