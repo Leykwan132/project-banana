@@ -122,14 +122,22 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
             "exp://**",                    // Trust all Expo URLs (wildcard matching)
             "exp://[IP_ADDRESS]/**",      // Trust 192.168.x.x IP range with any port and path
             "exp://192.168.100.250:8081",
+            "https://appleid.apple.com",
             siteUrl,
         ],
         socialProviders: {
             google: {
                 clientId: process.env.GOOGLE_CLIENT_ID!,
                 clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            }
+            },
+            apple: {
+                clientId: "",
+                clientSecret: "",
+                // Optional
+                appBundleIdentifier: process.env.APPLE_APP_BUNDLE_IDENTIFIER as string,
+            },
         },
+
         database: authComponent.adapter(ctx),
         // Configure simple, non-verified email/password to get started
         emailAndPassword: {
