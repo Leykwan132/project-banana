@@ -13,8 +13,8 @@ export function BannerCarousel({ types, height = 160 }: BannerCarouselProps) {
 
     return (
         <Carousel
-            autoplay
-            autoplayInterval={4000}
+            // autoplay
+            // autoplayInterval={4000}
             pageControlPosition={Carousel.pageControlPositions.UNDER}
             pageControlProps={{ size: 6, color: '#000000', inactiveColor: '#CCCCCC' }}
             containerStyle={[styles.carousel, { height: height + 20 }]}

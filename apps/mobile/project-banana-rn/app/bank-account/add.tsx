@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { View, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, TextInput, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, ChevronDown, Upload, Eye, Check, Search, Camera, FileText, Image as ImageIcon, Pencil } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { useAction, useMutation } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BANK_OPTIONS } from '@/constants/banks';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -361,7 +362,7 @@ export default function AddBankAccountScreen() {
                     disabled={!isFormValid || isLoading}
                 >
                     {isLoading ? (
-                        <ActivityIndicator color="#fff" />
+                        <LoadingIndicator size="small" color="#fff" />
                     ) : (
                         <ThemedText style={styles.submitButtonText}>
                             {isEditing ? 'Save Changes' : 'Submit'}

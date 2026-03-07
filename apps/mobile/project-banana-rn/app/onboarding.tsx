@@ -7,11 +7,11 @@ import {
     TextInput,
     View,
     Alert,
-    ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
 } from 'react-native';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -385,7 +385,7 @@ export default function OnboardingScreen() {
                         disabled={isUsernameContinueDisabled}
                     >
                         {isCheckingUsername ? (
-                            <ActivityIndicator color="#FFFFFF" />
+                            <LoadingIndicator size="small" color="#FFFFFF" />
                         ) : (
                             <ThemedText style={styles.primaryButtonText}>Continue</ThemedText>
                         )}
@@ -415,7 +415,7 @@ export default function OnboardingScreen() {
                         disabled={isSubmitDisabled}
                     >
                         {isSubmitting ? (
-                            <ActivityIndicator color="#FFFFFF" />
+                            <LoadingIndicator size="small" color="#FFFFFF" />
                         ) : (
                             <ThemedText style={styles.primaryButtonText}>Get Started</ThemedText>
                         )}

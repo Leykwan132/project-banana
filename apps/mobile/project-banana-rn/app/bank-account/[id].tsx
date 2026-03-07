@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Upload, Eye, AlertCircle, FileText, CheckCircle, Clock, XCircle, ChevronRight, Camera, ImageIcon, Pencil } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -401,7 +402,7 @@ export default function BankAccountDetailsScreen() {
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
-                                    <ActivityIndicator color="#fff" />
+                                    <LoadingIndicator size="small" color="#fff" />
                                 ) : (
                                     <ThemedText style={styles.mainButtonText}>Submit for Review</ThemedText>
                                 )}

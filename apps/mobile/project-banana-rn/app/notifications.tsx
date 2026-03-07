@@ -1,4 +1,4 @@
-import { View, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { ChevronLeft, Bell } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

@@ -1,4 +1,4 @@
-import { View, StyleSheet, Pressable, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, Alert, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { AntDesign } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import Constants from 'expo-constants';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { ThemedText } from '@/components/themed-text';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { authClient } from "@/lib/auth-client";
 import { router } from 'expo-router';
 import { api } from '../../../../packages/backend/convex/_generated/api';
@@ -213,7 +214,7 @@ export function LoginActionSheet({
                                 disabled={isAppleLoading}
                             >
                                 {isAppleLoading ? (
-                                    <ActivityIndicator color="#FFFFFF" />
+                                    <LoadingIndicator size="small" color="#FFFFFF" />
                                 ) : (
                                     <>
                                         <AntDesign name="apple" size={20} color="#FFFFFF" style={styles.buttonIcon} />
@@ -229,7 +230,7 @@ export function LoginActionSheet({
                             disabled={isGoogleLoading}
                         >
                             {isGoogleLoading ? (
-                                <ActivityIndicator color="#000000" />
+                                <LoadingIndicator size="small" color="#000000" />
                             ) : (
                                 <>
                                     <AntDesign name="google" size={20} color="#000000" style={styles.buttonIcon} />

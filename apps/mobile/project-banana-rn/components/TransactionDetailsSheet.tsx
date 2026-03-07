@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, StyleSheet, Pressable, StyleProp, TextStyle, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, StyleProp, TextStyle } from 'react-native';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
@@ -117,7 +118,7 @@ export function TransactionDetailsSheet({
                             disabled={isLoading}
                         >
                             {isLoading ? (
-                                <ActivityIndicator color="#fff" />
+                                <LoadingIndicator size="small" color="#fff" />
                             ) : (
                                 <ThemedText style={styles.cancelButtonText}>Yes, Cancel</ThemedText>
                             )}

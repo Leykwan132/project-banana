@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { View, StyleSheet, Image, Pressable, ScrollView, ActivityIndicator, Linking } from 'react-native';
+import { View, StyleSheet, Image, Pressable, ScrollView, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video } from 'lucide-react-native';
 import { useState, useRef, useEffect } from 'react';
@@ -14,6 +14,7 @@ import Animated, {
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { CreatorListItem } from '@/components/CreatorListItem';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import ActionSheet from "react-native-actions-sheet";
@@ -580,7 +581,7 @@ export default function CampaignDetailsScreen() {
                     disabled={isJoining || isLoading}
                 >
                     {isJoining ? (
-                        <ActivityIndicator color="#FFFFFF" />
+                        <LoadingIndicator size="small" color="#FFFFFF" />
                     ) : (
                         <ThemedText style={styles.joinButtonText}>
                             {hasExistingNonEarningApplication ? "View Application" : "Join"}

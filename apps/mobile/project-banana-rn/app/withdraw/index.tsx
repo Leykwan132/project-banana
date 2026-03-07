@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, StyleSheet, TextInput, Pressable, ScrollView, Alert, Linking } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
@@ -19,6 +19,7 @@ import { BANK_OPTIONS } from '@/constants/banks';
 
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 
@@ -310,7 +311,7 @@ export default function WithdrawScreen() {
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
-                                    <ActivityIndicator color="#fff" />
+                                    <LoadingIndicator size="small" color="#fff" />
                                 ) : (
                                     <ThemedText style={styles.confirmButtonText}>Confirm</ThemedText>
                                 )}

@@ -1,4 +1,4 @@
-import { View, StyleSheet, Pressable, Image, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, Image } from 'react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 
 import { ThemedText } from '@/components/themed-text';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { authClient } from "@/lib/auth-client";
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -151,7 +152,7 @@ export function ProfileActionSheet({
                         </View>
                         <ThemedText style={[styles.optionLabel, { color: '#D32F2F' }]}>Logout</ThemedText>
                         {isLoggingOut && (
-                            <ActivityIndicator size="small" color="#D32F2F" style={{ marginLeft: 10 }} />
+                            <LoadingIndicator size="small" color="#D32F2F" style={{ marginLeft: 10 }} />
                         )}
                     </Pressable>
                 </View>
