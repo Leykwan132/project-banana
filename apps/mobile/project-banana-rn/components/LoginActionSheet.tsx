@@ -8,6 +8,7 @@ import { useConvex } from 'convex/react';
 import LottieView from 'lottie-react-native';
 import { usePostHog } from 'posthog-react-native'
 import Constants from 'expo-constants';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { ThemedText } from '@/components/themed-text';
 import { authClient } from "@/lib/auth-client";
@@ -97,10 +98,24 @@ export function LoginActionSheet({
         signupMethodRef.current = 'apple';
         setIsAppleLoading(true);
         try {
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+            });
+
+            if (!credential.identityToken) {
+                throw new Error("Failed to get Apple identity token");
+            }
+
             const { data, error } = await authClient.signIn.social({
                 provider: "apple",
-                callbackURL: "/(tabs)",
-                newUserCallbackURL: "/onboarding",
+                idToken: {
+                    token: credential.identityToken,
+                    // nonce: credential.authorizationCode ?? undefined,
+                    // accessToken: credential.identityToken,
+                },
             });
 
             if (error) {
@@ -191,20 +206,22 @@ export function LoginActionSheet({
                     <ThemedText style={styles.subtitle}>Sign in to start earning from your content.</ThemedText>
 
                     <View style={styles.buttonContainer}>
-                        <Pressable
-                            style={[styles.loginButton, styles.appleButton, isAppleLoading && styles.disabledButton]}
-                            onPress={handleAppleLogin}
-                            disabled={isAppleLoading}
-                        >
-                            {isAppleLoading ? (
-                                <ActivityIndicator color="#FFFFFF" />
-                            ) : (
-                                <>
-                                    <AntDesign name="apple" size={20} color="#FFFFFF" style={styles.buttonIcon} />
-                                    <ThemedText style={styles.appleButtonText}>Continue with Apple</ThemedText>
-                                </>
-                            )}
-                        </Pressable>
+                        {Platform.OS === 'ios' && (
+                            <Pressable
+                                style={[styles.loginButton, styles.appleButton, isAppleLoading && styles.disabledButton]}
+                                onPress={handleAppleLogin}
+                                disabled={isAppleLoading}
+                            >
+                                {isAppleLoading ? (
+                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : (
+                                    <>
+                                        <AntDesign name="apple" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+                                        <ThemedText style={styles.appleButtonText}>Continue with Apple</ThemedText>
+                                    </>
+                                )}
+                            </Pressable>
+                        )}
 
                         <Pressable
                             style={[styles.loginButton, styles.googleButton, isGoogleLoading && styles.disabledButton]}
