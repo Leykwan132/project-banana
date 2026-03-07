@@ -48,7 +48,7 @@ const CampaignsSkeleton = () => {
                 <div className="col-span-1 flex items-center justify-center">Status</div>
                 <div className="col-span-1 flex items-center justify-center">Date Created</div>
                 <div className="col-span-1 flex items-center justify-center">Submissions</div>
-                <div className="col-span-2 flex items-center justify-center">Budget Usage</div>
+                <div className="col-span-2 flex items-center justify-center">Budget Claimed</div>
             </div>
             <div className="divide-y divide-[#F4F6F8]">
                 {Array(5).fill(0).map((_, index) => (
@@ -322,7 +322,7 @@ export default function Campaigns() {
                                 Submissions <SortIcon sortConfig={pastSort} columnKey="submissions" />
                             </div>
                             <div className="col-span-2 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget', true)}>
-                                Budget Usage <SortIcon sortConfig={pastSort} columnKey="budget" />
+                                Budget Claimed <SortIcon sortConfig={pastSort} columnKey="budget" />
                             </div>
                         </div>
 

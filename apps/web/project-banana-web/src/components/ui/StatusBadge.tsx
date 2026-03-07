@@ -1,5 +1,3 @@
-import { CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
-
 interface StatusBadgeProps {
     status: string;
     className?: string;
@@ -14,39 +12,27 @@ export default function StatusBadge({ status, className = '' }: StatusBadgeProps
             case 'completed':
             case 'verified':
             case 'active':
-                return {
-                    colorClass: 'text-green-600 bg-green-50/50 border-green-100',
-                    Icon: CheckCircle2
-                };
+                return 'bg-emerald-500';
             case 'failed':
             case 'canceled':
             case 'rejected':
-                return {
-                    colorClass: 'text-red-600 bg-red-50/50 border-red-100',
-                    Icon: XCircle
-                };
+                return 'bg-red-500';
             case 'processing':
+                return 'bg-blue-500';
             case 'pending':
-                return {
-                    colorClass: 'text-blue-600 bg-blue-50/50 border-blue-100',
-                    Icon: Clock
-                };
             case 'paused':
             default:
-                return {
-                    colorClass: 'text-yellow-600 bg-yellow-50/50 border-yellow-100',
-                    Icon: AlertCircle
-                };
+                return 'bg-amber-500';
         }
     };
 
-    const { colorClass, Icon } = getStatusConfig(status);
+    const dotColorClass = getStatusConfig(status);
 
     const formattedStatus = status.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 
     return (
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${colorClass} ${className}`}>
-            <Icon className="w-3.5 h-3.5" />
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 ${className}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />
             <span>{formattedStatus}</span>
         </div>
     );
