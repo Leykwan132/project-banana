@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Authenticated, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Skeleton } from '@heroui/react';
@@ -75,6 +75,13 @@ export default function Overview() {
 
     // Check if user has a business
     const business = useQuery(api.businesses.getMyBusiness);
+
+    useEffect(() => {
+        if (business === null || (business && business.is_onboarded === false)) {
+            navigate('/onboarding');
+        }
+    }, [business, navigate]);
+
     const businessDailyStats = useQuery(
         api.analytics.getBusinessDailyStatsLast30Days,
         business ? { businessId: business._id } : "skip"
