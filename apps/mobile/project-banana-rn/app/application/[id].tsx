@@ -36,7 +36,7 @@ import { FlippableEarningsCard } from '@/components/FlippableEarningsCard';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
-const formatCurrency = (amount: number) => `Rm ${amount.toLocaleString()}`;
+const formatCurrency = (amount: number) => `RM ${amount.toLocaleString()}`;
 
 const formatViews = (views: number) => {
     if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
@@ -668,22 +668,24 @@ export default function ApplicationDetailScreen() {
                     <AccordionItem isExpanded={payoutsOpen}>
                         <View style={styles.payoutsList}>
                             <View style={styles.payoutRow}>
-                                <ThemedText type="defaultSemiBold" style={{ textAlign: 'left' }}>Views</ThemedText>
-                                <ThemedText type="defaultSemiBold" style={{ textAlign: 'right' }}>Amount</ThemedText>
+                                <ThemedText style={styles.payoutCell}>Base pay per video</ThemedText>
+                                <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>
+                                    {formatCurrency(campaign?.base_pay ?? 0)}
+                                </ThemedText>
                             </View>
-                            {(campaign?.payout_thresholds ?? []).map((payout, index) => (
-                                <View key={index} style={styles.payoutRow}>
-                                    <ThemedText style={styles.payoutCell}>{formatViews(payout.views)} views</ThemedText>
-                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(payout.payout)}</ThemedText>
-                                </View>
-                            ))}
-                            <View style={styles.payoutDivider} />
                             <View style={styles.payoutRow}>
-                                <ThemedText style={styles.payoutCell}>You can earn maximum</ThemedText>
+                                <ThemedText style={styles.payoutCell}>Maximum payout</ThemedText>
                                 <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>
                                     {formatCurrency(campaign?.maximum_payout ?? 0)}
                                 </ThemedText>
                             </View>
+                            <View style={styles.payoutDivider} />
+                            {(campaign?.payout_thresholds ?? []).map((payout, index) => (
+                                <View key={index} style={styles.payoutRow}>
+                                    <ThemedText style={styles.payoutCell}>Every {formatViews(payout.views)} views</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(payout.payout)}</ThemedText>
+                                </View>
+                            ))}
                         </View>
                     </AccordionItem>
                 </View>

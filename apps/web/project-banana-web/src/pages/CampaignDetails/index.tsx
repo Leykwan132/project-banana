@@ -183,6 +183,9 @@ const validationSchema = Yup.object({
         .required('Please enter a valid total budget')
         .positive('Please enter a valid total budget'),
     assets: Yup.string().url('Please enter a valid URL'),
+    basePay: Yup.number()
+        .required('Please configure base pay and maximum payout')
+        .positive('Please configure base pay and maximum payout'),
     maxPayout: Yup.number()
         .required('Please configure payout thresholds and maximum payout')
         .positive('Please configure payout thresholds and maximum payout'),
@@ -246,6 +249,7 @@ export default function CampaignDetails() {
         category: [] as string[],
         totalPayouts: '',
         assets: '',
+        basePay: '',
         maxPayout: '',
         thresholdData: [] as Threshold[],
         reqData: {
@@ -311,6 +315,7 @@ export default function CampaignDetails() {
                     if (req === "No AI Content") newReqData.noAi = true;
                     else if (req === "Follow Script 1:1") newReqData.followScript = true;
                     else if (req.startsWith("Speak ")) newReqData.language = req.replace("Speak ", "");
+                    else if (req === "Any location") newReqData.location = "Any";
                     else if (req.startsWith("Creator from ")) newReqData.location = req.replace("Creator from ", "");
                     else newReqData.custom.push(req);
                 });
@@ -338,6 +343,7 @@ export default function CampaignDetails() {
                 category: campaign.category || [],
                 totalPayouts: campaign.total_budget.toString(),
                 assets: campaign.asset_links || "",
+                basePay: campaign.base_pay?.toString() || "",
                 maxPayout: campaign.maximum_payout?.toString() || "",
                 thresholdData: thresholds,
                 reqData: newReqData,
@@ -491,6 +497,7 @@ export default function CampaignDetails() {
                 category: values.category,
                 total_budget: requestedTotalBudget,
                 asset_links: values.assets,
+                base_pay: parseFloat(values.basePay) || 0,
                 maximum_payout: parseFloat(values.maxPayout) || 0,
                 payout_thresholds: values.thresholdData
                     .filter(t => t.views && t.amount)
@@ -502,7 +509,7 @@ export default function CampaignDetails() {
                     ...(values.reqData.noAi ? ["No AI Content"] : []),
                     ...(values.reqData.followScript ? ["Follow Script 1:1"] : []),
                     ...(values.reqData.language ? [`Speak ${values.reqData.language}`] : []),
-                    ...(values.reqData.location ? [`Creator from ${values.reqData.location}`] : []),
+                    ...(values.reqData.location ? [values.reqData.location.toLowerCase() === 'any' ? "Any location" : `Creator from ${values.reqData.location}`] : []),
                     ...values.reqData.custom
                 ],
                 scripts: [
@@ -677,6 +684,7 @@ export default function CampaignDetails() {
         // Use loose equality or string casting to avoid number/string mismatch issues
         if (formik.values.totalPayouts.toString() !== initialValues.totalPayouts.toString()) changes.push({ label: 'Total Payouts', icon: DollarSign });
         if (formik.values.assets !== initialValues.assets) changes.push({ label: 'Assets Link', icon: LinkIcon });
+        if (formik.values.basePay.toString() !== initialValues.basePay.toString()) changes.push({ label: 'Base Pay', icon: DollarSign });
         if (formik.values.maxPayout.toString() !== initialValues.maxPayout.toString()) changes.push({ label: 'Max Payout', icon: DollarSign });
 
         if (JSON.stringify(formik.values.thresholdData) !== JSON.stringify(initialValues.thresholdData)) changes.push({ label: 'Payout Thresholds', icon: DollarSign });
@@ -957,42 +965,43 @@ export default function CampaignDetails() {
                                     {formik.touched.thresholdData && formik.errors.thresholdData && typeof formik.errors.thresholdData === 'string' && (
                                         <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.thresholdData}</p>
                                     )}
+                                    {formik.touched.basePay && formik.errors.basePay && (
+                                        <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.basePay}</p>
+                                    )}
                                     {formik.touched.maxPayout && formik.errors.maxPayout && (
                                         <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.maxPayout}</p>
                                     )}
-                                    {formik.values.thresholdData.some(t => t.views && t.amount) ? (
+                                    {formik.values.basePay || formik.values.maxPayout || formik.values.thresholdData.some(t => t.views && t.amount) ? (
                                         <div className="bg-[#F8F9FA] rounded-3xl p-6">
                                             <h3 className="font-bold text-sm mb-4 text-gray-900">Current Threshold</h3>
                                             <div className="space-y-3 mb-6">
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="rounded-2xl bg-white p-4">
+                                                        <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1">Base Pay Per Video</span>
+                                                        <span className="text-sm font-semibold text-gray-900">RM {formik.values.basePay || '0'}</span>
+                                                    </div>
+                                                    <div className="rounded-2xl bg-white p-4">
+                                                        <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1">Maximum Payout</span>
+                                                        <span className="text-sm font-semibold text-gray-900">RM {formik.values.maxPayout || '0'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="border-t border-dashed border-gray-200" />
                                                 {formik.values.thresholdData.map((t, i) => (
                                                     t.views && t.amount ? (
                                                         <div key={i} className="flex items-center gap-6 text-sm text-gray-600">
                                                             <div className="flex items-center gap-2 min-w-[100px]">
                                                                 <Eye className="w-4 h-4 text-gray-400" />
-                                                                <span>{t.views} view</span>
+                                                                <span>Every {t.views} views</span>
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
                                                                     <DollarSign className="w-2.5 h-2.5" />
                                                                 </div>
-                                                                <span>Rm{t.amount}</span>
+                                                                <span>RM {t.amount}</span>
                                                             </div>
                                                         </div>
                                                     ) : null
                                                 ))}
-                                                {formik.values.maxPayout && (
-                                                    <div className="flex items-center gap-6 text-sm text-gray-600 pt-2 border-t border-dashed border-gray-200 mt-2">
-                                                        <div className="flex items-center gap-2 min-w-[100px]">
-                                                            <span className='font-semibold'>Max Payout</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
-                                                                <DollarSign className="w-2.5 h-2.5" />
-                                                            </div>
-                                                            <span>Rm{formik.values.maxPayout}</span>
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
                                             <button
                                                 type="button"
@@ -1046,10 +1055,12 @@ export default function CampaignDetails() {
                                                         <span className="text-sm text-gray-600">Speak {formik.values.reqData.language}</span>
                                                     </div>
                                                 )}
-                                                {formik.values.reqData.location && formik.values.reqData.location.toLowerCase() !== 'any' && (
+                                                {formik.values.reqData.location && (
                                                     <div className="flex items-start gap-3">
                                                         <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                        <span className="text-sm text-gray-600">Creator from {formik.values.reqData.location}</span>
+                                                        <span className="text-sm text-gray-600">
+                                                            {formik.values.reqData.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${formik.values.reqData.location}`}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 {formik.values.reqData.custom.map((req, i) => (
@@ -1207,7 +1218,6 @@ export default function CampaignDetails() {
                                                 <span className="block text-sm font-semibold text-gray-900">
                                                     {logoPreview ? "Change logo" : "Click to upload logo"}
                                                 </span>
-                                                <span className="block text-xs text-gray-500 mt-1">1:1 aspect ratio</span>
                                             </div>
                                         </div>
                                         <input
@@ -1466,10 +1476,12 @@ export default function CampaignDetails() {
                     <PayoutThresholdModal
                         initialData={formik.values.thresholdData}
                         initialMaxPayout={formik.values.maxPayout}
+                        initialBasePay={formik.values.basePay}
                         onClose={() => setShowThresholdModal(false)}
-                        onSave={(data, max) => {
+                        onSave={(data, max, basePay) => {
                             formik.setFieldValue('thresholdData', data);
                             formik.setFieldValue('maxPayout', max);
+                            formik.setFieldValue('basePay', basePay);
                             setShowThresholdModal(false);
                         }}
                     />

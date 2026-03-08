@@ -30,7 +30,7 @@ interface Transaction {
     date: string;
     amount: string;
     rawAmount?: number;      // original requested withdrawal amount (for fee breakdown)
-    gatewayFee?: number;     // fee stored on the withdrawal record
+    gatewayFee?: number;     // total fee stored on the withdrawal record
     status?: ApplicationStatus;
     bankName?: string;
     accountNumber?: string;
@@ -246,11 +246,11 @@ export default function PayoutsScreen() {
                     <ThemedText type="defaultSemiBold">RM {requested.toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.reviewRow}>
-                    <ThemedText style={styles.reviewLabel}>Gateway Fee</ThemedText>
+                    <ThemedText style={styles.reviewLabel}>Platform Fee (incl. payment gateway)</ThemedText>
                     <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {actualFee.toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.reviewRow}>
-                    <ThemedText style={styles.reviewLabel}>Amount Received</ThemedText>
+                    <ThemedText style={styles.reviewLabel}>Amount Sent</ThemedText>
                     <ThemedText type="defaultSemiBold" style={{ color: '#2E7D32', fontSize: 18 }}>
                         RM {received.toFixed(2)}
                     </ThemedText>

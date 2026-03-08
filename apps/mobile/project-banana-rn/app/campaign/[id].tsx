@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video } from 'lucide-react-native';
+import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp } from 'lucide-react-native';
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import Animated, {
@@ -27,7 +27,7 @@ import { Id } from '../../../../../packages/backend/convex/_generated/dataModel'
 
 // Helper to format currency
 const formatCurrency = (amount: number) => {
-    return `Rm ${amount.toLocaleString()}`;
+    return `RM ${amount.toLocaleString()}`;
 };
 
 // Helper to format views
@@ -69,6 +69,7 @@ export default function CampaignDetailsScreen() {
     const payoutsSheetRef = useRef<ActionSheetRef>(null);
     const successSheetRef = useRef<ActionSheetRef>(null);
     const categorySheetRef = useRef<ActionSheetRef>(null);
+    const maxPaySheetRef = useRef<ActionSheetRef>(null);
 
     const [selectedCategoryDesc, setSelectedCategoryDesc] = useState<{ label: string; desc: string; icon: any; examples: { label: string; url: string }[] } | null>(null);
 
@@ -204,9 +205,6 @@ export default function CampaignDetailsScreen() {
                     <Pressable style={styles.iconButton} onPress={() => router.back()}>
                         <ArrowLeft size={20} color="#000" />
                     </Pressable>
-                    <Pressable style={styles.iconButton} onPress={() => setIsFavorite(!isFavorite)}>
-                        <Heart size={20} color={isFavorite ? "#E11D48" : "#000"} fill={isFavorite ? "#E11D48" : "transparent"} />
-                    </Pressable>
                 </View>
             </View>
 
@@ -249,8 +247,8 @@ export default function CampaignDetailsScreen() {
                         )}
                     </View>
 
-                    {/* Categories */}
-                    {campaign && campaignCategoryConfigs.length > 0 && (
+                    {/* Categories & Max Pay */}
+                    {campaign && (
                         <View style={styles.categoryRow}>
                             {campaignCategoryConfigs.map((cat) => {
                                 const Icon = cat.icon;
@@ -268,6 +266,13 @@ export default function CampaignDetailsScreen() {
                                     </Pressable>
                                 );
                             })}
+                            <Pressable
+                                style={[styles.categoryChip, styles.maxPayChip]}
+                                onPress={() => maxPaySheetRef.current?.show()}
+                            >
+                                <Sparkles size={14} color="#D97706" />
+                                <ThemedText style={[styles.categoryChipText, styles.maxPayChipText]}>Earn up to {formatCurrency(campaign.maximum_payout)}</ThemedText>
+                            </Pressable>
                         </View>
                     )}
 
@@ -419,28 +424,23 @@ export default function CampaignDetailsScreen() {
 
                             {/* Payouts Table */}
                             <View style={styles.requirementsList}>
-                                {/* Table Header */}
                                 <View style={styles.payoutRow}>
-                                    <ThemedText type="defaultSemiBold" style={[{ textAlign: 'left' }]}>Views</ThemedText>
-                                    <ThemedText type="defaultSemiBold" style={[{ textAlign: 'right' }]}>Amount</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>Base pay per video</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(campaign?.base_pay ?? 0)}</ThemedText>
+                                </View>
+                                <View style={styles.payoutRow}>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>Maximum payout</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
                                 </View>
 
-                                {/* Rows */}
+                                <View style={styles.payoutDivider} />
+
                                 {campaign && campaign.payout_thresholds.map((payout, index) => (
                                     <View key={index} style={styles.payoutRow}>
-                                        <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>{formatViews(payout.views)}</ThemedText>
+                                        <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>Every {formatViews(payout.views)}</ThemedText>
                                         <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(payout.payout)}</ThemedText>
                                     </View>
                                 ))}
-
-                                {/* Divider */}
-                                <View style={styles.payoutDivider} />
-
-                                {/* Max Payout */}
-                                <View style={styles.payoutRow}>
-                                    <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>You can earn maximum</ThemedText>
-                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
-                                </View>
                             </View>
 
                             {/* Dismiss Button */}
@@ -483,6 +483,38 @@ export default function CampaignDetailsScreen() {
                                 onPress={() => categorySheetRef.current?.hide()}
                             >
                                 <ThemedText style={styles.joinButtonText}>Dismiss</ThemedText>
+                            </Pressable>
+                        </View>
+                    </ActionSheet>
+
+                    {/* Max Pay Description Sheet */}
+                    <ActionSheet gestureEnabled ref={maxPaySheetRef}>
+                        <View style={styles.sheetContent}>
+                            <View style={styles.sheetHeader}>
+                                <ThemedText style={styles.sheetTitle}>Earn up to {campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
+                                <ThemedText style={[styles.sheetSubtitle, { textAlign: 'center' }]}> See how much you can earn.</ThemedText>
+                            </View>
+
+                            <View style={styles.requirementsList}>
+                                <View style={styles.requirementItem}>
+                                    <Check size={20} color="#10B981" strokeWidth={3} />
+                                    <ThemedText style={[styles.requirementText, { flex: 1 }]}>
+                                        Guaranteed base pay of <ThemedText style={{ fontFamily: 'GoogleSans_700Bold' }}>{campaign && formatCurrency(campaign.base_pay || 0)}</ThemedText> upon approval and posting.
+                                    </ThemedText>
+                                </View>
+                                <View style={styles.requirementItem}>
+                                    <TrendingUp size={20} color="#10B981" strokeWidth={3} />
+                                    <ThemedText style={[styles.requirementText, { flex: 1 }]}>
+                                        Earn based on accumulated views, up to a maximum of <ThemedText style={{ fontFamily: 'GoogleSans_700Bold' }}>{campaign && formatCurrency(campaign.maximum_payout || 0)}</ThemedText>.
+                                    </ThemedText>
+                                </View>
+                            </View>
+
+                            <Pressable
+                                style={[styles.joinButton, { marginTop: 32 }]}
+                                onPress={() => maxPaySheetRef.current?.hide()}
+                            >
+                                <ThemedText style={styles.joinButtonText}>Got it</ThemedText>
                             </Pressable>
                         </View>
                     </ActionSheet>
@@ -706,6 +738,13 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontFamily: 'GoogleSans_500Medium',
         color: '#374151',
+    },
+    maxPayChip: {
+        backgroundColor: '#FEF3C7',
+        borderColor: '#FDE68A',
+    },
+    maxPayChipText: {
+        color: '#D97706',
     },
     sectionTitle: {
         fontSize: 16,

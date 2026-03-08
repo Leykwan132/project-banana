@@ -53,6 +53,7 @@ const BankAccountSkeleton = () => {
 };
 
 export default function WithdrawScreen() {
+    const MIN_WITHDRAWAL_AMOUNT = 20;
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
@@ -65,7 +66,7 @@ export default function WithdrawScreen() {
     const [withdrawErrorMessage, setWithdrawErrorMessage] = useState('Something went wrong while creating your withdrawal request.');
     const requestWithdrawal = useAction(api.payouts.requestWithdrawal);
 
-    const gatewayFee = useQuery(api.payouts.getPayoutGatewayFee) ?? 0;
+    const platformFeeRate = useQuery(api.payouts.getPayoutPlatformFeeRate) ?? 0.1;
     const balanceData = useQuery(api.users.getUserBalance);
     const bankAccountsData = useQuery(api.bankAccounts.getActiveBankAccounts);
     const isBankAccountsLoading = bankAccountsData === undefined;
@@ -89,6 +90,9 @@ export default function WithdrawScreen() {
     }, [bankAccounts, selectedBankId]);
 
     const currentBalance = balanceData?.balance ?? 0;
+    const parsedAmount = parseFloat(amount || '0');
+    const platformFee = Math.round(parsedAmount * platformFeeRate * 100) / 100;
+    const netAmount = Math.max(0, parsedAmount - platformFee);
 
     const handleMax = () => {
         setAmount(currentBalance.toFixed(2));
@@ -106,6 +110,11 @@ export default function WithdrawScreen() {
 
         if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
             setError('Amount is required');
+            return;
+        }
+
+        if (parsedAmount < MIN_WITHDRAWAL_AMOUNT) {
+            setError(`Minimum withdrawal is RM ${MIN_WITHDRAWAL_AMOUNT.toFixed(2)}`);
             return;
         }
 
@@ -148,7 +157,7 @@ export default function WithdrawScreen() {
             <ScrollView contentContainerStyle={styles.content}>
                 {/* Balance Card */}
                 <PayoutCard
-                    amount={`Rm ${currentBalance}`}
+                    amount={`RM ${currentBalance}`}
                     showButton={false}
                     onPress={() => { }} // Just to make it pressable if needed or to show arrow if we decide to
                 />
@@ -160,8 +169,8 @@ export default function WithdrawScreen() {
                     <View style={[styles.inputContainer, error ? styles.inputError : undefined]}>
                         <TextInput
                             style={styles.input}
-                            placeholder="Rm"
-                            value={amount ? `Rm ${amount}` : ''}
+                            placeholder={`Min. RM ${MIN_WITHDRAWAL_AMOUNT.toFixed(0)}`}
+                            value={amount ? `RM ${amount}` : ''}
                             onChangeText={(text) => {
                                 const numeric = text.replace(/[^0-9.]/g, '');
                                 setAmount(numeric);
@@ -182,7 +191,7 @@ export default function WithdrawScreen() {
                     ) : null}
                     <View style={styles.feeNotice}>
                         <ThemedText style={styles.feeNoticeText}>
-                            A gateway fee of RM {gatewayFee.toFixed(2)} will be charged per withdrawal.
+                            A 10% withdrawal fee (inc. payment gateway fee) will be imposed.
                         </ThemedText>
                     </View>
                 </View>
@@ -255,6 +264,10 @@ export default function WithdrawScreen() {
                             setError('Amount is required');
                             return;
                         }
+                        if (parsedAmount < MIN_WITHDRAWAL_AMOUNT) {
+                            setError(`Minimum withdrawal is RM ${MIN_WITHDRAWAL_AMOUNT.toFixed(2)}`);
+                            return;
+                        }
                         if (parsedAmount > currentBalance) {
                             setError('Not enough balance');
                             return;
@@ -292,16 +305,16 @@ export default function WithdrawScreen() {
                             {/* Amount breakdown */}
                             <View style={styles.reviewRow}>
                                 <ThemedText style={styles.reviewLabel}>Amount</ThemedText>
-                                <ThemedText type="defaultSemiBold">Rm {amount || '0'}</ThemedText>
+                                <ThemedText type="defaultSemiBold">RM {amount || '0'}</ThemedText>
                             </View>
                             <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>Gateway Fee</ThemedText>
-                                <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- Rm {gatewayFee.toFixed(2)}</ThemedText>
+                                <ThemedText style={styles.reviewLabel}>Platform Fee (incl. payment gateway)</ThemedText>
+                                <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {platformFee.toFixed(2)}</ThemedText>
                             </View>
                             <View style={styles.reviewRow}>
                                 <ThemedText style={styles.reviewLabel}>You'll Receive</ThemedText>
                                 <ThemedText type="defaultSemiBold" style={{ color: '#2E7D32' }}>
-                                    Rm {Math.max(0, parseFloat(amount || '0') - gatewayFee).toFixed(2)}
+                                    RM {netAmount.toFixed(2)}
                                 </ThemedText>
                             </View>
 

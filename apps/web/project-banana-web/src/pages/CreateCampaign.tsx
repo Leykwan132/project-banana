@@ -37,16 +37,18 @@ export const parseViews = (views: string): number => {
     return parseFloat(v) || 0;
 };
 
-export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxPayout }: {
+export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxPayout, initialBasePay }: {
     onClose: () => void,
-    onSave: (data: Threshold[], max: string) => void,
+    onSave: (data: Threshold[], max: string, basePay: string) => void,
     initialData: Threshold[],
-    initialMaxPayout: string
+    initialMaxPayout: string,
+    initialBasePay: string
 }) => {
     const [thresholds, setThresholds] = useState<Threshold[]>(
         initialData.length > 0 ? initialData : Array(5).fill({ views: '', amount: '' })
     );
     const [maxPayout, setMaxPayout] = useState(initialMaxPayout);
+    const [basePay, setBasePay] = useState(initialBasePay);
 
     const handleThresholdChange = (index: number, field: keyof Threshold, value: string) => {
         const newThresholds = [...thresholds];
@@ -55,6 +57,7 @@ export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxP
     };
 
     const handleRecommend = () => {
+        setBasePay('10');
         setThresholds([
             { views: '10k', amount: '15' },
             { views: '50k', amount: '35' },
@@ -81,42 +84,69 @@ export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxP
                     <p className="text-gray-500 mb-8">This is the part where we assign pay per view.</p>
 
                     <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="font-medium text-gray-900 text-sm">Base Pay</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">RM</span>
+                                    <input
+                                        type="text"
+                                        placeholder="10"
+                                        value={basePay}
+                                        onChange={(e) => setBasePay(e.target.value)}
+                                        className="w-full bg-[#F9FAFB] border-none rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-300"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-400">Paid immediately once the video is approved</p>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="font-medium text-gray-900 text-sm block">Maximum Payout</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">RM</span>
+                                    <input
+                                        type="text"
+                                        placeholder="1500"
+                                        value={maxPayout}
+                                        onChange={(e) => setMaxPayout(e.target.value)}
+                                        className="w-full bg-[#F9FAFB] border-none rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-300"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-400">This is the maximum amount the creator can earn</p>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-dashed border-gray-200" />
+
                         {thresholds.map((threshold, index) => (
                             <div key={index} className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="font-medium text-gray-900 text-sm">Every</label>
-                                    <input
-                                        type="text"
-                                        placeholder="View"
-                                        value={threshold.views}
-                                        onChange={(e) => handleThresholdChange(index, 'views', e.target.value)}
-                                        className="w-full bg-[#F9FAFB] border-none rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-300"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="10k"
+                                            value={threshold.views}
+                                            onChange={(e) => handleThresholdChange(index, 'views', e.target.value)}
+                                            className="w-full bg-[#F9FAFB] border-none rounded-xl px-4 pr-16 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-300"
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">views</span>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="font-medium text-gray-900 text-sm">We pay</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Rm"
-                                        value={threshold.amount}
-                                        onChange={(e) => handleThresholdChange(index, 'amount', e.target.value)}
-                                        className="w-full bg-[#F9FAFB] border-none rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-300"
-                                    />
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">RM</span>
+                                        <input
+                                            type="text"
+                                            placeholder="15"
+                                            value={threshold.amount}
+                                            onChange={(e) => handleThresholdChange(index, 'amount', e.target.value)}
+                                            className="w-full bg-[#F9FAFB] border-none rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-300"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         ))}
-
-                        <div className="pt-4">
-                            <label className="font-medium text-gray-900 text-sm block mb-2">Maximum Payout</label>
-                            <input
-                                type="text"
-                                placeholder="Rm"
-                                value={maxPayout}
-                                onChange={(e) => setMaxPayout(e.target.value)}
-                                className="w-1/2 bg-[#F9FAFB] border-none rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-300"
-                            />
-                            <p className="text-xs text-gray-400 mt-2">This is the maximum amount the creator can earn</p>
-                        </div>
                     </div>
                 </div>
 
@@ -131,28 +161,28 @@ export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxP
                         <p className="text-xs text-gray-500 mb-8">How much do I get paid?</p>
 
                         <div className="space-y-4 mb-8">
-                            <div className="flex justify-between text-xs font-bold text-gray-900 mb-2">
-                                <span>Views</span>
-                                <span>Amount</span>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-xl bg-[#F9FAFB] p-4 text-left">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1">Base Pay</p>
+                                    <p className="text-sm font-bold text-gray-900">{basePay ? `RM ${basePay}` : 'RM 0'}</p>
+                                </div>
+                                <div className="rounded-xl bg-[#F9FAFB] p-4 text-left">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1">Maximum Payout</p>
+                                    <p className="text-sm font-bold text-gray-900">{maxPayout ? `RM ${maxPayout}` : 'RM 0'}</p>
+                                </div>
                             </div>
+                            <div className="border-t border-dashed border-gray-200" />
                             {thresholds.map((t, i) => (
                                 t.views && t.amount ? (
                                     <div key={i} className="flex justify-between text-xs text-gray-600">
                                         <div className="flex items-center gap-2">
-                                            {/* Assuming Radio was imported from lucide-react or similar in parent but not used here, using generic dot */}
                                             <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                                            <span>{t.views} views</span>
+                                            <span>Every {t.views} views</span>
                                         </div>
-                                        <span className="font-medium text-gray-900">Rm {t.amount}</span>
+                                        <span className="font-medium text-gray-900">RM {t.amount}</span>
                                     </div>
                                 ) : null
                             ))}
-                            {maxPayout && (
-                                <div className="flex justify-between text-xs text-gray-600 pt-2 border-t border-dashed border-gray-200 mt-2">
-                                    <span>Maximum Payout</span>
-                                    <span className="font-medium text-gray-900">Rm {maxPayout}</span>
-                                </div>
-                            )}
                         </div>
                     </div>
 
@@ -164,7 +194,7 @@ export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxP
                             Try Recommended
                         </button>
                         <button
-                            onClick={() => onSave(thresholds, maxPayout)}
+                            onClick={() => onSave(thresholds, maxPayout, basePay)}
                             className="bg-black text-white px-8 py-3 rounded-xl font-medium text-sm hover:bg-gray-900 transition-colors"
                         >
                             Save
@@ -198,8 +228,8 @@ export const RequirementsModal = ({ onClose, onSave, initialData }: {
             noAi: true,
             followScript: true,
             language: 'English',
-            location: 'Any',
-            custom: ['Review before posting', 'Use provided assets in video']
+            location: 'Malaysia',
+            custom: ['Show product in video']
         });
     };
 
@@ -343,10 +373,12 @@ export const RequirementsModal = ({ onClose, onSave, initialData }: {
                                     <span className="text-xs font-semibold text-gray-900">Speak {data.language}</span>
                                 </div>
                             )}
-                            {data.location && data.location.toLowerCase() !== 'any' && (
+                            {data.location && (
                                 <div className="flex items-start gap-3">
                                     <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                    <span className="text-xs font-semibold text-gray-900">Creator from {data.location}</span>
+                                    <span className="text-xs font-semibold text-gray-900">
+                                        {data.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${data.location}`}
+                                    </span>
                                 </div>
                             )}
                             {data.custom.map((req, i) => (
@@ -585,9 +617,12 @@ export default function CreateCampaign() {
         category: Yup.array().min(1, 'Please select a category'),
         totalPayouts: Yup.number()
             .required('Please enter a valid total budget')
-            .min(500, 'Minimum total payout is Rm 500')
+            .min(1000, 'Minimum total payout is RM 1000')
             .positive('Please enter a valid total budget'),
         assets: Yup.string().url('Please enter a valid URL'),
+        basePay: Yup.number()
+            .required('Please configure base pay and maximum payout')
+            .positive('Please configure base pay and maximum payout'),
         maxPayout: Yup.number()
             .required('Please configure payout thresholds and maximum payout')
             .positive('Please configure payout thresholds and maximum payout'),
@@ -695,6 +730,7 @@ export default function CreateCampaign() {
             category: [] as string[],
             totalPayouts: '',
             assets: '',
+            basePay: '',
             maxPayout: '',
             thresholdData: [] as Threshold[],
             reqData: {
@@ -739,6 +775,7 @@ export default function CreateCampaign() {
                     cover_photo_r2_key: uploadedCoverR2Key,
                     total_budget: parseFloat(values.totalPayouts) || 0,
                     asset_links: values.assets,
+                    base_pay: parseFloat(values.basePay) || 0,
                     maximum_payout: parseFloat(values.maxPayout) || 0,
                     payout_thresholds: values.thresholdData
                         .filter(t => t.views && t.amount)
@@ -751,7 +788,7 @@ export default function CreateCampaign() {
                         ...(values.reqData.noAi ? ["No AI Content"] : []),
                         ...(values.reqData.followScript ? ["Follow Script 1:1"] : []),
                         ...(values.reqData.language ? [`Speak ${values.reqData.language}`] : []),
-                        ...(values.reqData.location ? [`Creator from ${values.reqData.location}`] : []),
+                        ...(values.reqData.location ? [values.reqData.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${values.reqData.location}`] : []),
                         ...values.reqData.custom
                     ],
                     scripts: [
@@ -780,9 +817,10 @@ export default function CreateCampaign() {
         }
     });
 
-    const handleSaveThreshold = (data: Threshold[], max: string) => {
+    const handleSaveThreshold = (data: Threshold[], max: string, basePay: string) => {
         formik.setFieldValue('thresholdData', data);
         formik.setFieldValue('maxPayout', max);
+        formik.setFieldValue('basePay', basePay);
         setIsThresholdModalOpen(false);
     };
 
@@ -814,6 +852,7 @@ export default function CreateCampaign() {
             formik.setFieldTouched('category', true, false),
             formik.setFieldTouched('totalPayouts', true, false),
             formik.setFieldTouched('assets', true, false),
+            formik.setFieldTouched('basePay', true, false),
             formik.setFieldTouched('maxPayout', true, false),
             formik.setFieldTouched('thresholdData', true, false),
             formik.setFieldTouched('reqData', true, false),
@@ -873,6 +912,7 @@ export default function CreateCampaign() {
                     onSave={handleSaveThreshold}
                     initialData={formik.values.thresholdData}
                     initialMaxPayout={formik.values.maxPayout}
+                    initialBasePay={formik.values.basePay}
                 />
             )}
 
@@ -958,7 +998,7 @@ export default function CreateCampaign() {
                                 Total payouts
                                 <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
                             </label>
-                            <p className="text-sm text-gray-500 mb-4">Set the total budget for this campaign.</p>
+                            <p className="text-sm text-gray-500 mb-4">Set the total budget for this campaign (min. RM 500).</p>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">Rm</span>
                                 <input
@@ -967,7 +1007,7 @@ export default function CreateCampaign() {
                                     value={formik.values.totalPayouts}
                                     onChange={formik.handleChange}
                                     onBlur={formik.handleBlur}
-                                    min={500}
+                                    min={1000}
                                     className={`w-full bg-[#F4F6F8] rounded-xl pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all ${formik.touched.totalPayouts && formik.errors.totalPayouts ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
                                 />
                             </div>
@@ -1060,42 +1100,43 @@ export default function CreateCampaign() {
                             {formik.touched.thresholdData && formik.errors.thresholdData && typeof formik.errors.thresholdData === 'string' && (
                                 <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.thresholdData}</p>
                             )}
+                            {formik.touched.basePay && formik.errors.basePay && (
+                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.basePay}</p>
+                            )}
                             {formik.touched.maxPayout && formik.errors.maxPayout && (
                                 <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.maxPayout}</p>
                             )}
-                            {formik.values.thresholdData.some(t => t.views && t.amount) ? (
+                            {formik.values.basePay || formik.values.maxPayout || formik.values.thresholdData.some(t => t.views && t.amount) ? (
                                 <div className="bg-[#F8F9FA] rounded-3xl p-6">
                                     <h3 className="font-bold text-sm mb-4 text-gray-900">Current Threshold</h3>
                                     <div className="space-y-3 mb-6">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="rounded-2xl bg-white p-4">
+                                                <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1">Base Pay</span>
+                                                <span className="text-sm font-semibold text-gray-900">RM {formik.values.basePay || '0'}</span>
+                                            </div>
+                                            <div className="rounded-2xl bg-white p-4">
+                                                <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1">Maximum Payout</span>
+                                                <span className="text-sm font-semibold text-gray-900">RM {formik.values.maxPayout || '0'}</span>
+                                            </div>
+                                        </div>
+                                        <div className="border-t border-dashed border-gray-200" />
                                         {formik.values.thresholdData.map((t, i) => (
                                             t.views && t.amount ? (
                                                 <div key={i} className="flex items-center gap-6 text-sm text-gray-600">
                                                     <div className="flex items-center gap-2 min-w-[100px]">
                                                         <Eye className="w-4 h-4 text-gray-400" />
-                                                        <span>{t.views} view</span>
+                                                        <span>Every {t.views} views</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
                                                             <DollarSign className="w-2.5 h-2.5" />
                                                         </div>
-                                                        <span>Rm{t.amount}</span>
+                                                        <span>RM {t.amount}</span>
                                                     </div>
                                                 </div>
                                             ) : null
                                         ))}
-                                        {formik.values.maxPayout && (
-                                            <div className="flex items-center gap-6 text-sm text-gray-600 pt-2 border-t border-dashed border-gray-200 mt-2">
-                                                <div className="flex items-center gap-2 min-w-[100px]">
-                                                    <span className='font-semibold'>Max Payout</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-4 h-4 flex items-center justify-center rounded-full bg-gray-900 text-white text-[10px] font-bold">
-                                                        <DollarSign className="w-2.5 h-2.5" />
-                                                    </div>
-                                                    <span>Rm{formik.values.maxPayout}</span>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
                                     <button
                                         type="button"
@@ -1149,10 +1190,12 @@ export default function CreateCampaign() {
                                                 <span className="text-sm text-gray-600">Speak {formik.values.reqData.language}</span>
                                             </div>
                                         )}
-                                        {formik.values.reqData.location && formik.values.reqData.location.toLowerCase() !== 'any' && (
+                                        {formik.values.reqData.location && (
                                             <div className="flex items-start gap-3">
                                                 <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">Creator from {formik.values.reqData.location}</span>
+                                                <span className="text-sm text-gray-600">
+                                                    {formik.values.reqData.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${formik.values.reqData.location}`}
+                                                </span>
                                             </div>
                                         )}
                                         {formik.values.reqData.custom.map((req, i) => (
@@ -1313,7 +1356,6 @@ export default function CreateCampaign() {
                                         <span className="block text-sm font-semibold text-gray-900">
                                             {logoFile ? "Change logo" : "Click to upload logo"}
                                         </span>
-                                        <span className="block text-xs text-gray-500 mt-1">1:1 aspect ratio</span>
                                     </div>
                                 </div>
                                 <input
@@ -1415,6 +1457,10 @@ export default function CreateCampaign() {
                                             <div className="flex justify-between items-center">
                                                 <span className="text-gray-500">Total Budget</span>
                                                 <span className="font-semibold text-gray-900">RM {campaignBudget}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-500">Base Pay</span>
+                                                <span className="font-semibold text-gray-900">RM {formik.values.basePay}</span>
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-gray-500">Maximum Payout for 1 User</span>
