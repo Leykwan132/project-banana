@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -7,6 +7,7 @@ import { Layers, Check, Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
 import { Skeleton } from "@heroui/skeleton";
 import StatusBadge from '../components/ui/StatusBadge';
+import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
 
 // Empty State Component
 const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
@@ -20,6 +21,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
         </p>
         <button
             onClick={onCreate}
+            data-tour-id="campaigns-create-button"
             className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
         >
             <Plus className="w-4 h-4" />
@@ -39,6 +41,54 @@ interface CampaignData {
     // Add other fields if strictly necessary for the UI
     [key: string]: any; // Allow loose typing to prevent other errors easily
 }
+
+const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
+    {
+        _id: 'tour-campaign-001',
+        name: 'Glow Serum Campaign Pitch',
+        status: 'active',
+        total_budget: 8500,
+        budget_claimed: 3200,
+        submissions: 41,
+        created_at: new Date('2026-02-26T08:30:00.000Z').getTime(),
+    },
+    {
+        _id: 'tour-campaign-002',
+        name: 'Weekend Bundle Awareness',
+        status: 'paused',
+        total_budget: 6400,
+        budget_claimed: 2580,
+        submissions: 28,
+        created_at: new Date('2026-02-19T10:15:00.000Z').getTime(),
+    },
+    {
+        _id: 'tour-campaign-003',
+        name: 'March Creator Sprint',
+        status: 'active',
+        total_budget: 12000,
+        budget_claimed: 7450,
+        submissions: 67,
+        created_at: new Date('2026-02-10T09:00:00.000Z').getTime(),
+    },
+    {
+        _id: 'tour-campaign-004',
+        name: 'Valentine Promo Recap',
+        status: 'completed',
+        total_budget: 5300,
+        budget_claimed: 5300,
+        submissions: 36,
+        created_at: new Date('2026-01-28T11:20:00.000Z').getTime(),
+    },
+    {
+        _id: 'tour-campaign-005',
+        name: 'UGC Trial Batch',
+        status: 'completed',
+        total_budget: 3000,
+        budget_claimed: 2925,
+        submissions: 19,
+        created_at: new Date('2026-01-12T07:45:00.000Z').getTime(),
+    },
+];
 
 const CampaignsSkeleton = () => {
     return (
@@ -76,6 +126,17 @@ const CampaignsSkeleton = () => {
 
 export default function Campaigns() {
     const navigate = useNavigate();
+    const [isTourActive, setIsTourActive] = useState(() => isProductTourActive());
+
+    useEffect(() => {
+        const syncTourState = () => {
+            setIsTourActive(isProductTourActive());
+        };
+        window.addEventListener(PRODUCT_TOUR_STATE_EVENT, syncTourState);
+        return () => {
+            window.removeEventListener(PRODUCT_TOUR_STATE_EVENT, syncTourState);
+        };
+    }, []);
 
     // Data Fetching
     const business = useQuery(api.businesses.getMyBusiness);
@@ -90,7 +151,7 @@ export default function Campaigns() {
     );
 
     // Filter campaigns
-    const campaigns = (results || []) as CampaignData[];
+    const campaigns = (isTourActive ? TOUR_MOCK_CAMPAIGNS : (results || [])) as CampaignData[];
 
     // Derived state for filtered lists
     const ongoingCampaigns = campaigns.filter((c) =>
@@ -189,7 +250,7 @@ export default function Campaigns() {
         return sortConfig.direction === 'asc' ? <ArrowUp className="w-4 h-4 ml-1 inline" /> : <ArrowDown className="w-4 h-4 ml-1 inline" />;
     };
 
-    const isLoading = status === "LoadingFirstPage" || business === undefined;
+    const isLoading = !isTourActive && (status === "LoadingFirstPage" || business === undefined);
 
     if (isLoading) {
         return (
@@ -197,10 +258,10 @@ export default function Campaigns() {
                 <h1 className="text-2xl font-bold mb-6">Campaigns</h1>
 
                 {/* Ongoing Campaigns Skeleton */}
-                <div className="mb-12">
+                <div className="mb-12" data-tour-id="campaigns-overview-section">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-semibold">Ongoing Campaigns</h2>
-                        <button disabled className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold opacity-50 cursor-not-allowed flex items-center justify-center gap-2">
+                        <button data-tour-id="campaigns-create-button" disabled className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold opacity-50 cursor-not-allowed flex items-center justify-center gap-2">
                             <Plus className="w-4 h-4" />
                             Create Campaign
                         </button>
@@ -225,11 +286,12 @@ export default function Campaigns() {
             <h1 className="text-2xl font-bold mb-6">Campaigns</h1>
 
             {/* Ongoing Campaigns */}
-            <div className="mb-12">
+            <div className="mb-12" data-tour-id="campaigns-overview-section">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-semibold">Ongoing Campaigns</h2>
                     <button
                         onClick={() => navigate('/campaign/new')}
+                        data-tour-id="campaigns-create-button"
                         className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
                     >
                         <Plus className="w-4 h-4" />

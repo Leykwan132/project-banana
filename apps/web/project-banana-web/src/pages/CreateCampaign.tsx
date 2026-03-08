@@ -904,6 +904,7 @@ export default function CreateCampaign() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/credits')}
+                        data-tour-id="campaign-credit-balance"
                         className="bg-[#F4F6F8] rounded-full px-4 py-2 flex items-center gap-3 h-10 hover:bg-gray-200 transition-colors"
                     >
                         <div className="flex items-center gap-2">
@@ -1050,7 +1051,7 @@ export default function CreateCampaign() {
                     {/* Row 3: Payout Threshold & Requirements */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Payout Threshold */}
-                        <div className="space-y-1">
+                        <div className="space-y-1" data-tour-id="campaign-payout-section">
                             <label className="font-semibold text-gray-900 block w-fit relative">
                                 Payout Threshold
                                 <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
@@ -1117,7 +1118,7 @@ export default function CreateCampaign() {
                         </div>
 
                         {/* Requirements */}
-                        <div className="space-y-1">
+                        <div className="space-y-1" data-tour-id="campaign-requirements-section">
                             <label className="font-semibold text-gray-900 block w-fit relative">
                                 Requirements
                                 <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>

@@ -112,6 +112,7 @@ export default function Credits() {
                             </div>
                             <Button
                                 variant='outline'
+                                data-tour-id="credits-topup-button"
                                 className="rounded-full px-6"
                                 icon={<ArrowRight className="w-4 h-4" />}
                                 onClick={handleTopUp}

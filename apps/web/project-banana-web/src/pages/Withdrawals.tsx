@@ -70,6 +70,7 @@ export default function Withdrawals() {
                             </div>
                             <Button
                                 variant='outline'
+                                data-tour-id="withdrawals-request-button"
                                 className="rounded-full px-6 text-gray-900 bg-white hover:bg-gray-100 border-none"
                                 icon={<ArrowRight className="w-4 h-4" />}
                                 onClick={handleRequestWithdrawal}

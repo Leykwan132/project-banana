@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Landmark, Loader2, Plus, ChevronLeft } from 'lucide-react';
@@ -6,14 +6,55 @@ import Button from '../components/ui/Button';
 import { addToast } from '@heroui/toast';
 import { BANK_OPTIONS } from '../lib/banks';
 import StatusBadge from '../components/ui/StatusBadge';
+import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
 
 type ProofFile = File | null;
+type BankAccountListItem = {
+    _id: string;
+    bank_name: string;
+    account_holder_name: string;
+    account_number: string;
+    status: string;
+};
 
-
+const TOUR_MOCK_BANK_ACCOUNTS: BankAccountListItem[] = [
+    {
+        _id: 'tour-bank-001',
+        bank_name: 'Maybank',
+        account_holder_name: 'Lumina Labs Sdn Bhd',
+        account_number: '512345678901',
+        status: 'verified',
+    },
+    {
+        _id: 'tour-bank-002',
+        bank_name: 'CIMB Bank',
+        account_holder_name: 'Lumina Marketing',
+        account_number: '800112233445',
+        status: 'pending',
+    },
+    {
+        _id: 'tour-bank-003',
+        bank_name: 'Public Bank',
+        account_holder_name: 'Lumina Operations',
+        account_number: '324567890001',
+        status: 'verified',
+    },
+];
 
 export default function BankAccounts() {
     const business = useQuery(api.businesses.getMyBusiness);
     const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts);
+    const [isTourActive, setIsTourActive] = useState(() => isProductTourActive());
+
+    useEffect(() => {
+        const syncTourState = () => {
+            setIsTourActive(isProductTourActive());
+        };
+        window.addEventListener(PRODUCT_TOUR_STATE_EVENT, syncTourState);
+        return () => {
+            window.removeEventListener(PRODUCT_TOUR_STATE_EVENT, syncTourState);
+        };
+    }, []);
 
     const generateProofUploadUrl = useAction(api.bankAccounts.generateProofUploadUrl);
     const createBankAccount = useMutation(api.bankAccounts.createBankAccount);
@@ -33,7 +74,10 @@ export default function BankAccounts() {
         bank.name.toLowerCase().includes(bankSearchTerm.toLowerCase())
     );
 
-    const isLoading = business === undefined || bankAccounts === undefined;
+    const isLoading = !isTourActive && (business === undefined || bankAccounts === undefined);
+    const effectiveBankAccounts: BankAccountListItem[] = isTourActive
+        ? TOUR_MOCK_BANK_ACCOUNTS
+        : ((bankAccounts ?? []) as BankAccountListItem[]);
 
     if (isLoading) {
         return (
@@ -43,7 +87,7 @@ export default function BankAccounts() {
         );
     }
 
-    if (business === null) {
+    if (!isTourActive && business === null) {
         return <div className="p-8">Please complete onboarding first.</div>;
     }
 
@@ -80,7 +124,7 @@ export default function BankAccounts() {
             });
 
             setBankName('');
-            setAccountHolderName(business.name ?? '');
+            setAccountHolderName(business?.name ?? '');
             setAccountNumber('');
             setProofFile(null);
             setIsAdding(false);
@@ -267,11 +311,11 @@ export default function BankAccounts() {
     }
 
     return (
-        <div className="p-8 font-sans text-gray-900 animate-fadeIn">
+        <div className="p-8 font-sans text-gray-900 animate-fadeIn" data-tour-id="bank-accounts-page">
             <h1 className="text-2xl font-bold mb-6">Bank Accounts</h1>
 
             <div className="mb-12">
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-6" data-tour-id="bank-accounts-header">
                     <h2 className="text-lg font-semibold"> Accounts</h2>
                     <button
                         onClick={() => setIsAdding(true)}
@@ -282,7 +326,7 @@ export default function BankAccounts() {
                     </button>
                 </div>
 
-                {bankAccounts.length > 0 ? (
+                {effectiveBankAccounts.length > 0 ? (
                     <div className="bg-white overflow-hidden">
                         <div className="bg-[#F4F6F8] rounded-sm mt-2 grid grid-cols-12 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             <div className="col-span-3 pl-2">Bank</div>
@@ -292,7 +336,7 @@ export default function BankAccounts() {
                         </div>
 
                         <div className="divide-y divide-[#F4F6F8]">
-                            {bankAccounts.map((account) => {
+                            {effectiveBankAccounts.map((account) => {
                                 const metadata = BANK_OPTIONS.find((option) => option.name === account.bank_name);
 
                                 return (

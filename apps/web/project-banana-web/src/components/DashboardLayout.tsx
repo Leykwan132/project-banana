@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { ProductTour } from './ProductTour';
 
 export function DashboardLayout() {
     return (
@@ -10,6 +11,7 @@ export function DashboardLayout() {
             <main className="flex-1 md:pl-64">
                 <Outlet />
             </main>
+            <ProductTour />
         </div>
     );
 }

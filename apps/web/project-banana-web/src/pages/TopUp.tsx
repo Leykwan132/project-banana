@@ -106,7 +106,7 @@ export default function TopUp() {
 
                         <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1 border border-gray-100">
                             <ul className="list-disc list-inside space-y-0.5 ml-1">
-                                <li>Credits are <span className="font-medium text-gray-700">non-refundable</span></li>
+                                <li>Credits are <span className="font-medium text-gray-700">refundable</span></li>
                                 <li>Lumina will absorb <span className="font-medium text-gray-700">all payment processing fees</span>.</li>
                                 <li>Lumina will handle <span className="font-medium text-gray-700">all payout</span> to the users.</li>
                             </ul>
