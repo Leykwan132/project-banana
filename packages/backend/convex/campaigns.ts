@@ -67,8 +67,10 @@ export const getActiveCampaigns = query({
                     logo_url: campaign.logo_url ?? business?.logo_url,
                     logo_r2_key: campaign.logo_r2_key ?? business?.logo_r2_key,
                     payout_threshold: campaign.payout_thresholds[0],
+                    base_pay: campaign.base_pay ?? 0,
                     maximum_payout: campaign.maximum_payout,
                     submissions: campaign.submissions,
+                    budget_claimed: campaign.budget_claimed,
                     category: campaign.category,
                     business_name: business?.name,
                 };
@@ -117,6 +119,7 @@ export const createCampaign = mutation({
         cover_photo_r2_key: v.optional(v.string()),
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
+        base_pay: v.number(),
         maximum_payout: v.number(),
         business_name: v.string(),
         category: v.array(v.string()),
@@ -168,6 +171,7 @@ export const createCampaign = mutation({
             budget_claimed: 0, // Starts at 0
             status: args.status, // "active" or "draft"
             asset_links: args.asset_links,
+            base_pay: args.base_pay,
             maximum_payout: args.maximum_payout,
             payout_thresholds: args.payout_thresholds,
             requirements: args.requirements,
@@ -205,6 +209,7 @@ export const createCampaign = mutation({
                 name: args.name,
                 total_budget: args.total_budget,
                 category: args.category,
+                base_pay: args.base_pay,
                 maximum_payout: args.maximum_payout,
             }
         });
@@ -280,6 +285,7 @@ export const updateCampaign = mutation({
         cover_photo_r2_key: v.optional(v.string()),
         total_budget: v.number(),
         asset_links: v.optional(v.string()),
+        base_pay: v.number(),
         maximum_payout: v.number(),
         category: v.array(v.string()),
         payout_thresholds: v.array(v.object({
@@ -362,6 +368,7 @@ export const updateCampaign = mutation({
             total_budget: args.total_budget,
             category: args.category,
             asset_links: args.asset_links,
+            base_pay: args.base_pay,
             maximum_payout: args.maximum_payout,
             payout_thresholds: args.payout_thresholds,
             requirements: args.requirements,

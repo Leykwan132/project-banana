@@ -2,7 +2,7 @@ import { action, mutation, query, internalMutation, internalQuery } from "./_gen
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { WithdrawalStatus, WithdrawalSourceType, PAYOUT_GATEWAY_FEE } from "./constants";
+import { WithdrawalStatus, WithdrawalSourceType, PAYOUT_GATEWAY_FEE, PAYOUT_PLATFORM_FEE_RATE, MIN_WITHDRAWAL_AMOUNT } from "./constants";
 import { ErrorType } from "./errors";
 
 // ============================================================
@@ -46,6 +46,12 @@ export const getPayout = query({
 export const getPayoutGatewayFee = query({
     handler: async () => {
         return PAYOUT_GATEWAY_FEE;
+    },
+});
+
+export const getPayoutPlatformFeeRate = query({
+    handler: async () => {
+        return PAYOUT_PLATFORM_FEE_RATE;
     },
 });
 
@@ -221,12 +227,16 @@ function validateWithdrawalAmount(amount: number) {
         throw new ConvexError(ErrorType.INVALID_INPUT);
     }
 
-    if (amount <= PAYOUT_GATEWAY_FEE) {
+    if (amount < MIN_WITHDRAWAL_AMOUNT) {
         throw new ConvexError({
             ...ErrorType.INVALID_INPUT,
-            message: `Withdrawal amount must be greater than RM ${PAYOUT_GATEWAY_FEE.toFixed(2)}`,
+            message: `Withdrawal amount must be at least RM ${MIN_WITHDRAWAL_AMOUNT.toFixed(2)}`,
         });
     }
+}
+
+function calculatePlatformFee(amount: number) {
+    return Math.round(amount * PAYOUT_PLATFORM_FEE_RATE * 100) / 100;
 }
 
 /**
@@ -484,7 +494,7 @@ export const internalProcessWithdrawal = internalMutation({
         }
 
         const now = Date.now();
-        // Store the user-requested amount and the gateway fee at the time of withdrawal.
+        // Store the user-requested amount and the total fee charged at the time of withdrawal.
         const withdrawalId = await ctx.db.insert("withdrawals", {
             user_id: args.userId,
             bank_account_id: args.bankAccountId,
@@ -496,7 +506,7 @@ export const internalProcessWithdrawal = internalMutation({
             created_at: now,
         });
 
-        // Decrement user balance by the full requested amount (fee is absorbed by platform)
+        // Decrement user balance by the full requested amount.
         await ctx.db.patch(creator._id, {
             balance: currentBalance - args.amount,
         });
@@ -538,9 +548,10 @@ export const requestWithdrawal = action({
         const bankCode = bankAccount.bank_code || "";
         const accountHolderName = bankAccount.account_holder_name || user.name || "User";
 
-        // Amount sent to Billplz = requested amount minus gateway fee (fee is absorbed by platform)
-        // e.g. User requests RM 25.00 → Billplz sends RM 23.90, platform is deducted RM 25.00
-        const amountAfterFee = args.amount - PAYOUT_GATEWAY_FEE;
+        // Amount sent to Billplz = requested amount minus platform fee (includes payment gateway).
+        // e.g. User requests RM 25.00 -> Billplz sends RM 22.50, balance is deducted RM 25.00.
+        const platformFee = calculatePlatformFee(args.amount);
+        const amountAfterFee = args.amount - platformFee;
         const totalCents = Math.round(amountAfterFee * 100);
 
         // Create Billplz Payment Order to initiate bank transfer
@@ -556,7 +567,7 @@ export const requestWithdrawal = action({
         return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
             userId: user.subject,
             amount: args.amount,
-            gatewayFee: PAYOUT_GATEWAY_FEE,
+            gatewayFee: platformFee,
             bankAccountId: args.bankAccountId,
             billplzPaymentOrderId: paymentOrder.id,
             sourceType: WithdrawalSourceType.Creator,
@@ -594,7 +605,8 @@ export const requestBusinessWithdrawal = action({
 
         const bankCode = bankAccount.bank_code || "";
         const accountHolderName = bankAccount.account_holder_name || business.name || user.name || "Business";
-        const amountAfterFee = args.amount - PAYOUT_GATEWAY_FEE;
+        const platformFee = calculatePlatformFee(args.amount);
+        const amountAfterFee = args.amount - platformFee;
         const totalCents = Math.round(amountAfterFee * 100);
 
         const paymentOrder = await createBillplzPaymentOrder({
@@ -608,7 +620,7 @@ export const requestBusinessWithdrawal = action({
         return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
             userId: user.subject,
             amount: args.amount,
-            gatewayFee: PAYOUT_GATEWAY_FEE,
+            gatewayFee: platformFee,
             bankAccountId: args.bankAccountId,
             billplzPaymentOrderId: paymentOrder.id,
             businessId: business._id,
@@ -790,4 +802,3 @@ export const processPaymentOrderCallback = internalMutation({
         }
     },
 });
-

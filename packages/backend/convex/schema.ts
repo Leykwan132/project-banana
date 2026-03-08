@@ -49,6 +49,7 @@ export default defineSchema({
         submissions: v.number(),
         status: v.string(), // "draft" | "active" | "paused" | "completed"
         asset_links: v.optional(v.string()),
+        base_pay: v.optional(v.number()),
         maximum_payout: v.number(),
         payout_thresholds: v.array(v.object({
             views: v.number(),

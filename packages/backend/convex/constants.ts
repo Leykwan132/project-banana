@@ -47,3 +47,5 @@ export enum WithdrawalSourceType {
 
 /** Payment gateway fee charged per withdrawal */
 export const PAYOUT_GATEWAY_FEE = parseFloat("1.10");
+export const PAYOUT_PLATFORM_FEE_RATE = process.env.PAYOUT_PLATFORM_FEE_RATE ? parseFloat(process.env.PAYOUT_PLATFORM_FEE_RATE) : 0.1;
+export const MIN_WITHDRAWAL_AMOUNT = process.env.MIN_WITHDRAWAL_AMOUNT ? parseFloat(process.env.MIN_WITHDRAWAL_AMOUNT) : 20;

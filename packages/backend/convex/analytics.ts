@@ -131,11 +131,12 @@ const mutationWithTriggers = customMutation(
 const calculateEarningFromViews = (
     views: number,
     thresholds: Array<{ views: number; payout: number }>,
-    maximumPayout: number
+    maximumPayout: number,
+    basePay: number
 ) => {
     const sorted = [...thresholds].sort((a, b) => b.views - a.views);
     let remainingViews = views;
-    let totalEarning = 0;
+    let totalEarning = views > 0 ? basePay : 0;
 
     for (const threshold of sorted) {
         if (remainingViews >= threshold.views) {
@@ -288,7 +289,8 @@ export const getApplicationDailyStatsLast30Days = query({
                 earnings: calculateEarningFromViews(
                     runningViews,
                     campaign.payout_thresholds,
-                    campaign.maximum_payout
+                    campaign.maximum_payout,
+                    campaign.base_pay ?? 0
                 ),
             });
         }

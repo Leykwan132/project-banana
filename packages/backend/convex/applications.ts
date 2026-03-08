@@ -294,12 +294,10 @@ export const updateApplicationStatus = mutationWithTriggers({
  * Each threshold can be counted multiple times based on views.
  * Processes thresholds from largest to smallest (greedy algorithm).
  */
-function calculateEarning(
+function calculateThresholdEarning(
     views: number,
-    thresholds: Array<{ views: number; payout: number }>,
-    maximumPayout: number
+    thresholds: Array<{ views: number; payout: number }>
 ): number {
-    // Sort thresholds by views descending (greedy: use largest first)
     const sorted = [...thresholds].sort((a, b) => b.views - a.views);
 
     let remainingViews = views;
@@ -314,8 +312,88 @@ function calculateEarning(
         }
     }
 
-    // Cap at maximum payout
-    return Math.min(totalEarning, maximumPayout);
+    return totalEarning;
+}
+
+type EngagementMetrics = {
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+};
+
+function getEngagementMetrics(metrics: Partial<EngagementMetrics>): EngagementMetrics {
+    return {
+        views: metrics.views ?? 0,
+        likes: metrics.likes ?? 0,
+        comments: metrics.comments ?? 0,
+        shares: metrics.shares ?? 0,
+    };
+}
+
+function getEngagementDeltas(previous: EngagementMetrics, next: EngagementMetrics): EngagementMetrics {
+    return {
+        views: Math.max(0, next.views - previous.views),
+        likes: Math.max(0, next.likes - previous.likes),
+        comments: Math.max(0, next.comments - previous.comments),
+        shares: Math.max(0, next.shares - previous.shares),
+    };
+}
+
+function addEngagementDeltas(current: Partial<EngagementMetrics>, deltas: EngagementMetrics): EngagementMetrics {
+    const currentMetrics = getEngagementMetrics(current);
+
+    return {
+        views: currentMetrics.views + deltas.views,
+        likes: currentMetrics.likes + deltas.likes,
+        comments: currentMetrics.comments + deltas.comments,
+        shares: currentMetrics.shares + deltas.shares,
+    };
+}
+
+function hasEngagementDelta(deltas: EngagementMetrics): boolean {
+    return deltas.views > 0 || deltas.likes > 0 || deltas.comments > 0 || deltas.shares > 0;
+}
+
+function buildApplicationStatsPatch(
+    metrics: EngagementMetrics,
+    earnings: number,
+    updatedAt: number,
+) {
+    return {
+        views: metrics.views,
+        likes: metrics.likes,
+        comments: metrics.comments,
+        shares: metrics.shares,
+        earnings,
+        updated_at: updatedAt,
+    };
+}
+
+function calculateApplicationEarnings(args: {
+    views: number;
+    payoutThresholds: Array<{ views: number; payout: number }>;
+    maximumPayout: number;
+    basePay: number;
+    previousApplicationEarnings: number;
+    currentCampaignEarnings: number;
+}): number {
+    const basePayAlreadyIncluded =
+        args.basePay > 0 &&
+        (
+            args.previousApplicationEarnings >= args.basePay ||
+            args.currentCampaignEarnings >= args.basePay
+        );
+    const shouldAwardBasePayOnThisCronRun =
+        args.basePay > 0 &&
+        !basePayAlreadyIncluded &&
+        args.previousApplicationEarnings === 0;
+    const thresholdEarnings = calculateThresholdEarning(args.views, args.payoutThresholds);
+    const basePayToInclude = basePayAlreadyIncluded || shouldAwardBasePayOnThisCronRun
+        ? args.basePay
+        : 0;
+
+    return Math.min(basePayToInclude + thresholdEarnings, args.maximumPayout);
 }
 
 export const updateApplicationEarning = internalMutationWithTriggers({
@@ -330,181 +408,149 @@ export const updateApplicationEarning = internalMutationWithTriggers({
     },
     handler: async (ctx, args) => {
         const now = Date.now();
-
-        // 1. Get current application to compute deltas
         const application = await ctx.db.get(args.applicationId);
         if (!application) return;
 
         const campaign = await ctx.db.get(args.campaignId);
         if (!campaign) return;
 
-        const previousAppEarnings = application.earnings ?? 0;
-        const previousViews = application.views ?? 0;
-        const previousLikes = application.likes ?? 0;
-        const previousComments = application.comments ?? 0;
-        const previousShares = application.shares ?? 0;
-
-        const viewsDelta = Math.max(0, args.views - previousViews);
-        const likesDelta = Math.max(0, args.likes - previousLikes);
-        const commentsDelta = Math.max(0, args.comments - previousComments);
-        const sharesDelta = Math.max(0, args.shares - previousShares);
-
-        // 2. Get current user campaign record to compute new accumulated values
         const userCampaign = await ctx.db.get(args.userCampaignStatusId);
         if (!userCampaign) return;
 
-        // Early exit: user already maxed out — stats still update but earnings are capped at maximum_payout
-        if (userCampaign.status === UserCampaignStatus.MaxedOut) {
-            await ctx.db.patch(args.applicationId, {
-                views: args.views,
-                likes: args.likes,
-                comments: args.comments,
-                shares: args.shares,
-                earnings: userCampaign.maximum_payout,
-                updated_at: now,
-            });
-            // No new earnings delta since already maxed; still propagate stat deltas.
-            return {
-                viewsDelta,
-                likesDelta,
-                commentsDelta,
-                sharesDelta,
-                earningsDelta: 0,
-            };
-        }
-
-        const newCampaignViews = (userCampaign.views || 0) + viewsDelta;
-        const newCampaignLikes = (userCampaign.likes || 0) + likesDelta;
-        const newCampaignComments = (userCampaign.comments || 0) + commentsDelta;
-        const newCampaignShares = (userCampaign.shares || 0) + sharesDelta;
-
-        // 3. Get campaign and evaluate new earnings based on this application's own scraped views
-        // This value has been capped by maximum payout.
-        const newApplicationEarnings = calculateEarning(
-            args.views,
-            campaign.payout_thresholds,
-            userCampaign.maximum_payout
-        );
-
-        const earningDelta = Math.max(0, newApplicationEarnings - previousAppEarnings);
-
-        // 4. Update application's own stats (for fast rendering/caching)
-        await ctx.db.patch(args.applicationId, {
+        const previousMetrics = getEngagementMetrics(application);
+        const scrapedMetrics: EngagementMetrics = {
             views: args.views,
             likes: args.likes,
             comments: args.comments,
             shares: args.shares,
-            earnings: newApplicationEarnings,
-            updated_at: now,
-        });
-
-        // 5. Update user_campaign_status with latest accumulated stats
-        const userCampaignPatch: Record<string, any> = {
-            views: newCampaignViews,
-            likes: newCampaignLikes,
-            comments: newCampaignComments,
-            shares: newCampaignShares,
-            updated_at: now,
         };
+        const statDeltas = getEngagementDeltas(previousMetrics, scrapedMetrics);
+        const previousAppEarnings = application.earnings ?? 0;
 
-        const remainingBudget = campaign.total_budget - campaign.budget_claimed;
+        if (userCampaign.status === UserCampaignStatus.MaxedOut) {
+            await ctx.db.patch(
+                args.applicationId,
+                buildApplicationStatsPatch(scrapedMetrics, userCampaign.maximum_payout, now),
+            );
 
-        // Cap the delta to available budget - never exceed total_budget
-        const cappedDelta = Math.min(earningDelta, remainingBudget);
-
-        // Case 1: No budget left or no new earning
-        if (cappedDelta <= 0) {
-            // Still update stats even if no budget left or no new earning
-            await ctx.db.patch(args.userCampaignStatusId, userCampaignPatch);
-
-            // Update creator + business totals (views/likes/comments/shares only — delta)
-            if (viewsDelta > 0 || likesDelta > 0 || commentsDelta > 0 || sharesDelta > 0) {
-                const creator = await ctx.db
-                    .query("creators")
-                    .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
-                    .unique();
-                if (creator) {
-                    await ctx.db.patch(creator._id, {
-                        total_views: (creator.total_views ?? 0) + viewsDelta,
-                    });
-                }
-
-                // Increment business high-level stats by delta only
-                const business = await ctx.db.get(campaign.business_id);
-                if (business) {
-                    await ctx.db.patch(campaign.business_id, {
-                        total_views: (business.total_views ?? 0) + viewsDelta,
-                        total_likes: (business.total_likes ?? 0) + likesDelta,
-                        total_comments: (business.total_comments ?? 0) + commentsDelta,
-                        total_shares: (business.total_shares ?? 0) + sharesDelta,
-                        updated_at: now,
-                    });
-                }
-            }
-            // Daily analytics expects deltas, not cumulative totals.
             return {
-                viewsDelta,
-                likesDelta,
-                commentsDelta,
-                sharesDelta,
+                viewsDelta: statDeltas.views,
+                likesDelta: statDeltas.likes,
+                commentsDelta: statDeltas.comments,
+                sharesDelta: statDeltas.shares,
                 earningsDelta: 0,
             };
         }
 
-        // Case 2: Budget left and new earning
-        // 6. Update campaign budget_claimed
+        const updatedCampaignMetrics = addEngagementDeltas(userCampaign, statDeltas);
+        const newApplicationEarnings = calculateApplicationEarnings({
+            views: args.views,
+            payoutThresholds: campaign.payout_thresholds,
+            maximumPayout: userCampaign.maximum_payout,
+            basePay: campaign.base_pay ?? 0,
+            previousApplicationEarnings: previousAppEarnings,
+            currentCampaignEarnings: userCampaign.total_earnings,
+        });
+        const earningDelta = Math.max(0, newApplicationEarnings - previousAppEarnings);
+        const userCampaignStatsPatch = {
+            ...updatedCampaignMetrics,
+            updated_at: now,
+        };
+        const returnPayload = {
+            viewsDelta: statDeltas.views,
+            likesDelta: statDeltas.likes,
+            commentsDelta: statDeltas.comments,
+            sharesDelta: statDeltas.shares,
+        };
+
+        await ctx.db.patch(
+            args.applicationId,
+            buildApplicationStatsPatch(scrapedMetrics, newApplicationEarnings, now),
+        );
+
+        const updateCreatorTotals = async (earnedAmount: number) => {
+            if (!hasEngagementDelta(statDeltas) && earnedAmount <= 0) {
+                return;
+            }
+
+            const creator = await ctx.db
+                .query("creators")
+                .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
+                .unique();
+
+            if (!creator) {
+                return;
+            }
+
+            await ctx.db.patch(creator._id, {
+                total_views: (creator.total_views ?? 0) + statDeltas.views,
+                total_earnings: (creator.total_earnings ?? 0) + earnedAmount,
+                balance: (creator.balance ?? 0) + earnedAmount,
+            });
+        };
+
+        const updateBusinessTotals = async () => {
+            if (!hasEngagementDelta(statDeltas)) {
+                return;
+            }
+
+            const business = await ctx.db.get(campaign.business_id);
+            if (!business) {
+                return;
+            }
+
+            await ctx.db.patch(campaign.business_id, {
+                total_views: (business.total_views ?? 0) + statDeltas.views,
+                total_likes: (business.total_likes ?? 0) + statDeltas.likes,
+                total_comments: (business.total_comments ?? 0) + statDeltas.comments,
+                total_shares: (business.total_shares ?? 0) + statDeltas.shares,
+                updated_at: now,
+            });
+        };
+
+        const remainingBudget = campaign.total_budget - campaign.budget_claimed;
+        const cappedDelta = Math.min(earningDelta, remainingBudget);
+
+        if (cappedDelta <= 0) {
+            await ctx.db.patch(args.userCampaignStatusId, userCampaignStatsPatch);
+            await Promise.all([
+                updateCreatorTotals(0),
+                updateBusinessTotals(),
+            ]);
+
+            return {
+                ...returnPayload,
+                earningsDelta: 0,
+            };
+        }
+
         const newBudgetClaimed = campaign.budget_claimed + cappedDelta;
-        const campaignPatch: Record<string, any> = {
+        const campaignPatch: { budget_claimed: number; status?: CampaignStatus } = {
             budget_claimed: newBudgetClaimed,
         };
 
-        // 6b. Mark campaign as completed if budget is fully claimed
         if (newBudgetClaimed >= campaign.total_budget) {
             campaignPatch.status = CampaignStatus.Completed;
         }
 
         await ctx.db.patch(args.campaignId, campaignPatch);
 
-        // 7. Update user_campaign_status with earnings + stats
         const newCampaignEarnings = userCampaign.total_earnings + cappedDelta;
         const isNowMaxedOut = newCampaignEarnings >= userCampaign.maximum_payout;
 
         await ctx.db.patch(args.userCampaignStatusId, {
-            ...userCampaignPatch,
+            ...userCampaignStatsPatch,
             total_earnings: newCampaignEarnings,
             status: isNowMaxedOut ? UserCampaignStatus.MaxedOut : userCampaign.status,
         });
 
-        // 8. Update creator totals (views + earnings)
-        const creator = await ctx.db
-            .query("creators")
-            .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
-            .unique();
-        if (creator) {
-            await ctx.db.patch(creator._id, {
-                total_views: (creator.total_views ?? 0) + viewsDelta,
-                total_earnings: (creator.total_earnings ?? 0) + cappedDelta,
-                balance: (creator.balance ?? 0) + cappedDelta,
-            });
-        }
-
-        // 9. Increment business high-level stats by delta only (views + earnings)
-        const business = await ctx.db.get(campaign.business_id);
-        if (business) {
-            await ctx.db.patch(campaign.business_id, {
-                total_views: (business.total_views ?? 0) + viewsDelta,
-                total_likes: (business.total_likes ?? 0) + likesDelta,
-                total_comments: (business.total_comments ?? 0) + commentsDelta,
-                total_shares: (business.total_shares ?? 0) + sharesDelta,
-                updated_at: now,
-            });
-        }
+        await Promise.all([
+            updateCreatorTotals(cappedDelta),
+            updateBusinessTotals(),
+        ]);
 
         return {
-            viewsDelta,
-            likesDelta,
-            commentsDelta,
-            sharesDelta,
+            ...returnPayload,
             earningsDelta: cappedDelta,
         };
     },

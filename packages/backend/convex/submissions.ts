@@ -289,7 +289,8 @@ export const approveSubmission = mutation({
             created_at: now,
         });
 
-        // Update Application
+        // Approval only updates workflow state. Earnings are awarded later by the cron-driven
+        // application earning job after the post enters the earning lifecycle.
         await ctx.db.patch(submission.application_id, {
             status: "ready_to_post",
             approved_submission_id: args.submissionId,
