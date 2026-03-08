@@ -26,7 +26,7 @@ import { CAMPAIGN_CATEGORIES } from '@/constants/campaignCategories';
 
 
 const SORT_OPTIONS = [
-    { label: 'Pay per 1k view', value: 'payout-view' },
+    { label: 'Base Pay', value: 'payout-view' },
     { label: 'Max Payout', value: 'max-payout' },
     { label: 'Number of claimed', value: 'claimed' },
 ];
@@ -97,16 +97,13 @@ export function CampaignList() {
         if (!results) return [];
 
         return results.map((campaign) => {
-            // Calculate pay per 1k views from payout thresholds
-            const payoutPer1k = campaign.payout_threshold?.payout || 0;
-
             return {
                 id: campaign.campaignId,
                 name: campaign.name,
                 companyName: campaign.business_name,
                 claimed: campaign.submissions || 0,
-                viewCount: '1k',
-                payout: payoutPer1k.toString(),
+                basePay: (campaign.base_pay || 0).toString(),
+                budgetClaimed: campaign.budget_claimed?.toString() || '0',
                 maxPayout: campaign.maximum_payout.toString(),
                 logoUrl: campaign.logo_url || null,
                 logoR2Key: campaign.logo_r2_key || null,
@@ -137,7 +134,7 @@ export function CampaignList() {
         return [...filteredCampaigns].sort((a, b) => {
             switch (selectedSort) {
                 case 'payout-view':
-                    return parseFloat(b.payout) - parseFloat(a.payout);
+                    return parseFloat(b.basePay) - parseFloat(a.basePay);
                 case 'max-payout':
                     return parseFloat(b.maxPayout) - parseFloat(a.maxPayout);
                 case 'claimed':
@@ -237,12 +234,12 @@ export function CampaignList() {
                             name={campaign.name}
                             companyName={campaign.companyName}
                             claimed={campaign.claimed}
-                            viewCount={campaign.viewCount}
-                            payout={campaign.payout}
+                            budgetClaimed={campaign.budgetClaimed}
                             maxPayout={campaign.maxPayout}
                             logoUrl={campaign.logoUrl}
                             logoR2Key={campaign.logoR2Key}
                             isTrending={campaign.isTrending}
+                            category={campaign.category}
                             onPress={() => handlePress(campaign.id, campaign.name, campaign.companyName)}
                         />
                     ))

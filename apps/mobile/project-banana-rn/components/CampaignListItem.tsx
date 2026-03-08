@@ -1,5 +1,6 @@
 import { View, StyleSheet, Image, Pressable } from 'react-native';
-import { Users, Eye, CircleDollarSign, Flame, Building } from 'lucide-react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { Users, Eye, CircleDollarSign, Flame, Building, Tag, Wallet } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useAction } from 'convex/react';
 
@@ -14,10 +15,10 @@ interface CampaignListItemProps {
     name: string;
     companyName?: string;
     claimed: number;
-    viewCount: string;
-    payout: string;
+    budgetClaimed: string;
     maxPayout?: string;
     isTrending?: boolean;
+    category?: string | string[];
     onPress?: () => void;
 }
 
@@ -27,10 +28,10 @@ export function CampaignListItem({
     name,
     companyName = 'Company Name', // Default for now
     claimed,
-    viewCount,
-    payout,
+    budgetClaimed,
     maxPayout = '5000', // Default for now
     isTrending,
+    category,
     onPress,
 }: CampaignListItemProps) {
     const colorScheme = useColorScheme();
@@ -58,6 +59,11 @@ export function CampaignListItem({
         return () => { cancelled = true; };
     }, [logoR2Key, logoUrl, generateAccessUrl]);
 
+    const displayCategory = Array.isArray(category) ? category[0] : category;
+    const formattedCategory = displayCategory
+        ? displayCategory.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+        : 'For You';
+
     return (
         <Pressable
             onPress={onPress}
@@ -68,50 +74,57 @@ export function CampaignListItem({
         >
             {/* Top Part */}
             <View style={styles.topSection}>
-                <View style={styles.logoContainer}>
-                    {finalLogoUrl ? (
-                        <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
-                    ) : (
-                        <View style={[styles.logoPlaceholder, { backgroundColor: '#F3F4F6' }]}>
-                            <Building size={24} color="#9CA3AF" />
-                        </View>
-                    )}
-                </View>
-                <View style={styles.titleContainer}>
+                <View style={styles.topLeft}>
+                    <View style={styles.logoContainer}>
+                        {finalLogoUrl ? (
+                            <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
+                        ) : (
+                            <View style={[styles.logoPlaceholder, { backgroundColor: '#F3F4F6' }]}>
+                                <Building size={24} color="#9CA3AF" />
+                            </View>
+                        )}
+                    </View>
                     <View style={styles.textColumn}>
-                        <ThemedText style={styles.companyName}>
-                            {companyName}
-                        </ThemedText>
+                        <View style={styles.companyRow}>
+                            <ThemedText style={styles.companyName}>
+                                {companyName}
+                            </ThemedText>
+                            {isTrending && (
+                                <View style={styles.trendingBadge}>
+                                    <Flame size={10} color="#FF4500" fill="#FF4500" />
+                                    <ThemedText style={styles.trendingText}>Trending</ThemedText>
+                                </View>
+                            )}
+                        </View>
                         <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
                             {name}
                         </ThemedText>
                     </View>
-                    {isTrending && (
-                        <View style={styles.trendingBadge}>
-                            <Flame size={12} color="#FF4500" fill="#FF4500" />
-                            <ThemedText style={styles.trendingText}>Trending</ThemedText>
-                        </View>
-                    )}
+                </View>
+
+                <View style={styles.maxPayContainer}>
+                    <ExpoImage source={require('@/assets/images/icon-light.svg')} style={{ width: 14, height: 14 }} contentFit="contain" />
+                    <ThemedText type="defaultSemiBold" style={styles.maxPayValue}>RM {maxPayout}</ThemedText>
                 </View>
             </View>
 
             {/* Bottom Part */}
             <View style={styles.bottomSection}>
                 <View style={styles.statItem}>
+                    <Tag size={16} color={iconColor} style={styles.icon} />
+                    <ThemedText style={styles.statText}>{formattedCategory}</ThemedText>
+                </View>
+
+                <View style={styles.statItem}>
                     <Users size={16} color={iconColor} style={styles.icon} />
                     <ThemedText style={styles.statText}>{claimed} submitted</ThemedText>
                 </View>
 
-                <View style={styles.statItem}>
-                    <Eye size={16} color={iconColor} style={styles.icon} />
+                <View style={[styles.statItem, styles.statItemRight]}>
+                    <Wallet size={16} color={iconColor} style={styles.icon} />
                     <ThemedText style={styles.statText}>
-                        RM {payout} / {viewCount} view
+                        RM {budgetClaimed} claimed
                     </ThemedText>
-                </View>
-
-                <View style={styles.statItem}>
-                    <CircleDollarSign size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>RM {maxPayout}</ThemedText>
                 </View>
             </View>
         </Pressable>
@@ -128,24 +141,31 @@ const styles = StyleSheet.create({
     },
     topSection: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
         marginBottom: 16,
     },
+    topLeft: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingRight: 12,
+    },
     logoContainer: {
-        marginRight: 12,
+        marginRight: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 100,
     },
     logo: {
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         resizeMode: 'contain',
-        borderRadius: 100, // Square with radius looks modern
+        borderRadius: 100,
     },
     logoPlaceholder: {
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         borderRadius: 100,
         alignItems: 'center',
         justifyContent: 'center',
@@ -155,25 +175,25 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontFamily: 'GoogleSans_700Bold',
     },
-    titleContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
     textColumn: {
         flex: 1,
-        marginRight: 8,
+        justifyContent: 'center',
     },
-    name: {
-        fontSize: 16,
-        lineHeight: 22,
+    companyRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
         marginBottom: 2,
+        flexWrap: 'wrap',
     },
     companyName: {
-        fontSize: 14,
+        fontSize: 13,
         color: '#6B7280',
         fontFamily: 'GoogleSans_400Regular',
+    },
+    name: {
+        fontSize: 15,
+        lineHeight: 20,
     },
     trendingBadge: {
         flexDirection: 'row',
@@ -191,6 +211,20 @@ const styles = StyleSheet.create({
         color: '#FF4500',
         fontFamily: 'GoogleSans_700Bold',
     },
+    maxPayContainer: {
+        alignItems: 'center',
+        backgroundColor: "black",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 30,
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 6,
+    },
+    maxPayValue: {
+        fontSize: 14,
+        color: 'white',
+    },
     bottomSection: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -203,6 +237,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        flex: 1,
+    },
+    statItemRight: {
+        justifyContent: 'flex-end',
     },
     icon: {
         opacity: 0.7,
