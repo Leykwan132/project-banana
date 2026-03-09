@@ -13,6 +13,7 @@ export const runDailyScrape = internalAction({
 
         let continueCursor: string | null = null;
         let isDone = false;
+        let totalApplicationsProcessed = 0;
 
         while (!isDone) {
             console.log(`Processing batch starting from cursor: ${continueCursor ?? "start"}`);
@@ -54,7 +55,7 @@ export const runDailyScrape = internalAction({
                     continue;
                 }
 
-                let totalViews = 5000;
+                let totalViews = 0;
                 let totalLikes = 0;
                 let totalComments = 0;
                 let totalShares = 0;
@@ -234,11 +235,12 @@ export const runDailyScrape = internalAction({
                 }
 
 
+                totalApplicationsProcessed++;
             }
             console.log(`Finished batch processing. isDone: ${isDone}`);
         }
 
-        console.log("Finished daily scrape cron job");
+        console.log(`Finished daily scrape cron job. Total applications processed: ${totalApplicationsProcessed}`);
     },
 });
 

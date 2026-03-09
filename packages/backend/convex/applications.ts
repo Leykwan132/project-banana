@@ -174,13 +174,12 @@ export const getApplicationsForEarningCheck = internalQuery({
         paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        console.log('querying applications for earning check...');
         // Find users/campaigns that are actively earning with pagination
         const earningStatusesResult = await ctx.db
             .query("user_campaign_status")
             .withIndex("by_status", (q) => q.eq("status", UserCampaignStatus.Earning))
             .paginate(args.paginationOpts);
-        console.log('earningStatusesResult: ', earningStatusesResult);
+
         const applications = [];
 
         for (const status of earningStatusesResult.page) {
