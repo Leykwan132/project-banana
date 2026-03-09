@@ -99,13 +99,9 @@ export const completeOnboarding = mutation({
             balance: 0,
         });
 
-        // Fire welcome email & Loops contact (fire and forget)
+        // Fire welcome email asynchronously.
         if (user.email) {
-            await ctx.scheduler.runAfter(0, internal.emails.internalAddContact, {
-                email: user.email,
-                firstName: user.name ?? args.username,
-            });
-            await ctx.scheduler.runAfter(0, internal.emails.sendWelcomeEmail, {
+            await ctx.scheduler.runAfter(0, internal.emails.sendWelcomeEmailCreator, {
                 email: user.email,
                 firstName: user.name ?? args.username,
             });

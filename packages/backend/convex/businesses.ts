@@ -140,12 +140,14 @@ export const createBusiness = action({
             size: args.size,
         });
 
-        // Add to Loops contact list & send welcome email (fire and forget)
+        // Send the welcome email asynchronously.
         const email = user.email;
         const firstName = user.givenName ?? user.name?.split(' ')[0] ?? args.name;
         if (email) {
-            ctx.runAction(internal.emails.internalAddContact, { email, firstName }).catch(console.error);
-            ctx.runAction(internal.emails.sendWelcomeEmail, { email, firstName }).catch(console.error);
+            ctx.runAction(internal.emails.sendWelcomeEmailBusiness, {
+                email,
+                firstName,
+            }).catch(console.error);
         }
 
         return businessId;

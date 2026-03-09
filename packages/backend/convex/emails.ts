@@ -1,85 +1,87 @@
-import { Loops } from "@devwithbobby/loops";
+import { Resend } from "@convex-dev/resend";
 import { components } from "./_generated/api";
-import { action, internalAction } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 
 // ============================================================
-// LOOPS EMAIL CLIENT
+// RESEND EMAIL CLIENT
 // ============================================================
 
-const loops = new Loops(components.loops);
+const resend = new Resend(components.resend, {
+    testMode: false,
+});
+
+const getResendFromAddress = () => {
+    const from = process.env.RESEND_FROM_EMAIL;
+    if (!from) {
+        console.error("RESEND_FROM_EMAIL must be set");
+        return null;
+    }
+
+    return from;
+};
+
+const sendTemplateEmail = async (
+    ctx: Parameters<typeof resend.sendEmail>[0],
+    args: {
+        email: string;
+        templateId: string;
+        variables: Record<string, string>;
+    },
+) => {
+    const from = getResendFromAddress();
+    if (!from) {
+        return;
+    }
+    console.log('Sending email to', args.email);
+    return await resend.sendEmail(ctx, {
+        from,
+        to: args.email,
+        template: {
+            id: args.templateId,
+            variables: args.variables,
+        },
+    });
+};
 
 // ============================================================
 // TRANSACTIONAL EMAIL TEMPLATE IDS (set in Convex environment variables)
-// ============================================================
-// LOOPS_WELCOME_TEMPLATE_ID
-// LOOPS_SUBMISSION_APPROVED_TEMPLATE_ID
-// LOOPS_SUBMISSION_REJECTED_TEMPLATE_ID
-// LOOPS_BANK_APPROVED_TEMPLATE_ID
-// LOOPS_BANK_REJECTED_TEMPLATE_ID
-// LOOPS_EARNINGS_UPDATE_TEMPLATE_ID
-
-// ============================================================
-// CONTACT MANAGEMENT
-// ============================================================
-
-/**
- * Add or update a contact in Loops.
- * Called as an action (user-facing, auth-gated).
- */
-export const addContact = action({
-    args: {
-        email: v.string(),
-        firstName: v.optional(v.string()),
-        lastName: v.optional(v.string()),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthorized");
-
-        return await loops.addContact(ctx, args);
-    },
-});
-
-/**
- * Add or update a contact in Loops.
- * Called internally (e.g. from mutations/actions during registration).
- */
-export const internalAddContact = internalAction({
-    args: {
-        email: v.string(),
-        firstName: v.optional(v.string()),
-        lastName: v.optional(v.string()),
-    },
-    handler: async (ctx, args) => {
-        return await loops.addContact(ctx, args);
-    },
-});
-
-// ============================================================
-// TRANSACTIONAL EMAILS
 // ============================================================
 
 /**
  * Send a welcome email to a newly registered user.
  * Data variables: firstName
  */
-export const sendWelcomeEmail = internalAction({
+export const sendWelcomeEmailBusiness = internalAction({
     args: {
         email: v.string(),
         firstName: v.string(),
     },
     handler: async (ctx, args) => {
-        const transactionalId = process.env.LOOPS_WELCOME_TEMPLATE_ID;
-        if (!transactionalId) {
-            console.error("LOOPS_WELCOME_TEMPLATE_ID is not set");
-            return;
-        }
-
-        return await loops.sendTransactional(ctx, {
-            transactionalId,
+        return await sendTemplateEmail(ctx, {
             email: args.email,
-            dataVariables: {
+            templateId: "welcome-business",
+            variables: {
+                firstName: args.firstName,
+            },
+        });
+    },
+});
+
+/**
+ * Send a welcome email to a newly registered user.
+ * Data variables: firstName
+ */
+export const sendWelcomeEmailCreator = internalAction({
+    args: {
+        email: v.string(),
+        firstName: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await sendTemplateEmail(ctx, {
+            email: args.email,
+            templateId: "welcome-creators",
+            variables: {
                 firstName: args.firstName,
             },
         });
@@ -93,24 +95,16 @@ export const sendWelcomeEmail = internalAction({
 export const sendBankAccountApprovedEmail = internalAction({
     args: {
         email: v.string(),
-        firstName: v.string(),
-        ending: v.string(), // Last 4 digits of account number
-        bankUrl: v.string(),
+        endingDigits: v.string(), // Last 4 digits of account number
+        redirectUrl: v.string(),
     },
     handler: async (ctx, args) => {
-        const transactionalId = process.env.LOOPS_BANK_APPROVED_TEMPLATE_ID;
-        if (!transactionalId) {
-            console.error("LOOPS_BANK_APPROVED_TEMPLATE_ID is not set");
-            return;
-        }
-
-        return await loops.sendTransactional(ctx, {
-            transactionalId,
+        return await sendTemplateEmail(ctx, {
             email: args.email,
-            dataVariables: {
-                firstName: args.firstName,
-                ending: args.ending,
-                bankUrl: args.bankUrl,
+            templateId: "bank-approved",
+            variables: {
+                endingDigits: args.endingDigits,
+                redirectUrl: args.redirectUrl,
             },
         });
     },
@@ -123,24 +117,16 @@ export const sendBankAccountApprovedEmail = internalAction({
 export const sendBankAccountRejectedEmail = internalAction({
     args: {
         email: v.string(),
-        firstName: v.string(),
-        ending: v.string(), // Last 4 digits of account number
-        bankUrl: v.string(),
+        endingDigits: v.string(), // Last 4 digits of account number
+        redirectUrl: v.string(),
     },
     handler: async (ctx, args) => {
-        const transactionalId = process.env.LOOPS_BANK_REJECTED_TEMPLATE_ID;
-        if (!transactionalId) {
-            console.error("LOOPS_BANK_REJECTED_TEMPLATE_ID is not set");
-            return;
-        }
-
-        return await loops.sendTransactional(ctx, {
-            transactionalId,
+        return await sendTemplateEmail(ctx, {
             email: args.email,
-            dataVariables: {
-                firstName: args.firstName,
-                ending: args.ending,
-                bankUrl: args.bankUrl,
+            templateId: "bank-rejected",
+            variables: {
+                endingDigits: args.endingDigits,
+                redirectUrl: args.redirectUrl,
             },
         });
     },
@@ -148,31 +134,23 @@ export const sendBankAccountRejectedEmail = internalAction({
 
 /**
  * Send an email to notify the creator that their submission has been approved.
- * Data variables: firstName, campaignName, business, submissionUrl
+ * Data variables: campaignName, businessName, submissionUrl
  */
 export const sendSubmissionApprovedEmail = internalAction({
     args: {
         email: v.string(),
-        firstName: v.string(),
         campaignName: v.string(),
-        business: v.string(), // Business/brand name
-        submissionUrl: v.string(),
+        businessName: v.string(), // Business/brand name
+        redirectUrl: v.string(),
     },
     handler: async (ctx, args) => {
-        const transactionalId = process.env.LOOPS_SUBMISSION_APPROVED_TEMPLATE_ID;
-        if (!transactionalId) {
-            console.error("LOOPS_SUBMISSION_APPROVED_TEMPLATE_ID is not set");
-            return;
-        }
-
-        return await loops.sendTransactional(ctx, {
-            transactionalId,
+        return await sendTemplateEmail(ctx, {
             email: args.email,
-            dataVariables: {
-                firstName: args.firstName,
+            templateId: "submission-approved",
+            variables: {
                 campaignName: args.campaignName,
-                business: args.business,
-                submissionUrl: args.submissionUrl,
+                businessName: args.businessName,
+                redirectUrl: args.redirectUrl,
             },
         });
     },
@@ -180,31 +158,23 @@ export const sendSubmissionApprovedEmail = internalAction({
 
 /**
  * Send an email to notify the creator that their submission has been rejected.
- * Data variables: firstName, campaignName, business, submissionUrl
+ * Data variables: campaignName, businessName, redirectUrl
  */
-export const sendSubmissionRejectedEmail = internalAction({
+export const sendSubmissionChangesEmail = internalAction({
     args: {
         email: v.string(),
-        firstName: v.string(),
         campaignName: v.string(),
-        business: v.string(), // Business/brand name
-        submissionUrl: v.string(),
+        businessName: v.string(), // Business/brand name
+        redirectUrl: v.string(),
     },
     handler: async (ctx, args) => {
-        const transactionalId = process.env.LOOPS_SUBMISSION_REJECTED_TEMPLATE_ID;
-        if (!transactionalId) {
-            console.error("LOOPS_SUBMISSION_REJECTED_TEMPLATE_ID is not set");
-            return;
-        }
-
-        return await loops.sendTransactional(ctx, {
-            transactionalId,
+        return await sendTemplateEmail(ctx, {
             email: args.email,
-            dataVariables: {
-                firstName: args.firstName,
+            templateId: "submission-changes",
+            variables: {
                 campaignName: args.campaignName,
-                business: args.business,
-                submissionUrl: args.submissionUrl,
+                businessName: args.businessName,
+                redirectUrl: args.redirectUrl,
             },
         });
     },
@@ -212,31 +182,23 @@ export const sendSubmissionRejectedEmail = internalAction({
 
 /**
  * Send an earnings update email to a creator.
- * Data variables: firstName, amount, campaignName, appUrl
+ * Data variables: amount, campaignName, redirectUrl
  */
 export const sendEarningsUpdateEmail = internalAction({
     args: {
         email: v.string(),
-        firstName: v.string(),
         amount: v.string(), // Pre-formatted currency string e.g. "RM 50.00"
         campaignName: v.string(),
-        appUrl: v.string(), // URL to open the dashboard e.g. "https://your-dashbaord.com"
+        redirectUrl: v.string(), // URL to open the dashboard e.g. "https://your-dashbaord.com"
     },
     handler: async (ctx, args) => {
-        const transactionalId = process.env.LOOPS_EARNINGS_UPDATE_TEMPLATE_ID;
-        if (!transactionalId) {
-            console.error("LOOPS_EARNINGS_UPDATE_TEMPLATE_ID is not set");
-            return;
-        }
-
-        return await loops.sendTransactional(ctx, {
-            transactionalId,
+        return await sendTemplateEmail(ctx, {
             email: args.email,
-            dataVariables: {
-                firstName: args.firstName,
+            templateId: "earning_updates",
+            variables: {
                 amount: args.amount,
                 campaignName: args.campaignName,
-                appUrl: args.appUrl,
+                redirectUrl: args.redirectUrl,
             },
         });
     },

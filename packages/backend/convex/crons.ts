@@ -1,7 +1,8 @@
 import { cronJobs } from "convex/server";
 import { internalAction } from "./_generated/server";
-import { internal, api } from "./_generated/api";
+import { api, internal, components } from "./_generated/api";
 import { posthog } from "./posthog";
+import { internalMutation } from "./_generated/server.js";
 
 const crons = cronJobs();
 
@@ -240,6 +241,28 @@ export const runDailyScrape = internalAction({
         console.log("Finished daily scrape cron job");
     },
 });
+
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+export const cleanupResend = internalMutation({
+    args: {},
+    handler: async (ctx) => {
+        await ctx.scheduler.runAfter(0, components.resend.lib.cleanupOldEmails, {
+            olderThan: ONE_WEEK_MS,
+        });
+        await ctx.scheduler.runAfter(
+            0,
+            components.resend.lib.cleanupAbandonedEmails,
+            // These generally indicate a bug, so keep them around for longer.
+            { olderThan: 4 * ONE_WEEK_MS },
+        );
+    },
+});
+
+crons.interval(
+    "Remove old emails from the resend component",
+    { hours: 1 },
+    internal.crons.cleanupResend,
+);
 
 crons.cron(
     "daily scrape",
