@@ -111,49 +111,54 @@ export default function Approvals() {
         );
     }
 
+    const sortedCampaigns = results ? [...results].sort((a, b) => (b.pending_approvals || 0) - (a.pending_approvals || 0)) : [];
+
     return (
         <div className="p-8 font-sans text-gray-900 animate-fadeIn">
             <div className="flex items-center gap-3 mb-6">
                 <h1 className="text-2xl font-bold">Approvals</h1>
             </div>
 
-            {results && results.length > 0 ? (
+            {sortedCampaigns.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                    {results.map((campaign) => (
-                        <Card
-                            key={campaign._id}
-                            isPressable
-                            onPress={() => navigate(`/approvals/${campaign._id}`)}
-                            className="flex flex-col w-full bg-[#F4F6F8] border-none rounded-md p-6 hover:bg-gray-200 transition-colors duration-200 group shadow-none"
-                        >
-                            {/* Text Content Section (Top) */}
-                            <div className="flex flex-col items-start w-full">
-                                <h4 className="text-gray-900 text-xl font-semibold leading-tight line-clamp-2 text-left">
-                                    {campaign.name}
-                                </h4>
-                                <div className="flex items-center gap-3 mt-2">
-                                    {campaign.pending_approvals && campaign.pending_approvals > 0 ? (
-                                        <>
-                                            <span className="px-3 bg-white py-1 rounded-full border border-gray-400 text-sm font-semibold text-gray-700">
-                                                {campaign.pending_approvals}
-                                            </span>
-                                            <span className="text-gray-500 text-sm font-medium">pending submissions</span>
-                                        </>
-                                    ) : (
-                                        <span className="text-gray-400 text-sm font-medium">No pending approvals</span>
-                                    )}
+                    {sortedCampaigns.map((campaign) => {
+                        const hasPending = campaign.pending_approvals && campaign.pending_approvals > 0;
+                        return (
+                            <Card
+                                key={campaign._id}
+                                isPressable
+                                onPress={() => navigate(`/approvals/${campaign._id}`)}
+                                className="flex flex-col w-full bg-[#F4F6F8] border-none rounded-md p-6 hover:bg-gray-200 transition-colors duration-200 group shadow-none"
+                            >
+                                {/* Text Content Section (Top) */}
+                                <div className="flex flex-col items-start w-full">
+                                    <h4 className="text-gray-900 text-xl font-semibold leading-tight line-clamp-2 text-left">
+                                        {campaign.name}
+                                    </h4>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        {hasPending ? (
+                                            <>
+                                                <span className="px-3 bg-white py-1 rounded-full border border-gray-400 text-sm font-semibold text-gray-700">
+                                                    {campaign.pending_approvals}
+                                                </span>
+                                                <span className="text-gray-500 text-sm font-medium">pending submissions</span>
+                                            </>
+                                        ) : (
+                                            <span className="text-gray-400 text-sm font-medium">No pending approvals</span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1 pt-4 text-orange-500 font-semibold text-sm mt-4 transition-all">
+                                        <span>Review now</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </div>
                                 </div>
 
-                                <div className="flex items-center gap-1 pt-4 text-orange-500 font-semibold text-sm mt-4 transition-all">
-                                    <span>Review now</span>
-                                    <ArrowRight className="w-4 h-4" />
-                                </div>
-                            </div>
-
-                            {/* Image Section (Bottom) */}
-                            <CampaignCoverImage campaign={campaign} />
-                        </Card>
-                    ))}
+                                {/* Image Section (Bottom) */}
+                                <CampaignCoverImage campaign={campaign} />
+                            </Card>
+                        )
+                    })}
                 </div>
             ) : (
                 <EmptyState onCreate={() => navigate('/campaign/new')} />

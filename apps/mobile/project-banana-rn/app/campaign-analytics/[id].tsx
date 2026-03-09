@@ -1,8 +1,16 @@
+import React, { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
-import { useQuery } from 'convex/react';
+import { useQuery, useAction } from 'convex/react';
+import Animated, {
+    useSharedValue,
+    withRepeat,
+    withSequence,
+    withTiming,
+    useAnimatedStyle,
+} from 'react-native-reanimated';
 import LottieView from 'lottie-react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -38,6 +46,27 @@ const formatDate = (timestamp: number) =>
         year: 'numeric',
     });
 
+const SkeletonBlock = ({ style }: { style: any }) => {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+        opacity.value = withRepeat(
+            withSequence(
+                withTiming(0.7, { duration: 800 }),
+                withTiming(0.3, { duration: 800 })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        opacity: opacity.value,
+    }));
+
+    return <Animated.View style={[{ backgroundColor: '#F3F4F6' }, animatedStyle, style]} />;
+};
+
 const CampaignAnalyticsSkeleton = () => (
     <View>
         <View style={styles.skeletonCircle} />
@@ -68,6 +97,23 @@ export default function CampaignAnalyticsScreen() {
         api.applications.getMyApplicationsByCampaignWithStats,
         campaignId ? { campaignId } : 'skip'
     ) as CampaignApplicationAnalytics[] | undefined;
+
+    const generateCampaignImageAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
+
+    const [coverUrl, setCoverUrl] = useState<string | null>(null);
+    useEffect(() => {
+        if (!campaign) return;
+        if (campaign.cover_photo_r2_key) {
+            let cancelled = false;
+            setCoverUrl(null);
+            generateCampaignImageAccessUrl({ r2Key: campaign.cover_photo_r2_key })
+                .then(url => { if (!cancelled) setCoverUrl(url || campaign.cover_photo_url || null); })
+                .catch(() => { if (!cancelled) setCoverUrl(campaign.cover_photo_url || null); });
+            return () => { cancelled = true; };
+        } else {
+            setCoverUrl(campaign.cover_photo_url || null);
+        }
+    }, [campaign?.cover_photo_r2_key, campaign?.cover_photo_url, generateCampaignImageAccessUrl]);
 
     const isLoading =
         campaign === undefined ||
@@ -111,8 +157,10 @@ export default function CampaignAnalyticsScreen() {
                     <>
                         <View style={styles.campaignInfo}>
                             <View style={styles.logoContainer}>
-                                {campaign?.cover_photo_url ? (
-                                    <Image source={{ uri: campaign.cover_photo_url }} style={styles.logoImage} />
+                                {campaign?.cover_photo_r2_key && coverUrl === null ? (
+                                    <SkeletonBlock style={styles.logoPlaceholder} />
+                                ) : coverUrl ? (
+                                    <Image source={{ uri: coverUrl }} style={styles.logoImage} />
                                 ) : (
                                     <View style={styles.logoPlaceholder}>
                                         <ThemedText style={styles.logoText}>

@@ -24,6 +24,8 @@ export function Sidebar() {
     const navigate = useNavigate();
     const business = useQuery(api.businesses.getMyBusiness);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const credits = business?.credit_balance ?? 0;
+    const isCreditsLoading = business === undefined;
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -103,6 +105,24 @@ export function Sidebar() {
             </div>
 
             <div className="border-t border-[#F4F6F8] p-4">
+                <button
+                    type="button"
+                    onClick={() => navigate('/credits')}
+                    className="mb-3 flex w-full rounded-2xl border border-[#F4F6F8] bg-[#F9FAFB] px-4 py-3 text-left transition-colors hover:border-gray-200 hover:bg-white"
+                >
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                            Credit Balance
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-gray-900">
+                            {isCreditsLoading ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                                `RM ${credits.toLocaleString()}`
+                            )}
+                        </p>
+                    </div>
+                </button>
                 <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Building } from 'lucide-react';
 import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { authClient } from '../lib/auth-client';
 
 const industryOptions = ['E-commerce', 'SaaS', 'Agency', 'Health', 'Education', 'Fintech', 'Food & Beverage', 'Other'];
 const sizeOptions = ['1-10', '11-50', '51-200', '201-500', '500+'];
@@ -10,6 +11,9 @@ export default function Settings() {
     const business = useQuery(api.businesses.getMyBusiness);
     const generateLogoUrl = useAction(api.businesses.generateLogoAccessUrl);
     const updateBusiness = useMutation(api.businesses.updateBusiness);
+
+    const { data: session } = authClient.useSession();
+    const userEmail = session?.user?.email ?? '';
 
     const [businessName, setBusinessName] = useState('');
     const [businessSize, setBusinessSize] = useState('');
@@ -65,17 +69,9 @@ export default function Settings() {
         setLogo(null);
     }, [business, generateLogoUrl]);
 
-    if (business === undefined) {
-        return <div className="p-8">Loading...</div>;
-    }
-
-    if (business === null) {
-        return <div className="p-8">Please complete onboarding first.</div>;
-    }
-
-    const initialName = business.name;
-    const initialSize = business.size || '';
-    const initialIndustry = business.industry || '';
+    const initialName = business?.name || '';
+    const initialSize = business?.size || '';
+    const initialIndustry = business?.industry || '';
     const currentIndustry = businessIndustry === 'Other' ? customIndustry.trim() : businessIndustry;
     const hasChanges =
         businessName !== initialName ||
@@ -105,7 +101,7 @@ export default function Settings() {
     };
 
     const handleSave = async () => {
-        if (!hasChanges || isSaving) return;
+        if (!hasChanges || isSaving || !business) return;
         setIsSaving(true);
         setError('');
         try {
@@ -170,6 +166,15 @@ export default function Settings() {
 
                             {/* Business Name */}
                             <div className="flex-1 w-full space-y-4">
+                                <div>
+                                    <label className="text-sm font-bold text-gray-900 block mb-2">Email Address</label>
+                                    <input
+                                        type="email"
+                                        value={userEmail}
+                                        readOnly
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none text-gray-900 font-medium cursor-default"
+                                    />
+                                </div>
                                 <div>
                                     <label className="text-sm font-bold text-gray-900 block mb-2">Business Name</label>
                                     <input

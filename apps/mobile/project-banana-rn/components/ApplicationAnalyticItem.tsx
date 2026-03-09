@@ -1,5 +1,5 @@
 import { View, StyleSheet, Pressable, Image } from 'react-native';
-import { Eye, Heart, MessageCircle, Share, Wallet, Calendar } from 'lucide-react-native';
+import { Eye, Heart, MessageCircle, Share, Wallet, Calendar, Video } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
@@ -46,7 +46,9 @@ export function ApplicationAnalyticItem({
                 {thumbnailUrl ? (
                     <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} />
                 ) : (
-                    <Image source={require('@/assets/images/bg-onboard.webp')} style={styles.thumbnail} />
+                    <View style={styles.thumbnailPlaceholder}>
+                        <Video size={24} color="#9CA3AF" />
+                    </View>
                 )}
 
                 <View style={styles.textColumn}>
@@ -111,6 +113,14 @@ const styles = StyleSheet.create({
         height: 60,
         borderRadius: 8,
         resizeMode: 'cover',
+    },
+    thumbnailPlaceholder: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     textColumn: {
         flex: 1,

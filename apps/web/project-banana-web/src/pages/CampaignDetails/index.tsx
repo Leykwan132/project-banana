@@ -16,7 +16,7 @@ import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign
 import Button from '../../components/ui/Button';
 import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
 import { addToast } from "@heroui/toast";
-import { CampaignStatus } from '../../../../../../packages/backend/convex/constants';
+import { CampaignStatus } from '../../lib/constants';
 import StatusBadge from '../../components/ui/StatusBadge';
 
 type CampaignAnalyticsMetric = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Amount Spend';

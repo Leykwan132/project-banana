@@ -3,7 +3,7 @@ import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanima
 import { View, StyleSheet, ScrollView, Pressable, Dimensions, TextInput, Image, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Share, MessageCircle, Heart, Eye, Wallet, Calendar } from 'lucide-react-native';
+import { ArrowLeft, Share, MessageCircle, Heart, Eye, Wallet, Calendar, Video } from 'lucide-react-native';
 import { LineChart, useLineChart } from 'react-native-wagmi-charts';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useQuery } from 'convex/react';
@@ -99,73 +99,17 @@ export default function ApplicationAnalyticsScreen() {
 
     const applicationId = (id as Id<'applications'>) || undefined;
 
-    // --- MOCK DATA START ---
-    const application = useMemo(() => ({
-        _id: 'mock_app_id' as Id<'applications'>,
-        _creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000,
-        created_at: Date.now() - 30 * 24 * 60 * 60 * 1000,
-        earnings: 12500,
-        views: 12450000,
-        shares: 85000,
-        likes: 120000,
-        comments: 45000,
-        ig_post_url: 'https://instagram.com',
-        tiktok_post_url: 'https://tiktok.com',
-    }), []);
+    const application = useQuery(
+        api.applications.getApplication,
+        applicationId ? { applicationId } : "skip"
+    );
 
-    const dailyStats = useMemo(() => {
-        const stats: DailyPoint[] = [];
-        let currentViews = 8000000;
-        let currentLikes = 80000;
-        let currentComments = 35000;
-        let currentShares = 60000;
-        let currentEarnings = 8000;
+    const dailyStats = useQuery(
+        api.analytics.getApplicationDailyStatsLast30Days,
+        applicationId ? { applicationId } : "skip"
+    );
 
-        const now = Date.now();
-        for (let i = 29; i >= 0; i--) {
-            const date = new Date(now - i * 24 * 60 * 60 * 1000);
-
-            // Add daily increments (simulating growth)
-            currentViews += Math.floor(Math.random() * 150000);
-            currentLikes += Math.floor(Math.random() * 1500);
-            currentComments += Math.floor(Math.random() * 500);
-            currentShares += Math.floor(Math.random() * 800);
-            currentEarnings += Math.floor(Math.random() * 150);
-
-            stats.push({
-                date: date.toISOString().split('T')[0] as string,
-                timestamp: date.getTime(),
-                views: currentViews,
-                likes: currentLikes,
-                comments: currentComments,
-                shares: currentShares,
-                earnings: currentEarnings,
-            });
-        }
-
-        // Ensure the last point exact matches application totals
-        stats[29] = {
-            ...stats[29],
-            views: application.views,
-            likes: application.likes,
-            comments: application.comments,
-            shares: application.shares,
-            earnings: application.earnings,
-        };
-
-        return stats;
-    }, [application]);
-
-    const appTotalStats = useMemo(() => ({
-        views: application.views,
-        likes: application.likes,
-        comments: application.comments,
-        shares: application.shares,
-        earnings: application.earnings,
-    }), [application]);
-
-    const isLoading = false;
-    // --- MOCK DATA END ---
+    const isLoading = application === undefined || dailyStats === undefined;
 
     if (application === null) {
         return (
@@ -303,7 +247,9 @@ export default function ApplicationAnalyticsScreen() {
                     ) : (
                         <>
                             <View style={styles.appInfoContainer}>
-                                <Image source={require('@/assets/images/bg-onboard.webp')} style={styles.appThumbnail} />
+                                <View style={styles.appThumbnailPlaceholder}>
+                                    <Video size={24} color="#9CA3AF" />
+                                </View>
                                 <View style={styles.appDetails}>
                                     <ThemedText type="defaultSemiBold" style={styles.appName}>
                                         Application
@@ -520,6 +466,14 @@ const styles = StyleSheet.create({
         height: 60,
         borderRadius: 8,
         resizeMode: 'cover',
+    },
+    appThumbnailPlaceholder: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     appDetails: {
         flex: 1,
