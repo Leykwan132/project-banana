@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Loader2, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { Skeleton } from "@heroui/skeleton";
+import { addToast } from "@heroui/toast";
 import ReactPlayer from 'react-player';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import Button from '../components/ui/Button';
-import iconDark from '../assets/icon-dark.svg';
 
 export default function ReviewSubmission() {
     const navigate = useNavigate();
@@ -54,7 +54,8 @@ export default function ReviewSubmission() {
         };
     }, [submission?._id, submission?.r2_key, submission?.video_url, submissionId]);
 
-    const [successAction, setSuccessAction] = useState<'approved' | 'changes_requested' | null>(null);
+    const [successAction, setSuccessAction] = useState<'changes_requested' | null>(null);
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
     const approveSubmission = useMutation(api.submissions.approveSubmission);
     const requestChanges = useMutation(api.submissions.requestChanges);
@@ -67,11 +68,18 @@ export default function ReviewSubmission() {
                 submissionId: submissionId as Id<"submissions">,
                 feedback: feedback || undefined, // Optional
             });
-            setSuccessAction('approved');
+            addToast({
+                title: "Submission approved",
+                description: "The creator has been notified to post it to their account.",
+                color: "success",
+            });
+            navigate(`/approvals/${campaignId}`);
         } catch (error) {
             console.error("Failed to approve submission:", error);
             alert("Failed to approve submission. Please try again.");
-            setIsSubmitting(false); // Only reset if error, keep true if success to prevent double click while modal opens
+        } finally {
+            setIsSubmitting(false);
+            setIsConfirmOpen(false);
         }
     };
 
@@ -163,7 +171,7 @@ export default function ReviewSubmission() {
                             Request changes
                         </Button>
                         <Button
-                            onClick={handleApprove}
+                            onClick={() => setIsConfirmOpen(true)}
                             disabled={isSubmitting || isLoading || !!successAction}
                             className="flex-1 bg-black hover:bg-gray-900 text-white font-medium py-4 px-8 rounded-xl transition-colors text-md shadow-none"
                         >
@@ -182,44 +190,54 @@ export default function ReviewSubmission() {
                 document.body
             )}
 
-            {/* Success Modal */}
-            {successAction && createPortal(
+            {/* Request Changes Modal */}
+            {successAction === 'changes_requested' && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-                    <div className="bg-white rounded-xl w-full max-w-[600px] p-10 shadow-2xl relative overflow-hidden flex flex-col animate-scaleIn">
-
-                        {/* Top Left Icon */}
-                        <div className="w-12 h-12 rounded-full border border-gray-100 flex items-center justify-center mb-8 shadow-sm">
-                            <img src={iconDark} alt="Banana" className="w-8 h-8 object-contain" />
-                        </div>
-
-                        {/* Title & Description */}
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-medium text-gray-900 mb-3 tracking-tight">
-                                {successAction === 'approved' ? 'Submission Approved' : 'Changes Requested'}
+                    <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl relative overflow-hidden animate-scaleIn">
+                        <div className="p-12 flex flex-col justify-center">
+                            <h2 className="text-2xl text-gray-900 font-semibold mb-1">
+                                Changes Requested
                             </h2>
-                            <p className="text-gray-500 text-lg leading-relaxed">
-                                {successAction === 'approved'
-                                    ? "Great content! The creator will be notified to post it to their account."
-                                    : "Your feedback has been sent. The creator will be notified to make the necessary changes."}
+                            <p className="text-gray-500 text-sm mb-8">
+                                Your feedback has been sent. The creator will be notified to make the necessary changes.
                             </p>
-                        </div>
 
-                        {/* Middle Image */}
-                        <div className="w-full aspect-2/1 bg-gray-100 rounded-3xl mb-10 overflow-hidden relative border border-gray-100 shadow-sm">
-                            <img
-                                src="/onboarding-bg.png"
-                                alt="Status"
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-
-                        {/* Bottom Right Button */}
-                        <div className="flex justify-end">
-                            <Button
+                            <button
                                 onClick={() => navigate(`/approvals/${campaignId}`)}
-                                className="bg-black hover:bg-gray-900 text-white px-8 py-4 rounded-xl shadow-xl shadow-black/10 text-md flex items-center gap-3"
+                                className="bg-[#1C1C1C] text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-black transition-colors shadow-lg shadow-black/10 mt-4 self-start"
                             >
                                 Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Confirm Approval Modal */}
+            {isConfirmOpen && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl relative overflow-hidden flex flex-col animate-scaleIn">
+                        <h2 className="text-xl font-bold text-gray-900 mb-3">Approve Submission?</h2>
+                        <p className="text-gray-500 mb-8">
+                            Are you sure you want to approve this submission? The creator will be notified to post and start earning.
+                        </p>
+
+                        <div className="flex gap-4 justify-end">
+                            <Button
+                                onClick={() => setIsConfirmOpen(false)}
+                                disabled={isSubmitting}
+                                variant="outline"
+                                className="px-6 py-3 rounded-xl font-medium"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleApprove}
+                                disabled={isSubmitting}
+                                className="bg-black hover:bg-gray-900 text-white px-6 py-3 rounded-xl font-medium"
+                            >
+                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm & Approve"}
                             </Button>
                         </div>
                     </div>

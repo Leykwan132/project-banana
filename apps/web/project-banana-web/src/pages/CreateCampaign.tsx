@@ -799,6 +799,7 @@ export default function CreateCampaign() {
                     ]
                 });
                 setCreatedCampaignId(campaignId);
+                setIsReviewModalOpen(false);
                 setShowSuccess(true);
 
             } catch (error: any) {
@@ -900,7 +901,6 @@ export default function CreateCampaign() {
     };
 
     const handleConfirmPublish = async () => {
-        setIsReviewModalOpen(false);
         await formik.submitForm();
     };
 
@@ -1597,7 +1597,7 @@ export default function CreateCampaign() {
                         {/* Right Side - Image */}
                         <div className="relative overflow-hidden h-full group">
                             <img
-                                src="/onboarding-bg.png"
+                                src="/campaign-created.png"
                                 alt="Campaign Published"
                                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
