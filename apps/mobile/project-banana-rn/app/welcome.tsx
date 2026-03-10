@@ -128,7 +128,6 @@ export default function WelcomeScreen() {
     }, [convex]);
 
     const handleLogin = useCallback(() => {
-        console.log('login page');
         loginActionSheetRef.current?.show();
     }, []);
 
