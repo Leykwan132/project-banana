@@ -17,6 +17,8 @@ import { Colors } from '@/constants/theme';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
+import { BankAccountSourceType } from '@/constants/sourceType';
+import { prepareBankProofUpload } from '@/utils/bankProofUpload';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
@@ -29,7 +31,7 @@ export default function BankAccountDetailsScreen() {
     const bankAccountId = id as Id<'bank_accounts'>;
     const bankAccount = useQuery(
         api.bankAccounts.getBankAccount,
-        bankAccountId ? { bankAccountId } : "skip"
+        bankAccountId ? { bankAccountId, sourceType: BankAccountSourceType.Creator } : "skip"
     );
     const generateProofUploadUrl = useAction(api.bankAccounts.generateProofUploadUrl);
     const generateProofAccessUrl = useAction(api.bankAccounts.generateProofAccessUrl);
@@ -181,13 +183,12 @@ export default function BankAccountDetailsScreen() {
 
         setIsLoading(true);
         try {
-            const contentType =
-                uploadedFile.mimeType ??
-                (uploadedFile.type === 'pdf' ? 'application/pdf' : 'image/jpeg');
+            const preparedFile = await prepareBankProofUpload(uploadedFile);
+            const contentType = preparedFile.contentType;
 
             const { uploadUrl, r2Key } = await generateProofUploadUrl({ contentType });
 
-            const fileResponse = await fetch(uploadedFile.uri);
+            const fileResponse = await fetch(preparedFile.uri);
             if (!fileResponse.ok) {
                 throw new Error('Unable to read selected proof file.');
             }

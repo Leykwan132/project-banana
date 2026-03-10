@@ -20,6 +20,7 @@ import { ApplicationStatus, ApplicationStatusBadge } from '@/components/Applicat
 import { Image } from 'expo-image';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { BANK_OPTIONS } from '@/constants/banks';
+import { BankAccountSourceType } from '@/constants/sourceType';
 
 type BankAccountStatus = 'active' | 'pending' | 'rejected';
 
@@ -61,7 +62,7 @@ export default function BankAccountScreen() {
     const theme = Colors[colorScheme ?? 'light'];
 
     const user = useQuery(api.users.getUser);
-    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts);
+    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Creator });
 
     const isLoading = bankAccounts === undefined || user === undefined;
 

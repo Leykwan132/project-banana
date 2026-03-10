@@ -17,6 +17,8 @@ import { Colors } from '@/constants/theme';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BANK_OPTIONS } from '@/constants/banks';
+import { BankAccountSourceType } from '@/constants/sourceType';
+import { prepareBankProofUpload } from '@/utils/bankProofUpload';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 
@@ -175,13 +177,12 @@ export default function AddBankAccountScreen() {
 
         setIsLoading(true);
         try {
-            const contentType =
-                uploadedFile.mimeType ??
-                (uploadedFile.type === 'pdf' ? 'application/pdf' : 'image/jpeg');
+            const preparedFile = await prepareBankProofUpload(uploadedFile);
+            const contentType = preparedFile.contentType;
 
             const { uploadUrl, r2Key } = await generateProofUploadUrl({ contentType });
 
-            const fileResponse = await fetch(uploadedFile.uri);
+            const fileResponse = await fetch(preparedFile.uri);
             if (!fileResponse.ok) {
                 throw new Error('Unable to read selected proof file.');
             }
@@ -201,6 +202,7 @@ export default function AddBankAccountScreen() {
                 accountHolderName: accountHolderName.trim(),
                 accountNumber: accountNumber.trim(),
                 proofDocumentKey: r2Key,
+                sourceType: BankAccountSourceType.Creator,
             });
             setIsLoading(false);
             setSubmitStep('pending');

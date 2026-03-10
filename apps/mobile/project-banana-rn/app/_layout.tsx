@@ -10,10 +10,10 @@ import {
   useFonts,
 } from '@expo-google-fonts/google-sans';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -26,6 +26,7 @@ import { authClient } from "@/lib/auth-client"
 import Toast from 'react-native-toast-message';
 import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary';
 import * as Notifications from 'expo-notifications';
+import { navigateFromNotification } from '@/lib/notificationRedirect';
 
 
 Notifications.setNotificationHandler({
@@ -48,6 +49,8 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL as strin
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const handledNotificationId = useRef<string | null>(null);
   const [loaded, error] = useFonts({
     GoogleSans_400Regular,
     GoogleSans_400Regular_Italic,
@@ -66,19 +69,29 @@ export default function RootLayout() {
   }, [loaded, error]);
 
   useEffect(() => {
-    const notificationListener = Notifications.addNotificationReceivedListener((notification) => {
-      console.log('Notification received', notification);
-    });
+    const handleNotificationResponse = (response: Notifications.NotificationResponse | null) => {
+      if (!response) {
+        return;
+      }
 
-    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log('Notification response', response);
-    });
+      const identifier = response.notification.request.identifier;
+      if (handledNotificationId.current === identifier) {
+        return;
+      }
+
+      handledNotificationId.current = identifier;
+      navigateFromNotification(router, response);
+      void Notifications.clearLastNotificationResponseAsync();
+    };
+
+    void Notifications.getLastNotificationResponseAsync().then(handleNotificationResponse);
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
 
     return () => {
-      notificationListener.remove();
       responseListener.remove();
     };
-  }, []);
+  }, [router]);
 
   if (!loaded && !error) {
     return null;

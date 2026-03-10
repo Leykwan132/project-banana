@@ -53,5 +53,11 @@ export const WithdrawalSourceType = {
 } as const;
 export type WithdrawalSourceType = (typeof WithdrawalSourceType)[keyof typeof WithdrawalSourceType];
 
+export const BankAccountSourceType = {
+    Creator: "creator",
+    Business: "business",
+} as const;
+export type BankAccountSourceType = (typeof BankAccountSourceType)[keyof typeof BankAccountSourceType];
+
 export const BUSINESS_INFO_KEY = 'business_info';
 export const CAMPAIGNS_LIST_KEY = 'campaigns_data';

@@ -16,6 +16,7 @@ import Animated, {
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Image } from 'expo-image';
 import { BANK_OPTIONS } from '@/constants/banks';
+import { BankAccountSourceType } from '@/constants/sourceType';
 
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
@@ -68,7 +69,7 @@ export default function WithdrawScreen() {
 
     const platformFeeRate = useQuery(api.payouts.getPayoutPlatformFeeRate) ?? 0.1;
     const balanceData = useQuery(api.users.getUserBalance);
-    const bankAccountsData = useQuery(api.bankAccounts.getActiveBankAccounts);
+    const bankAccountsData = useQuery(api.bankAccounts.getActiveBankAccounts, { sourceType: BankAccountSourceType.Creator });
     const isBankAccountsLoading = bankAccountsData === undefined;
 
     const bankAccounts = bankAccountsData?.map(account => {
