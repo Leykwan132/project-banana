@@ -1,14 +1,87 @@
-import { mutation, query } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { PushNotifications } from "@convex-dev/expo-push-notifications";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import { NotificationType } from "./notificationConstants";
 
 const pushNotifications = new PushNotifications(components.pushNotifications);
-const getNotificationUser = async (ctx: any, betterAuthUserId: string) => {
-    return await ctx.db
-        .query("users")
-        .withIndex("by_better_auth_user_id", (q: any) => q.eq("better_auth_user_id", betterAuthUserId))
-        .unique();
+const notificationDataValidator = v.object({
+    type: v.string(),
+    submissionId: v.optional(v.id("submissions")),
+    applicationId: v.optional(v.id("applications")),
+    bankAccountId: v.optional(v.id("bank_accounts")),
+    bankAccountType: v.optional(v.string()),
+    endingDigits: v.optional(v.string()),
+});
+
+export const getNotificationUser = internalQuery({
+    args: {
+        betterAuthUserId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("users")
+            .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", args.betterAuthUserId))
+            .unique();
+    },
+});
+
+const ensureNotificationUser = async (ctx: any, betterAuthUserId: string) => {
+    const existing = await ctx.runQuery(internal.notifications.getNotificationUser, {
+        betterAuthUserId,
+    });
+    if (existing) {
+        return existing;
+    }
+
+    const userId = await ctx.db.insert("users", {
+        better_auth_user_id: betterAuthUserId,
+    });
+
+    return await ctx.db.get(userId);
+};
+
+const getRedirectFields = (data: {
+    type: string;
+    submissionId?: string;
+    applicationId?: string;
+    bankAccountId?: string;
+}) => {
+    switch (data.type) {
+        case NotificationType.SubmissionApproved:
+            return {
+                redirectType: "application",
+                redirectId: data.applicationId,
+            };
+        case NotificationType.SubmissionRejected:
+            return {
+                redirectType: "submission",
+                redirectId: data.submissionId,
+            };
+        case NotificationType.BankAccountApproved:
+        case NotificationType.BankAccountRejected:
+            return {
+                redirectType: "bank-account",
+                redirectId: data.bankAccountId,
+            };
+        default:
+            return {
+                redirectType: "notification",
+                redirectId: undefined,
+            };
+    }
+};
+
+const getProductBaseUrl = () => process.env.CONVEX_SITE_URL || process.env.SITE_URL || null;
+
+const buildProductUrl = (path: string) => {
+    const baseUrl = getProductBaseUrl();
+    if (!baseUrl) {
+        return null;
+    }
+
+    return new URL(path, baseUrl).toString();
 };
 
 // ============================================================
@@ -66,7 +139,9 @@ export const getPushNotificationPreference = query({
             return { enabled: false, hasToken: false, paused: false };
         }
 
-        const notificationUser = await getNotificationUser(ctx, user.subject);
+        const notificationUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: user.subject,
+        });
         if (!notificationUser) {
             return { enabled: false, hasToken: false, paused: false };
         }
@@ -93,12 +168,13 @@ export const getPushNotificationPreference = query({
  */
 export const createNotification = mutation({
     args: {
-        userId: v.id("user"),
+        userId: v.string(),
         title: v.string(),
         description: v.string(),
         redirectType: v.string(), // e.g. "campaign"
         redirectId: v.optional(v.string()),
         businessId: v.optional(v.id("businesses")),
+        data: v.optional(notificationDataValidator),
     },
     handler: async (ctx, args) => {
         const notificationId = await ctx.db.insert("notifications", {
@@ -108,6 +184,7 @@ export const createNotification = mutation({
             description: args.description,
             redirect_type: args.redirectType,
             redirect_id: args.redirectId,
+            data: args.data,
             is_read: false,
         });
 
@@ -181,7 +258,9 @@ export const recordPushNotificationToken = mutation({
             throw new Error("Unauthenticated");
         }
 
-        let notificationUser = await getNotificationUser(ctx, user.subject);
+        let notificationUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: user.subject,
+        });
         if (!notificationUser) {
             const newUserId = await ctx.db.insert("users", { better_auth_user_id: user.subject });
             notificationUser = await ctx.db.get(newUserId);
@@ -205,7 +284,9 @@ export const pausePushNotifications = mutation({
             throw new Error("Unauthenticated");
         }
 
-        const notificationUser = await getNotificationUser(ctx, user.subject);
+        const notificationUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: user.subject,
+        });
         if (!notificationUser) {
             return null;
         }
@@ -226,7 +307,9 @@ export const unpausePushNotifications = mutation({
             throw new Error("Unauthenticated");
         }
 
-        const notificationUser = await getNotificationUser(ctx, user.subject);
+        const notificationUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: user.subject,
+        });
         if (!notificationUser) {
             return null;
         }
@@ -258,5 +341,210 @@ export const getNotificationStatus = query({
     handler: async (ctx, args) => {
         const notification = await pushNotifications.getNotification(ctx, args);
         return notification?.state;
+    },
+});
+
+// ============================================================
+// INTERNAL DELIVERY HELPERS
+// ============================================================
+
+export const deliverCreatorNotification = internalMutation({
+    args: {
+        betterAuthUserId: v.string(),
+        title: v.string(),
+        description: v.string(),
+        data: notificationDataValidator,
+    },
+    handler: async (ctx, args): Promise<{ notificationId: Id<"notifications">; pushSent: boolean }> => {
+        const notificationUser = await ensureNotificationUser(ctx, args.betterAuthUserId);
+        if (!notificationUser) {
+            throw new Error("Failed to create notification user");
+        }
+
+        const { redirectType, redirectId } = getRedirectFields(args.data);
+
+        const notificationId = await ctx.db.insert("notifications", {
+            user_id: args.betterAuthUserId,
+            title: args.title,
+            description: args.description,
+            redirect_type: redirectType,
+            redirect_id: redirectId,
+            data: args.data,
+            is_read: false,
+        });
+
+        console.log('notification user', notificationUser);
+
+        const status = await pushNotifications.getStatusForUser(ctx, {
+            userId: notificationUser._id,
+        });
+        console.log("Notification status:", status);
+        const pushSent = status.hasToken && !status.paused;
+
+        if (pushSent) {
+            await pushNotifications.sendPushNotification(ctx, {
+                userId: notificationUser._id,
+                notification: {
+                    title: args.title,
+                    body: args.description,
+                    data: args.data,
+                },
+            });
+        }
+
+        return {
+            notificationId,
+            pushSent,
+        };
+    },
+});
+
+export const dispatchSubmissionOutcome = internalAction({
+    args: {
+        userId: v.string(),
+        title: v.string(),
+        description: v.string(),
+        data: notificationDataValidator,
+        campaignName: v.string(),
+        businessName: v.string(),
+        redirectPath: v.string(),
+    },
+    handler: async (ctx, args): Promise<{ notificationId: Id<"notifications">; pushSent: boolean }> => {
+        const authUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: args.userId,
+        });
+
+        const delivery = await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
+            betterAuthUserId: args.userId,
+            title: args.title,
+            description: args.description,
+            data: args.data,
+        });
+
+        if (delivery.pushSent || !authUser?.email) {
+            return delivery;
+        }
+
+        const redirectUrl = buildProductUrl(args.redirectPath) ?? getProductBaseUrl();
+        if (!redirectUrl) {
+            console.error("Unable to send submission outcome email: product URL is not configured");
+            return delivery;
+        }
+
+        if (args.data.type === NotificationType.SubmissionApproved) {
+            await ctx.runAction(internal.emails.sendSubmissionApprovedEmail, {
+                email: authUser.email,
+                campaignName: args.campaignName,
+                businessName: args.businessName,
+                redirectUrl,
+            });
+            return delivery;
+        }
+
+        await ctx.runAction(internal.emails.sendSubmissionChangesEmail, {
+            email: authUser.email,
+            campaignName: args.campaignName,
+            businessName: args.businessName,
+            redirectUrl,
+        });
+
+        return delivery;
+    },
+});
+
+export const dispatchCreatorBankAccountOutcome = internalAction({
+    args: {
+        userId: v.string(),
+        title: v.string(),
+        description: v.string(),
+        data: notificationDataValidator,
+        endingDigits: v.string(),
+        redirectPath: v.string(),
+    },
+    handler: async (ctx, args): Promise<{ pushSent: boolean } | null> => {
+        const authUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: args.userId,
+        });
+
+        const delivery = await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
+            betterAuthUserId: args.userId,
+            title: args.title,
+            description: args.description,
+            data: args.data,
+        });
+        const pushSent = delivery.pushSent;
+
+        if (pushSent) {
+            return { pushSent };
+        }
+
+        const redirectUrl = buildProductUrl(args.redirectPath) ?? getProductBaseUrl();
+        if (!redirectUrl) {
+            console.error("Unable to send bank account outcome email: product URL is not configured");
+            return { pushSent };
+        }
+
+
+        if (!authUser?.email) {
+            console.error("Unable to send bank account outcome email: email is not configured");
+            return { pushSent };
+        }
+
+        if (args.data.type === NotificationType.BankAccountApproved) {
+            await ctx.runAction(internal.emails.sendBankAccountApprovedEmail, {
+                email: authUser.email,
+                endingDigits: args.endingDigits,
+                redirectUrl,
+            });
+            return { pushSent };
+        }
+
+        await ctx.runAction(internal.emails.sendBankAccountRejectedEmail, {
+            email: authUser.email,
+            endingDigits: args.endingDigits,
+            redirectUrl,
+        });
+
+        return { pushSent };
+    },
+});
+
+export const dispatchBusinessBankAccountOutcome = internalAction({
+    args: {
+        userId: v.string(),
+        data: notificationDataValidator,
+        endingDigits: v.string(),
+        redirectPath: v.string(),
+    },
+    handler: async (ctx, args): Promise<{ pushSent: boolean } | null> => {
+        const authUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: args.userId,
+        });
+        if (!authUser?.email) {
+            return null;
+        }
+
+        const redirectUrl = buildProductUrl(args.redirectPath) ?? getProductBaseUrl();
+        if (!redirectUrl) {
+            console.error("Unable to send bank account outcome email: product URL is not configured");
+            return { pushSent: false };
+        }
+
+        if (args.data.type === NotificationType.BankAccountApproved) {
+            await ctx.runAction(internal.emails.sendBankAccountApprovedEmail, {
+                email: authUser.email,
+                endingDigits: args.endingDigits,
+                redirectUrl,
+            });
+            return { pushSent: false };
+        }
+
+        await ctx.runAction(internal.emails.sendBankAccountRejectedEmail, {
+            email: authUser.email,
+            endingDigits: args.endingDigits,
+            redirectUrl,
+        });
+
+        return { pushSent: false };
     },
 });

@@ -9,11 +9,12 @@ import {
     ModalBody,
     ModalFooter
 } from "@heroui/react";
-import { Banknote, Building2, CircleAlert, ChevronLeft, Landmark, Loader2, ShieldCheck, Wallet } from 'lucide-react';
+import { Banknote, Building2, ChevronLeft, Landmark, Loader2, ShieldCheck, Wallet } from 'lucide-react';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import { BANK_OPTIONS } from '../lib/banks';
+import { BankAccountSourceType } from '../lib/constants';
 
 const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -21,7 +22,7 @@ const formatCurrency = (value: number) =>
 export default function RequestWithdrawal() {
     const navigate = useNavigate();
     const business = useQuery(api.businesses.getMyBusiness);
-    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts);
+    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Business });
     const gatewayFee = useQuery(api.payouts.getPayoutGatewayFee) ?? 0;
 
     const requestBusinessWithdrawal = useAction(api.payouts.requestBusinessWithdrawal);
@@ -33,16 +34,15 @@ export default function RequestWithdrawal() {
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
     const availableCredits = business?.credit_balance ?? 0;
-    const allBankAccounts = (bankAccounts ?? []) as Array<{
-        _id: Id<'bank_accounts'>;
-        bank_name: string;
-        account_holder_name: string;
-        account_number: string;
-        status: string;
-    }>;
     const verifiedBankAccounts = useMemo(
-        () => allBankAccounts.filter((account) => account.status === 'verified'),
-        [allBankAccounts]
+        () => ((bankAccounts ?? []) as Array<{
+            _id: Id<'bank_accounts'>;
+            bank_name: string;
+            account_holder_name: string;
+            account_number: string;
+            status: string;
+        }>).filter((account) => account.status === 'verified'),
+        [bankAccounts]
     );
 
     useEffect(() => {

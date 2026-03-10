@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { generateUploadUrl, generateDownloadUrl } from "./r2";
 import type { Doc, Id } from "./_generated/dataModel";
 import { posthog } from "./posthog";
+import { NotificationCopy, NotificationType } from "./notificationConstants";
 
 const getAdminEmails = () => {
     try {
@@ -312,6 +313,23 @@ export const approveSubmission = mutation({
                 });
             }
         }
+
+        const campaignName = access.campaign?.name ?? "Campaign";
+        const businessName = access.campaign?.business_name ?? access.business?.name ?? "Business";
+
+        await ctx.scheduler.runAfter(0, internal.notifications.dispatchSubmissionOutcome, {
+            userId: submission.user_id,
+            title: NotificationCopy.submissionApproved.title,
+            description: NotificationCopy.submissionApproved.description(campaignName),
+            data: {
+                type: NotificationType.SubmissionApproved,
+                submissionId: args.submissionId,
+                applicationId: submission.application_id,
+            },
+            campaignName,
+            businessName,
+            redirectPath: `/application/${submission.application_id}`,
+        });
     },
 });
 
@@ -372,6 +390,23 @@ export const requestChanges = mutation({
                 });
             }
         }
+
+        const campaignName = access.campaign?.name ?? "Campaign";
+        const businessName = access.campaign?.business_name ?? access.business?.name ?? "Business";
+
+        await ctx.scheduler.runAfter(0, internal.notifications.dispatchSubmissionOutcome, {
+            userId: submission.user_id,
+            title: NotificationCopy.submissionRejected.title,
+            description: NotificationCopy.submissionRejected.description(businessName, campaignName),
+            data: {
+                type: NotificationType.SubmissionRejected,
+                submissionId: args.submissionId,
+                applicationId: submission.application_id,
+            },
+            campaignName,
+            businessName,
+            redirectPath: `/submission/${args.submissionId}`,
+        });
     },
 });
 

@@ -540,6 +540,7 @@ export const requestWithdrawal = action({
         // Fetch bank account details for Billplz API call
         const bankAccount = await ctx.runQuery(api.bankAccounts.getBankAccount, {
             bankAccountId: args.bankAccountId,
+            sourceType: WithdrawalSourceType.Creator,
         });
         if (!bankAccount) throw new Error("Bank account not found");
         if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");
@@ -599,6 +600,7 @@ export const requestBusinessWithdrawal = action({
 
         const bankAccount = await ctx.runQuery(api.bankAccounts.getBankAccount, {
             bankAccountId: args.bankAccountId,
+            sourceType: WithdrawalSourceType.Business,
         });
         if (!bankAccount) throw new Error("Bank account not found");
         if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");

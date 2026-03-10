@@ -1,8 +1,20 @@
 import { action, mutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { deleteObject, generateDownloadUrl, generateUploadUrl } from "./r2";
 import { posthog } from "./posthog";
+import { WithdrawalSourceType } from "./constants";
+
+const getAdminEmails = () => {
+    try {
+        return JSON.parse(process.env.ADMIN_USER_IDS || "[]") as string[];
+    } catch (error) {
+        console.error("Failed to parse ADMIN_USER_IDS", error);
+        return [];
+    }
+};
+
+const isAdminIdentity = (identity: { email?: string | null } | null) =>
+    !!identity?.email && getAdminEmails().includes(identity.email);
 
 // ============================================================
 // BANK ACCOUNT QUERIES
@@ -12,16 +24,25 @@ import { posthog } from "./posthog";
  * Get all bank accounts for the current authenticated user
  */
 export const getUserBankAccounts = query({
-    handler: async (ctx) => {
+    args: {
+        sourceType: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
 
         if (!user) return [];
 
-        return await ctx.db
+        const accounts = await ctx.db
             .query("bank_accounts")
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
             .collect();
+
+        if (!args.sourceType) {
+            return accounts;
+        }
+
+        return accounts.filter((account) => (account.source_type ?? args.sourceType) === args.sourceType);
     },
 });
 
@@ -29,7 +50,10 @@ export const getUserBankAccounts = query({
  * Get only verified (active) bank accounts for the current authenticated user
  */
 export const getActiveBankAccounts = query({
-    handler: async (ctx) => {
+    args: {
+        sourceType: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
 
         if (!user) return [];
@@ -39,13 +63,17 @@ export const getActiveBankAccounts = query({
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .collect();
 
-        return allAccounts.filter((account) => account.status === "verified");
+        return allAccounts.filter((account) => {
+            const sourceType = account.source_type ?? args.sourceType ?? WithdrawalSourceType.Creator;
+            return account.status === "verified" && (!args.sourceType || sourceType === args.sourceType);
+        });
     },
 });
 
 export const getBankAccount = query({
     args: {
         bankAccountId: v.id("bank_accounts"),
+        sourceType: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
@@ -54,6 +82,10 @@ export const getBankAccount = query({
         const account = await ctx.db.get(args.bankAccountId);
         if (!account) return null;
         if (account.user_id !== user.subject) return null;
+        const sourceType = account.source_type ?? args.sourceType ?? WithdrawalSourceType.Creator;
+        if (args.sourceType && sourceType !== args.sourceType) {
+            return null;
+        }
 
         const legacyProofKey = (account as any).proof_document_url as string | undefined;
         return {
@@ -77,6 +109,7 @@ export const createBankAccount = mutation({
         accountHolderName: v.string(),
         accountNumber: v.string(),
         proofDocumentKey: v.optional(v.string()),
+        sourceType: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
@@ -90,6 +123,7 @@ export const createBankAccount = mutation({
             bank_code: args.bankCode,
             account_holder_name: args.accountHolderName,
             account_number: args.accountNumber,
+            source_type: args.sourceType ?? WithdrawalSourceType.Creator,
             status: "pending_review",
             // Stores R2 object key
             proof_document_r2_key: args.proofDocumentKey,
@@ -169,14 +203,22 @@ export const generateProofAccessUrl = action({
         if (identity === null) {
             throw new Error("Unauthenticated call to action");
         }
+
+        if (args.r2Key.startsWith("http://") || args.r2Key.startsWith("https://")) {
+            return args.r2Key;
+        }
+
         // New keys are namespaced by user. Keep this protection for namespaced keys.
+        // Allow admins to inspect any proof in the admin review flow.
         // Legacy keys may not follow this format, so allow them for backward compatibility.
         if (
             args.r2Key.startsWith("bank-proofs/") &&
-            !args.r2Key.startsWith(`bank-proofs/${identity.subject}/`)
+            !args.r2Key.startsWith(`bank-proofs/${identity.subject}/`) &&
+            !isAdminIdentity(identity)
         ) {
             throw new Error("Unauthorized proof access");
         }
+
         return await generateDownloadUrl(args.r2Key);
     },
 });

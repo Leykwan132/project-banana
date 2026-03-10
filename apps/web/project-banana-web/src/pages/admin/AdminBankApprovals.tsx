@@ -6,6 +6,10 @@ import { Check, X, Eye, Loader2 } from 'lucide-react';
 import { Pagination } from '@heroui/react';
 
 const ITEMS_PER_PAGE = 20;
+type ProofDocument = {
+    url: string;
+    isPdf: boolean;
+};
 
 export default function AdminBankApprovals() {
     const {
@@ -17,11 +21,11 @@ export default function AdminBankApprovals() {
     const totalCount = useQuery(api.admin.getPendingBankAccountsCount) ?? 0;
     const approveMutation = useMutation(api.admin.approveBankAccount);
     const rejectMutation = useMutation(api.admin.rejectBankAccount);
-    const generateProofUrl = useAction(api.admin.generateAdminProofAccessUrl);
+    const generateProofUrl = useAction(api.bankAccounts.generateProofAccessUrl);
 
     const [page, setPage] = useState(1);
     const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
+    const [proofDocuments, setProofDocuments] = useState<Record<string, ProofDocument>>({});
     const [loadingProof, setLoadingProof] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -36,15 +40,23 @@ export default function AdminBankApprovals() {
         }
     };
 
-    const handleViewProof = async (accountId: string, r2Key: string) => {
-        if (proofUrls[accountId]) {
+    const handleViewProof = async (accountId: string, proofKey: string) => {
+        if (proofDocuments[accountId]) {
             setExpandedId(expandedId === accountId ? null : accountId);
             return;
         }
         setLoadingProof(accountId);
         try {
-            const url = await generateProofUrl({ r2Key });
-            setProofUrls((prev) => ({ ...prev, [accountId]: url }));
+            const url = await generateProofUrl({ r2Key: proofKey });
+            console.log("Proof URL:", url);
+            const normalizedKey = proofKey.toLowerCase();
+            setProofDocuments((prev) => ({
+                ...prev,
+                [accountId]: {
+                    url,
+                    isPdf: normalizedKey.endsWith('.pdf') || normalizedKey.includes('.pdf?'),
+                },
+            }));
             setExpandedId(accountId);
         } catch (e) {
             console.error('Failed to load proof:', e);
@@ -147,14 +159,22 @@ export default function AdminBankApprovals() {
                                     </div>
                                 </div>
 
-                                {expandedId === account._id && proofUrls[account._id] && (
+                                {expandedId === account._id && proofDocuments[account._id] && (
                                     <div className="border-t border-gray-100 bg-gray-50 p-5">
                                         <p className="text-xs font-medium text-gray-500 mb-3">Proof Document</p>
-                                        <img
-                                            src={proofUrls[account._id]}
-                                            alt="Bank proof"
-                                            className="max-w-md rounded-lg border border-gray-200 shadow-sm"
-                                        />
+                                        {proofDocuments[account._id].isPdf ? (
+                                            <iframe
+                                                src={proofDocuments[account._id].url}
+                                                title="Bank proof"
+                                                className="h-[640px] w-full max-w-4xl rounded-lg border border-gray-200 bg-white shadow-sm"
+                                            />
+                                        ) : (
+                                            <img
+                                                src={proofDocuments[account._id].url}
+                                                alt="Bank proof"
+                                                className="max-w-md rounded-lg border border-gray-200 shadow-sm"
+                                            />
+                                        )}
                                     </div>
                                 )}
                             </div>

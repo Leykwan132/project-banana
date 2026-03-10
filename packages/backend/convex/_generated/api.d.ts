@@ -23,6 +23,7 @@ import type * as errors from "../errors.js";
 import type * as financials from "../financials.js";
 import type * as http from "../http.js";
 import type * as instagram from "../instagram.js";
+import type * as notificationConstants from "../notificationConstants.js";
 import type * as notifications from "../notifications.js";
 import type * as payouts from "../payouts.js";
 import type * as posthog from "../posthog.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   financials: typeof financials;
   http: typeof http;
   instagram: typeof instagram;
+  notificationConstants: typeof notificationConstants;
   notifications: typeof notifications;
   payouts: typeof payouts;
   posthog: typeof posthog;
@@ -2074,43 +2076,6 @@ export declare const components: {
     adapterTest: {
       runCustomTests: FunctionReference<"action", "internal", any, any>;
       runTests: FunctionReference<"action", "internal", any, any>;
-    };
-  };
-  workOSAuthKit: {
-    lib: {
-      enqueueWebhookEvent: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          apiKey: string;
-          event: string;
-          eventId: string;
-          eventTypes?: Array<string>;
-          logLevel?: "DEBUG";
-          onEventHandle?: string;
-          updatedAt?: string;
-        },
-        any
-      >;
-      getAuthUser: FunctionReference<
-        "query",
-        "internal",
-        { id: string },
-        {
-          createdAt: string;
-          email: string;
-          emailVerified: boolean;
-          externalId?: null | string;
-          firstName?: null | string;
-          id: string;
-          lastName?: null | string;
-          lastSignInAt?: null | string;
-          locale?: null | string;
-          metadata: Record<string, any>;
-          profilePictureUrl?: null | string;
-          updatedAt: string;
-        } | null
-      >;
     };
   };
   stripe: {

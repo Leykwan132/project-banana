@@ -143,6 +143,18 @@ export const updateUser = mutation({
 export const ensureNotificationUser = internalMutation({
     args: {
         betterAuthUserId: v.string(),
+        email: v.optional(v.string()),
+        emailVerified: v.optional(v.boolean()),
+        image: v.optional(v.string()),
+        isAnonymous: v.optional(v.boolean()),
+        name: v.optional(v.string()),
+        phoneNumber: v.optional(v.string()),
+        phoneNumberVerified: v.optional(v.boolean()),
+        twoFactorEnabled: v.optional(v.boolean()),
+        username: v.optional(v.string()),
+        displayUsername: v.optional(v.string()),
+        createdAt: v.optional(v.number()),
+        updatedAt: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
         const existing = await ctx.db
@@ -150,12 +162,29 @@ export const ensureNotificationUser = internalMutation({
             .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", args.betterAuthUserId))
             .unique();
 
+        const mirroredFields = {
+            email: args.email,
+            email_verified: args.emailVerified,
+            image: args.image,
+            is_anonymous: args.isAnonymous,
+            name: args.name,
+            phone_number: args.phoneNumber,
+            phone_number_verified: args.phoneNumberVerified,
+            two_factor_enabled: args.twoFactorEnabled,
+            username: args.username,
+            display_username: args.displayUsername,
+            created_at: args.createdAt,
+            updated_at: args.updatedAt,
+        };
+
         if (existing) {
+            await ctx.db.patch(existing._id, mirroredFields);
             return existing._id;
         }
 
         return await ctx.db.insert("users", {
             better_auth_user_id: args.betterAuthUserId,
+            ...mirroredFields,
         });
     },
 });

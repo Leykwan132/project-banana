@@ -1,8 +1,10 @@
 import { action, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { generateDownloadUrl } from "./r2";
 import { WithdrawalSourceType } from "./constants";
+import { NotificationCopy, NotificationType } from "./notificationConstants";
 
 // ============================================================
 // ADMIN AUTH HELPER
@@ -57,11 +59,22 @@ export const getPendingBankAccounts = query({
     handler: async (ctx, args) => {
         await assertAdmin(ctx);
 
-        return await ctx.db
+        const result = await ctx.db
             .query("bank_accounts")
             .withIndex("by_status", (q) => q.eq("status", "pending_review"))
             .order("desc")
             .paginate(args.paginationOpts);
+
+        return {
+            ...result,
+            page: result.page.map((account) => {
+                const legacyProofKey = (account as any).proof_document_url as string | undefined;
+                return {
+                    ...account,
+                    proof_document_r2_key: account.proof_document_r2_key ?? legacyProofKey,
+                };
+            }),
+        };
     },
 });
 
@@ -147,11 +160,49 @@ export const approveBankAccount = mutation({
 
         const account = await ctx.db.get(args.bankAccountId);
         if (!account) throw new Error("Bank account not found");
+        if (account.status === "verified") return args.bankAccountId;
 
         await ctx.db.patch(args.bankAccountId, {
             status: "verified",
             updated_at: Date.now(),
         });
+
+        const endingDigits = account.account_number.slice(-4);
+        const business = await ctx.db
+            .query("businesses")
+            .withIndex("by_user", (q) => q.eq("user_id", account.user_id))
+            .unique();
+        const accountType = account.source_type ?? (business ? WithdrawalSourceType.Business : WithdrawalSourceType.Creator);
+
+        if (accountType === WithdrawalSourceType.Business) {
+            await ctx.scheduler.runAfter(0, internal.notifications.dispatchBusinessBankAccountOutcome, {
+                userId: account.user_id,
+                data: {
+                    type: NotificationType.BankAccountApproved,
+                    bankAccountId: args.bankAccountId,
+                    bankAccountType: accountType,
+                    endingDigits,
+                },
+                endingDigits,
+                redirectPath: "/bank-accounts",
+            });
+        } else {
+            await ctx.scheduler.runAfter(0, internal.notifications.dispatchCreatorBankAccountOutcome, {
+                userId: account.user_id,
+                title: NotificationCopy.bankAccountApproved.title,
+                description: NotificationCopy.bankAccountApproved.description(endingDigits),
+                data: {
+                    type: NotificationType.BankAccountApproved,
+                    bankAccountId: args.bankAccountId,
+                    bankAccountType: accountType,
+                    endingDigits,
+                },
+                endingDigits,
+                redirectPath: "/bank-account",
+            });
+        }
+
+        return args.bankAccountId;
     },
 });
 
@@ -167,11 +218,49 @@ export const rejectBankAccount = mutation({
 
         const account = await ctx.db.get(args.bankAccountId);
         if (!account) throw new Error("Bank account not found");
+        if (account.status === "rejected") return args.bankAccountId;
 
         await ctx.db.patch(args.bankAccountId, {
             status: "rejected",
             updated_at: Date.now(),
         });
+
+        const endingDigits = account.account_number.slice(-4);
+        const business = await ctx.db
+            .query("businesses")
+            .withIndex("by_user", (q) => q.eq("user_id", account.user_id))
+            .unique();
+        const accountType = account.source_type ?? (business ? WithdrawalSourceType.Business : WithdrawalSourceType.Creator);
+
+        if (accountType === WithdrawalSourceType.Business) {
+            await ctx.scheduler.runAfter(0, internal.notifications.dispatchBusinessBankAccountOutcome, {
+                userId: account.user_id,
+                data: {
+                    type: NotificationType.BankAccountRejected,
+                    bankAccountId: args.bankAccountId,
+                    bankAccountType: accountType,
+                    endingDigits,
+                },
+                endingDigits,
+                redirectPath: "/bank-accounts",
+            });
+        } else {
+            await ctx.scheduler.runAfter(0, internal.notifications.dispatchCreatorBankAccountOutcome, {
+                userId: account.user_id,
+                title: NotificationCopy.bankAccountRejected.title,
+                description: NotificationCopy.bankAccountRejected.description(endingDigits),
+                data: {
+                    type: NotificationType.BankAccountRejected,
+                    bankAccountId: args.bankAccountId,
+                    bankAccountType: accountType,
+                    endingDigits,
+                },
+                endingDigits,
+                redirectPath: "/bank-account/add",
+            });
+        }
+
+        return args.bankAccountId;
     },
 });
 
@@ -184,11 +273,16 @@ export const rejectBankAccount = mutation({
  */
 export const generateAdminProofAccessUrl = action({
     args: {
-        r2Key: v.string(),
+        proofKey: v.string(),
     },
     handler: async (ctx, args) => {
         await assertAdmin(ctx);
-        return await generateDownloadUrl(args.r2Key);
+
+        if (args.proofKey.startsWith("http://") || args.proofKey.startsWith("https://")) {
+            return args.proofKey;
+        }
+
+        return await generateDownloadUrl(args.proofKey);
     },
 });
 

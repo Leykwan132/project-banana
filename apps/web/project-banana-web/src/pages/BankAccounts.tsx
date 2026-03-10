@@ -5,6 +5,7 @@ import { Landmark, Loader2, Plus, ChevronLeft } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { addToast } from '@heroui/toast';
 import { BANK_OPTIONS } from '../lib/banks';
+import { BankAccountSourceType } from '../lib/constants';
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
 
@@ -43,7 +44,7 @@ const TOUR_MOCK_BANK_ACCOUNTS: BankAccountListItem[] = [
 
 export default function BankAccounts() {
     const business = useQuery(api.businesses.getMyBusiness);
-    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts);
+    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Business });
     const [isTourActive, setIsTourActive] = useState(() => isProductTourActive());
 
     useEffect(() => {
@@ -121,6 +122,7 @@ export default function BankAccounts() {
                 accountHolderName: accountHolderName.trim(),
                 accountNumber: accountNumber.trim(),
                 proofDocumentKey: r2Key,
+                sourceType: BankAccountSourceType.Business,
             });
 
             setBankName('');
