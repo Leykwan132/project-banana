@@ -1801,25 +1801,25 @@ export default function CampaignDetails() {
                                 ) : (
                                     <>
                                         <p className="text-gray-500 text-lg leading-relaxed font-medium mb-8 px-2 max-w-[480px]">
-                                            Permanently close the campaign and settle all final accounts.
+                                            This action will permanently end the campaign. All associated data will be deleted forever.
                                         </p>
 
                                         <div className="w-full bg-[#F4F6F8] rounded-2xl p-8 mb-8 space-y-8 text-left max-h-[50vh] overflow-y-auto hidden-scrollbar">
                                             <div className="flex gap-5">
                                                 <RotateCcw className="w-6 h-6 text-gray-400 shrink-0 mt-1" />
                                                 <div className="flex flex-col gap-2">
-                                                    <span className="text-lg font-bold text-gray-700 leading-tight">7-Day Verification</span>
+                                                    <span className="text-lg font-bold text-gray-700 leading-tight">7-Day Processing Window</span>
                                                     <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
-                                                        Performance tracking continues for 7 days to ensure creators receive accurate view-based payouts.
+                                                        Remaining credits will be returned to your account after 7 days.
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="flex gap-5">
                                                 <Wallet className="w-6 h-6 text-gray-400 shrink-0 mt-1" />
                                                 <div className="flex flex-col gap-2">
-                                                    <span className="text-lg font-bold text-gray-700 leading-tight">Budget Settlement</span>
+                                                    <span className="text-lg font-bold text-gray-700 leading-tight">Permanent Data Deletion</span>
                                                     <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
-                                                        Any remaining funds will be safely returned to your wallet once the verification period concludes.
+                                                        All campaign data will be deleted permanently, will not be stored, and cannot be retrieved later.
                                                     </p>
                                                 </div>
                                             </div>
@@ -1842,7 +1842,7 @@ export default function CampaignDetails() {
                                                         title: "Campaign ended successfully!",
                                                         color: "success",
                                                     });
-                                                    onClose();
+                                                    navigate('/campaigns');
                                                 } catch (error: any) {
                                                     console.error("Failed to end campaign:", error);
                                                     addToast({
