@@ -9,6 +9,18 @@ export default defineSchema({
     users: defineTable({
         // Mirrors the Better Auth `user` document _id strictly for notification routing.
         better_auth_user_id: v.string(),
+        email: v.optional(v.string()),
+        email_verified: v.optional(v.boolean()),
+        image: v.optional(v.string()),
+        is_anonymous: v.optional(v.boolean()),
+        name: v.optional(v.string()),
+        phone_number: v.optional(v.string()),
+        phone_number_verified: v.optional(v.boolean()),
+        two_factor_enabled: v.optional(v.boolean()),
+        username: v.optional(v.string()),
+        display_username: v.optional(v.string()),
+        created_at: v.optional(v.number()),
+        updated_at: v.optional(v.number()),
     }).index("by_better_auth_user_id", ["better_auth_user_id"]),
 
     // ============================================================
@@ -239,6 +251,7 @@ export default defineSchema({
         bank_code: v.optional(v.string()), // SWIFT bank code (e.g. "MBBEMYKL")
         account_holder_name: v.string(),
         account_number: v.string(),
+        source_type: v.optional(v.string()), // "creator" | "business"
         status: v.string(), // "pending_review" | "verified" | "rejected"
         proof_document_r2_key: v.optional(v.string()),
         created_at: v.number(),
@@ -258,6 +271,14 @@ export default defineSchema({
         description: v.string(),
         redirect_type: v.string(),
         redirect_id: v.optional(v.string()),
+        data: v.optional(v.object({
+            type: v.string(),
+            submissionId: v.optional(v.id("submissions")),
+            applicationId: v.optional(v.id("applications")),
+            bankAccountId: v.optional(v.id("bank_accounts")),
+            bankAccountType: v.optional(v.string()),
+            endingDigits: v.optional(v.string()),
+        })),
         is_read: v.boolean(),
     })
         .index("by_user", ["user_id"])

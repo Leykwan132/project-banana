@@ -1,25 +1,52 @@
 import { action, query } from "./_generated/server";
 import { components, internal } from "./_generated/api";
-import { AuthKit, type AuthFunctions } from "@convex-dev/workos-authkit";
 import type { DataModel } from "./_generated/dataModel";
-import { WorkOS } from "@workos-inc/node";
-import { v } from "convex/values";
-import { createClient, type GenericCtx } from "@convex-dev/better-auth";
+import { createClient, type GenericCtx, type AuthFunctions } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { expo } from '@better-auth/expo'
 import authConfig from "./auth.config";
 
-const authFunctions = internal.auth as unknown as AuthFunctions;
+// @ts-ignore
+const authFunctions: AuthFunctions = internal.auth;
 const siteUrl = process.env.SITE_URL!;
 
 export const authComponent: any = createClient<DataModel>(components.betterAuth, {
-    authFunctions: internal.auth as any,
+    authFunctions,
     triggers: {
         user: {
             onCreate: async (ctx, user) => {
                 await ctx.runMutation(internal.users.ensureNotificationUser, {
                     betterAuthUserId: user._id,
+                    email: user.email ?? undefined,
+                    emailVerified: user.emailVerified ?? undefined,
+                    image: user.image ?? undefined,
+                    isAnonymous: user.isAnonymous ?? undefined,
+                    name: user.name ?? undefined,
+                    phoneNumber: user.phoneNumber ?? undefined,
+                    phoneNumberVerified: user.phoneNumberVerified ?? undefined,
+                    twoFactorEnabled: user.twoFactorEnabled ?? undefined,
+                    username: user.username ?? undefined,
+                    displayUsername: user.displayUsername ?? undefined,
+                    createdAt: user.createdAt ?? undefined,
+                    updatedAt: user.updatedAt ?? undefined,
+                });
+            },
+            onUpdate: async (ctx, _oldUser, newUser) => {
+                await ctx.runMutation(internal.users.ensureNotificationUser, {
+                    betterAuthUserId: newUser._id,
+                    email: newUser.email ?? undefined,
+                    emailVerified: newUser.emailVerified ?? undefined,
+                    image: newUser.image ?? undefined,
+                    isAnonymous: newUser.isAnonymous ?? undefined,
+                    name: newUser.name ?? undefined,
+                    phoneNumber: newUser.phoneNumber ?? undefined,
+                    phoneNumberVerified: newUser.phoneNumberVerified ?? undefined,
+                    twoFactorEnabled: newUser.twoFactorEnabled ?? undefined,
+                    username: newUser.username ?? undefined,
+                    displayUsername: newUser.displayUsername ?? undefined,
+                    createdAt: newUser.createdAt ?? undefined,
+                    updatedAt: newUser.updatedAt ?? undefined,
                 });
             },
             onDelete: async (ctx, user) => {
@@ -31,104 +58,14 @@ export const authComponent: any = createClient<DataModel>(components.betterAuth,
     },
 });
 
-export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 
-export const authKit = new AuthKit<DataModel>(components.workOSAuthKit, {
-    authFunctions,
-    additionalEventTypes: ["session.created", "user.created"],
-});
-
-export const { authKitEvent } = authKit.events({
-    "user.created": async (_ctx, event) => {
-        // Better Auth component persists users in the `user` table.
-        // Keep this for side effects/logging only.
-        console.log('onCreateUser', event);
-    },
-
-    // Handle any event type
-    "session.created": async (ctx, event) => {
-        console.log("onCreateSession", event);
-    },
-    "user.updated": async (ctx, event) => {
-        console.log("onUpdateUser", event);
-    },
-    "user.deleted": async (ctx, event) => {
-        // Better Auth owns the user record lifecycle.
-        // Keep this hook for side effects if needed.
-        console.log("onDeleteUser", event.data.id);
-    },
-});
-
-export const { authKitAction } = authKit.actions({
-    userRegistration: async (_ctx, _action, response) => {
-        return response.allow();
-    },
-    authentication: async (_ctx, _action, response) => {
-        return response.allow();
-    },
-});
 
 export const getCurrentUser = query({
     args: {},
-    handler: async (ctx, _args) => {
-        try {
-            return await authKit.getAuthUser(ctx);
-        } catch (error) {
-            if (isUnauthenticatedError(error)) {
-                return null;
-            }
-            throw error;
-        }
+    handler: async (ctx) => {
+        return authComponent.getAuthUser(ctx);
     },
 });
-
-export const getAuthorisationUrl = action({
-    args: {
-        provider: v.string(),
-        redirectUri: v.string(),
-    },
-    async handler(_ctx, args) {
-        const workos = new WorkOS(process.env.WORKOS_API_KEY);
-        const url = workos.userManagement.getAuthorizationUrl({
-            clientId: process.env.WORKOS_CLIENT_ID,
-            provider: args.provider,
-            redirectUri: args.redirectUri,
-        });
-
-        return url;
-    },
-});
-
-export const authenticateWithCode = action({
-    args: {
-        code: v.string(),
-    },
-    async handler(_ctx, { code }) {
-        const workos = new WorkOS(process.env.WORKOS_API_KEY);
-        const response = await workos.userManagement.authenticateWithCode({
-            clientId: process.env.WORKOS_CLIENT_ID,
-            code,
-        });
-
-        return response;
-    },
-});
-
-const isUnauthenticatedError = (error: unknown) => {
-    const message = String((error as any)?.message ?? error).toLowerCase();
-    if (message.includes("unauthenticated")) return true;
-
-    const code = String((error as any)?.code ?? "").toLowerCase();
-    if (code.includes("unauthenticated")) return true;
-
-    const data = String((error as any)?.data ?? "").toLowerCase();
-    if (data.includes("unauthenticated")) return true;
-
-    const cause = String((error as any)?.cause ?? "").toLowerCase();
-    if (cause.includes("unauthenticated")) return true;
-
-    return false;
-};
 
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {

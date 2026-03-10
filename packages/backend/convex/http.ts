@@ -1,7 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api, components, internal } from "./_generated/api";
-import { authKit } from "./auth";
 import { registerRoutes } from "@convex-dev/stripe";
 import type Stripe from "stripe";
 import { authComponent, createAuth } from "./auth";
@@ -18,7 +17,6 @@ if (process.env.STRIPE_PRICE_UNLIMITED_MONTHLY) priceIdToPlan[process.env.STRIPE
 if (process.env.STRIPE_PRICE_UNLIMITED_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_UNLIMITED_ANNUAL] = "unlimited";
 
 const http = httpRouter();
-authKit.registerRoutes(http);
 
 // ============================================================
 // RAZORPAY WEBHOOK (For Top-up/Credits only)
