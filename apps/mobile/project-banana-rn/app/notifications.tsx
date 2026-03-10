@@ -18,6 +18,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../packages/backend/convex/_generated/dataModel';
+import { navigateFromNotification } from '@/lib/notificationRedirect';
 
 interface NotificationItem {
     _id: Id<"notifications">;
@@ -25,6 +26,7 @@ interface NotificationItem {
     description: string;
     is_read: boolean;
     _creationTime: number;
+    data?: Record<string, unknown>;
     redirect_type?: string;
     redirect_id?: string;
 }
@@ -41,7 +43,7 @@ const NotificationSkeleton = () => {
             -1,
             true
         );
-    }, []);
+    }, [opacity]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
@@ -66,42 +68,12 @@ export default function NotificationsScreen() {
     const notifications = useQuery(api.notifications.getUserNotifications);
     const markAsRead = useMutation(api.notifications.markAsRead);
 
-    const handlePress = async (notification: any) => {
-        // Navigate based on redirect type
-        if (notification.redirect_type) {
-            switch (notification.redirect_type) {
-                case 'campaign':
-                    if (notification.redirect_id) {
-                        router.push(`/campaign/${notification.redirect_id}` as any);
-                    }
-                    break;
-
-                case 'application':
-                    if (notification.redirect_id) {
-                        router.push(`/application/${notification.redirect_id}` as any);
-                    }
-                    break;
-
-                case 'submission':
-                    if (notification.redirect_id) {
-                        router.push(`/submission/${notification.redirect_id}` as any);
-                    }
-                    break;
-                case 'withdrawal':
-                    router.push('/withdraw' as any);
-                    break;
-                case 'bank-account':
-                    router.push('/bank-account' as any);
-                    break;
-                default:
-                    console.log('Unknown redirect type:', notification.redirect_type);
-            }
-        }
-
-        // Mark as read
+    const handlePress = async (notification: NotificationItem) => {
         if (!notification.is_read) {
             await markAsRead({ notificationId: notification._id });
         }
+
+        navigateFromNotification(router, notification);
     };
 
     const formatDate = (timestamp: number) => {
