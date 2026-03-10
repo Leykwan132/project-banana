@@ -178,29 +178,37 @@ export function CampaignList() {
                     <Pressable
                         style={[
                             styles.filterButton,
-                            selectedCategory && { backgroundColor: '#F0F0F0', borderColor: '#1A1A1A' }
+                            { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                            selectedCategory && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
                         ]}
                         onPress={() => categorySheetRef.current?.show()}
                     >
-                        <ThemedText style={styles.filterButtonText}>
+                        <ThemedText style={[
+                            styles.filterButtonText,
+                            selectedCategory && { color: Colors[colorScheme ?? 'light'].background }
+                        ]}>
                             {selectedCategory ? categoryOptionsWithCounts.find(c => c.value === selectedCategory)?.label : 'Category'}
                         </ThemedText>
                         {(() => {
                             const SelectedIcon = selectedCategory ? categoryOptionsWithCounts.find(c => c.value === selectedCategory)?.icon : Filter;
-                            return SelectedIcon ? <SelectedIcon size={14} color={Colors[colorScheme ?? 'light'].text} /> : null;
+                            return SelectedIcon ? <SelectedIcon size={14} color={selectedCategory ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text} /> : null;
                         })()}
                     </Pressable>
                     <Pressable
                         style={[
                             styles.filterButton,
-                            selectedSort && { backgroundColor: '#F0F0F0', borderColor: '#1A1A1A' }
+                            { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                            selectedSort && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
                         ]}
                         onPress={() => sortSheetRef.current?.show()}
                     >
-                        <ThemedText style={styles.filterButtonText}>
+                        <ThemedText style={[
+                            styles.filterButtonText,
+                            selectedSort && { color: Colors[colorScheme ?? 'light'].background }
+                        ]}>
                             {selectedSort ? SORT_OPTIONS.find(s => s.value === selectedSort)?.label : 'Sort By'}
                         </ThemedText>
-                        <ArrowUpDown size={14} color={Colors[colorScheme ?? 'light'].text} />
+                        <ArrowUpDown size={14} color={selectedSort ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text} />
                     </Pressable>
                 </View>
             </View>

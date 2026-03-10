@@ -76,34 +76,39 @@ export function ProfileActionSheet({
     };
 
     return (
-        <ActionSheet ref={actionSheetRef} gestureEnabled>
+        <ActionSheet
+            ref={actionSheetRef}
+            gestureEnabled
+            containerStyle={{ backgroundColor: Colors[colorScheme ?? 'light'].background }}
+            indicatorStyle={{ backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+        >
             <View style={styles.sheetContent}>
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
-                    <View style={styles.avatarContainer}>
+                    <View style={[styles.avatarContainer, { backgroundColor: colorScheme === 'dark' ? '#333' : '#f0f0f0' }]}>
                         {profileData.avatar ? (
                             <Image
                                 source={{ uri: profileData.avatar }}
                                 style={styles.avatar}
                             />
                         ) : (
-                            <UserIcon size={40} color="#999" />
+                            <UserIcon size={40} color={colorScheme === 'dark' ? '#ccc' : "#999"} />
                         )}
                     </View>
                     <ThemedText type="subtitle" style={styles.name}>{profileData.name}</ThemedText>
-                    <ThemedText style={styles.email}>{profileData.email}</ThemedText>
+                    <ThemedText style={[styles.email, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>{profileData.email}</ThemedText>
                 </View>
 
                 {/* Stats Row */}
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
                         <ThemedText type="subtitle">{profileData.stats.campaigns}</ThemedText>
-                        <ThemedText style={styles.statLabel}>Earning Campaigns</ThemedText>
+                        <ThemedText style={[styles.statLabel, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>Earning Campaigns</ThemedText>
                     </View>
-                    <View style={styles.verticalDivider} />
+                    <View style={[styles.verticalDivider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
                     <View style={styles.statItem}>
                         <ThemedText type="subtitle">{profileData.stats.earnings}</ThemedText>
-                        <ThemedText style={styles.statLabel}>Lifetime Earnings</ThemedText>
+                        <ThemedText style={[styles.statLabel, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>Lifetime Earnings</ThemedText>
                     </View>
                 </View>
 
@@ -118,7 +123,7 @@ export function ProfileActionSheet({
                         </View>
                         <ThemedText style={styles.optionLabel}>Referral Program</ThemedText>
                     </Pressable>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]} />
 
                     <Pressable
                         style={styles.optionRow}
@@ -129,7 +134,7 @@ export function ProfileActionSheet({
                         </View>
                         <ThemedText style={styles.optionLabel}>Bank Account</ThemedText>
                     </Pressable>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]} />
 
                     <Pressable
                         style={styles.optionRow}
@@ -140,7 +145,7 @@ export function ProfileActionSheet({
                         </View>
                         <ThemedText style={styles.optionLabel}>Settings</ThemedText>
                     </Pressable>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]} />
 
                     <Pressable
                         style={styles.optionRow}

@@ -16,7 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ThemePreferenceProvider, useColorScheme } from '@/hooks/use-color-scheme';
 import {
   ConvexReactClient,
 } from "convex/react";
@@ -47,7 +47,7 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL as strin
   unsavedChangesWarning: false,
 });
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const handledNotificationId = useRef<string | null>(null);
@@ -116,12 +116,20 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
               </Stack>
-              <StatusBar style="auto" />
+              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
             </GlobalErrorBoundary>
           </ThemeProvider>
           <Toast />
         </GestureHandlerRootView>
       </ConvexBetterAuthProvider>
     </PostHogProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemePreferenceProvider>
+      <RootLayoutContent />
+    </ThemePreferenceProvider>
   );
 }

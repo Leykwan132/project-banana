@@ -122,15 +122,19 @@ export function ApplicationList() {
                 <Pressable
                     style={[
                         styles.filterButton,
-                        selectedStatus && { backgroundColor: '#F0F0F0', borderColor: '#1A1A1A' }
+                        { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                        selectedStatus && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
                     ]}
                     onPress={() => filterSheetRef.current?.show()}
                 >
-                    <ThemedText style={styles.filterButtonText}>
+                    <ThemedText style={[
+                        styles.filterButtonText,
+                        selectedStatus && { color: Colors[colorScheme ?? 'light'].background }
+                    ]}>
                         {FILTER_OPTIONS.find(o => o.value === selectedStatus)?.label || 'Filter'}
                     </ThemedText>
                     {selectedStatus ? (
-                        <Filter size={14} color={Colors[colorScheme ?? 'light'].text} />
+                        <Filter size={14} color={Colors[colorScheme ?? 'light'].background} />
                     ) : (
                         <ChevronDown size={16} color={Colors[colorScheme ?? 'light'].text} />
                     )}
@@ -216,13 +220,10 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        backgroundColor: '#FFFFFF',
     },
     filterButtonText: {
         fontSize: 14,
         fontFamily: 'GoogleSans_500Medium',
-        color: '#000000',
     },
     listSection: {
         paddingHorizontal: 16,

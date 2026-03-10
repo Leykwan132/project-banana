@@ -228,13 +228,20 @@ export default function AnalyticsScreen() {
                                 My campaigns
                             </ThemedText>
                             <Pressable
-                                style={styles.filterButton}
+                                style={[
+                                    styles.filterButton,
+                                    { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                                    sortBy && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
+                                ]}
                                 onPress={() => sortSheetRef.current?.show()}
                             >
-                                <ThemedText style={styles.filterButtonText}>
-                                    {sortOptions.find(opt => opt.value === sortBy)?.label}
+                                <ThemedText style={[
+                                    styles.filterButtonText,
+                                    sortBy && { color: Colors[colorScheme ?? 'light'].background }
+                                ]}>
+                                    {sortOptions.find((opt) => opt.value === sortBy)?.label}
                                 </ThemedText>
-                                <ArrowDownWideNarrow size={16} color={Colors[colorScheme ?? 'light'].text} />
+                                <ArrowDownWideNarrow size={16} color={sortBy ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text} />
                             </Pressable>
                         </View>
 
@@ -378,8 +385,6 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        backgroundColor: '#FFFFFF',
     },
     filterButtonText: {
         fontSize: 14,

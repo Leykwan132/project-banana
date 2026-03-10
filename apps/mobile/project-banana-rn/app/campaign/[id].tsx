@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp } from 'lucide-react-native';
+import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote } from 'lucide-react-native';
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import Animated, {
@@ -13,6 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { CreatorListItem } from '@/components/CreatorListItem';
@@ -161,11 +162,11 @@ export default function CampaignDetailsScreen() {
 
     if (campaign === null) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background, justifyContent: 'center', alignItems: 'center' }]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <ThemedText>Campaign not found</ThemedText>
                 <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
-                    <ThemedText style={{ color: 'blue' }}>Go Back</ThemedText>
+                    <ThemedText style={{ color: Colors[colorScheme ?? 'light'].tint }}>Go Back</ThemedText>
                 </Pressable>
             </View>
         );
@@ -179,7 +180,7 @@ export default function CampaignDetailsScreen() {
     ).filter(Boolean) as typeof CAMPAIGN_CATEGORIES;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colorScheme === 'dark' ? '#000000' : '#F0F0F0' }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header / Cover Image Area */}
@@ -202,14 +203,14 @@ export default function CampaignDetailsScreen() {
 
                 {/* Header Buttons */}
                 <View style={[styles.header, { top: insets.top + 10 }]}>
-                    <Pressable style={styles.iconButton} onPress={() => router.back()}>
-                        <ArrowLeft size={20} color="#000" />
+                    <Pressable style={[styles.iconButton, { backgroundColor: colorScheme === 'dark' ? 'rgba(0,0,0,0.5)' : '#FFFFFF' }]} onPress={() => router.back()}>
+                        <ArrowLeft size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#000000'} />
                     </Pressable>
                 </View>
             </View>
 
             {/* Content Sheet */}
-            <View style={styles.sheetContainer}>
+            <View style={[styles.sheetContainer, { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }]}>
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
@@ -226,8 +227,11 @@ export default function CampaignDetailsScreen() {
                                             <Image source={{ uri: logoUrl }} style={styles.logo} />
                                         </Animated.View>
                                     ) : (
-                                        <View style={styles.logoPlaceholder}>
-                                            <Building size={28} color="#9CA3AF" />
+                                        <View style={[
+                                            styles.logoPlaceholder,
+                                            colorScheme === 'dark' && { backgroundColor: '#1A1A1A', borderColor: '#333' }
+                                        ]}>
+                                            <Building size={28} color={colorScheme === 'dark' ? '#9CA3AF' : '#9CA3AF'} />
                                         </View>
                                     )}
                                 </View>
@@ -255,23 +259,27 @@ export default function CampaignDetailsScreen() {
                                 return (
                                     <Pressable
                                         key={cat.id}
-                                        style={styles.categoryChip}
+                                        style={[styles.categoryChip, colorScheme === 'dark' && { backgroundColor: '#1A1A1A', borderColor: '#333' }]}
                                         onPress={() => {
                                             setSelectedCategoryDesc(cat);
                                             categorySheetRef.current?.show();
                                         }}
                                     >
-                                        <Icon size={14} color="#374151" />
-                                        <ThemedText style={styles.categoryChipText}>{cat.label}</ThemedText>
+                                        <Icon size={14} color={colorScheme === 'dark' ? '#ECEDEE' : '#374151'} />
+                                        <ThemedText style={[styles.categoryChipText, colorScheme === 'dark' && { color: '#ECEDEE' }]}>{cat.label}</ThemedText>
                                     </Pressable>
                                 );
                             })}
                             <Pressable
-                                style={[styles.categoryChip, styles.maxPayChip]}
+                                style={[
+                                    styles.categoryChip,
+                                    styles.maxPayChip,
+                                    colorScheme === 'dark' && { backgroundColor: '#3D2A00', borderColor: '#734A00' }
+                                ]}
                                 onPress={() => maxPaySheetRef.current?.show()}
                             >
-                                <Sparkles size={14} color="#D97706" />
-                                <ThemedText style={[styles.categoryChipText, styles.maxPayChipText]}>Earn up to {formatCurrency(campaign.maximum_payout)}</ThemedText>
+                                <Sparkles size={14} color={colorScheme === 'dark' ? '#FBBF24' : '#D97706'} />
+                                <ThemedText style={[styles.categoryChipText, styles.maxPayChipText, colorScheme === 'dark' && { color: '#FBBF24' }]}>Earn up to {formatCurrency(campaign.maximum_payout)}</ThemedText>
                             </Pressable>
                         </View>
                     )}
@@ -282,8 +290,8 @@ export default function CampaignDetailsScreen() {
                             <>
                                 <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Available Payouts</ThemedText>
 
-                                <View style={styles.progressContainer}>
-                                    <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+                                <View style={[styles.progressContainer, colorScheme === 'dark' && { backgroundColor: '#1A1A1A' }]}>
+                                    <View style={[styles.progressBar, { width: `${progress * 100}%`, backgroundColor: colorScheme === 'dark' ? '#ECEDEE' : '#000000' }]} />
                                 </View>
 
                                 <View style={styles.payoutStats}>
@@ -307,23 +315,23 @@ export default function CampaignDetailsScreen() {
                     <View style={styles.cardsGrid}>
                         {!isLoading && campaign ? (
                             <>
-                                <Pressable style={styles.infoCard} onPress={() => requirementsSheetRef.current?.show()}>
-                                    <View style={styles.infoIconContainer}>
-                                        <ThemedText style={styles.infoIconText}>N</ThemedText>
+                                <Pressable style={[styles.infoCard, colorScheme === 'dark' && { backgroundColor: '#1A1A1A', borderColor: '#333' }]} onPress={() => requirementsSheetRef.current?.show()}>
+                                    <View style={[styles.infoIconContainer, colorScheme === 'dark' && { backgroundColor: '#262626' }]}>
+                                        <ClipboardList size={20} color="#D32F2F" />
                                     </View>
                                     <View>
-                                        <ThemedText style={styles.infoTitle}>Requirements</ThemedText>
-                                        <ThemedText style={styles.infoSubtitle}>How do i participate?</ThemedText>
+                                        <ThemedText style={[styles.infoTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Requirements</ThemedText>
+                                        <ThemedText style={[styles.infoSubtitle, colorScheme === 'dark' && { color: '#A3A3A3' }]}>How do i participate?</ThemedText>
                                     </View>
                                 </Pressable>
 
-                                <Pressable style={styles.infoCard} onPress={() => payoutsSheetRef.current?.show()}>
-                                    <View style={styles.infoIconContainer}>
-                                        <ThemedText style={styles.infoIconText}>N</ThemedText>
+                                <Pressable style={[styles.infoCard, colorScheme === 'dark' && { backgroundColor: '#1A1A1A', borderColor: '#333' }]} onPress={() => payoutsSheetRef.current?.show()}>
+                                    <View style={[styles.infoIconContainer, colorScheme === 'dark' && { backgroundColor: '#262626' }]}>
+                                        <Banknote size={20} color="#D32F2F" />
                                     </View>
                                     <View>
-                                        <ThemedText style={styles.infoTitle}>Payout Rates</ThemedText>
-                                        <ThemedText style={styles.infoSubtitle}>How much do i get paid?</ThemedText>
+                                        <ThemedText style={[styles.infoTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Payout Rates</ThemedText>
+                                        <ThemedText style={[styles.infoSubtitle, colorScheme === 'dark' && { color: '#A3A3A3' }]}>How much do i get paid?</ThemedText>
                                     </View>
                                 </Pressable>
                             </>
@@ -386,19 +394,23 @@ export default function CampaignDetailsScreen() {
                             )}
                         </View>
                     </View>
-                    <ActionSheet gestureEnabled ref={requirementsSheetRef}>
-                        <View style={styles.sheetContent}>
+                    <ActionSheet
+                        gestureEnabled
+                        ref={requirementsSheetRef}
+                        containerStyle={{ backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }}
+                    >
+                        <View style={[styles.sheetContent, { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }]}>
                             {/* Header */}
                             <View style={styles.sheetHeader}>
-                                <ThemedText style={styles.sheetTitle}>Requirements</ThemedText>
-                                <ThemedText style={styles.sheetSubtitle}>How does my post get approved?</ThemedText>
+                                <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Requirements</ThemedText>
+                                <ThemedText style={[styles.sheetSubtitle, colorScheme === 'dark' && { color: '#A3A3A3' }]}>How does my post get approved?</ThemedText>
                             </View>
 
                             {/* Requirements List */}
-                            <View style={styles.requirementsList}>
+                            <View style={[styles.requirementsList, colorScheme === 'dark' && { backgroundColor: '#1A1A1A' }]}>
                                 {campaign && campaign.requirements.map((req, index) => (
                                     <View key={index} style={styles.requirementItem}>
-                                        <Check size={20} color="#000" strokeWidth={3} />
+                                        <Check size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#000'} strokeWidth={3} />
                                         <ThemedText style={styles.requirementText}>{req}</ThemedText>
                                     </View>
                                 ))}
@@ -406,24 +418,28 @@ export default function CampaignDetailsScreen() {
 
                             {/* Dismiss Button */}
                             <Pressable
-                                style={[styles.joinButton, { marginTop: 32 }]}
+                                style={[styles.joinButton, { marginTop: 32, backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => requirementsSheetRef.current?.hide()}
                             >
-                                <ThemedText style={styles.joinButtonText}>Dismiss</ThemedText>
+                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>Dismiss</ThemedText>
                             </Pressable>
                         </View>
                     </ActionSheet>
 
-                    <ActionSheet gestureEnabled ref={payoutsSheetRef}>
-                        <View style={styles.sheetContent}>
+                    <ActionSheet
+                        gestureEnabled
+                        ref={payoutsSheetRef}
+                        containerStyle={{ backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }}
+                    >
+                        <View style={[styles.sheetContent, { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }]}>
                             {/* Header */}
                             <View style={styles.sheetHeader}>
-                                <ThemedText style={styles.sheetTitle}>Payouts</ThemedText>
-                                <ThemedText style={styles.sheetSubtitle}>How much do i get paid?</ThemedText>
+                                <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Payouts</ThemedText>
+                                <ThemedText style={[styles.sheetSubtitle, colorScheme === 'dark' && { color: '#A3A3A3' }]}>How much do i get paid?</ThemedText>
                             </View>
 
                             {/* Payouts Table */}
-                            <View style={styles.requirementsList}>
+                            <View style={[styles.requirementsList, colorScheme === 'dark' && { backgroundColor: '#1A1A1A' }]}>
                                 <View style={styles.payoutRow}>
                                     <ThemedText style={[styles.payoutCell, { textAlign: 'left' }]}>Base pay per video</ThemedText>
                                     <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(campaign?.base_pay ?? 0)}</ThemedText>
@@ -433,7 +449,7 @@ export default function CampaignDetailsScreen() {
                                     <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
                                 </View>
 
-                                <View style={styles.payoutDivider} />
+                                <View style={[styles.payoutDivider, colorScheme === 'dark' && { backgroundColor: '#333' }]} />
 
                                 {campaign && campaign.payout_thresholds.map((payout, index) => (
                                     <View key={index} style={styles.payoutRow}>
@@ -445,32 +461,36 @@ export default function CampaignDetailsScreen() {
 
                             {/* Dismiss Button */}
                             <Pressable
-                                style={[styles.joinButton, { marginTop: 32 }]}
+                                style={[styles.joinButton, { marginTop: 32, backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => payoutsSheetRef.current?.hide()}
                             >
-                                <ThemedText style={styles.joinButtonText}>Dismiss</ThemedText>
+                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>Dismiss</ThemedText>
                             </Pressable>
                         </View>
                     </ActionSheet>
 
                     {/* Category Description Sheet */}
-                    <ActionSheet gestureEnabled ref={categorySheetRef}>
-                        <View style={styles.sheetContent}>
+                    <ActionSheet
+                        gestureEnabled
+                        ref={categorySheetRef}
+                        containerStyle={{ backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }}
+                    >
+                        <View style={[styles.sheetContent, { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }]}>
                             <View style={styles.sheetHeader}>
-                                <ThemedText style={styles.sheetTitle}>{selectedCategoryDesc?.label}</ThemedText>
-                                <ThemedText style={[styles.sheetSubtitle, { textAlign: 'center' }]}>{selectedCategoryDesc?.desc}</ThemedText>
+                                <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>{selectedCategoryDesc?.label}</ThemedText>
+                                <ThemedText style={[styles.sheetSubtitle, { textAlign: 'center' }, colorScheme === 'dark' && { color: '#A3A3A3' }]}>{selectedCategoryDesc?.desc}</ThemedText>
                             </View>
 
                             {/* Example Videos */}
                             {(selectedCategoryDesc?.examples?.length ?? 0) > 0 && (
-                                <View style={styles.requirementsList}>
+                                <View style={[styles.requirementsList, colorScheme === 'dark' && { backgroundColor: '#1A1A1A' }]}>
                                     {selectedCategoryDesc!.examples.map((ex, i) => (
                                         <Pressable
                                             key={i}
                                             style={styles.requirementItem}
                                             onPress={() => Linking.openURL(ex.url)}
                                         >
-                                            <Video size={20} color="#000" strokeWidth={2} />
+                                            <Video size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#000'} strokeWidth={2} />
                                             <ThemedText style={[styles.requirementText, { flex: 1 }]} numberOfLines={1}>{ex.label}</ThemedText>
                                             <ArrowUpRight size={20} color="#9CA3AF" />
                                         </Pressable>
@@ -479,42 +499,46 @@ export default function CampaignDetailsScreen() {
                             )}
 
                             <Pressable
-                                style={[styles.joinButton, { marginTop: 32 }]}
+                                style={[styles.joinButton, { marginTop: 32, backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => categorySheetRef.current?.hide()}
                             >
-                                <ThemedText style={styles.joinButtonText}>Dismiss</ThemedText>
+                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>Dismiss</ThemedText>
                             </Pressable>
                         </View>
                     </ActionSheet>
 
                     {/* Max Pay Description Sheet */}
-                    <ActionSheet gestureEnabled ref={maxPaySheetRef}>
-                        <View style={styles.sheetContent}>
+                    <ActionSheet
+                        gestureEnabled
+                        ref={maxPaySheetRef}
+                        containerStyle={{ backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }}
+                    >
+                        <View style={[styles.sheetContent, { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }]}>
                             <View style={styles.sheetHeader}>
-                                <ThemedText style={styles.sheetTitle}>Earn up to {campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
-                                <ThemedText style={[styles.sheetSubtitle, { textAlign: 'center' }]}> See how much you can earn.</ThemedText>
+                                <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Earn up to {campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
+                                <ThemedText style={[styles.sheetSubtitle, { textAlign: 'center' }, colorScheme === 'dark' && { color: '#A3A3A3' }]}> See how much you can earn.</ThemedText>
                             </View>
 
-                            <View style={styles.requirementsList}>
+                            <View style={[styles.requirementsList, colorScheme === 'dark' && { backgroundColor: '#1A1A1A' }]}>
                                 <View style={styles.requirementItem}>
                                     <Check size={20} color="#10B981" strokeWidth={3} />
-                                    <ThemedText style={[styles.requirementText, { flex: 1 }]}>
-                                        Guaranteed base pay of <ThemedText style={{ fontFamily: 'GoogleSans_700Bold' }}>{campaign && formatCurrency(campaign.base_pay || 0)}</ThemedText> upon approval and posting.
+                                    <ThemedText style={[styles.requirementText, { flex: 1 }, colorScheme === 'dark' && { color: '#ECEDEE' }]}>
+                                        Guaranteed base pay of <ThemedText style={[{ fontFamily: 'GoogleSans_700Bold' }, colorScheme === 'dark' && { color: '#ECEDEE' }]}>{campaign && formatCurrency(campaign.base_pay || 0)}</ThemedText> upon approval and posting.
                                     </ThemedText>
                                 </View>
                                 <View style={styles.requirementItem}>
                                     <TrendingUp size={20} color="#10B981" strokeWidth={3} />
-                                    <ThemedText style={[styles.requirementText, { flex: 1 }]}>
-                                        Earn based on accumulated views, up to a maximum of <ThemedText style={{ fontFamily: 'GoogleSans_700Bold' }}>{campaign && formatCurrency(campaign.maximum_payout || 0)}</ThemedText>.
+                                    <ThemedText style={[styles.requirementText, { flex: 1 }, colorScheme === 'dark' && { color: '#ECEDEE' }]}>
+                                        Earn based on accumulated views, up to a maximum of <ThemedText style={[{ fontFamily: 'GoogleSans_700Bold' }, colorScheme === 'dark' && { color: '#ECEDEE' }]}>{campaign && formatCurrency(campaign.maximum_payout || 0)}</ThemedText>.
                                     </ThemedText>
                                 </View>
                             </View>
 
                             <Pressable
-                                style={[styles.joinButton, { marginTop: 32 }]}
+                                style={[styles.joinButton, { marginTop: 32, backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => maxPaySheetRef.current?.hide()}
                             >
-                                <ThemedText style={styles.joinButtonText}>Got it</ThemedText>
+                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>Got it</ThemedText>
                             </Pressable>
                         </View>
                     </ActionSheet>
@@ -528,58 +552,58 @@ export default function CampaignDetailsScreen() {
                         }}
                         containerStyle={{
                             paddingHorizontal: 24,
-                            backgroundColor: 'transparent',
+                            backgroundColor: Colors[colorScheme ?? 'light'].screenBackground, // Make action sheet bg dynamic
                             paddingBottom: 30,
                         }}
                     >
-                        <View style={styles.sheetContent}>
+                        <View style={[styles.sheetContent, { backgroundColor: 'transparent' }]}>
                             <View style={styles.sheetHeader}>
-                                <ThemedText style={styles.sheetTitle}>You're in!</ThemedText>
-                                <ThemedText style={styles.sheetSubtitle}>Read the requirements and start filming!</ThemedText>
+                                <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>You're in!</ThemedText>
+                                <ThemedText style={[styles.sheetSubtitle, colorScheme === 'dark' && { color: '#A3A3A3' }]}>Read the requirements and start filming!</ThemedText>
                             </View>
 
                             <View style={{ paddingHorizontal: 0, marginBottom: 24 }}>
                                 <Timeline
-                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
+                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
                                     point={{
                                         icon: Assets.internal.icons.checkSmall,
                                         state: Timeline.states.SUCCESS,
                                     }}
                                 >
-                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16, marginBottom: 0 }}>
-                                        <Text text70BO>Application Created</Text>
+                                    <View style={{ backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F9F9F9', borderRadius: 12, padding: 16, marginBottom: 0 }}>
+                                        <Text text70BO color={colorScheme === 'dark' ? '#ECEDEE' : '#000'}>Application Created</Text>
                                     </View>
                                 </Timeline>
                                 <Timeline
-                                    topLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
-                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
-                                    point={{ type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }}
+                                    topLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                    point={{ type: Timeline.pointTypes.CIRCLE, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
                                 >
-                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16 }}>
-                                        <Text text70BO color="#666">Submit Video</Text>
+                                    <View style={{ backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F9F9F9', borderRadius: 12, padding: 16 }}>
+                                        <Text text70BO color={colorScheme === 'dark' ? '#9CA3AF' : '#666'}>Submit Video</Text>
                                     </View>
                                 </Timeline>
                                 <Timeline
-                                    topLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
-                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
-                                    point={{ type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }}
+                                    topLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                    point={{ type: Timeline.pointTypes.CIRCLE, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
                                 >
-                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16 }}>
-                                        <Text text70BO color="#666">Business Approval</Text>
+                                    <View style={{ backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F9F9F9', borderRadius: 12, padding: 16 }}>
+                                        <Text text70BO color={colorScheme === 'dark' ? '#9CA3AF' : '#666'}>Business Approval</Text>
                                     </View>
                                 </Timeline>
                                 <Timeline
-                                    topLine={{ type: Timeline.lineTypes.DASHED, color: '#E0E0E0' }}
-                                    point={{ type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }}
+                                    topLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                    point={{ type: Timeline.pointTypes.CIRCLE, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
                                 >
-                                    <View style={{ backgroundColor: '#F9F9F9', borderRadius: 12, padding: 16 }}>
-                                        <Text text70BO color="#666">Post and Start Earning!</Text>
+                                    <View style={{ backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F9F9F9', borderRadius: 12, padding: 16 }}>
+                                        <Text text70BO color={colorScheme === 'dark' ? '#9CA3AF' : '#666'}>Post and Start Earning!</Text>
                                     </View>
                                 </Timeline>
                             </View>
 
                             <Pressable
-                                style={styles.joinButton}
+                                style={[styles.joinButton, { backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => {
                                     const targetApplicationId = createdApplicationId ?? nonEarningExistingApplication?._id;
                                     successSheetRef.current?.hide();
@@ -588,14 +612,14 @@ export default function CampaignDetailsScreen() {
                                     }
                                 }}
                             >
-                                <ThemedText style={styles.joinButtonText}>View Application</ThemedText>
+                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>View Application</ThemedText>
                             </Pressable>
 
                             <Pressable
                                 style={[styles.joinButton, { backgroundColor: 'transparent', marginTop: 8 }]}
                                 onPress={() => successSheetRef.current?.hide()}
                             >
-                                <ThemedText style={[styles.joinButtonText, { color: '#000' }]}>Dismiss</ThemedText>
+                                <ThemedText style={[styles.joinButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>Dismiss</ThemedText>
                             </Pressable>
                         </View>
                     </ActionSheet>
@@ -606,16 +630,16 @@ export default function CampaignDetailsScreen() {
             </View>
 
             {/* Sticky Footer */}
-            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: Colors[colorScheme ?? 'light'].screenBackground, borderTopColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]}>
                 <Pressable
-                    style={[styles.joinButton, isJoining && styles.joinButtonDisabled]}
+                    style={[styles.joinButton, isJoining && styles.joinButtonDisabled, { backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                     onPress={handleJoin}
                     disabled={isJoining || isLoading}
                 >
                     {isJoining ? (
                         <LoadingIndicator size="small" color="#FFFFFF" />
                     ) : (
-                        <ThemedText style={styles.joinButtonText}>
+                        <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>
                             {hasExistingNonEarningApplication ? "View Application" : "Join"}
                         </ThemedText>
                     )}
@@ -801,7 +825,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     infoTitle: {
-        color: '#000000',
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
     },
@@ -828,7 +851,6 @@ const styles = StyleSheet.create({
     sheetTitle: {
         fontSize: 24,
         fontFamily: 'GoogleSans_700Bold',
-        color: '#000000',
     },
     sheetSubtitle: {
         fontSize: 16,
@@ -850,7 +872,6 @@ const styles = StyleSheet.create({
     requirementText: {
         fontSize: 16,
         fontFamily: 'GoogleSans_400Regular',
-        color: '#000000',
     },
     payoutRow: {
         flexDirection: 'row',

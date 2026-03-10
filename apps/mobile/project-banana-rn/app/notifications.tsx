@@ -1,6 +1,6 @@
 import { View, StyleSheet, FlatList, Pressable } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { ChevronLeft, Bell } from 'lucide-react-native';
+import { ArrowLeft, Bell } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation } from 'convex/react';
 import LottieView from 'lottie-react-native';
@@ -32,6 +32,9 @@ interface NotificationItem {
 }
 
 const NotificationSkeleton = () => {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const skeletonBg = isDark ? '#333' : '#F3F4F6';
     const opacity = useSharedValue(0.3);
 
     useEffect(() => {
@@ -51,10 +54,10 @@ const NotificationSkeleton = () => {
 
     return (
         <View style={styles.skeletonContainer}>
-            <Animated.View style={[styles.skeletonIcon, animatedStyle]} />
+            <Animated.View style={[styles.skeletonIcon, animatedStyle, { backgroundColor: skeletonBg }]} />
             <View style={styles.skeletonContent}>
-                <Animated.View style={[styles.skeletonTitle, animatedStyle]} />
-                <Animated.View style={[styles.skeletonDesc, animatedStyle]} />
+                <Animated.View style={[styles.skeletonTitle, animatedStyle, { backgroundColor: skeletonBg }]} />
+                <Animated.View style={[styles.skeletonDesc, animatedStyle, { backgroundColor: skeletonBg }]} />
             </View>
         </View>
     );
@@ -89,22 +92,25 @@ export default function NotificationsScreen() {
 
     const renderItem = ({ item }: { item: any }) => (
         <Pressable
-            style={[styles.notificationItem, !item.is_read && styles.unreadItem]}
+            style={[
+                styles.notificationItem,
+                !item.is_read && [styles.unreadItem, { backgroundColor: colorScheme === 'dark' ? '#2A2A00' : '#FEFCE8' }]
+            ]}
             onPress={() => handlePress(item)}
         >
             <View style={styles.iconContainer}>
                 {/* Yellow background only for unread */}
-                {!item.is_read && <View style={styles.iconBackground} />}
-                <Bell size={24} color={item.is_read ? '#9CA3AF' : '#000'} />
+                {!item.is_read && <View style={[styles.iconBackground, { backgroundColor: colorScheme === 'dark' ? '#A18815' : '#FDE047' }]} />}
+                <Bell size={24} color={item.is_read ? (colorScheme === 'dark' ? '#6B7280' : '#9CA3AF') : (colorScheme === 'dark' ? '#FFF' : '#000')} />
             </View>
             <View style={styles.contentContainer}>
                 <View style={styles.headerRow}>
                     <ThemedText type={item.is_read ? 'default' : 'defaultSemiBold'} style={[styles.title, item.is_read && styles.readTitle]}>
                         {item.title}
                     </ThemedText>
-                    <ThemedText style={styles.date}>{formatDate(item._creationTime)}</ThemedText>
+                    <ThemedText style={[styles.date, { color: colorScheme === 'dark' ? '#9CA3AF' : '#6B7280' }]}>{formatDate(item._creationTime)}</ThemedText>
                 </View>
-                <ThemedText style={[styles.description, item.is_read && styles.readDescription]}>{item.description}</ThemedText>
+                <ThemedText style={[styles.description, item.is_read && styles.readDescription, !item.is_read && { color: colorScheme === 'dark' ? '#E5E7EB' : '#6B7280' }]}>{item.description}</ThemedText>
             </View>
         </Pressable>
     );
@@ -113,9 +119,9 @@ export default function NotificationsScreen() {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
                 <Stack.Screen options={{ headerShown: false }} />
-                <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }]}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
-                        <ChevronLeft size={24} color={theme.text} />
+                <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: colorScheme === 'dark' ? '#333' : '#F3F4F6' }]}>
+                    <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor: colorScheme === 'dark' ? '#333' : '#E5E7EB' }]}>
+                        <ArrowLeft size={24} color={theme.text} />
                     </Pressable>
                     <ThemedText type="title" style={styles.headerTitle}>
                         Notifications
@@ -135,8 +141,8 @@ export default function NotificationsScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor: colorScheme === 'dark' ? '#333' : '#E5E7EB' }]}>
+                    <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
                 <ThemedText type="title" style={styles.headerTitle}>
                     Notifications
@@ -149,7 +155,7 @@ export default function NotificationsScreen() {
                 renderItem={renderItem}
                 keyExtractor={(item) => item._id}
                 contentContainerStyle={notifications.length === 0 ? styles.emptyListContent : styles.listContent}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E5E7EB' }]} />}
                 ListEmptyComponent={
                     <View style={styles.emptyStateContainer}>
                         <LottieView
@@ -158,7 +164,7 @@ export default function NotificationsScreen() {
                             loop
                             style={styles.lottie}
                         />
-                        <ThemedText style={styles.emptyStateText}>
+                        <ThemedText style={[styles.emptyStateText, { color: colorScheme === 'dark' ? '#9CA3AF' : '#4B5563' }]}>
                             No notifications yet
                         </ThemedText>
                     </View>

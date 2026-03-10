@@ -47,7 +47,11 @@ export function SelectionSheet({
     };
 
     return (
-        <ActionSheet ref={actionSheetRef} gestureEnabled>
+        <ActionSheet
+            ref={actionSheetRef}
+            gestureEnabled
+            containerStyle={{ backgroundColor: themeColors.background }}
+        >
             <View style={styles.sheetContent}>
                 <ThemedText type="subtitle" style={styles.title}>
                     {title}
@@ -64,16 +68,16 @@ export function SelectionSheet({
                                     style={[
                                         styles.chip,
                                         isSelected
-                                            ? { backgroundColor: '#F5F5F5', borderColor: themeColors.text, borderWidth: 1 }
-                                            : { backgroundColor: themeColors.background, borderColor: '#E0E0E0', borderWidth: 1 },
+                                            ? { backgroundColor: themeColors.text, borderColor: themeColors.text, borderWidth: 1 }
+                                            : { backgroundColor: themeColors.background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0', borderWidth: 1 },
                                     ]}
                                     onPress={() => handleSelect(option.value)}
                                 >
-                                    {Icon && <Icon size={16} color={isSelected ? themeColors.text : '#6B7280'} />}
+                                    {Icon && <Icon size={16} color={isSelected ? themeColors.background : (colorScheme === 'dark' ? '#9CA3AF' : '#6B7280')} />}
                                     <ThemedText
                                         style={[
                                             styles.chipText,
-                                            { color: themeColors.text },
+                                            { color: isSelected ? themeColors.background : themeColors.text },
                                             isSelected && { fontFamily: 'GoogleSans_700Bold' },
                                         ]}
                                     >
@@ -91,11 +95,11 @@ export function SelectionSheet({
                             return (
                                 <Pressable
                                     key={option.value}
-                                    style={styles.listItem}
+                                    style={[styles.listItem, { borderBottomColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]}
                                     onPress={() => handleSelect(option.value)}
                                 >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                        {Icon && <Icon size={20} color={isSelected ? themeColors.text : '#6B7280'} />}
+                                        {Icon && <Icon size={20} color={isSelected ? themeColors.text : (colorScheme === 'dark' ? '#9CA3AF' : '#6B7280')} />}
                                         <ThemedText style={[styles.listItemText, isSelected && styles.selectedListItemText]}>
                                             {option.label}
                                         </ThemedText>
@@ -108,8 +112,11 @@ export function SelectionSheet({
                 )}
 
                 {onReset && (
-                    <Pressable style={styles.resetButton} onPress={handleReset}>
-                        <ThemedText style={styles.resetButtonText}>Reset</ThemedText>
+                    <Pressable
+                        style={[styles.resetButton, { backgroundColor: themeColors.text }]}
+                        onPress={handleReset}
+                    >
+                        <ThemedText style={[styles.resetButtonText, { color: themeColors.background }]}>Reset</ThemedText>
                     </Pressable>
                 )}
             </View>

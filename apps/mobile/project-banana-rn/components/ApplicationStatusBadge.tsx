@@ -10,6 +10,7 @@ import {
     BadgeCheck
 } from 'lucide-react-native';
 
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
 
 export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Posted' | 'Active' | 'Rejected' | 'Pending' | 'Paid' | 'Processing' | 'Completed' | 'Failed';
@@ -120,14 +121,17 @@ interface ApplicationStatusBadgeProps {
 }
 
 export function ApplicationStatusBadge({ status, style }: ApplicationStatusBadgeProps) {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+
     if (!status) return null;
 
     const { icon: StatusIcon, iconColor } = getStatusConfig(status);
 
     return (
-        <View style={[styles.statusBadge, style]}>
+        <View style={[styles.statusBadge, { backgroundColor: isDark ? '#1A1A1A' : '#F3F4F6' }, style]}>
             <StatusIcon size={14} fill={iconColor} fillOpacity={0.5} />
-            <ThemedText style={styles.statusText}>
+            <ThemedText style={[styles.statusText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
                 {status}
             </ThemedText>
         </View>
@@ -142,11 +146,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 2,
         borderRadius: 20,
-        backgroundColor: '#F3F4F6',
     },
     statusText: {
         fontSize: 12,
         fontFamily: 'GoogleSans_500Medium',
-        color: '#000000',
     },
 });

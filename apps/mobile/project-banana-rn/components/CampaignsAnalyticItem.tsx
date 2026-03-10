@@ -54,7 +54,7 @@ export function CampaignsAnalyticItem({
     }, [logoR2Key, logoUrl, generateAccessUrl]);
 
     return (
-        <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+        <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }]}>
             {/* Top Section */}
             <View style={styles.topSection}>
                 <View style={styles.logoContainer}>

@@ -69,7 +69,7 @@ export function CampaignListItem({
             onPress={onPress}
             style={[
                 styles.container,
-                { backgroundColor: Colors[colorScheme ?? 'light'].background },
+                { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground },
             ]}
         >
             {/* Top Part */}
@@ -102,9 +102,19 @@ export function CampaignListItem({
                     </View>
                 </View>
 
-                <View style={styles.maxPayContainer}>
-                    <ExpoImage source={require('@/assets/images/icon-light.svg')} style={{ width: 14, height: 14 }} contentFit="contain" />
-                    <ThemedText type="defaultSemiBold" style={styles.maxPayValue}>RM {maxPayout}</ThemedText>
+                <View style={[
+                    styles.maxPayContainer,
+                    { backgroundColor: Colors[colorScheme ?? 'light'].labelBackground }
+                ]}>
+                    <ExpoImage
+                        source={colorScheme === 'dark' ? require('@/assets/images/icon.svg') : require('@/assets/images/icon-light.svg')}
+                        style={{ width: 14, height: 14 }}
+                        contentFit="contain"
+                    />
+                    <ThemedText style={[
+                        styles.maxPayValue,
+                        { color: colorScheme === 'dark' ? '#ECEDEE' : 'white' }
+                    ]}>RM {maxPayout}</ThemedText>
                 </View>
             </View>
 
@@ -141,7 +151,7 @@ const styles = StyleSheet.create({
     },
     topSection: {
         flexDirection: 'row',
-        alignItems: 'flex-end',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
         marginBottom: 16,
     },
@@ -154,7 +164,7 @@ const styles = StyleSheet.create({
     logoContainer: {
         marginRight: 10,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: 'rgba(156, 163, 175, 0.2)', // Subtle border
         borderRadius: 100,
     },
     logo: {
@@ -213,7 +223,7 @@ const styles = StyleSheet.create({
     },
     maxPayContainer: {
         alignItems: 'center',
-        backgroundColor: "black",
+        backgroundColor: "black", // Default, overridden in component
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 30,
@@ -223,7 +233,8 @@ const styles = StyleSheet.create({
     },
     maxPayValue: {
         fontSize: 14,
-        color: 'white',
+        color: 'white', // Default, overridden in component
+        fontFamily: 'GoogleSans_500Medium',
     },
     bottomSection: {
         flexDirection: 'row',
@@ -231,7 +242,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#F3F4F6', // Light divider
+        borderTopColor: 'rgba(156, 163, 175, 0.2)', // Subtle light divider
     },
     statItem: {
         flexDirection: 'row',

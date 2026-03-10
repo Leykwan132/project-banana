@@ -4,6 +4,7 @@ import { Shield, CreditCard, FileVideo, Banknote } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
+import iconDark from '../assets/icon-dark.svg';
 
 const LOCKOUT_KEY = 'admin_lockout_until';
 const ATTEMPTS_KEY = 'admin_failed_attempts';
@@ -174,9 +175,9 @@ export function AdminLayout() {
             {/* Sidebar */}
             <aside className="w-60 border-r border-gray-200 bg-white flex flex-col">
                 <div className="p-6 border-b border-gray-100">
-                    <div className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-gray-900" />
-                        <span className="font-bold text-gray-900 tracking-tight">Lumina Admin</span>
+                    <div className="flex items-center gap-2 font-semibold">
+                        <img src={iconDark} alt="Banana" className="w-6 h-6 object-contain" />
+                        <span className="font-bold text-gray-900 tracking-tight">Admin</span>
                     </div>
                 </div>
                 <nav className="flex-1 p-3 space-y-1">

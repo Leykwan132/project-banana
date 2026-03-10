@@ -29,7 +29,7 @@ export function Header({ title }: HeaderProps) {
     const unreadCount = useQuery(api.notifications.getUnreadNotificationCount) ?? 0;
 
     return (
-        <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].navBackground }]}>
+        <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
             <View style={styles.leftSection}>
                 {title ? (
                     <ThemedText type="title" style={styles.headerTitle}>{title}</ThemedText>
@@ -46,10 +46,16 @@ export function Header({ title }: HeaderProps) {
             </View>
             <View style={styles.rightSection}>
                 <Pressable onPress={() => router.push('/notifications')}>
-                    <View style={styles.iconButton}>
-                        <Bell size={20} color="#000" />
+                    <View style={[
+                        styles.iconButton,
+                        { backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F0F0F0' }
+                    ]}>
+                        <Bell size={20} color={colorScheme === 'dark' ? '#ECEDEE' : '#000'} />
                         {unreadCount > 0 && (
-                            <View style={styles.badgeContainer}>
+                            <View style={[
+                                styles.badgeContainer,
+                                { borderColor: colorScheme === 'dark' ? '#1A1A1A' : '#F0F0F0' }
+                            ]}>
                                 <ThemedText style={styles.badgeText}>
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </ThemedText>
@@ -64,8 +70,15 @@ export function Header({ title }: HeaderProps) {
                             style={styles.avatar}
                         />
                     ) : (
-                        <View style={[styles.avatar, styles.fallbackAvatar]}>
-                            <UserIcon size={24} color="#999" />
+                        <View style={[
+                            styles.avatar,
+                            styles.fallbackAvatar,
+                            {
+                                backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F0F0F0',
+                                borderColor: colorScheme === 'dark' ? '#333' : '#E5E5E5'
+                            }
+                        ]}>
+                            <UserIcon size={24} color={colorScheme === 'dark' ? '#999' : '#999'} />
                         </View>
                     )}
                 </Pressable>
@@ -116,7 +129,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: '#F0F0F0', // Overridden in JSX
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -127,11 +140,11 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     fallbackAvatar: {
-        backgroundColor: '#F0F0F0',
+        backgroundColor: '#F0F0F0', // Overridden in JSX
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#E5E5E5',
+        borderColor: '#E5E5E5', // Overridden in JSX
     },
     avatarImage: {
         width: '100%',
@@ -149,7 +162,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 4,
         borderWidth: 1.5,
-        borderColor: '#F0F0F0',
+        borderColor: '#F0F0F0', // Overridden in JSX
     },
     badgeText: {
         color: '#FFFFFF',

@@ -62,7 +62,7 @@ export function ApplicationListItem({
             onPress={onPress}
             style={[
                 styles.container,
-                { backgroundColor: Colors[colorScheme ?? 'light'].background },
+                { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground },
                 style
             ]}
         >
@@ -72,14 +72,14 @@ export function ApplicationListItem({
                     {finalLogoUrl ? (
                         <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
                     ) : (
-                        <View style={[styles.logoPlaceholder, { backgroundColor: '#F3F4F6' }]}>
-                            <Building size={24} color="#9CA3AF" />
+                        <View style={[styles.logoPlaceholder, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F3F4F6' }]}>
+                            <Building size={24} color={colorScheme === 'dark' ? '#6B7280' : '#9CA3AF'} />
                         </View>
                     )}
                 </View>
                 <View style={styles.titleContainer}>
                     <View style={styles.textColumn}>
-                        <ThemedText style={styles.companyName}>
+                        <ThemedText style={[styles.companyName, { color: colorScheme === 'dark' ? '#9CA3AF' : '#6B7280' }]}>
                             {businessName}
                         </ThemedText>
                         <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
@@ -90,13 +90,13 @@ export function ApplicationListItem({
             </View>
 
             {/* Bottom Part */}
-            <View style={styles.bottomSection}>
+            <View style={[styles.bottomSection, { borderTopColor: colorScheme === 'dark' ? '#333' : '#F3F4F6' }]}>
                 <ApplicationStatusBadge status={status} />
 
                 {createdOn && (
                     <View style={styles.statItem}>
                         <Calendar size={16} color={Colors[colorScheme ?? 'light'].icon} style={styles.icon} />
-                        <ThemedText style={styles.statText}>
+                        <ThemedText style={[styles.statText, { color: colorScheme === 'dark' ? '#9CA3AF' : '#4B5563' }]}>
                             Created on {createdOn}
                         </ThemedText>
                     </View>
@@ -122,14 +122,14 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     logo: {
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         resizeMode: 'contain',
         borderRadius: 100,
     },
     logoPlaceholder: {
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         borderRadius: 100,
         alignItems: 'center',
         justifyContent: 'center',
@@ -151,7 +151,6 @@ const styles = StyleSheet.create({
     },
     companyName: {
         fontSize: 14,
-        color: '#6B7280',
         fontFamily: 'GoogleSans_400Regular',
     },
     bottomSection: {
@@ -160,7 +159,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
     },
     statItem: {
         flexDirection: 'row',
@@ -172,7 +170,6 @@ const styles = StyleSheet.create({
     },
     statText: {
         fontSize: 13,
-        color: '#4B5563',
         fontFamily: 'GoogleSans_500Medium',
     },
 });

@@ -19,6 +19,8 @@ import {
 import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -95,10 +97,13 @@ interface StepCardProps {
 }
 
 function StepCard({ step }: StepCardProps) {
+    const colorScheme = useColorScheme();
+    const themeColors = Colors[colorScheme ?? 'light'];
+
     return (
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: themeColors.background }]}>
             {/* Image placeholder area */}
-            <View style={styles.imagePlaceholder}>
+            <View style={[styles.imagePlaceholder, { backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F8F8F8' }]}>
                 <Image
                     source={step.image}
                     style={{ width: '100%', height: '100%' }}
@@ -109,8 +114,8 @@ function StepCard({ step }: StepCardProps) {
             {/* Content */}
             <View style={styles.cardContent}>
                 <ThemedText style={styles.stepNumber}>Step {step.id}</ThemedText>
-                <ThemedText style={styles.cardTitle}>{step.title}</ThemedText>
-                <ThemedText style={styles.cardDescription}>{step.description}</ThemedText>
+                <ThemedText style={[styles.cardTitle, { color: themeColors.text }]}>{step.title}</ThemedText>
+                <ThemedText style={[styles.cardDescription, { color: colorScheme === 'dark' ? '#9CA3AF' : '#666666' }]}>{step.description}</ThemedText>
             </View>
         </View>
     );
@@ -118,6 +123,7 @@ function StepCard({ step }: StepCardProps) {
 
 export function HowItWorksModal({ visible, onDismiss }: HowItWorksModalProps) {
     const [currentPage, setCurrentPage] = useState(0);
+    const colorScheme = useColorScheme();
 
     return (
         <Modal
@@ -152,8 +158,11 @@ export function HowItWorksModal({ visible, onDismiss }: HowItWorksModalProps) {
                 </View>
 
                 {/* Dismiss button */}
-                <Pressable style={styles.dismissButton} onPress={onDismiss}>
-                    <ThemedText style={styles.dismissButtonText}>Got it!</ThemedText>
+                <Pressable
+                    style={[styles.dismissButton, { backgroundColor: Colors[colorScheme ?? 'light'].text }]}
+                    onPress={onDismiss}
+                >
+                    <ThemedText style={[styles.dismissButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>Got it!</ThemedText>
                 </Pressable>
             </View>
         </Modal>

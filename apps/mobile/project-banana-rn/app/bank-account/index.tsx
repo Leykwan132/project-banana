@@ -1,6 +1,6 @@
 import { View, StyleSheet, FlatList, Pressable } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { ChevronLeft, ChevronRight, Plus, Landmark } from 'lucide-react-native';
+import { ArrowLeft, Plus } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo } from 'react';
 import Animated, {
@@ -128,7 +128,7 @@ export default function BankAccountScreen() {
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                    <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
                 <ThemedText type="title" style={styles.headerTitle}>
                     Bank Accounts

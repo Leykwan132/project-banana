@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, Linking, Switch, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { ChevronLeft, ChevronRight, Shield, FileText, Bell } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Shield, FileText, Bell, Moon } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorScheme, useThemePreference } from '@/hooks/use-color-scheme';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
@@ -22,6 +22,7 @@ export default function SettingsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const { toggleColorScheme } = useThemePreference();
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
 
@@ -91,6 +92,10 @@ export default function SettingsScreen() {
         unpausePushNotifications,
     ]);
 
+    const handleToggleTheme = useCallback(async () => {
+        await toggleColorScheme();
+    }, [toggleColorScheme]);
+
     const settingsOptions: SettingsOption[] = [
         {
             id: 'privacy',
@@ -112,8 +117,11 @@ export default function SettingsScreen() {
 
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                <Pressable
+                    onPress={() => router.back()}
+                    style={[styles.backButton, { borderColor: theme.icon }]}
+                >
+                    <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
                 <ThemedText type="title" style={styles.headerTitle}>
                     Settings
@@ -123,6 +131,22 @@ export default function SettingsScreen() {
 
             {/* Settings Options */}
             <View style={styles.content}>
+                <View>
+                    <View style={styles.optionRow}>
+                        <View style={styles.iconContainer}>
+                            <Moon size={24} color={theme.text} />
+                        </View>
+                        <ThemedText style={styles.optionLabel}>Dark mode</ThemedText>
+                        <Switch
+                            value={colorScheme === 'dark'}
+                            onValueChange={handleToggleTheme}
+                            trackColor={{ false: '#D1D5DB', true: '#FC4C02' }}
+                            thumbColor={colorScheme === 'dark' ? '#FC4C02' : '#FFFFFF'}
+                            ios_backgroundColor="#D1D5DB"
+                        />
+                    </View>
+                    <View style={[styles.divider, { backgroundColor: theme.icon, opacity: 0.2 }]} />
+                </View>
                 <View>
                     <View style={styles.optionRow}>
                         <View style={styles.iconContainer}>
@@ -138,7 +162,7 @@ export default function SettingsScreen() {
                             ios_backgroundColor="#D1D5DB"
                         />
                     </View>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: theme.icon, opacity: 0.2 }]} />
                 </View>
                 {settingsOptions.map((option, index) => (
                     <View key={option.id}>
@@ -150,10 +174,10 @@ export default function SettingsScreen() {
                                 {option.icon}
                             </View>
                             <ThemedText style={styles.optionLabel}>{option.title}</ThemedText>
-                            <ChevronRight size={20} color="#999" />
+                            <ChevronRight size={20} color={theme.icon} />
                         </Pressable>
                         {index < settingsOptions.length - 1 && (
-                            <View style={styles.divider} />
+                            <View style={[styles.divider, { backgroundColor: theme.icon, opacity: 0.2 }]} />
                         )}
                     </View>
                 ))}
@@ -178,7 +202,6 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
         alignItems: 'center',
         justifyContent: 'center',
     },
