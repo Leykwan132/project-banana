@@ -38,7 +38,7 @@ export function ProfileActionSheet({
     const profileData = {
         name: user?.name ?? "User",
         avatar: user?.image,
-        memberSince: user?.createdAt ? new Date(user.createdAt).getFullYear().toString() : new Date().getFullYear().toString(),
+        email: user?.email ?? "",
         stats: {
             campaigns: campaignsCount,
             earnings: `RM ${totalEarnings.toLocaleString()}`,
@@ -91,7 +91,7 @@ export function ProfileActionSheet({
                         )}
                     </View>
                     <ThemedText type="subtitle" style={styles.name}>{profileData.name}</ThemedText>
-                    <ThemedText style={styles.memberSince}>Member since {profileData.memberSince}</ThemedText>
+                    <ThemedText style={styles.email}>{profileData.email}</ThemedText>
                 </View>
 
                 {/* Stats Row */}
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         marginBottom: 4,
     },
-    memberSince: {
+    email: {
         fontSize: 14,
         color: '#666',
         fontFamily: 'GoogleSans_400Regular',

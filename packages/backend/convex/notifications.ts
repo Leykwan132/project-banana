@@ -1,5 +1,15 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { PushNotifications } from "@convex-dev/expo-push-notifications";
+import { components } from "./_generated/api";
+
+const pushNotifications = new PushNotifications(components.pushNotifications);
+const getNotificationUser = async (ctx: any, betterAuthUserId: string) => {
+    return await ctx.db
+        .query("users")
+        .withIndex("by_better_auth_user_id", (q: any) => q.eq("better_auth_user_id", betterAuthUserId))
+        .unique();
+};
 
 // ============================================================
 // NOTIFICATION QUERIES
@@ -45,6 +55,31 @@ export const getUnreadNotificationCount = query({
             .collect();
 
         return notifications.length;
+    },
+});
+
+export const getPushNotificationPreference = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) {
+            return { enabled: false, hasToken: false, paused: false };
+        }
+
+        const notificationUser = await getNotificationUser(ctx, user.subject);
+        if (!notificationUser) {
+            return { enabled: false, hasToken: false, paused: false };
+        }
+
+        const status = await pushNotifications.getStatusForUser(ctx, {
+            userId: notificationUser._id,
+        });
+
+        return {
+            enabled: status.hasToken && !status.paused,
+            hasToken: status.hasToken,
+            paused: status.paused,
+        };
     },
 });
 
@@ -135,5 +170,93 @@ export const markAllAsRead = mutation({
         }
 
         return unreadNotifications.length;
+    },
+});
+
+export const recordPushNotificationToken = mutation({
+    args: { token: v.string() },
+    handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) {
+            throw new Error("Unauthenticated");
+        }
+
+        let notificationUser = await getNotificationUser(ctx, user.subject);
+        if (!notificationUser) {
+            const newUserId = await ctx.db.insert("users", { better_auth_user_id: user.subject });
+            notificationUser = await ctx.db.get(newUserId);
+            if (!notificationUser) {
+                throw new Error("Failed to create notification user");
+            }
+        }
+
+        await pushNotifications.recordToken(ctx, {
+            userId: notificationUser._id,
+            pushToken: args.token,
+        });
+    },
+});
+
+export const pausePushNotifications = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) {
+            throw new Error("Unauthenticated");
+        }
+
+        const notificationUser = await getNotificationUser(ctx, user.subject);
+        if (!notificationUser) {
+            return null;
+        }
+
+        await pushNotifications.pauseNotificationsForUser(ctx, {
+            userId: notificationUser._id,
+        });
+
+        return null;
+    },
+});
+
+export const unpausePushNotifications = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) {
+            throw new Error("Unauthenticated");
+        }
+
+        const notificationUser = await getNotificationUser(ctx, user.subject);
+        if (!notificationUser) {
+            return null;
+        }
+
+        await pushNotifications.unpauseNotificationsForUser(ctx, {
+            userId: notificationUser._id,
+        });
+
+        return null;
+    },
+});
+
+
+export const sendPushNotification = mutation({
+    args: { title: v.string(), to: v.id("users") },
+    handler: async (ctx, args) => {
+        // Sending a notification
+        return pushNotifications.sendPushNotification(ctx, {
+            userId: args.to,
+            notification: {
+                title: args.title,
+            },
+        });
+    },
+});
+
+export const getNotificationStatus = query({
+    args: { id: v.string() },
+    handler: async (ctx, args) => {
+        const notification = await pushNotifications.getNotification(ctx, args);
+        return notification?.state;
     },
 });

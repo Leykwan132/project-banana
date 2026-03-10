@@ -10,8 +10,28 @@ import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { expo } from '@better-auth/expo'
 import authConfig from "./auth.config";
 
-const authFunctions: AuthFunctions = internal.auth;
+const authFunctions = internal.auth as unknown as AuthFunctions;
 const siteUrl = process.env.SITE_URL!;
+
+export const authComponent: any = createClient<DataModel>(components.betterAuth, {
+    authFunctions: internal.auth as any,
+    triggers: {
+        user: {
+            onCreate: async (ctx, user) => {
+                await ctx.runMutation(internal.users.ensureNotificationUser, {
+                    betterAuthUserId: user._id,
+                });
+            },
+            onDelete: async (ctx, user) => {
+                await ctx.runMutation(internal.users.deleteNotificationUser, {
+                    betterAuthUserId: user._id,
+                });
+            },
+        },
+    },
+});
+
+export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 
 export const authKit = new AuthKit<DataModel>(components.workOSAuthKit, {
     authFunctions,
@@ -94,7 +114,6 @@ export const authenticateWithCode = action({
     },
 });
 
-export const authComponent = createClient<DataModel>(components.betterAuth);
 const isUnauthenticatedError = (error: unknown) => {
     const message = String((error as any)?.message ?? error).toLowerCase();
     if (message.includes("unauthenticated")) return true;

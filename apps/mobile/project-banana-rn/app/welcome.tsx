@@ -15,6 +15,10 @@ import { ActionSheetRef } from 'react-native-actions-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { LoginActionSheet } from '@/components/LoginActionSheet';
 import { authClient } from "@/lib/auth-client";
+import { useConvex } from 'convex/react';
+import { api } from '../../../../packages/backend/convex/_generated/api';
+import { ErrorType } from '../../../../packages/backend/convex/errors';
+import { ConvexError } from "convex/values";
 
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -98,17 +102,33 @@ export default function WelcomeScreen() {
 
     const loginActionSheetRef = useRef<ActionSheetRef>(null);
 
+    const convex = useConvex();
+
     useEffect(() => {
         const checkSession = async () => {
             const session = await authClient.getSession();
             if (session.data) {
-                router.replace('/(tabs)');
+                try {
+                    await convex.query(api.creators.getCreator, {});
+                    router.replace('/(tabs)');
+                } catch (error) {
+                    if (
+                        error instanceof ConvexError &&
+                        (error.data as { code: number }).code === ErrorType.CREATOR_NOT_FOUND.code
+                    ) {
+                        router.replace('/onboarding');
+                    } else {
+                        // For any other unexpected errors, we just stay on the welcome screen
+                        console.error('Session check error:', error);
+                    }
+                }
             }
         };
         checkSession();
-    }, []);
+    }, [convex]);
 
     const handleLogin = useCallback(() => {
+        console.log('login page');
         loginActionSheetRef.current?.show();
     }, []);
 

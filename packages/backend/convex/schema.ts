@@ -3,6 +3,15 @@ import { v } from "convex/values";
 
 export default defineSchema({
     // ============================================================
+    // NOTIFICATION USERS
+    // ============================================================
+
+    users: defineTable({
+        // Mirrors the Better Auth `user` document _id strictly for notification routing.
+        better_auth_user_id: v.string(),
+    }).index("by_better_auth_user_id", ["better_auth_user_id"]),
+
+    // ============================================================
     // BUSINESSES & CAMPAIGNS
     // ============================================================
 

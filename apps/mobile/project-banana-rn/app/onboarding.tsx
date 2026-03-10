@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
     Pressable,
     StyleSheet,
+    Switch,
     TextInput,
     View,
     Alert,
@@ -11,11 +12,12 @@ import {
     Platform,
     ScrollView,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import {
     PiggyBank,
@@ -27,8 +29,11 @@ import {
     ArrowLeft,
     Check,
     Building,
+    BellRing,
 } from 'lucide-react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
+import LottieView from 'lottie-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -215,9 +220,62 @@ function ReferralStep({ selectedReferral, onSelectReferral }: Pick<ReferralStepP
     );
 }
 
+interface NotificationStepProps {
+    notificationsEnabled: boolean;
+    onToggleNotifications: (nextValue: boolean) => void;
+    isUpdatingNotifications: boolean;
+}
+
+function NotificationStep({
+    notificationsEnabled,
+    onToggleNotifications,
+    isUpdatingNotifications,
+}: NotificationStepProps) {
+    return (
+        <View style={styles.stepContainer}>
+            <View style={styles.stepContent}>
+                <View style={{ alignItems: 'center' }}>
+                    <LottieView
+                        source={require('@/assets/lotties/notification.json')}
+                        autoPlay
+                        loop
+                        style={{ width: 140, height: 140, marginBottom: 16 }}
+                    />
+                </View>
+                <ThemedText style={[styles.stepTitle, { textAlign: 'center' }]}>Stay Updated</ThemedText>
+                <ThemedText style={[styles.stepSubtitle, { textAlign: 'center' }]}>
+                    Get notified when you have important updates.
+                </ThemedText>
+
+                <View style={styles.notificationCard}>
+                    <View style={styles.notificationIconWrap}>
+                        <BellRing size={22} color="#FC4C02" strokeWidth={2} />
+                    </View>
+                    <View style={styles.notificationCopy}>
+                        <ThemedText style={styles.notificationLabel}>Allow notifications</ThemedText>
+                        {/* <ThemedText style={styles.notificationDescription}>
+                            Don't miss out important updates.
+                        </ThemedText> */}
+                    </View>
+                    <View>
+                        <Switch
+                            value={notificationsEnabled}
+                            onValueChange={onToggleNotifications}
+                            disabled={isUpdatingNotifications}
+                            trackColor={{ false: '#D9D9D9', true: '#FDBA8C' }}
+                            thumbColor={notificationsEnabled ? '#FC4C02' : '#FFFFFF'}
+                            ios_backgroundColor="#D9D9D9"
+                        />
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 export default function OnboardingScreen() {
     const insets = useSafeAreaInsets();
@@ -226,13 +284,26 @@ export default function OnboardingScreen() {
     const [usernameError, setUsernameError] = useState<string | null>(null);
     const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
     const [selectedReferral, setSelectedReferral] = useState<string | null>(null);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+    const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
 
     const slideAnim = useRef(new Animated.Value(0)).current;
     const checkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const completeOnboarding = useMutation(api.creators.completeOnboarding);
+    const recordPushNotificationToken = useMutation(api.notifications.recordPushNotificationToken);
+    const pausePushNotifications = useMutation(api.notifications.pausePushNotifications);
+    const unpausePushNotifications = useMutation(api.notifications.unpausePushNotifications);
+    const pushNotificationPreference = useQuery(api.notifications.getPushNotificationPreference);
+
+    useEffect(() => {
+        if (pushNotificationPreference) {
+            setNotificationsEnabled(pushNotificationPreference.enabled);
+        }
+    }, [pushNotificationPreference]);
+
 
     // ── Username validation ──
     const handleUsernameChange = useCallback((text: string) => {
@@ -314,6 +385,56 @@ export default function OnboardingScreen() {
         setSelectedReferral(referralId);
     }, []);
 
+    const handleContinueFromReferral = useCallback(() => {
+        if (!selectedReferral) return;
+        animateToStep(3);
+    }, [selectedReferral, animateToStep]);
+
+    const handleToggleNotifications = useCallback(async (nextValue: boolean) => {
+        if (isUpdatingNotifications) return;
+
+        setIsUpdatingNotifications(true);
+        try {
+            if (nextValue) {
+                if (pushNotificationPreference?.hasToken) {
+                    await unpausePushNotifications({});
+                    setNotificationsEnabled(true);
+                    return;
+                }
+
+                const token = await registerForPushNotificationsAsync({
+                    requestPermissions: true,
+                });
+
+                if (!token) {
+                    setNotificationsEnabled(false);
+                    Alert.alert(
+                        'Notifications disabled',
+                        'Permission was not granted, so notifications will stay off for now.',
+                    );
+                    return;
+                }
+
+                await recordPushNotificationToken({ token });
+                setNotificationsEnabled(true);
+                return;
+            }
+
+            await pausePushNotifications({});
+            setNotificationsEnabled(false);
+        } catch (error) {
+            Alert.alert('Error', 'Unable to update notification preferences right now.');
+        } finally {
+            setIsUpdatingNotifications(false);
+        }
+    }, [
+        isUpdatingNotifications,
+        pausePushNotifications,
+        pushNotificationPreference?.hasToken,
+        recordPushNotificationToken,
+        unpausePushNotifications,
+    ]);
+
     const handleSubmit = useCallback(async () => {
         if (!selectedReferral || selectedGoals.length === 0) return;
         setIsSubmitting(true);
@@ -339,7 +460,8 @@ export default function OnboardingScreen() {
     // ── Render content (animated) ──
     const isUsernameContinueDisabled = !username.trim() || !!usernameError || isCheckingUsername;
     const isGoalsContinueDisabled = selectedGoals.length === 0;
-    const isSubmitDisabled = !selectedReferral || isSubmitting;
+    const isReferralContinueDisabled = !selectedReferral;
+    const isSubmitDisabled = isSubmitting || isUpdatingNotifications;
 
     const renderStepContent = () => {
         switch (step) {
@@ -364,6 +486,14 @@ export default function OnboardingScreen() {
                     <ReferralStep
                         selectedReferral={selectedReferral}
                         onSelectReferral={handleSelectReferral}
+                    />
+                );
+            case 3:
+                return (
+                    <NotificationStep
+                        notificationsEnabled={notificationsEnabled}
+                        onToggleNotifications={handleToggleNotifications}
+                        isUpdatingNotifications={isUpdatingNotifications}
                     />
                 );
             default:
@@ -409,6 +539,19 @@ export default function OnboardingScreen() {
                     <Pressable
                         style={[
                             styles.primaryButton,
+                            isReferralContinueDisabled && styles.disabledButton,
+                        ]}
+                        onPress={isReferralContinueDisabled ? undefined : handleContinueFromReferral}
+                        disabled={isReferralContinueDisabled}
+                    >
+                        <ThemedText style={styles.primaryButtonText}>Continue</ThemedText>
+                    </Pressable>
+                );
+            case 3:
+                return (
+                    <Pressable
+                        style={[
+                            styles.primaryButton,
                             isSubmitDisabled && styles.disabledButton,
                         ]}
                         onPress={isSubmitDisabled ? undefined : handleSubmit}
@@ -430,22 +573,14 @@ export default function OnboardingScreen() {
         <View style={[styles.container, { paddingTop: insets.top }]}>
             {/* Header */}
             <View style={styles.header}>
-                {step > 0 ? (
-                    <Pressable style={styles.backButton} onPress={handleBack}>
-                        <ArrowLeft size={24} color="#000000" strokeWidth={2} />
-                    </Pressable>
-                ) : (
-                    <View style={styles.backPlaceholder} />
-                )}
-
                 <View style={styles.brandingRow}>
-                    <View style={styles.brandingLogoContainer}>
-                        <ThemedText type="title" style={styles.brandingLogoText}>✦</ThemedText>
-                    </View>
+                    <ExpoImage
+                        source={require('@/assets/images/icon.svg')}
+                        style={styles.brandingLogoContainer}
+                        contentFit="contain"
+                    />
                     <ThemedText type="defaultSemiBold" style={styles.brandingAppName}>Lumina</ThemedText>
                 </View>
-
-                <View style={styles.backPlaceholder} />
             </View>
 
             {/* Progress Bar */}
@@ -473,8 +608,27 @@ export default function OnboardingScreen() {
 
             {/* Fixed footer — never animates */}
             <View style={[styles.stepFooter, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-                {renderFooter()}
+                {step > 0 && (
+                    <Pressable style={styles.footerBackButton} onPress={handleBack}>
+                        <ArrowLeft size={24} color="#000000" strokeWidth={2} />
+                    </Pressable>
+                )}
+                <View style={{ flex: 1 }}>
+                    {renderFooter()}
+                </View>
             </View>
+
+            {/* Submitting Overlay */}
+            {isSubmitting && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }]}>
+                    <LottieView
+                        source={require('@/assets/lotties/logging-in.json')}
+                        autoPlay
+                        loop
+                        style={{ width: 220, height: 220 }}
+                    />
+                </View>
+            )}
         </View>
     );
 }
@@ -491,20 +645,10 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         paddingHorizontal: 16,
         paddingTop: 12,
         paddingBottom: 8,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    backPlaceholder: {
-        width: 40,
-        height: 40,
     },
     brandingRow: {
         flexDirection: 'row',
@@ -515,7 +659,6 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#000',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -585,9 +728,20 @@ const styles = StyleSheet.create({
         lineHeight: 22,
     },
     stepFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
         paddingHorizontal: 24,
         paddingBottom: 40,
         paddingTop: 16,
+    },
+    footerBackButton: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     // Username Input
@@ -731,6 +885,51 @@ const styles = StyleSheet.create({
     },
     optionLabelSelected: {
         color: '#FC4C02',
+    },
+
+    // Notifications
+    notificationCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8F8F8',
+        borderRadius: 24,
+        paddingVertical: 18,
+        paddingHorizontal: 18,
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#EFEFEF',
+        marginTop: 24,
+    },
+    notificationIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+    },
+    notificationCopy: {
+        flex: 1,
+        paddingRight: 16,
+    },
+    notificationLabel: {
+        fontSize: 16,
+        fontFamily: 'GoogleSans_700Bold',
+        color: '#111111',
+        marginBottom: 4,
+    },
+    notificationDescription: {
+        fontSize: 14,
+        fontFamily: 'GoogleSans_400Regular',
+        color: '#666666',
+        lineHeight: 20,
+    },
+    notificationFootnote: {
+        marginTop: 16,
+        fontSize: 14,
+        fontFamily: 'GoogleSans_400Regular',
+        color: '#777777',
+        lineHeight: 20,
     },
 
     // Buttons

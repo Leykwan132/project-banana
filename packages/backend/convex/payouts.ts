@@ -330,7 +330,7 @@ export const createPaymentOrderCollection = action({
  */
 export const createPayout = mutation({
     args: {
-        userId: v.id("user"),
+        userId: v.string(),
         applicationId: v.optional(v.id("applications")),
         amount: v.number(),
     },

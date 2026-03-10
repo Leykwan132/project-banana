@@ -338,17 +338,10 @@ registerRoutes(http, components.stripe, {
                     return;
                 }
 
-                // Look up the user
-                const user = await ctx.runQuery(api.users.getUserByAuthId, { authId: userId });
-                if (!user) {
-                    console.error(`User not found for authId: ${userId}`);
-                    return;
-                }
-
-                // Look up the business for this user
-                const business = await ctx.runQuery(api.businesses.getBusinessByUserId, { userId: user._id });
+                // Businesses are keyed by the Better Auth subject, not the notification-only users table.
+                const business = await ctx.runQuery(api.businesses.getBusinessByUserId, { userId });
                 if (!business) {
-                    console.error(`Business not found for user: ${user._id}`);
+                    console.error(`Business not found for user: ${userId}`);
                     return;
                 }
 

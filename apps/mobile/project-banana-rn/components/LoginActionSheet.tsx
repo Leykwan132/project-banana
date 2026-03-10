@@ -129,7 +129,6 @@ export function LoginActionSheet({
             const session = await authClient.getSession();
             if (session.data) {
                 setIsAppleLoading(false);
-                actionSheetRef.current?.hide();
                 await handleLoginSuccess();
             } else {
                 console.error("Session not found after Apple login success");
@@ -270,8 +269,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     logoContainer: {
-        width: 60,
-        height: 60,
+        width: 50,
+        height: 50,
         borderRadius: 20,
         marginBottom: 20,
     },

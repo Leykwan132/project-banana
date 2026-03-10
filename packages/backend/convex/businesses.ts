@@ -41,7 +41,7 @@ export const getMyBusiness = query({
 });
 
 export const getBusinessByUserId = query({
-    args: { userId: v.id("user") },
+    args: { userId: v.string() },
     handler: async (ctx, args) => {
         return await ctx.db
             .query("businesses")

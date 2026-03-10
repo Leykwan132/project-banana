@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
 import { v } from "convex/values";
 
@@ -38,17 +38,19 @@ export const getUser = query({
 });
 
 export const getUserById = query({
-    args: { userId: v.string() },
-    handler: async (_ctx, _args) => {
-        return null;
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.userId);
     },
 });
 
 export const getUserByAuthId = query({
     args: { authId: v.string() },
-    handler: async (_ctx, args) => {
-        // Fallback shape used by webhook code paths that still expect an `_id`.
-        return { _id: args.authId as any, userId: args.authId } as any;
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("users")
+            .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", args.authId))
+            .unique();
     },
 });
 
@@ -138,3 +140,41 @@ export const updateUser = mutation({
     },
 });
 
+export const ensureNotificationUser = internalMutation({
+    args: {
+        betterAuthUserId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db
+            .query("users")
+            .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", args.betterAuthUserId))
+            .unique();
+
+        if (existing) {
+            return existing._id;
+        }
+
+        return await ctx.db.insert("users", {
+            better_auth_user_id: args.betterAuthUserId,
+        });
+    },
+});
+
+export const deleteNotificationUser = internalMutation({
+    args: {
+        betterAuthUserId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db
+            .query("users")
+            .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", args.betterAuthUserId))
+            .unique();
+
+        if (!existing) {
+            return null;
+        }
+
+        await ctx.db.delete(existing._id);
+        return existing._id;
+    },
+});
