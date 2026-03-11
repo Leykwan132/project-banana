@@ -34,7 +34,8 @@ interface NotificationItem {
 const NotificationSkeleton = () => {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const skeletonBg = isDark ? '#333' : '#F3F4F6';
+    const skeletonBg = isDark ? '#1A1A1A' : '#FBFAF7';
+    const skeletonBorderColor = isDark ? '#2F2F2F' : '#E4DED2';
     const opacity = useSharedValue(0.3);
 
     useEffect(() => {
@@ -54,7 +55,7 @@ const NotificationSkeleton = () => {
 
     return (
         <View style={styles.skeletonContainer}>
-            <Animated.View style={[styles.skeletonIcon, animatedStyle, { backgroundColor: skeletonBg }]} />
+            <Animated.View style={[styles.skeletonIcon, animatedStyle, { backgroundColor: skeletonBg, borderColor: skeletonBorderColor }]} />
             <View style={styles.skeletonContent}>
                 <Animated.View style={[styles.skeletonTitle, animatedStyle, { backgroundColor: skeletonBg }]} />
                 <Animated.View style={[styles.skeletonDesc, animatedStyle, { backgroundColor: skeletonBg }]} />
@@ -67,6 +68,16 @@ export default function NotificationsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#303030' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const mutedTextColor = isDark ? '#A3A3A3' : '#666666';
+    const secondaryTextColor = isDark ? '#8A8A8A' : '#7A7266';
+    const unreadIconBackgroundColor = isDark ? '#C28A10' : '#F3C55A';
+    const readIconColor = isDark ? '#7D7D7D' : '#A59A8A';
+    const unreadIconColor = isDark ? '#FFF7E0' : '#3A2A05';
 
     const notifications = useQuery(api.notifications.getUserNotifications);
     const markAsRead = useMutation(api.notifications.markAsRead);
@@ -94,41 +105,52 @@ export default function NotificationsScreen() {
         <Pressable
             style={[
                 styles.notificationItem,
-                !item.is_read && [styles.unreadItem, { backgroundColor: colorScheme === 'dark' ? '#2A2A00' : '#FEFCE8' }]
+                !item.is_read && styles.unreadItem,
             ]}
             onPress={() => handlePress(item)}
         >
-            <View style={styles.iconContainer}>
-                {/* Yellow background only for unread */}
-                {!item.is_read && <View style={[styles.iconBackground, { backgroundColor: colorScheme === 'dark' ? '#A18815' : '#FDE047' }]} />}
-                <Bell size={24} color={item.is_read ? (colorScheme === 'dark' ? '#6B7280' : '#9CA3AF') : (colorScheme === 'dark' ? '#FFF' : '#000')} />
+            <View
+                style={[
+                    styles.iconContainer,
+                    {
+                        backgroundColor: item.is_read ? controlBackgroundColor : unreadIconBackgroundColor,
+                        borderColor: item.is_read ? borderColor : 'transparent',
+                    },
+                ]}
+            >
+                <Bell size={20} color={item.is_read ? readIconColor : unreadIconColor} />
             </View>
             <View style={styles.contentContainer}>
                 <View style={styles.headerRow}>
-                    <ThemedText type={item.is_read ? 'default' : 'defaultSemiBold'} style={[styles.title, item.is_read && styles.readTitle]}>
+                    <ThemedText
+                        type={item.is_read ? 'default' : 'defaultSemiBold'}
+                        style={[styles.title, { color: item.is_read ? mutedTextColor : theme.text }]}
+                    >
                         {item.title}
                     </ThemedText>
-                    <ThemedText style={[styles.date, { color: colorScheme === 'dark' ? '#9CA3AF' : '#6B7280' }]}>{formatDate(item._creationTime)}</ThemedText>
+                    <ThemedText style={[styles.date, { color: secondaryTextColor }]}>{formatDate(item._creationTime)}</ThemedText>
                 </View>
-                <ThemedText style={[styles.description, item.is_read && styles.readDescription, !item.is_read && { color: colorScheme === 'dark' ? '#E5E7EB' : '#6B7280' }]}>{item.description}</ThemedText>
+                <ThemedText style={[styles.description, { color: item.is_read ? secondaryTextColor : mutedTextColor }]}>
+                    {item.description}
+                </ThemedText>
             </View>
         </Pressable>
     );
 
     if (notifications === undefined) {
         return (
-            <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+            <SafeAreaView style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
                 <Stack.Screen options={{ headerShown: false }} />
-                <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: colorScheme === 'dark' ? '#333' : '#F3F4F6' }]}>
-                    <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor: colorScheme === 'dark' ? '#333' : '#E5E7EB' }]}>
+                <View style={[styles.header, { borderBottomColor: dividerColor }]}>
+                    <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: controlBackgroundColor }]}>
                         <ArrowLeft size={24} color={theme.text} />
                     </Pressable>
-                    <ThemedText type="title" style={styles.headerTitle}>
+                    <ThemedText type="title" style={[styles.headerTitle, { color: theme.text }]}>
                         Notifications
                     </ThemedText>
                     <View style={styles.placeholder} />
                 </View>
-                <View style={[styles.listContent, { paddingHorizontal: 16 }]}>
+                <View style={styles.listContent}>
                     {[...Array(6)].map((_, i) => (
                         <NotificationSkeleton key={i} />
                     ))}
@@ -138,13 +160,13 @@ export default function NotificationsScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
             <Stack.Screen options={{ headerShown: false }} />
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor: colorScheme === 'dark' ? '#333' : '#E5E7EB' }]}>
+            <View style={[styles.header, { borderBottomColor: dividerColor }]}>
+                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: controlBackgroundColor }]}>
                     <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
-                <ThemedText type="title" style={styles.headerTitle}>
+                <ThemedText type="title" style={[styles.headerTitle, { color: theme.text }]}>
                     Notifications
                 </ThemedText>
                 <View style={styles.placeholder} />
@@ -155,7 +177,7 @@ export default function NotificationsScreen() {
                 renderItem={renderItem}
                 keyExtractor={(item) => item._id}
                 contentContainerStyle={notifications.length === 0 ? styles.emptyListContent : styles.listContent}
-                ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E5E7EB' }]} />}
+                ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: dividerColor }]} />}
                 ListEmptyComponent={
                     <View style={styles.emptyStateContainer}>
                         <LottieView
@@ -164,7 +186,7 @@ export default function NotificationsScreen() {
                             loop
                             style={styles.lottie}
                         />
-                        <ThemedText style={[styles.emptyStateText, { color: colorScheme === 'dark' ? '#9CA3AF' : '#4B5563' }]}>
+                        <ThemedText style={[styles.emptyStateText, { color: mutedTextColor }]}>
                             No notifications yet
                         </ThemedText>
                     </View>
@@ -184,6 +206,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
+        borderBottomWidth: 1,
     },
     backButton: {
         width: 40,
@@ -202,7 +225,8 @@ const styles = StyleSheet.create({
         width: 40,
     },
     listContent: {
-        paddingTop: 10,
+        paddingTop: 12,
+        paddingBottom: 24,
     },
     emptyListContent: {
         flex: 1,
@@ -215,28 +239,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     unreadItem: {
-        backgroundColor: '#FEFCE8', // Very light yellow/cream
-    },
-    readItem: {
         backgroundColor: 'transparent',
     },
     iconContainer: {
         marginRight: 16,
         width: 40,
         height: 40,
+        borderRadius: 14,
+        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    iconBackground: {
-        position: 'absolute',
-        width: 32,
-        height: 32,
-        backgroundColor: '#FDE047', // Slightly darker yellow for icon to stand out on cream bg
-        borderRadius: 8,
-        // Center the background
-        top: 4,
-        left: 4,
-        zIndex: -1,
     },
     contentContainer: {
         flex: 1,
@@ -251,10 +263,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
     },
-    readTitle: {
-        fontFamily: 'GoogleSans_400Regular',
-        color: '#6B7280',
-    },
     date: {
         fontSize: 12,
         color: '#6B7280',
@@ -266,12 +274,9 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         fontFamily: 'GoogleSans_400Regular',
     },
-    readDescription: {
-        color: '#9CA3AF',
-    },
     separator: {
         height: 1,
-        backgroundColor: '#E5E7EB',
+        marginHorizontal: 16,
     },
     emptyStateContainer: {
         alignItems: 'center',
@@ -292,13 +297,15 @@ const styles = StyleSheet.create({
     skeletonContainer: {
         flexDirection: 'row',
         paddingVertical: 16,
+        paddingHorizontal: 16,
     },
     skeletonIcon: {
         width: 40,
         height: 40,
-        borderRadius: 20,
+        borderRadius: 14,
         backgroundColor: '#F3F4F6',
         marginRight: 16,
+        borderWidth: 1,
     },
     skeletonContent: {
         flex: 1,

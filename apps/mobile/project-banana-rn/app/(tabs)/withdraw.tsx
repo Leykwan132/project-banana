@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, RefreshControl, Alert } from 'react-native';
+import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ActionSheetRef } from "react-native-actions-sheet";
+import { SegmentedControl } from 'react-native-ui-lib';
 import Animated, {
     useAnimatedStyle,
     withRepeat,
@@ -14,7 +15,6 @@ import { useQuery } from 'convex/react';
 import LottieView from 'lottie-react-native';
 
 import { Header } from '@/components/Header';
-import { Banner } from '@/components/Banner';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
@@ -26,6 +26,7 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 interface Transaction {
     id: string;
+    type: 'payout' | 'withdrawal';
     campaignName: string;
     date: string;
     amount: string;
@@ -49,7 +50,7 @@ const TransactionItemSkeleton = () => {
             -1,
             true
         );
-    }, []);
+    }, [opacity]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
@@ -60,12 +61,19 @@ const TransactionItemSkeleton = () => {
     );
 };
 
-export default function PayoutsScreen() {
+export default function WithdrawalsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const historyBorderColor = isDark ? '#303030' : '#E4DED2';
+    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const mutedTextColor = isDark ? '#A3A3A3' : '#666666';
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(0);
     const actionSheetRef = useRef<ActionSheetRef>(null);
 
     // Fetch user balance from Convex
@@ -76,6 +84,8 @@ export default function PayoutsScreen() {
     // Fetch withdrawals
     const withdrawalsData = useQuery(api.payouts.getUserWithdrawals);
     const isWithdrawalsLoading = withdrawalsData === undefined;
+    const payoutsData = useQuery(api.payouts.getUserPayouts);
+    const isPayoutsLoading = payoutsData === undefined;
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -115,6 +125,7 @@ export default function PayoutsScreen() {
         if (!withdrawalsData) return [];
         return withdrawalsData.map((withdrawal) => ({
             id: withdrawal._id,
+            type: 'withdrawal' as const,
             campaignName: 'Withdraw',
             date: formatDate(withdrawal.created_at),
             amount: formatAmount(withdrawal.amount, false),
@@ -126,7 +137,20 @@ export default function PayoutsScreen() {
         }));
     }, [withdrawalsData]);
 
+    const formattedPayouts: Transaction[] = useMemo(() => {
+        if (!payoutsData) return [];
+        return payoutsData.map((payout) => ({
+            id: payout._id,
+            type: 'payout' as const,
+            campaignName: 'Payout',
+            date: formatDate(payout.created_at),
+            amount: formatAmount(payout.amount, true),
+            status: undefined,
+        }));
+    }, [payoutsData]);
 
+    const selectedHistoryType = selectedHistoryIndex === 0 ? 'payouts' : 'withdrawals';
+    const historyTitle = selectedHistoryType === 'payouts' ? 'Past Payouts' : 'Past Withdrawals';
 
     const handleItemPress = (item: Transaction) => {
         setSelectedTransaction(item);
@@ -144,7 +168,7 @@ export default function PayoutsScreen() {
     };
 
     const renderList = () => {
-        const isLoading = isWithdrawalsLoading;
+        const isLoading = selectedHistoryType === 'payouts' ? isPayoutsLoading : isWithdrawalsLoading;
 
         if (isLoading) {
             return (
@@ -156,7 +180,7 @@ export default function PayoutsScreen() {
             );
         }
 
-        const data = formattedWithdrawals;
+        const data = selectedHistoryType === 'payouts' ? formattedPayouts : formattedWithdrawals;
 
         if (data.length === 0) {
             return (
@@ -167,11 +191,13 @@ export default function PayoutsScreen() {
                         loop
                         style={styles.lottie}
                     />
-                    <ThemedText style={styles.emptyStateText}>
-                        No withdrawals yet
+                    <ThemedText style={[styles.emptyStateText, { color: isDark ? '#D4D4D4' : '#4B5563' }]}>
+                        {selectedHistoryType === 'payouts' ? 'No payouts yet' : 'No withdrawals yet'}
                     </ThemedText>
-                    <ThemedText style={styles.emptyStateSubtext}>
-                        Request a withdrawal to see it here
+                    <ThemedText style={[styles.emptyStateSubtext, { color: isDark ? '#8A8A8A' : '#9CA3AF' }]}>
+                        {selectedHistoryType === 'payouts'
+                            ? 'Completed payouts will appear here'
+                            : 'Request a withdrawal to see it here'}
                     </ThemedText>
                 </View>
             );
@@ -191,7 +217,7 @@ export default function PayoutsScreen() {
     };
 
     const renderCustomWithdrawalContent = () => {
-        if (!selectedTransaction || selectedTransaction.campaignName !== 'Withdraw') return null;
+        if (!selectedTransaction || selectedTransaction.type !== 'withdrawal') return null;
 
         const requested = selectedTransaction.rawAmount ?? 0;
         const actualFee = selectedTransaction.gatewayFee ?? 0;
@@ -202,56 +228,55 @@ export default function PayoutsScreen() {
             <View>
                 {/* Date & Status */}
                 <View style={styles.reviewRow}>
-                    <ThemedText style={styles.reviewLabel}>Date</ThemedText>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Date</ThemedText>
                     <ThemedText type="defaultSemiBold">{selectedTransaction.date}</ThemedText>
                 </View>
 
                 {selectedTransaction.status && (
                     <View style={styles.reviewRow}>
                         <View>
-                            <ThemedText style={styles.reviewLabel}>Status</ThemedText>
+                            <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Status</ThemedText>
                         </View>
                         <View style={{ alignItems: 'flex-end' }}>
-                            <ThemedText type="defaultSemiBold" style={{ color: isPendingOrProcessing ? '#F57C00' : '#2E7D32' }}>
+                            <ThemedText type="defaultSemiBold" style={{ color: isPendingOrProcessing ? '#F59E0B' : '#22C55E' }}>
                                 {selectedTransaction.status}
                             </ThemedText>
                             {isPendingOrProcessing && (
-                                <ThemedText style={styles.noteText}>Estimated arrival: 2-5 days</ThemedText>
+                                <ThemedText style={[styles.noteText, { color: isDark ? '#8A8A8A' : '#666666' }]}>Estimated arrival: 2-5 days</ThemedText>
                             )}
                         </View>
                     </View>
                 )}
 
-                <View style={styles.divider} />
 
                 {/* Bank info */}
                 {selectedTransaction.bankName && (
                     <View style={styles.reviewRow}>
-                        <ThemedText style={styles.reviewLabel}>Bank</ThemedText>
+                        <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Bank</ThemedText>
                         <ThemedText type="defaultSemiBold">{selectedTransaction.bankName}</ThemedText>
                     </View>
                 )}
                 {selectedTransaction.accountNumber && (
                     <View style={styles.reviewRow}>
-                        <ThemedText style={styles.reviewLabel}>Account</ThemedText>
+                        <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Account</ThemedText>
                         <ThemedText type="defaultSemiBold">{maskAccountNumber(selectedTransaction.accountNumber)}</ThemedText>
                     </View>
                 )}
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0' }]} />
 
                 {/* Amount breakdown */}
                 <View style={styles.reviewRow}>
-                    <ThemedText style={styles.reviewLabel}>Requested Amount</ThemedText>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Requested Amount</ThemedText>
                     <ThemedText type="defaultSemiBold">RM {requested.toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.reviewRow}>
-                    <ThemedText style={styles.reviewLabel}>Platform Fee (incl. payment gateway)</ThemedText>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Platform Fee (incl. payment gateway)</ThemedText>
                     <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {actualFee.toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.reviewRow}>
-                    <ThemedText style={styles.reviewLabel}>Amount Sent</ThemedText>
-                    <ThemedText type="defaultSemiBold" style={{ color: '#2E7D32', fontSize: 18 }}>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Amount Sent</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={{ color: '#22C55E', fontSize: 18 }}>
                         RM {received.toFixed(2)}
                     </ThemedText>
                 </View>
@@ -260,31 +285,33 @@ export default function PayoutsScreen() {
     };
 
     const sheetDetails = useMemo((): DetailItem[] => {
-        if (!selectedTransaction || selectedTransaction.campaignName === 'Withdraw') return [];
+        if (!selectedTransaction || selectedTransaction.type === 'withdrawal') return [];
 
         const details: DetailItem[] = [];
 
-        // Payout: Campaign, Date, Amount (Withdrawal is handled via customContent)
-        details.push({ label: 'Campaign', value: selectedTransaction.campaignName });
+        details.push({ label: 'Type', value: selectedTransaction.campaignName });
         details.push({ label: 'Date', value: selectedTransaction.date });
         details.push({ label: 'Amount', value: selectedTransaction.amount });
+        if (selectedTransaction.status) {
+            details.push({ label: 'Status', value: selectedTransaction.status });
+        }
 
         return details;
     }, [selectedTransaction]);
 
-    const showCancelButton = selectedTransaction?.campaignName === 'Withdraw' && selectedTransaction?.status === 'Pending';
+    const showCancelButton = selectedTransaction?.type === 'withdrawal' && selectedTransaction?.status === 'Pending';
 
     return (
         <View
             style={[
                 styles.container,
                 {
-                    backgroundColor: Colors[colorScheme ?? 'light'].screenBackground,
+                    backgroundColor: screenBackgroundColor,
                     paddingTop: insets.top,
                 },
             ]}
         >
-            <Header title="Payouts" />
+            <Header title="Withdrawals" />
 
             <ScrollView
                 style={styles.scrollView}
@@ -304,9 +331,21 @@ export default function PayoutsScreen() {
 
                 {/* List */}
                 <View style={styles.section}>
-                    <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-                        Withdrawal History
-                    </ThemedText>
+
+                    <SegmentedControl
+                        initialIndex={selectedHistoryIndex}
+                        onChangeIndex={setSelectedHistoryIndex}
+                        segments={[{ label: 'Payouts' }, { label: 'Withdrawals' }]}
+                        backgroundColor={controlBackgroundColor}
+                        activeBackgroundColor={theme.text}
+                        activeColor={theme.background}
+                        outlineColor={isDark ? 'transparent' : theme.text}
+                        outlineWidth={isDark ? 0 : 1}
+                        borderRadius={999}
+                        containerStyle={styles.segmentedControlContainer}
+                        style={[styles.segmentedControl, isDark && styles.segmentedControlDark]}
+                        segmentLabelStyle={styles.segmentedControlLabel}
+                    />
 
                     <View style={styles.list}>
                         {renderList()}
@@ -321,7 +360,7 @@ export default function PayoutsScreen() {
 
             <TransactionDetailsSheet
                 actionSheetRef={actionSheetRef}
-                title={selectedTransaction?.campaignName === 'Withdraw' ? "Withdrawal Details" : "Payout Details"}
+                title={selectedTransaction?.type === 'withdrawal' ? "Withdrawal Details" : "Payout Details"}
                 details={sheetDetails}
                 customContent={renderCustomWithdrawalContent()}
                 onCancel={showCancelButton ? handleCancelWithdrawal : undefined}
@@ -347,10 +386,24 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
-        marginBottom: 24,
+        marginBottom: 12,
     },
     list: {
         gap: 8,
+    },
+    segmentedControlContainer: {
+        marginBottom: 24,
+    },
+    segmentedControl: {
+        paddingVertical: 6,
+        borderRadius: 999,
+    },
+    segmentedControlDark: {
+        borderWidth: 0,
+    },
+    segmentedControlLabel: {
+        fontFamily: 'GoogleSans_500Medium',
+        fontSize: 14,
     },
     bannerContainer: {
         // Banner generic container

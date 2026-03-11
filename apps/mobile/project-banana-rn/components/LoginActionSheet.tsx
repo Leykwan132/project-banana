@@ -12,6 +12,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { ThemedText } from '@/components/themed-text';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
+import { Colors } from '@/constants/theme';
 import { authClient } from "@/lib/auth-client";
 import { router } from 'expo-router';
 import { api } from '../../../../packages/backend/convex/_generated/api';
@@ -25,6 +26,9 @@ export function LoginActionSheet({
     actionSheetRef,
 }: LoginActionSheetProps) {
     const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const { data: session } = authClient.useSession();
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isAppleLoading, setIsAppleLoading] = useState(false);
@@ -177,38 +181,47 @@ export function LoginActionSheet({
             ref={actionSheetRef}
             gestureEnabled={!isLoggingIn}
             indicatorStyle={{
-                backgroundColor: '#E0E0E0',
+                backgroundColor: isDark ? '#3A3A3A' : '#E0E0E0',
                 width: 40,
             }}
             containerStyle={{
                 borderTopLeftRadius: 32,
                 borderTopRightRadius: 32,
+                backgroundColor: screenBackgroundColor,
             }}
         >
             {isLoggingIn ? (
-                <View style={styles.loggingInContainer}>
+                <View style={[styles.loggingInContainer, { backgroundColor: screenBackgroundColor }]}>
                     <LottieView
                         source={require('@/assets/lotties/logging-in.json')}
                         autoPlay
                         loop
                         style={styles.loggingInLottie}
                     />
-                    <ThemedText style={styles.loggingInText}>Logging you in…</ThemedText>
+                    <ThemedText style={[styles.loggingInText, { color: theme.text }]}>Logging you in…</ThemedText>
                 </View>
             ) : (
-                <View style={styles.container}>
+                <View style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
                     <Image
                         source={require('@/assets/images/icon.svg')}
                         style={styles.logoContainer}
                         contentFit="contain"
                     />
-                    <ThemedText type="subtitle" style={styles.title}>Welcome to Lumina</ThemedText>
-                    <ThemedText style={styles.subtitle}>Sign in to start earning from your content.</ThemedText>
+                    <ThemedText type="subtitle" style={[styles.title, { color: theme.text }]}>Welcome to Lumina</ThemedText>
+                    <ThemedText style={[styles.subtitle, { color: isDark ? '#A3A3A3' : '#666666' }]}>Sign in to start earning from your content.</ThemedText>
 
                     <View style={styles.buttonContainer}>
                         {Platform.OS === 'ios' && (
                             <Pressable
-                                style={[styles.loginButton, styles.appleButton, isAppleLoading && styles.disabledButton]}
+                                style={[
+                                    styles.loginButton,
+                                    styles.appleButton,
+                                    {
+                                        backgroundColor: isDark ? theme.background : '#000000',
+                                        borderColor: isDark ? '#333333' : '#000000',
+                                    },
+                                    isAppleLoading && styles.disabledButton
+                                ]}
                                 onPress={handleAppleLogin}
                                 disabled={isAppleLoading}
                             >
@@ -224,22 +237,30 @@ export function LoginActionSheet({
                         )}
 
                         <Pressable
-                            style={[styles.loginButton, styles.googleButton, isGoogleLoading && styles.disabledButton]}
+                            style={[
+                                styles.loginButton,
+                                styles.googleButton,
+                                {
+                                    backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+                                    borderColor: isDark ? '#333333' : '#E0E0E0',
+                                },
+                                isGoogleLoading && styles.disabledButton
+                            ]}
                             onPress={handleGoogleLogin}
                             disabled={isGoogleLoading}
                         >
                             {isGoogleLoading ? (
-                                <LoadingIndicator size="small" color="#000000" />
+                                <LoadingIndicator size="small" color={theme.text} />
                             ) : (
                                 <>
-                                    <AntDesign name="google" size={20} color="#000000" style={styles.buttonIcon} />
-                                    <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
+                                    <AntDesign name="google" size={20} color={theme.text} style={styles.buttonIcon} />
+                                    <ThemedText style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</ThemedText>
                                 </>
                             )}
                         </Pressable>
                     </View>
 
-                    <ThemedText style={styles.footerText}>
+                    <ThemedText style={[styles.footerText, { color: isDark ? '#7A7A7A' : '#999999' }]}>
                         By continuing, you agree to our Terms and Privacy Policy.
                     </ThemedText>
                 </View>

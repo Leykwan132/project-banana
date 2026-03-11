@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import {
     Dimensions,
     Pressable,
@@ -14,6 +14,8 @@ import {
 import { ActionSheetRef } from 'react-native-actions-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { LoginActionSheet } from '@/components/LoginActionSheet';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { authClient } from "@/lib/auth-client";
 import { useConvex } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
@@ -74,6 +76,10 @@ interface SlideProps {
 }
 
 function Slide({ item }: SlideProps) {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const imageBorderColor = isDark ? '#2F2F2F' : '#E4DED2';
+
     return (
         <View style={styles.slide}>
             {/* Card + Title Section - positioned to overlap */}
@@ -81,15 +87,21 @@ function Slide({ item }: SlideProps) {
 
                 <Image
                     source={item.cardImage}
-                    style={styles.cardImage}
+                    style={[
+                        styles.cardImage,
+                        {
+                            backgroundColor: '#FFFFFF',
+                            borderColor: imageBorderColor,
+                        }
+                    ]}
                     // width={200}
                     // height={200}
                     borderRadius={24}
                     resizeMode="contain"
                 />
 
-                <ThemedText style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{item.title}</ThemedText>
-                <ThemedText style={styles.cardSubtitle} >{item.subtitle}</ThemedText>
+                <ThemedText style={[styles.cardTitle, { color: isDark ? '#ECEDEE' : '#000000' }]} numberOfLines={1} ellipsizeMode="tail">{item.title}</ThemedText>
+                <ThemedText style={[styles.cardSubtitle, { color: isDark ? '#A3A3A3' : '#666666' }]}>{item.subtitle}</ThemedText>
 
             </View>
         </View>
@@ -98,7 +110,10 @@ function Slide({ item }: SlideProps) {
 
 export default function WelcomeScreen() {
     const insets = useSafeAreaInsets();
-    const [currentPage, setCurrentPage] = useState(0);
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
 
     const loginActionSheetRef = useRef<ActionSheetRef>(null);
 
@@ -131,12 +146,8 @@ export default function WelcomeScreen() {
         loginActionSheetRef.current?.show();
     }, []);
 
-    const onChangePage = useCallback((page: number) => {
-        setCurrentPage(page);
-    }, []);
-
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
             <View style={[styles.brandingContainer, { paddingTop: insets.top + 20 }]}>
                 <ExpoImage
                     source={require('@/assets/images/icon.svg')}
@@ -147,7 +158,6 @@ export default function WelcomeScreen() {
             </View>
             <Carousel
                 autoplay
-                onChangePage={onChangePage}
                 initialPage={0}
                 containerStyle={styles.carouselContainer}
                 pageControlPosition={PageControlPosition.UNDER}
@@ -155,7 +165,7 @@ export default function WelcomeScreen() {
                     size: 8,
                     spacing: 8,
                     color: '#FC4C02',
-                    inactiveColor: '#D9D9D9',
+                    inactiveColor: isDark ? '#3A3A3A' : '#D8D0C4',
                 }}
                 autoplayInterval={4000}
                 loop
@@ -164,8 +174,17 @@ export default function WelcomeScreen() {
                     <Slide key={slide.id} item={slide} />
                 ))}
             </Carousel>
-            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-                <Pressable style={styles.primaryButton} onPress={handleLogin}>
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24), backgroundColor: screenBackgroundColor }]}>
+                <Pressable
+                    style={[
+                        styles.primaryButton,
+                        {
+                            backgroundColor: '#000000',
+                            borderColor: isDark ? '#383838' : '#000000',
+                        }
+                    ]}
+                    onPress={handleLogin}
+                >
                     <ThemedText style={styles.primaryButtonText}>Login or Sign up</ThemedText>
                 </Pressable>
             </View>
@@ -312,6 +331,7 @@ const styles = StyleSheet.create({
         width: '100%',
         backgroundColor: '#000000',
         borderRadius: 30,
+        borderWidth: 1,
         paddingVertical: 18,
         alignItems: 'center',
         justifyContent: 'center',

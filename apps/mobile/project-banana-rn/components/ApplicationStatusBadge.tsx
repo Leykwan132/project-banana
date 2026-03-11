@@ -12,6 +12,7 @@ import {
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
 
 export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Posted' | 'Active' | 'Rejected' | 'Pending' | 'Paid' | 'Processing' | 'Completed' | 'Failed';
 
@@ -123,15 +124,25 @@ interface ApplicationStatusBadgeProps {
 export function ApplicationStatusBadge({ status, style }: ApplicationStatusBadgeProps) {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
+    const theme = Colors[colorScheme ?? 'light'];
 
     if (!status) return null;
 
     const { icon: StatusIcon, iconColor } = getStatusConfig(status);
 
     return (
-        <View style={[styles.statusBadge, { backgroundColor: isDark ? '#1A1A1A' : '#F3F4F6' }, style]}>
+        <View
+            style={[
+                styles.statusBadge,
+                {
+                    backgroundColor: isDark ? theme.background : '#FFFFFF',
+                    borderColor: isDark ? '#333333' : '#D9D6CC',
+                },
+                style
+            ]}
+        >
             <StatusIcon size={14} fill={iconColor} fillOpacity={0.5} />
-            <ThemedText style={[styles.statusText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+            <ThemedText style={[styles.statusText, { color: isDark ? theme.text : '#111111' }]}>
                 {status}
             </ThemedText>
         </View>
@@ -146,6 +157,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 2,
         borderRadius: 20,
+        borderWidth: 1,
     },
     statusText: {
         fontSize: 12,

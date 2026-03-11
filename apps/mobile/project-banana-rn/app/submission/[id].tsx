@@ -16,6 +16,8 @@ import Animated, {
 
 import { ThemedText } from '@/components/themed-text';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
@@ -57,6 +59,14 @@ export default function SubmissionDetailScreen() {
     const submissionId = id as Id<"submissions">;
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const surfaceColor = isDark ? '#171717' : '#FBFAF7';
+    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#303030' : '#E4DED2';
+    const skeletonColor = isDark ? '#262626' : '#ECE8DF';
     const submission = useQuery(api.submissions.getSubmission, { submissionId });
     const latestFeedback = useQuery(api.submissions.getLatestSubmissionFeedback, { submissionId });
     const generateVideoAccessUrl = useAction(api.submissions.generateVideoAccessUrl);
@@ -140,7 +150,7 @@ export default function SubmissionDetailScreen() {
 
     if (submission === null) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: screenBackgroundColor }]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <ThemedText>Submission not found</ThemedText>
                 <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
@@ -161,13 +171,13 @@ export default function SubmissionDetailScreen() {
         : "-";
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: screenBackgroundColor }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color="#000" />
+                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: controlBackgroundColor }]}>
+                    <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
             </View>
 
@@ -176,7 +186,7 @@ export default function SubmissionDetailScreen() {
                 {/* Video Preview */}
                 <View style={styles.videoContainer}>
                     {submission === undefined || loadingUrl ? (
-                        <Animated.View style={[styles.videoSkeleton, skeletonAnimatedStyle]} />
+                        <Animated.View style={[styles.videoSkeleton, { backgroundColor: skeletonColor }, skeletonAnimatedStyle]} />
                     ) : videoUrl ? (
                         <VideoView
                             player={videoPlayer}
@@ -192,38 +202,38 @@ export default function SubmissionDetailScreen() {
                 </View>
 
                 {/* Date */}
-                <ThemedText style={styles.dateText}>Submitted on {submittedDate}</ThemedText>
+                <ThemedText style={[styles.dateText, { color: isDark ? '#A3A3A3' : '#666666' }]}>Submitted on {submittedDate}</ThemedText>
 
                 {/* Feedback */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                        <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Feedback</ThemedText>
+                        <ThemedText type="defaultSemiBold" style={[styles.sectionTitle, { color: theme.text }]}>Feedback</ThemedText>
                         <ApplicationStatusBadge
                             status={mapSubmissionStatus(submission?.status)}
                         />
                     </View>
                     {latestFeedback === undefined ? (
                         <View style={styles.feedbackBox}>
-                            <Animated.View style={[{ height: 16, backgroundColor: '#E5E5E5', borderRadius: 8, marginBottom: 8, width: '100%' }, skeletonAnimatedStyle]} />
-                            <Animated.View style={[{ height: 16, backgroundColor: '#E5E5E5', borderRadius: 8, marginBottom: 8, width: '80%' }, skeletonAnimatedStyle]} />
-                            <Animated.View style={[{ height: 16, backgroundColor: '#E5E5E5', borderRadius: 8, marginBottom: 0, width: '60%' }, skeletonAnimatedStyle]} />
+                            <Animated.View style={[{ height: 16, backgroundColor: skeletonColor, borderRadius: 8, marginBottom: 8, width: '100%' }, skeletonAnimatedStyle]} />
+                            <Animated.View style={[{ height: 16, backgroundColor: skeletonColor, borderRadius: 8, marginBottom: 8, width: '80%' }, skeletonAnimatedStyle]} />
+                            <Animated.View style={[{ height: 16, backgroundColor: skeletonColor, borderRadius: 8, marginBottom: 0, width: '60%' }, skeletonAnimatedStyle]} />
                         </View>
                     ) : latestFeedback ? (
-                        <View style={styles.feedbackBox}>
+                        <View style={[styles.feedbackBox, { backgroundColor: surfaceColor, borderColor }]}>
                             <View style={styles.commentContainer}>
-                                <View style={styles.commentAvatar}>
+                                <View style={[styles.commentAvatar, { backgroundColor: isDark ? '#262626' : '#FFFFFF', borderColor }]}>
                                     {finalLogoUrl ? (
                                         <Image source={{ uri: finalLogoUrl }} style={styles.commentAvatarImage} />
                                     ) : (
-                                        <Building size={16} color="#A0A0A0" />
+                                        <Building size={16} color={isDark ? '#8A8A8A' : '#A0A0A0'} />
                                     )}
                                 </View>
                                 <View style={styles.commentContent}>
-                                    <ThemedText style={styles.commentAuthor}>
+                                    <ThemedText style={[styles.commentAuthor, { color: theme.text }]}>
                                         {latestFeedback.authorName}
-                                        <ThemedText style={styles.commentTime}>  {timeAgo(latestFeedback.createdAt)}</ThemedText>
+                                        <ThemedText style={[styles.commentTime, { color: isDark ? '#7A7A7A' : '#999999' }]}>  {timeAgo(latestFeedback.createdAt)}</ThemedText>
                                     </ThemedText>
-                                    <ThemedText style={styles.feedbackText}>{latestFeedback.text}</ThemedText>
+                                    <ThemedText style={[styles.feedbackText, { color: theme.text }]}>{latestFeedback.text}</ThemedText>
                                 </View>
                             </View>
                         </View>
@@ -235,7 +245,7 @@ export default function SubmissionDetailScreen() {
                                 loop
                                 style={styles.lottie}
                             />
-                            <ThemedText style={{ color: '#666', marginTop: 8 }}>
+                            <ThemedText style={{ color: isDark ? '#8A8A8A' : '#666', marginTop: 8 }}>
                                 No feedback given yet
                             </ThemedText>
                         </View>
@@ -342,6 +352,11 @@ const styles = StyleSheet.create({
     },
     feedbackBox: {
         padding: 0,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'transparent',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
     },
     commentContainer: {
         flexDirection: 'row',
@@ -352,6 +367,8 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 16,
         backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E4DED2',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 10,

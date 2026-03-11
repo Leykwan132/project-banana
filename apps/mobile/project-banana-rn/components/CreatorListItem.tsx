@@ -21,7 +21,8 @@ export function CreatorListItem({
     onPress,
 }: CreatorListItemProps) {
     const colorScheme = useColorScheme();
-    const iconColor = Colors[colorScheme ?? 'light'].text;
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
 
     return (
         <Pressable onPress={onPress} style={styles.container}>
@@ -30,22 +31,22 @@ export function CreatorListItem({
                     {logoUrl ? (
                         <Image source={{ uri: logoUrl }} style={styles.logo} />
                     ) : (
-                        <View style={styles.logoPlaceholder}>
-                            <ThemedText style={styles.logoText}>{name.charAt(0)}</ThemedText>
+                        <View style={[styles.logoPlaceholder, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', borderColor: isDark ? '#333333' : '#EEEEEE' }]}>
+                            <ThemedText style={[styles.logoText, { color: theme.text }]}>{name.charAt(0)}</ThemedText>
                         </View>
                     )}
                 </View>
                 <View style={styles.content}>
                     <ThemedText type="defaultSemiBold" style={styles.name}>{name}</ThemedText>
                     <View style={styles.metaRow}>
-                        <ThemedText style={styles.metaTextHighlight}>{views} views</ThemedText>
-                        <ThemedText style={styles.metaText}>  {amount} received</ThemedText>
+                        <ThemedText style={[styles.metaTextHighlight, { color: theme.text }]}>{views} views</ThemedText>
+                        <ThemedText style={[styles.metaText, { color: isDark ? '#9CA3AF' : '#666666' }]}>  {amount} received</ThemedText>
                     </View>
                 </View>
             </View>
 
-            <View style={styles.arrowContainer}>
-                <ArrowUpRight size={20} color="#000" />
+            <View style={[styles.arrowContainer, { backgroundColor: isDark ? '#2D230F' : '#FFFBE6', borderColor: isDark ? '#5A4615' : '#FEF3C7' }]}>
+                <ArrowUpRight size={20} color={isDark ? '#FBBF24' : '#000'} />
             </View>
         </Pressable>
     );

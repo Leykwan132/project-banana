@@ -13,6 +13,8 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
+  const isDark = colorScheme === 'dark';
+  const screenBackgroundColor = isDark ? Colors[colorScheme ?? 'light'].screenBackground : '#F4F3EE';
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -26,7 +28,7 @@ export default function HomeScreen() {
       style={[
         styles.container,
         {
-          backgroundColor: Colors[colorScheme ?? 'light'].screenBackground,
+          backgroundColor: screenBackgroundColor,
           paddingTop: insets.top,
         },
       ]}
@@ -34,6 +36,7 @@ export default function HomeScreen() {
       <Header />
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -52,5 +55,8 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
 });

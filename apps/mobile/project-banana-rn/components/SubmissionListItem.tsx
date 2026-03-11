@@ -18,13 +18,17 @@ export function SubmissionListItem({
     onPress,
 }: SubmissionListItemProps) {
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     return (
         <Pressable
             onPress={onPress}
             style={({ pressed }) => [
                 styles.container,
-                { backgroundColor: Colors[colorScheme ?? 'light'].background },
+                {
+                    backgroundColor: isDark ? '#1A1A1A' : Colors[colorScheme ?? 'light'].background,
+                    borderColor: isDark ? '#2F2F2F' : '#E5E7EB',
+                },
                 pressed && { opacity: 0.7 }
             ]}
         >
@@ -33,7 +37,7 @@ export function SubmissionListItem({
                     <ThemedText type="defaultSemiBold" style={styles.title}>
                         Attempt {attemptNumber}
                     </ThemedText>
-                    <ThemedText style={styles.date}>
+                    <ThemedText style={[styles.date, { color: isDark ? '#8A8A8A' : '#666666' }]}>
                         {date}
                     </ThemedText>
                 </View>
@@ -45,7 +49,9 @@ export function SubmissionListItem({
 
 const styles = StyleSheet.create({
     container: {
-        // Removed border properties
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: 14,
     },
     content: {
         flexDirection: 'row',

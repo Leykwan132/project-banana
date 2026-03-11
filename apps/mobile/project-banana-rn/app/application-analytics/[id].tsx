@@ -10,6 +10,8 @@ import { useQuery } from 'convex/react';
 import { FontAwesome5 } from '@expo/vector-icons';
 
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
@@ -41,14 +43,6 @@ const ICON_MAPPING = {
     shares: Share,
     likes: Heart,
     comments: MessageCircle,
-};
-
-const COLOR_MAPPING: Record<MetricType, string> = {
-    earnings: '#FFD700',
-    views: '#2196F3',
-    shares: '#F44336',
-    likes: '#E91E63',
-    comments: '#4CAF50',
 };
 
 const GRAPH_HEIGHT = 120;
@@ -93,6 +87,15 @@ export default function ApplicationAnalyticsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const surfaceColor = isDark ? '#171717' : '#FBFAF7';
+    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#303030' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const skeletonColor = isDark ? '#1F1F1F' : '#ECE8DF';
 
     const [selectedMetric, setSelectedMetric] = useState<MetricType>('earnings');
     const analyticsEndDate = useMemo(() => getYesterdayDateKeyUtc(), []);
@@ -110,18 +113,6 @@ export default function ApplicationAnalyticsScreen() {
     );
 
     const isLoading = application === undefined || dailyStats === undefined;
-
-    if (application === null) {
-        return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Stack.Screen options={{ headerShown: false }} />
-                <ThemedText>Application not found</ThemedText>
-                <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
-                    <ThemedText style={{ color: 'blue' }}>Go Back</ThemedText>
-                </Pressable>
-            </View>
-        );
-    }
 
     const highLevelMetrics: Record<MetricType, number> = {
         earnings: application?.earnings ?? 0,
@@ -167,26 +158,50 @@ export default function ApplicationAnalyticsScreen() {
         ];
     }, [graphData]);
 
+    if (application === null) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: screenBackgroundColor }]}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <ThemedText>Application not found</ThemedText>
+                <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
+                    <ThemedText style={{ color: 'blue' }}>Go Back</ThemedText>
+                </Pressable>
+            </View>
+        );
+    }
+
     const renderMetricCard = (type: MetricType) => {
         const isSelected = selectedMetric === type;
         const Icon = ICON_MAPPING[type];
-        const color = COLOR_MAPPING[type];
         const value = formatMetricValue(type, highLevelMetrics[type]);
+        const selectedBackgroundColor = isDark ? '#202020' : '#F6F3EB';
+        const selectedBorderColor = isDark ? '#383838' : '#E3DDD1';
+        const selectedIconBackgroundColor = isDark ? '#2A2A2A' : '#ECE7DB';
 
         return (
             <Pressable
                 style={[
                     styles.metricCard,
+                    {
+                        backgroundColor: isSelected
+                            ? selectedBackgroundColor
+                            : surfaceColor,
+                        borderColor: isSelected
+                            ? selectedBorderColor
+                            : borderColor,
+                    },
                     isSelected && styles.selectedCard,
                 ]}
                 onPress={() => setSelectedMetric(type)}
             >
-                <View style={[styles.iconContainer, { backgroundColor: isSelected ? `${color}20` : '#F5F5F5' }]}>
-                    <Icon size={16} color={isSelected ? color : '#666'} />
+                <View style={[styles.iconContainer, { backgroundColor: isSelected ? selectedIconBackgroundColor : (isDark ? '#262626' : '#F3EEE3') }]}>
+                    <Icon size={16} color={isSelected ? theme.text : (isDark ? '#A3A3A3' : '#666')} />
                 </View>
                 <View>
-                    <ThemedText style={styles.cardLabel}>{TERMS_MAPPING[type]}</ThemedText>
-                    <ThemedText style={styles.cardValue}>{value}</ThemedText>
+                    <ThemedText style={[styles.cardLabel, { color: isSelected ? (isDark ? '#CFCFCF' : '#4B5563') : (isDark ? '#8A8A8A' : '#666') }]}>
+                        {TERMS_MAPPING[type]}
+                    </ThemedText>
+                    <ThemedText style={[styles.cardValue, { color: theme.text }]}>{value}</ThemedText>
                 </View>
             </Pressable>
         );
@@ -207,31 +222,33 @@ export default function ApplicationAnalyticsScreen() {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <View style={[styles.container, { paddingTop: insets.top }]}>
+            <View style={[styles.container, { paddingTop: insets.top, backgroundColor: screenBackgroundColor }]}>
                 <Stack.Screen options={{ headerShown: false }} />
 
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
-                        <ArrowLeft size={20} color="#000" />
+                    <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: controlBackgroundColor }]}>
+                        <ArrowLeft size={20} color={theme.text} />
                     </Pressable>
                     <View style={styles.headerRight}>
                         <Pressable
                             style={[
                                 styles.urlIconButton,
+                                { backgroundColor: controlBackgroundColor, borderColor },
                                 !application?.ig_post_url && styles.urlIconButtonDisabled,
                             ]}
                             onPress={() => handleOpenPostLink(application?.ig_post_url)}
                         >
-                            <FontAwesome5 name="instagram" size={20} color="#000" style={styles.inputIcon} />
+                            <FontAwesome5 name="instagram" size={20} color={theme.text} style={styles.inputIcon} />
                         </Pressable>
                         <Pressable
                             style={[
                                 styles.urlIconButton,
+                                { backgroundColor: controlBackgroundColor, borderColor },
                                 !application?.tiktok_post_url && styles.urlIconButtonDisabled,
                             ]}
                             onPress={() => handleOpenPostLink(application?.tiktok_post_url)}
                         >
-                            <FontAwesome5 name="tiktok" size={20} color="#000" style={styles.inputIcon} />
+                            <FontAwesome5 name="tiktok" size={20} color={theme.text} style={styles.inputIcon} />
                         </Pressable>
                     </View>
                 </View>
@@ -239,15 +256,15 @@ export default function ApplicationAnalyticsScreen() {
                 <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
                     {isLoading ? (
                         <>
-                            <View style={styles.skeletonHeader} />
-                            <View style={styles.skeletonGraph} />
-                            <View style={styles.skeletonRow} />
-                            <View style={styles.skeletonRow} />
+                            <View style={[styles.skeletonHeader, { backgroundColor: skeletonColor }]} />
+                            <View style={[styles.skeletonGraph, { backgroundColor: skeletonColor }]} />
+                            <View style={[styles.skeletonRow, { backgroundColor: skeletonColor }]} />
+                            <View style={[styles.skeletonRow, { backgroundColor: skeletonColor }]} />
                         </>
                     ) : (
                         <>
                             <View style={styles.appInfoContainer}>
-                                <View style={styles.appThumbnailPlaceholder}>
+                                <View style={[styles.appThumbnailPlaceholder, { backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF', borderColor }]}>
                                     <Video size={24} color="#9CA3AF" />
                                 </View>
                                 <View style={styles.appDetails}>
@@ -255,23 +272,23 @@ export default function ApplicationAnalyticsScreen() {
                                         Application
                                     </ThemedText>
                                     <View style={styles.dateRow}>
-                                        <Calendar size={14} color="#6B7280" />
-                                        <ThemedText style={styles.appDate}>
+                                        <Calendar size={14} color={isDark ? '#8A8A8A' : '#6B7280'} />
+                                        <ThemedText style={[styles.appDate, { color: isDark ? '#8A8A8A' : '#6B7280' }]}>
                                             {application ? formatCreatedAt(application.created_at) : '-'}
                                         </ThemedText>
                                     </View>
                                 </View>
                             </View>
 
-                            <View style={styles.graphContainer}>
+                            <View style={[styles.graphContainer, { backgroundColor: surfaceColor, borderColor }]}>
                                 <LineChart.Provider data={graphData}>
                                     <View style={{ marginBottom: 20 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                             {(() => {
                                                 const Icon = ICON_MAPPING[selectedMetric];
-                                                return <Icon size={16} color="#666" />;
+                                                return <Icon size={16} color={isDark ? '#A3A3A3' : '#666'} />;
                                             })()}
-                                            <ThemedText style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_500Medium' }}>
+                                            <ThemedText style={{ fontSize: 14, color: isDark ? '#A3A3A3' : '#666', fontFamily: 'GoogleSans_500Medium' }}>
                                                 {TERMS_MAPPING[selectedMetric]}
                                             </ThemedText>
                                         </View>
@@ -279,8 +296,9 @@ export default function ApplicationAnalyticsScreen() {
                                             key={selectedMetric}
                                             totalValue={formatMetricValue(selectedMetric, highLevelMetrics[selectedMetric])}
                                             showCurrency={selectedMetric === 'earnings'}
+                                            color={theme.text}
                                         />
-                                        <InteractiveGraphDate defaultText={asOfDateText} />
+                                        <InteractiveGraphDate defaultText={asOfDateText} color={isDark ? '#A3A3A3' : '#666'} />
                                     </View>
 
                                     <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>
@@ -291,7 +309,7 @@ export default function ApplicationAnalyticsScreen() {
                                         <LineChart.HoverTrap />
                                     </LineChart>
 
-                                    <View style={styles.xAxisContainer}>
+                                    <View style={[styles.xAxisContainer, { borderTopColor: dividerColor }]}>
                                         <View style={styles.xAxisLabels}>
                                             {xLabels.map((label, index) => (
                                                 <View
@@ -305,8 +323,8 @@ export default function ApplicationAnalyticsScreen() {
                                                                 : { alignItems: 'center' },
                                                     ]}
                                                 >
-                                                    <View style={styles.xAxisTick} />
-                                                    <ThemedText style={styles.xAxisText}>{label}</ThemedText>
+                                                    <View style={[styles.xAxisTick, { borderLeftColor: dividerColor }]} />
+                                                    <ThemedText style={[styles.xAxisText, { color: isDark ? '#7A7A7A' : '#999' }]}>{label}</ThemedText>
                                                 </View>
                                             ))}
                                         </View>
@@ -335,7 +353,7 @@ export default function ApplicationAnalyticsScreen() {
     );
 }
 
-function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValue: string; showCurrency?: boolean }) {
+function InteractiveGraphValue({ totalValue, showCurrency = false, color }: { totalValue: string; showCurrency?: boolean; color: string }) {
     const { currentIndex, isActive, data } = useLineChart();
     const fallback = useSharedValue(totalValue);
 
@@ -365,7 +383,7 @@ function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValu
         <AnimatedTextInput
             editable={false}
             underlineColorAndroid="transparent"
-            style={styles.graphValue}
+            style={[styles.graphValue, { color }]}
             // @ts-ignore
             animatedProps={animatedProps}
             defaultValue={totalValue}
@@ -373,7 +391,7 @@ function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValu
     );
 }
 
-function InteractiveGraphDate({ defaultText }: { defaultText: string }) {
+function InteractiveGraphDate({ defaultText, color }: { defaultText: string; color: string }) {
     const { currentIndex, isActive, data } = useLineChart();
 
     const animatedProps = useAnimatedProps(() => {
@@ -402,7 +420,7 @@ function InteractiveGraphDate({ defaultText }: { defaultText: string }) {
         <AnimatedTextInput
             editable={false}
             underlineColorAndroid="transparent"
-            style={styles.graphDate}
+            style={[styles.graphDate, { color }]}
             // @ts-ignore
             animatedProps={animatedProps}
             defaultValue={defaultText}
@@ -443,6 +461,8 @@ const styles = StyleSheet.create({
         height: 44,
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'transparent',
     },
     urlIconButtonDisabled: {
         opacity: 0.5,
@@ -472,6 +492,8 @@ const styles = StyleSheet.create({
         height: 60,
         borderRadius: 8,
         backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E4DED2',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -498,6 +520,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#F5F5F5',
         marginBottom: 18,
         borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E4DED2',
         padding: 16,
         paddingBottom: 0,
     },
@@ -556,7 +580,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     selectedCard: {
-        borderColor: '#000000',
         borderWidth: 1.5,
     },
     iconContainer: {

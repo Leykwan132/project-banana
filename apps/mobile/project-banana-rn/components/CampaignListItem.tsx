@@ -1,6 +1,5 @@
 import { View, StyleSheet, Image, Pressable } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
-import { Users, Eye, CircleDollarSign, Flame, Building, Tag, Wallet } from 'lucide-react-native';
+import { Users, Flame, Building, Tag, Wallet } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useAction } from 'convex/react';
 
@@ -35,8 +34,17 @@ export function CampaignListItem({
     onPress,
 }: CampaignListItemProps) {
     const colorScheme = useColorScheme();
-    const iconColor = Colors[colorScheme ?? 'light'].icon;
-    const textColor = Colors[colorScheme ?? 'light'].text;
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const iconColor = theme.icon;
+    const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
+    const cardBorderColor = isDark ? '#303030' : '#E4DED2';
+    const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const logoChipBorderColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const badgeBackgroundColor = isDark ? '#111111' : '#F3EEE3';
+    const badgeBorderColor = isDark ? '#303030' : '#DDD6C7';
+    const badgeLabelColor = isDark ? '#9CA3AF' : '#6F6758';
+    const badgeAmountColor = isDark ? '#F5F5F5' : '#111111';
 
     const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
     const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoR2Key ? (logoUrl || null) : null);
@@ -69,30 +77,33 @@ export function CampaignListItem({
             onPress={onPress}
             style={[
                 styles.container,
-                { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground },
+                {
+                    backgroundColor: cardBackgroundColor,
+                    borderColor: cardBorderColor,
+                },
             ]}
         >
             {/* Top Part */}
             <View style={styles.topSection}>
                 <View style={styles.topLeft}>
-                    <View style={styles.logoContainer}>
+                    <View style={[styles.logoContainer, { borderColor: logoChipBorderColor }]}>
                         {finalLogoUrl ? (
                             <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
                         ) : (
-                            <View style={[styles.logoPlaceholder, { backgroundColor: '#F3F4F6' }]}>
+                            <View style={[styles.logoPlaceholder, { backgroundColor: '#FFFFFF' }]}>
                                 <Building size={24} color="#9CA3AF" />
                             </View>
                         )}
                     </View>
                     <View style={styles.textColumn}>
                         <View style={styles.companyRow}>
-                            <ThemedText style={styles.companyName}>
+                            <ThemedText style={[styles.companyName, { color: isDark ? '#8A8A8A' : '#6B7280' }]}>
                                 {companyName}
                             </ThemedText>
                             {isTrending && (
-                                <View style={styles.trendingBadge}>
+                                <View style={[styles.trendingBadge, isDark && styles.trendingBadgeDark]}>
                                     <Flame size={10} color="#FF4500" fill="#FF4500" />
-                                    <ThemedText style={styles.trendingText}>Trending</ThemedText>
+                                    <ThemedText style={[styles.trendingText, isDark && styles.trendingTextDark]}>Trending</ThemedText>
                                 </View>
                             )}
                         </View>
@@ -104,35 +115,43 @@ export function CampaignListItem({
 
                 <View style={[
                     styles.maxPayContainer,
-                    { backgroundColor: Colors[colorScheme ?? 'light'].labelBackground }
+                    {
+                        backgroundColor: badgeBackgroundColor,
+                        borderColor: badgeBorderColor,
+                    }
                 ]}>
-                    <ExpoImage
-                        source={colorScheme === 'dark' ? require('@/assets/images/icon.svg') : require('@/assets/images/icon-light.svg')}
-                        style={{ width: 14, height: 14 }}
-                        contentFit="contain"
-                    />
-                    <ThemedText style={[
-                        styles.maxPayValue,
-                        { color: colorScheme === 'dark' ? '#ECEDEE' : 'white' }
-                    ]}>RM {maxPayout}</ThemedText>
+                    <View style={styles.maxPayTextContainer}>
+                        <ThemedText style={[
+                            styles.maxPayLabel,
+                            { color: badgeLabelColor }
+                        ]}>
+                            Earn up to
+                        </ThemedText>
+                        <ThemedText style={[
+                            styles.maxPayValue,
+                            { color: badgeAmountColor }
+                        ]}>
+                            RM {maxPayout}
+                        </ThemedText>
+                    </View>
                 </View>
             </View>
 
             {/* Bottom Part */}
-            <View style={styles.bottomSection}>
+            <View style={[styles.bottomSection, { borderTopColor: cardDividerColor }]}>
                 <View style={styles.statItem}>
                     <Tag size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{formattedCategory}</ThemedText>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>{formattedCategory}</ThemedText>
                 </View>
 
                 <View style={styles.statItem}>
                     <Users size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{claimed} submitted</ThemedText>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>{claimed} submitted</ThemedText>
                 </View>
 
                 <View style={[styles.statItem, styles.statItemRight]}>
                     <Wallet size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>
                         RM {budgetClaimed} claimed
                     </ThemedText>
                 </View>
@@ -144,14 +163,15 @@ export function CampaignListItem({
 const styles = StyleSheet.create({
     container: {
         flexDirection: 'column',
+        paddingHorizontal: 16,
         paddingVertical: 16,
         marginBottom: 12,
-        borderRadius: 12,
-        // Add shadow or border if needed, user didn't specify but card look is good.
+        borderRadius: 16,
+        borderWidth: 1,
     },
     topSection: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: 16,
     },
@@ -164,7 +184,6 @@ const styles = StyleSheet.create({
     logoContainer: {
         marginRight: 10,
         borderWidth: 1,
-        borderColor: 'rgba(156, 163, 175, 0.2)', // Subtle border
         borderRadius: 100,
     },
     logo: {
@@ -172,6 +191,7 @@ const styles = StyleSheet.create({
         height: 44,
         resizeMode: 'contain',
         borderRadius: 100,
+        backgroundColor: '#FFFFFF',
     },
     logoPlaceholder: {
         width: 44,
@@ -179,6 +199,7 @@ const styles = StyleSheet.create({
         borderRadius: 100,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
     },
     logoText: {
         color: '#FFFFFF',
@@ -193,7 +214,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        marginBottom: 2,
         flexWrap: 'wrap',
     },
     companyName: {
@@ -221,20 +241,35 @@ const styles = StyleSheet.create({
         color: '#FF4500',
         fontFamily: 'GoogleSans_700Bold',
     },
+    trendingBadgeDark: {
+        backgroundColor: '#2D230F',
+        borderColor: '#5A4615',
+    },
+    trendingTextDark: {
+        color: '#FBBF24',
+    },
     maxPayContainer: {
-        alignItems: 'center',
-        backgroundColor: "black", // Default, overridden in component
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 30,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
         justifyContent: 'center',
-        flexDirection: 'row',
-        gap: 6,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    maxPayTextContainer: {
+        alignItems: 'flex-start',
+        gap: 1
+    },
+    maxPayLabel: {
+        fontSize: 10,
+        lineHeight: 12,
+        fontFamily: 'GoogleSans_500Medium',
     },
     maxPayValue: {
-        fontSize: 14,
+        fontSize: 15,
+        lineHeight: 18,
         color: 'white', // Default, overridden in component
-        fontFamily: 'GoogleSans_500Medium',
+        fontFamily: 'GoogleSans_700Bold',
     },
     bottomSection: {
         flexDirection: 'row',

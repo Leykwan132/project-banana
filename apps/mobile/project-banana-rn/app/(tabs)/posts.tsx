@@ -3,7 +3,7 @@ import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '@/components/Header';
-import { Banner, BannerType } from '@/components/Banner';
+import { BannerType } from '@/components/Banner';
 import { ApplicationList } from '@/components/ApplicationList';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -13,6 +13,8 @@ export default function PostsScreen() {
     const colorScheme = useColorScheme();
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? Colors[colorScheme ?? 'light'].screenBackground : '#F4F3EE';
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -28,7 +30,7 @@ export default function PostsScreen() {
             style={[
                 styles.container,
                 {
-                    backgroundColor: Colors[colorScheme ?? 'light'].screenBackground,
+                    backgroundColor: screenBackgroundColor,
                     paddingTop: insets.top,
                 },
             ]}
@@ -36,6 +38,7 @@ export default function PostsScreen() {
             <Header title="Posts" />
             <ScrollView
                 style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -54,6 +57,9 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 24,
     },
     bannerContainer: {
         // Banner has its own padding handling

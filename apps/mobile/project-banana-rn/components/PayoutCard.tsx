@@ -32,7 +32,7 @@ export function PayoutCard({
             </View>
 
             <View style={styles.content}>
-                <ThemedText style={styles.label}>Available Payouts</ThemedText>
+                <ThemedText style={styles.label}>Balance</ThemedText>
 
                 <View style={styles.row}>
                     {isAmountLoading ? (

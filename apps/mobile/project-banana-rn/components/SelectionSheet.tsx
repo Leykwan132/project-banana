@@ -1,4 +1,4 @@
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import ActionSheet, { ActionSheetRef } from 'react-native-actions-sheet';
 import { Check } from 'lucide-react-native';
 
@@ -33,7 +33,14 @@ export function SelectionSheet({
 }: SelectionSheetProps) {
     const colorScheme = useColorScheme();
     const themeColors = Colors[colorScheme ?? 'light'];
-
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? themeColors.screenBackground : '#F4F3EE';
+    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#303030' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const selectedBackgroundColor = isDark ? '#262626' : '#D9D2C6';
+    const selectedBorderColor = isDark ? '#383838' : '#C8BFB1';
+    const selectedTextColor = isDark ? '#ECEDEE' : '#111111';
     const handleSelect = (value: string) => {
         onSelect(value);
         actionSheetRef.current?.hide();
@@ -50,9 +57,9 @@ export function SelectionSheet({
         <ActionSheet
             ref={actionSheetRef}
             gestureEnabled
-            containerStyle={{ backgroundColor: themeColors.background }}
+            containerStyle={{ backgroundColor: screenBackgroundColor }}
         >
-            <View style={styles.sheetContent}>
+            <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                 <ThemedText type="subtitle" style={styles.title}>
                     {title}
                 </ThemedText>
@@ -68,16 +75,16 @@ export function SelectionSheet({
                                     style={[
                                         styles.chip,
                                         isSelected
-                                            ? { backgroundColor: themeColors.text, borderColor: themeColors.text, borderWidth: 1 }
-                                            : { backgroundColor: themeColors.background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0', borderWidth: 1 },
+                                            ? { backgroundColor: selectedBackgroundColor, borderColor: selectedBorderColor, borderWidth: 1 }
+                                            : { backgroundColor: controlBackgroundColor, borderColor, borderWidth: 1 },
                                     ]}
                                     onPress={() => handleSelect(option.value)}
                                 >
-                                    {Icon && <Icon size={16} color={isSelected ? themeColors.background : (colorScheme === 'dark' ? '#9CA3AF' : '#6B7280')} />}
+                                    {Icon && <Icon size={16} color={isSelected ? selectedTextColor : (isDark ? '#9CA3AF' : '#6B7280')} />}
                                     <ThemedText
                                         style={[
                                             styles.chipText,
-                                            { color: isSelected ? themeColors.background : themeColors.text },
+                                            { color: isSelected ? selectedTextColor : themeColors.text },
                                             isSelected && { fontFamily: 'GoogleSans_700Bold' },
                                         ]}
                                     >
@@ -95,16 +102,25 @@ export function SelectionSheet({
                             return (
                                 <Pressable
                                     key={option.value}
-                                    style={[styles.listItem, { borderBottomColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]}
+                                    style={[
+                                        styles.listItem,
+                                        { borderBottomColor: dividerColor },
+                                        isSelected && {
+                                            backgroundColor: selectedBackgroundColor,
+                                            borderRadius: 14,
+                                            borderBottomColor: 'transparent',
+                                            paddingHorizontal: 14,
+                                        }
+                                    ]}
                                     onPress={() => handleSelect(option.value)}
                                 >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                        {Icon && <Icon size={20} color={isSelected ? themeColors.text : (colorScheme === 'dark' ? '#9CA3AF' : '#6B7280')} />}
-                                        <ThemedText style={[styles.listItemText, isSelected && styles.selectedListItemText]}>
+                                        {Icon && <Icon size={20} color={isSelected ? selectedTextColor : (isDark ? '#9CA3AF' : '#6B7280')} />}
+                                        <ThemedText style={[styles.listItemText, isSelected && styles.selectedListItemText, isSelected && { color: selectedTextColor }]}>
                                             {option.label}
                                         </ThemedText>
                                     </View>
-                                    {isSelected && <Check size={20} color={themeColors.text} />}
+                                    {isSelected && <Check size={20} color={selectedTextColor} />}
                                 </Pressable>
                             );
                         })}
@@ -113,10 +129,16 @@ export function SelectionSheet({
 
                 {onReset && (
                     <Pressable
-                        style={[styles.resetButton, { backgroundColor: themeColors.text }]}
+                        style={[
+                            styles.resetButton,
+                            {
+                                backgroundColor: isDark ? '#F3F1EA' : '#000000',
+                                borderColor: isDark ? '#F3F1EA' : '#000000',
+                            }
+                        ]}
                         onPress={handleReset}
                     >
-                        <ThemedText style={[styles.resetButtonText, { color: themeColors.background }]}>Reset</ThemedText>
+                        <ThemedText style={[styles.resetButtonText, { color: isDark ? '#111111' : '#FFFFFF' }]}>Reset</ThemedText>
                     </Pressable>
                 )}
             </View>
@@ -160,6 +182,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingVertical: 16,
+        paddingHorizontal: 6,
         borderBottomWidth: 1,
         borderBottomColor: '#F0F0F0',
     },
@@ -176,6 +199,8 @@ const styles = StyleSheet.create({
         marginTop: 16,
         backgroundColor: '#000000',
         borderRadius: 100,
+        borderWidth: 1,
+        borderColor: '#E4DED2',
         width: '100%',
     },
     resetButtonText: {

@@ -31,6 +31,8 @@ const FILTER_OPTIONS = [
 
 const ApplicationSkeleton = () => {
     const opacity = useSharedValue(0.3);
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     useEffect(() => {
         opacity.value = withRepeat(
@@ -41,25 +43,28 @@ const ApplicationSkeleton = () => {
             -1,
             true
         );
-    }, []);
+    }, [opacity]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
     }));
 
     return (
-        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+        <Animated.View style={[styles.skeletonItem, animatedStyle, { backgroundColor: isDark ? '#1F1F1F' : '#ECE8DF' }]} />
     );
 };
 
 export function ApplicationList() {
     const router = useRouter();
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const filterBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const filterBorderColor = isDark ? '#303030' : '#E4DED2';
     const filterSheetRef = useRef<ActionSheetRef>(null);
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
     // Fetch applications from Convex
-    const { results, status, loadMore } = usePaginatedQuery(
+    const { results, status } = usePaginatedQuery(
         api.applications.getMyApplications,
         {},
         { initialNumItems: 20 }
@@ -122,7 +127,7 @@ export function ApplicationList() {
                 <Pressable
                     style={[
                         styles.filterButton,
-                        { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                        { backgroundColor: filterBackgroundColor, borderColor: filterBorderColor },
                         selectedStatus && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
                     ]}
                     onPress={() => filterSheetRef.current?.show()}
@@ -157,10 +162,10 @@ export function ApplicationList() {
                             loop
                             style={styles.lottie}
                         />
-                        <ThemedText style={styles.emptyStateText}>
+                        <ThemedText style={[styles.emptyStateText, { color: isDark ? '#D4D4D4' : '#4B5563' }]}>
                             No applications found
                         </ThemedText>
-                        <ThemedText style={styles.emptyStateSubtext}>
+                        <ThemedText style={[styles.emptyStateSubtext, { color: isDark ? '#8A8A8A' : '#9CA3AF' }]}>
                             Join campaigns to start applying
                         </ThemedText>
                     </View>

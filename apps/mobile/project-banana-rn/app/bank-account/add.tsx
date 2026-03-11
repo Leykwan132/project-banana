@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { View, StyleSheet, TextInput, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, ChevronDown, Upload, Eye, Check, Search, Camera, FileText, Image as ImageIcon, Pencil } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Upload, Eye, Check, Search, Camera, FileText, Image as ImageIcon, Pencil } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { Image } from 'expo-image';
@@ -27,6 +27,18 @@ export default function AddBankAccountScreen() {
     const params = useLocalSearchParams();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const surfaceColor = isDark ? '#1A1A1A' : '#FAFAFA';
+    const borderColor = isDark ? '#333333' : '#E5E7EB';
+    const mutedTextColor = isDark ? '#A3A3A3' : '#666666';
+    const sheetSurfaceColor = isDark ? '#121212' : '#FFFFFF';
+    const secondarySurfaceColor = isDark ? '#232323' : '#F5F5F5';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const elevatedBackgroundColor = isDark ? '#1F1F1F' : '#FFFFFF';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const subtleButtonBackgroundColor = isDark ? '#202020' : '#ECE7DB';
+    const primaryButtonBackgroundColor = isDark ? '#F3F1EA' : '#000000';
+    const primaryButtonTextColor = isDark ? '#111111' : '#FFFFFF';
 
     const isEditing = !!params.id;
 
@@ -74,14 +86,6 @@ export default function AddBankAccountScreen() {
     const handleSelectBank = (bank: string) => {
         setBankName(bank);
         bankSelectSheetRef.current?.hide();
-    };
-
-    const handleUploadProof = () => {
-        if (uploadedFile) {
-            previewSheetRef.current?.show();
-        } else {
-            uploadOptionsSheetRef.current?.show();
-        }
     };
 
     const handleReupload = () => {
@@ -207,7 +211,7 @@ export default function AddBankAccountScreen() {
             setIsLoading(false);
             setSubmitStep('pending');
             submitStatusSheetRef.current?.show();
-        } catch (error) {
+        } catch {
             setIsLoading(false);
             Alert.alert('Submission failed', 'Unable to submit bank account. Please try again.');
         }
@@ -228,18 +232,18 @@ export default function AddBankAccountScreen() {
     );
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.text} />
+                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: elevatedBackgroundColor }]}>
+                    <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
                 <ThemedText type="title" style={styles.headerTitle}>
                     {isEditing ? 'Edit Bank Account' : 'Adding New Bank Account'}
                 </ThemedText>
-                <View style={styles.placeholder} />
+                <View style={styles.placeholderSpacer} />
             </View>
 
             <ScrollView
@@ -248,62 +252,67 @@ export default function AddBankAccountScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 {/* Bank Name */}
-                <View style={styles.section}>
+                <View style={styles.sectionBlock}>
                     <ThemedText type="defaultSemiBold" style={styles.label}>Bank Name</ThemedText>
                     <Pressable
-                        style={styles.selectButton}
+                        style={[styles.selectButton, { backgroundColor: elevatedBackgroundColor, borderColor }]}
                         onPress={() => bankSelectSheetRef.current?.show()}
                     >
-                        <ThemedText style={[styles.selectText, !bankName && styles.placeholder]}>
+                        <ThemedText style={[styles.selectText, { color: bankName ? theme.text : mutedTextColor }]}>
                             {bankName || 'Select your bank'}
                         </ThemedText>
-                        <ChevronDown size={20} color="#666" />
+                        <ChevronDown size={20} color={mutedTextColor} />
                     </Pressable>
                 </View>
 
                 {/* Bank Account Number */}
-                <View style={styles.section}>
+                <View style={styles.sectionBlock}>
                     <ThemedText type="defaultSemiBold" style={styles.label}>Bank Account Number</ThemedText>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: elevatedBackgroundColor, borderColor, color: theme.text }]}
                         placeholder="Enter your account number"
                         value={accountNumber}
                         onChangeText={setAccountNumber}
                         keyboardType="numeric"
-                        placeholderTextColor="#999"
+                        placeholderTextColor={isDark ? '#707070' : '#999'}
                     />
                 </View>
 
                 {/* Account Holder Name */}
-                <View style={styles.section}>
+                <View style={styles.sectionBlock}>
                     <ThemedText type="defaultSemiBold" style={styles.label}>Account Holder Name</ThemedText>
                     <TextInput
-                        style={styles.input}
+                        style={[styles.input, { backgroundColor: elevatedBackgroundColor, borderColor, color: theme.text }]}
                         placeholder="Enter account holder name"
                         value={accountHolderName}
                         onChangeText={setAccountHolderName}
-                        placeholderTextColor="#999"
+                        placeholderTextColor={isDark ? '#707070' : '#999'}
                     />
                 </View>
 
                 {/* Proof of Bank Account */}
-                <View style={styles.section}>
+                <View style={styles.sectionBlock}>
                     <ThemedText type="defaultSemiBold" style={styles.label}>Proof of Bank Account</ThemedText>
-                    <ThemedText style={styles.proofDescription}>
-                        The bank account holder's name and the bank account number should be clearly shown on the proof. The latest bank statement is usually used as proof of bank account.
+                    <ThemedText style={[styles.proofDescription, { color: mutedTextColor }]}>
+                        The bank account holder&apos;s name and the bank account number should be clearly shown on the proof. The latest bank statement is usually used as proof of bank account.
                     </ThemedText>
 
                     <Pressable
                         style={styles.viewExampleButton}
                         onPress={() => exampleSheetRef.current?.show()}
                     >
-                        <Eye size={18} color="#000" />
-                        <ThemedText style={styles.viewExampleText}>View Example</ThemedText>
+                        <Eye size={18} color={theme.text} />
+                        <ThemedText style={[styles.viewExampleText, { color: mutedTextColor }]}>View Example</ThemedText>
                     </Pressable>
 
                     {/* Upload Area */}
                     <View
-                        style={[styles.uploadArea, uploadedFile && styles.uploadAreaWithPreview]}
+                        style={[
+                            styles.uploadArea,
+                            { borderColor, backgroundColor: secondarySurfaceColor },
+                            uploadedFile && styles.uploadAreaWithPreview,
+                            uploadedFile && { borderColor, backgroundColor: elevatedBackgroundColor }
+                        ]}
                     >
                         {uploadedFile ? (
                             <View style={styles.previewContainer}>
@@ -345,8 +354,8 @@ export default function AddBankAccountScreen() {
                                 style={styles.emptyUploadContainer}
                                 onPress={() => uploadOptionsSheetRef.current?.show()}
                             >
-                                <Upload size={40} color="#666" />
-                                <ThemedText style={styles.uploadText}>Upload a proof</ThemedText>
+                                <Upload size={40} color={mutedTextColor} />
+                                <ThemedText style={[styles.uploadText, { color: mutedTextColor }]}>Upload a proof</ThemedText>
                             </Pressable>
                         )}
                     </View>
@@ -354,19 +363,20 @@ export default function AddBankAccountScreen() {
             </ScrollView>
 
             {/* Submit Button */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
                 <Pressable
                     style={[
                         styles.submitButton,
+                        { backgroundColor: primaryButtonBackgroundColor },
                         !isFormValid && styles.submitButtonDisabled
                     ]}
                     onPress={handleSubmit}
                     disabled={!isFormValid || isLoading}
                 >
                     {isLoading ? (
-                        <LoadingIndicator size="small" color="#fff" />
+                        <LoadingIndicator size="small" color={primaryButtonTextColor} />
                     ) : (
-                        <ThemedText style={styles.submitButtonText}>
+                        <ThemedText style={[styles.submitButtonText, { color: primaryButtonTextColor }]}>
                             {isEditing ? 'Save Changes' : 'Submit'}
                         </ThemedText>
                     )}
@@ -381,23 +391,24 @@ export default function AddBankAccountScreen() {
                 gestureEnabled
                 onOpen={scrollToSelectedBank}
                 onClose={() => setSearchQuery('')}
+                containerStyle={{ backgroundColor: sheetSurfaceColor }}
             >
-                <View style={[styles.sheetContent, { paddingBottom: 60 }]}>
-                    <ThemedText type="subtitle" style={styles.sheetTitle}>Select Bank</ThemedText>
+                <View style={[styles.sheetContent, { paddingBottom: 60, backgroundColor: sheetSurfaceColor }]}>
+                    <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Select Bank</ThemedText>
 
                     {/* Search Input */}
-                    <View style={styles.searchContainer}>
-                        <Search size={20} color="#666" />
+                    <View style={[styles.searchContainer, { backgroundColor: secondarySurfaceColor }]}>
+                        <Search size={20} color={mutedTextColor} />
                         <TextInput
-                            style={styles.searchInput}
+                            style={[styles.searchInput, { color: theme.text }]}
                             placeholder="Search bank name..."
                             value={searchQuery}
                             onChangeText={setSearchQuery}
-                            placeholderTextColor="#999"
+                            placeholderTextColor={isDark ? '#707070' : '#999'}
                         />
                         {searchQuery.length > 0 && (
                             <Pressable onPress={() => setSearchQuery('')}>
-                                <ThemedText style={styles.clearText}>Clear</ThemedText>
+                                <ThemedText style={[styles.clearText, { color: mutedTextColor }]}>Clear</ThemedText>
                             </Pressable>
                         )}
                     </View>
@@ -411,26 +422,27 @@ export default function AddBankAccountScreen() {
                         {filteredBanks.map((bank) => (
                             <Pressable
                                 key={bank.name}
-                                style={styles.bankOption}
+                                style={[styles.bankOption, { borderBottomColor: isDark ? '#2A2A2A' : '#F0F0F0' }]}
                                 onPress={() => handleSelectBank(bank.name)}
                             >
                                 <View style={styles.bankOptionLeft}>
-                                    <Image source={{ uri: bank.logo }} style={styles.bankOptionLogo} contentFit="contain" />
+                                    <Image source={{ uri: bank.logo }} style={[styles.bankOptionLogo, { backgroundColor: secondarySurfaceColor }]} contentFit="contain" />
                                     <ThemedText style={[
                                         styles.bankOptionText,
+                                        { color: theme.text },
                                         bank.name === bankName && styles.bankOptionSelected
                                     ]}>
                                         {bank.name}
                                     </ThemedText>
                                 </View>
                                 {bank.name === bankName && (
-                                    <Check size={20} color="#000" />
+                                    <Check size={20} color={theme.text} />
                                 )}
                             </Pressable>
                         ))}
                         {filteredBanks.length === 0 && (
                             <View style={styles.noResultContainer}>
-                                <ThemedText style={styles.noResultText}>No banks found</ThemedText>
+                                <ThemedText style={[styles.noResultText, { color: mutedTextColor }]}>No banks found</ThemedText>
                             </View>
                         )}
                     </ScrollView>
@@ -438,30 +450,30 @@ export default function AddBankAccountScreen() {
             </ActionSheet>
 
             {/* Example Sheet */}
-            <ActionSheet ref={exampleSheetRef} gestureEnabled>
-                <View style={styles.sheetContent}>
-                    <ThemedText type="subtitle" style={styles.sheetTitle}>Example Bank Statement</ThemedText>
+            <ActionSheet ref={exampleSheetRef} gestureEnabled containerStyle={{ backgroundColor: sheetSurfaceColor }}>
+                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
+                    <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Example Bank Statement</ThemedText>
                     <Image
                         source={{ uri: 'https://placehold.co/600x800/F5F5F5/666?text=Bank+Statement+Example' }}
                         style={styles.exampleImage}
                         contentFit="contain"
                     />
-                    <ThemedText style={styles.exampleCaption}>
+                    <ThemedText style={[styles.exampleCaption, { color: mutedTextColor }]}>
                         Your bank statement should clearly show your name and account number as highlighted above.
                     </ThemedText>
                     <Pressable
-                        style={styles.gotItButton}
+                        style={[styles.gotItButton, { backgroundColor: subtleButtonBackgroundColor, borderColor }]}
                         onPress={() => exampleSheetRef.current?.hide()}
                     >
-                        <ThemedText style={styles.gotItButtonText}>Got it</ThemedText>
+                        <ThemedText style={[styles.gotItButtonText, { color: theme.text }]}>Got it</ThemedText>
                     </Pressable>
                 </View>
             </ActionSheet>
 
             {/* Preview Sheet */}
-            <ActionSheet ref={previewSheetRef} gestureEnabled>
-                <View style={styles.sheetContent}>
-                    <ThemedText type="subtitle" style={styles.sheetTitle}>Edit</ThemedText>
+            <ActionSheet ref={previewSheetRef} gestureEnabled containerStyle={{ backgroundColor: sheetSurfaceColor }}>
+                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
+                    <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Edit</ThemedText>
 
                     {uploadedFile?.type === 'image' ? (
                         <Image
@@ -470,7 +482,7 @@ export default function AddBankAccountScreen() {
                             contentFit="contain"
                         />
                     ) : uploadedFile?.type === 'pdf' ? (
-                        <View style={styles.webViewContainer}>
+                        <View style={[styles.webViewContainer, { backgroundColor: surfaceColor, borderColor }]}>
                             <ThemedText type="defaultSemiBold" style={styles.pdfFileNameTitle}>
                                 {uploadedFile.name}
                             </ThemedText>
@@ -489,52 +501,52 @@ export default function AddBankAccountScreen() {
                     ) : null}
 
                     <Pressable
-                        style={styles.reuploadButton}
+                        style={[styles.reuploadButton, { backgroundColor: secondarySurfaceColor, borderColor }]}
                         onPress={handleReupload}
                     >
-                        <Upload size={18} color="#000" />
-                        <ThemedText style={styles.reuploadButtonText}>Re-upload</ThemedText>
+                        <Upload size={18} color={theme.text} />
+                        <ThemedText style={[styles.reuploadButtonText, { color: theme.text }]}>Re-upload</ThemedText>
                     </Pressable>
                 </View>
             </ActionSheet>
 
             {/* Upload Options Sheet */}
-            <ActionSheet ref={uploadOptionsSheetRef} gestureEnabled>
-                <View style={styles.sheetContent}>
-                    <ThemedText type="subtitle" style={styles.sheetTitle}>Upload Proof</ThemedText>
+            <ActionSheet ref={uploadOptionsSheetRef} gestureEnabled containerStyle={{ backgroundColor: sheetSurfaceColor }}>
+                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
+                    <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Upload Proof</ThemedText>
 
                     <Pressable
                         style={styles.uploadOption}
                         onPress={handleTakePhoto}
                     >
-                        <View style={styles.uploadOptionIcon}>
-                            <Camera size={24} color="#000" />
+                        <View style={[styles.uploadOptionIcon, { backgroundColor: secondarySurfaceColor }]}>
+                            <Camera size={24} color={theme.text} />
                         </View>
-                        <ThemedText style={styles.uploadOptionText}>Take a Photo</ThemedText>
+                        <ThemedText style={[styles.uploadOptionText, { color: theme.text }]}>Take a Photo</ThemedText>
                     </Pressable>
 
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0' }]} />
 
                     <Pressable
                         style={styles.uploadOption}
                         onPress={handleChooseFromGallery}
                     >
-                        <View style={styles.uploadOptionIcon}>
-                            <ImageIcon size={24} color="#000" />
+                        <View style={[styles.uploadOptionIcon, { backgroundColor: secondarySurfaceColor }]}>
+                            <ImageIcon size={24} color={theme.text} />
                         </View>
-                        <ThemedText style={styles.uploadOptionText}>Choose from Gallery</ThemedText>
+                        <ThemedText style={[styles.uploadOptionText, { color: theme.text }]}>Choose from Gallery</ThemedText>
                     </Pressable>
 
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0' }]} />
 
                     <Pressable
                         style={styles.uploadOption}
                         onPress={handleUploadPDF}
                     >
-                        <View style={styles.uploadOptionIcon}>
-                            <FileText size={24} color="#000" />
+                        <View style={[styles.uploadOptionIcon, { backgroundColor: secondarySurfaceColor }]}>
+                            <FileText size={24} color={theme.text} />
                         </View>
-                        <ThemedText style={styles.uploadOptionText}>Upload PDF</ThemedText>
+                        <ThemedText style={[styles.uploadOptionText, { color: theme.text }]}>Upload PDF</ThemedText>
                     </Pressable>
                 </View>
             </ActionSheet>
@@ -544,8 +556,9 @@ export default function AddBankAccountScreen() {
                 ref={submitStatusSheetRef}
                 gestureEnabled={true}
                 closeOnTouchBackdrop={true}
+                containerStyle={{ backgroundColor: sheetSurfaceColor }}
             >
-                <View style={styles.sheetContent}>
+                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
                     {submitStep === 'pending' && (
                         <View style={styles.statusContainer}>
                             <LottieView
@@ -554,20 +567,20 @@ export default function AddBankAccountScreen() {
                                 loop={false}
                                 style={{ width: 120, height: 120 }}
                             />
-                            <ThemedText type="subtitle" style={styles.statusTitle}>
+                            <ThemedText type="subtitle" style={[styles.statusTitle, { color: theme.text }]}>
                                 {isEditing ? 'Update Successful' : 'Pending Review'}
                             </ThemedText>
-                            <ThemedText style={styles.statusDescription}>
+                            <ThemedText style={[styles.statusDescription, { color: mutedTextColor }]}>
                                 {isEditing
                                     ? 'Your bank account details have been updated successfully.'
                                     : 'Your bank account has been submitted for review. We will verify your details and notify you once it\'s approved.'
                                 }
                             </ThemedText>
                             <Pressable
-                                style={styles.doneButton}
+                                style={[styles.doneButton, { backgroundColor: subtleButtonBackgroundColor, borderColor }]}
                                 onPress={handleCloseSubmitSheet}
                             >
-                                <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+                                <ThemedText style={[styles.doneButtonText, { color: theme.text }]}>Done</ThemedText>
                             </Pressable>
                         </View>
                     )}
@@ -601,7 +614,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
     },
-    placeholder: {
+    placeholderSpacer: {
         width: 40,
     },
     scrollView: {
@@ -611,6 +624,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 16,
         paddingBottom: 120,
+    },
+    sectionBlock: {
+        marginBottom: 20,
+    },
+    infoCard: {
+        marginBottom: 16,
+        padding: 18,
+        borderRadius: 20,
+        borderWidth: 1,
     },
     section: {
         marginBottom: 24,
@@ -771,6 +793,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 24,
+        borderWidth: 1,
     },
     gotItButtonText: {
         color: '#fff',
@@ -854,6 +877,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginTop: 24,
         width: '100%',
+        borderWidth: 1,
     },
     doneButtonText: {
         color: '#fff',

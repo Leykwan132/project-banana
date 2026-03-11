@@ -21,6 +21,10 @@ export function Header({ title }: HeaderProps) {
     const colorScheme = useColorScheme();
     const router = useRouter();
     const actionSheetRef = useRef<ActionSheetRef>(null);
+    const isDark = colorScheme === 'dark';
+    const headerBackgroundColor = isDark ? Colors[colorScheme ?? 'light'].screenBackground : '#F4F3EE';
+    const controlBackgroundColor = isDark ? '#1A1A1A' : '#F7F4ED';
+    const controlBorderColor = isDark ? '#333333' : '#E7E2D8';
 
     const { data: session } = authClient.useSession();
     const user = session?.user;
@@ -29,7 +33,7 @@ export function Header({ title }: HeaderProps) {
     const unreadCount = useQuery(api.notifications.getUnreadNotificationCount) ?? 0;
 
     return (
-        <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+        <View style={[styles.container, { backgroundColor: headerBackgroundColor }]}>
             <View style={styles.leftSection}>
                 {title ? (
                     <ThemedText type="title" style={styles.headerTitle}>{title}</ThemedText>
@@ -48,13 +52,13 @@ export function Header({ title }: HeaderProps) {
                 <Pressable onPress={() => router.push('/notifications')}>
                     <View style={[
                         styles.iconButton,
-                        { backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F0F0F0' }
+                        { backgroundColor: controlBackgroundColor, borderColor: controlBorderColor }
                     ]}>
-                        <Bell size={20} color={colorScheme === 'dark' ? '#ECEDEE' : '#000'} />
+                        <Bell size={20} color={isDark ? '#ECEDEE' : '#000'} />
                         {unreadCount > 0 && (
                             <View style={[
                                 styles.badgeContainer,
-                                { borderColor: colorScheme === 'dark' ? '#1A1A1A' : '#F0F0F0' }
+                                { borderColor: controlBackgroundColor }
                             ]}>
                                 <ThemedText style={styles.badgeText}>
                                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -74,11 +78,11 @@ export function Header({ title }: HeaderProps) {
                             styles.avatar,
                             styles.fallbackAvatar,
                             {
-                                backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#F0F0F0',
-                                borderColor: colorScheme === 'dark' ? '#333' : '#E5E5E5'
+                                backgroundColor: controlBackgroundColor,
+                                borderColor: controlBorderColor
                             }
                         ]}>
-                            <UserIcon size={24} color={colorScheme === 'dark' ? '#999' : '#999'} />
+                            <UserIcon size={24} color="#999" />
                         </View>
                     )}
                 </Pressable>
@@ -130,6 +134,8 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20,
         backgroundColor: '#F0F0F0', // Overridden in JSX
+        borderWidth: 1,
+        borderColor: '#E5E5E5',
         alignItems: 'center',
         justifyContent: 'center',
     },

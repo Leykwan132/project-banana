@@ -35,6 +35,12 @@ export function ApplicationListItem({
     style,
 }: ApplicationListItemProps) {
     const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
+    const cardBorderColor = isDark ? '#303030' : '#E4DED2';
+    const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const logoChipBorderColor = isDark ? '#2A2A2A' : '#E7E2D8';
 
     const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
     const [finalLogoUrl, setFinalLogoUrl] = useState<string | null>(!logoR2Key ? (logoUrl || null) : null);
@@ -62,24 +68,27 @@ export function ApplicationListItem({
             onPress={onPress}
             style={[
                 styles.container,
-                { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground },
+                {
+                    backgroundColor: cardBackgroundColor,
+                    borderColor: cardBorderColor,
+                },
                 style
             ]}
         >
             {/* Top Part */}
             <View style={styles.topSection}>
-                <View style={styles.logoContainer}>
+                <View style={[styles.logoContainer, { borderColor: logoChipBorderColor }]}>
                     {finalLogoUrl ? (
                         <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
                     ) : (
-                        <View style={[styles.logoPlaceholder, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F3F4F6' }]}>
-                            <Building size={24} color={colorScheme === 'dark' ? '#6B7280' : '#9CA3AF'} />
+                        <View style={styles.logoPlaceholder}>
+                            <Building size={24} color={isDark ? '#6B7280' : '#9CA3AF'} />
                         </View>
                     )}
                 </View>
                 <View style={styles.titleContainer}>
                     <View style={styles.textColumn}>
-                        <ThemedText style={[styles.companyName, { color: colorScheme === 'dark' ? '#9CA3AF' : '#6B7280' }]}>
+                        <ThemedText style={[styles.companyName, { color: isDark ? '#8A8A8A' : '#6B7280' }]}>
                             {businessName}
                         </ThemedText>
                         <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
@@ -90,13 +99,13 @@ export function ApplicationListItem({
             </View>
 
             {/* Bottom Part */}
-            <View style={[styles.bottomSection, { borderTopColor: colorScheme === 'dark' ? '#333' : '#F3F4F6' }]}>
+            <View style={[styles.bottomSection, { borderTopColor: cardDividerColor }]}>
                 <ApplicationStatusBadge status={status} />
 
                 {createdOn && (
                     <View style={styles.statItem}>
-                        <Calendar size={16} color={Colors[colorScheme ?? 'light'].icon} style={styles.icon} />
-                        <ThemedText style={[styles.statText, { color: colorScheme === 'dark' ? '#9CA3AF' : '#4B5563' }]}>
+                        <Calendar size={16} color={theme.icon} style={styles.icon} />
+                        <ThemedText style={[styles.statText, { color: isDark ? '#9CA3AF' : '#4B5563' }]}>
                             Created on {createdOn}
                         </ThemedText>
                     </View>
@@ -109,9 +118,11 @@ export function ApplicationListItem({
 const styles = StyleSheet.create({
     container: {
         flexDirection: 'column',
+        paddingHorizontal: 16,
         paddingVertical: 16,
         marginBottom: 12,
-        borderRadius: 12,
+        borderRadius: 16,
+        borderWidth: 1,
     },
     topSection: {
         flexDirection: 'row',
@@ -120,12 +131,15 @@ const styles = StyleSheet.create({
     },
     logoContainer: {
         marginRight: 12,
+        borderWidth: 1,
+        borderRadius: 100,
     },
     logo: {
         width: 44,
         height: 44,
         resizeMode: 'contain',
         borderRadius: 100,
+        backgroundColor: '#FFFFFF',
     },
     logoPlaceholder: {
         width: 44,
@@ -133,6 +147,7 @@ const styles = StyleSheet.create({
         borderRadius: 100,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
     },
     titleContainer: {
         flex: 1,

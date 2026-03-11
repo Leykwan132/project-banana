@@ -26,30 +26,37 @@ export function PastPayoutListItem({
     onPress,
 }: PastPayoutListItemProps) {
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
+    const cardBorderColor = isDark ? '#303030' : '#E4DED2';
+    const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const logoChipBorderColor = isDark ? '#2A2A2A' : '#E7E2D8';
 
 
     return (
         <Pressable onPress={onPress}>
-            <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].screenBackground }]}>
+            <View
+                style={[
+                    styles.container,
+                    {
+                        backgroundColor: cardBackgroundColor,
+                        borderColor: cardBorderColor,
+                    }
+                ]}
+            >
                 {/* Top Section */}
                 <View style={styles.topSection}>
-                    <View style={styles.logoContainer}>
-                        {logoUrl ? (
-                            <Image source={{ uri: logoUrl }} style={styles.logo} />
-                        ) : (
-                            <View style={styles.logoPlaceholder}>
-                                <Image
-                                    source={{ uri: 'https://picsum.photos/200' }}
-                                    style={styles.logo}
-                                />
-                            </View>
-                        )}
+                    <View style={[styles.logoContainer, { borderColor: logoChipBorderColor }]}>
+                        <Image
+                            source={{ uri: logoUrl || 'https://picsum.photos/200' }}
+                            style={styles.logo}
+                        />
                     </View>
 
                     <View style={styles.titleContainer}>
                         <View style={styles.textColumn}>
                             {accountNumber && (
-                                <ThemedText style={styles.subText}>
+                                <ThemedText style={[styles.subText, { color: isDark ? '#8A8A8A' : '#6B7280' }]}>
                                     {accountNumber}
                                 </ThemedText>
                             )}
@@ -68,7 +75,7 @@ export function PastPayoutListItem({
                 </View>
 
                 {/* Bottom Section */}
-                <View style={styles.bottomSection}>
+                <View style={[styles.bottomSection, { borderTopColor: cardDividerColor }]}>
                     <View>
                         {status && (
                             <ApplicationStatusBadge status={status} />
@@ -76,7 +83,7 @@ export function PastPayoutListItem({
                     </View>
                     <View style={styles.dateContainer}>
                         <Calendar size={16} color={Colors[colorScheme ?? 'light'].icon} style={styles.icon} />
-                        <ThemedText style={styles.date}>
+                        <ThemedText style={[styles.date, { color: isDark ? '#8A8A8A' : '#666666' }]}>
                             {['Pending', 'Processing'].includes(status || '') ? 'Requested on ' : status ? 'Withdraw on ' : 'Paid on '}{date}
                         </ThemedText>
                     </View>
@@ -89,8 +96,10 @@ export function PastPayoutListItem({
 const styles = StyleSheet.create({
     container: {
         flexDirection: 'column',
-        marginBottom: 24,
-        borderRadius: 12,
+        marginBottom: 4,
+        borderRadius: 16,
+        borderWidth: 1,
+        padding: 16,
     },
     topSection: {
         flexDirection: 'row',
@@ -99,22 +108,20 @@ const styles = StyleSheet.create({
     },
     logoContainer: {
         marginRight: 12,
+        width: 48,
+        height: 48,
+        borderWidth: 1,
+        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
     },
     logo: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#F0F0F0',
-    },
-    logoPlaceholder: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
         backgroundColor: '#FFFFFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#EEEEEE',
     },
     titleContainer: {
         flex: 1,

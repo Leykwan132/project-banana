@@ -21,11 +21,14 @@ import { BankAccountSourceType } from '@/constants/sourceType';
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 
 const BankAccountSkeleton = () => {
     const opacity = useSharedValue(0.35);
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     useEffect(() => {
         opacity.value = withRepeat(
@@ -43,11 +46,11 @@ const BankAccountSkeleton = () => {
     }));
 
     return (
-        <Animated.View style={[styles.bankSkeletonCard, animatedStyle]}>
-            <View style={styles.bankSkeletonLogo} />
+        <Animated.View style={[styles.bankSkeletonCard, animatedStyle, { backgroundColor: isDark ? '#1A1A1A' : '#FBFAF7', borderColor: isDark ? '#2F2F2F' : '#E4DED2' }]}>
+            <View style={[styles.bankSkeletonLogo, { backgroundColor: isDark ? '#262626' : '#ECE8DF' }]} />
             <View style={styles.bankSkeletonInfo}>
-                <View style={styles.bankSkeletonTitle} />
-                <View style={styles.bankSkeletonMeta} />
+                <View style={[styles.bankSkeletonTitle, { backgroundColor: isDark ? '#262626' : '#ECE8DF' }]} />
+                <View style={[styles.bankSkeletonMeta, { backgroundColor: isDark ? '#262626' : '#ECE8DF' }]} />
             </View>
         </Animated.View>
     );
@@ -58,6 +61,14 @@ export default function WithdrawScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const surfaceColor = isDark ? '#1A1A1A' : '#FBFAF7';
+    const elevatedSurfaceColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#333333' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const mutedTextColor = isDark ? '#A3A3A3' : '#666666';
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
     const actionSheetRef = useRef<ActionSheetRef>(null);
@@ -78,7 +89,7 @@ export default function WithdrawScreen() {
             id: account._id,
             bankName: account.bank_name,
             accountHolder: account.account_holder_name ?? 'User',
-            accountNumber: account.account_number,
+            accountNumber: `****${String(account.account_number).slice(-4)}`,
             logo: bank?.logo ?? 'https://companieslogo.com/img/orig/1295.KL-b182747d.png?t=1720244493' // Fallback
         };
     }) || [];
@@ -144,15 +155,15 @@ export default function WithdrawScreen() {
     };
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: screenBackgroundColor }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={20} color="#000" />
+                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: elevatedSurfaceColor }]}>
+                    <ArrowLeft size={20} color={theme.text} />
                 </Pressable>
-                <ThemedText style={styles.headerTitle}>Withdraw page</ThemedText>
+                <ThemedText style={[styles.headerTitle, { color: mutedTextColor }]}>Withdraw</ThemedText>
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -167,9 +178,16 @@ export default function WithdrawScreen() {
                 {/* Amount Section */}
                 <View style={styles.section}>
                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>1. Amount to payout</ThemedText>
-                    <View style={[styles.inputContainer, error ? styles.inputError : undefined]}>
+                    <View
+                        style={[
+                            styles.inputContainer,
+                            { backgroundColor: surfaceColor, borderColor },
+                            error ? styles.inputError : undefined,
+                            error && isDark ? { backgroundColor: '#2B1818', borderColor: '#7F1D1D' } : undefined,
+                        ]}
+                    >
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, { color: theme.text }]}
                             placeholder={`Min. RM ${MIN_WITHDRAWAL_AMOUNT.toFixed(0)}`}
                             value={amount ? `RM ${amount}` : ''}
                             onChangeText={(text) => {
@@ -178,11 +196,11 @@ export default function WithdrawScreen() {
                                 if (error) setError('');
                             }}
                             keyboardType="numeric"
-                            placeholderTextColor="#999"
+                            placeholderTextColor={isDark ? '#707070' : '#999'}
                         />
 
-                        <Pressable onPress={handleMax} style={styles.maxButton}>
-                            <ThemedText style={styles.maxButtonText}>Max</ThemedText>
+                        <Pressable onPress={handleMax} style={[styles.maxButton, { backgroundColor: isDark ? '#262626' : '#F1ECE1' }]}>
+                            <ThemedText style={[styles.maxButtonText, { color: theme.text }]}>Max</ThemedText>
                         </Pressable>
                     </View>
                     {error ? (
@@ -190,9 +208,9 @@ export default function WithdrawScreen() {
                             <ThemedText style={styles.errorText}>{error}</ThemedText>
                         </View>
                     ) : null}
-                    <View style={styles.feeNotice}>
-                        <ThemedText style={styles.feeNoticeText}>
-                            A 10% withdrawal fee (inc. payment gateway fee) will be imposed.
+                    <View style={[styles.feeNotice, { backgroundColor: isDark ? '#2D230F' : '#F7F0E2' }]}>
+                        <ThemedText style={[styles.feeNoticeText, { color: isDark ? '#FBBF24' : '#F57F17' }]}>
+                            A {(platformFeeRate * 100).toFixed(0)}% withdrawal fee (inc. payment gateway fee) will be imposed.
                         </ThemedText>
                     </View>
                 </View>
@@ -202,7 +220,7 @@ export default function WithdrawScreen() {
                     <View style={styles.sectionHeaderRow}>
                         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>2. Bank accounts</ThemedText>
                         <Pressable onPress={() => router.push('/bank-account/add')}>
-                            <ThemedText style={styles.actionText}>+ Add bank account</ThemedText>
+                            <ThemedText style={[styles.actionText, { color: theme.text }]}>+ Add bank account</ThemedText>
                         </Pressable>
                     </View>
 
@@ -220,10 +238,10 @@ export default function WithdrawScreen() {
                                 loop
                                 style={styles.lottie}
                             />
-                            <ThemedText style={styles.emptyStateText}>
+                            <ThemedText style={[styles.emptyStateText, { color: isDark ? '#D4D4D4' : '#4B5563' }]}>
                                 No bank accounts found
                             </ThemedText>
-                            <ThemedText style={styles.emptyStateSubtext}>
+                            <ThemedText style={[styles.emptyStateSubtext, { color: isDark ? '#8A8A8A' : '#9CA3AF' }]}>
                                 Add a bank account to withdraw funds
                             </ThemedText>
                         </View>
@@ -233,19 +251,32 @@ export default function WithdrawScreen() {
                                 key={account.id}
                                 style={[
                                     styles.bankCard,
+                                    {
+                                        backgroundColor: selectedBankId === account.id
+                                            ? (isDark ? '#202020' : '#EFE7D9')
+                                            : surfaceColor,
+                                        borderColor: selectedBankId === account.id
+                                            ? (isDark ? '#ECEDEE' : '#000000')
+                                            : borderColor,
+                                    },
                                     selectedBankId === account.id && styles.selectedBankCard
                                 ]}
                                 onPress={() => setSelectedBankId(account.id)}
                             >
-                                <View style={styles.bankLogoContainer}>
+                                <View style={[styles.bankLogoContainer, { backgroundColor: '#FFFFFF', borderColor: isDark ? '#2A2A2A' : '#E7E2D8' }]}>
                                     {/* Using a placeholder generic icon if image fails or for simplify */}
                                     <Image source={{ uri: account.logo }} style={styles.bankLogo} contentFit="contain" />
                                 </View>
                                 <View style={styles.bankInfo}>
-                                    <ThemedText type="defaultSemiBold">{account.bankName}</ThemedText>
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={selectedBankId === account.id ? { color: '#000000' } : undefined}
+                                    >
+                                        {account.bankName}
+                                    </ThemedText>
                                     <View style={styles.bankDetailsRow}>
-                                        <ThemedText style={styles.bankDetailText}>{account.accountHolder}</ThemedText>
-                                        <ThemedText style={[styles.bankDetailText, { marginLeft: 16 }]}>{account.accountNumber}</ThemedText>
+                                        <ThemedText style={[styles.bankDetailText, { color: selectedBankId === account.id ? '#666666' : mutedTextColor }]}>{account.accountHolder}</ThemedText>
+                                        <ThemedText style={[styles.bankDetailText, { marginLeft: 16, color: selectedBankId === account.id ? '#666666' : mutedTextColor }]}>{account.accountNumber}</ThemedText>
                                     </View>
                                 </View>
                             </Pressable>
@@ -255,9 +286,9 @@ export default function WithdrawScreen() {
             </ScrollView>
 
             {/* Footer */}
-            <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
                 <Pressable
-                    style={styles.confirmButton}
+                    style={[styles.confirmButton, { backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                     onPress={() => {
                         const parsedAmount = parseFloat(amount);
 
@@ -285,42 +316,42 @@ export default function WithdrawScreen() {
                 </Pressable>
             </View>
 
-            <ActionSheet ref={actionSheetRef} gestureEnabled>
-                <View style={[styles.sheetContent]}>
+            <ActionSheet ref={actionSheetRef} gestureEnabled containerStyle={{ backgroundColor: screenBackgroundColor }}>
+                <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                     {confirmStep === 'review' ? (
                         <View>
                             <ThemedText type="subtitle" style={styles.sheetTitle}>Review Withdrawal</ThemedText>
 
                             {/* Bank info */}
                             <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>Bank</ThemedText>
+                                <ThemedText style={[styles.reviewLabel, { color: mutedTextColor }]}>Bank</ThemedText>
                                 <ThemedText type="defaultSemiBold">{bankAccounts.find(b => b.id === selectedBankId)?.bankName}</ThemedText>
                             </View>
                             <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>Account</ThemedText>
+                                <ThemedText style={[styles.reviewLabel, { color: mutedTextColor }]}>Account</ThemedText>
                                 <ThemedText type="defaultSemiBold">{bankAccounts.find(b => b.id === selectedBankId)?.accountNumber}</ThemedText>
                             </View>
 
-                            <View style={styles.divider} />
+                            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                             {/* Amount breakdown */}
                             <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>Amount</ThemedText>
+                                <ThemedText style={[styles.reviewLabel, { color: mutedTextColor }]}>Amount</ThemedText>
                                 <ThemedText type="defaultSemiBold">RM {amount || '0'}</ThemedText>
                             </View>
                             <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>Platform Fee (incl. payment gateway)</ThemedText>
+                                <ThemedText style={[styles.reviewLabel, { color: mutedTextColor }]}>Platform Fee (incl. payment gateway)</ThemedText>
                                 <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {platformFee.toFixed(2)}</ThemedText>
                             </View>
                             <View style={styles.reviewRow}>
-                                <ThemedText style={styles.reviewLabel}>You'll Receive</ThemedText>
-                                <ThemedText type="defaultSemiBold" style={{ color: '#2E7D32' }}>
+                                <ThemedText style={[styles.reviewLabel, { color: mutedTextColor }]}>You&apos;ll Receive</ThemedText>
+                                <ThemedText type="defaultSemiBold" style={{ color: '#22C55E' }}>
                                     RM {netAmount.toFixed(2)}
                                 </ThemedText>
                             </View>
 
                             <Pressable
-                                style={[styles.confirmButton, { marginTop: 32, opacity: isLoading ? 0.7 : 1 }]}
+                                style={[styles.confirmButton, { marginTop: 32, opacity: isLoading ? 0.7 : 1, backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={handleConfirm}
                                 disabled={isLoading}
                             >
@@ -331,7 +362,7 @@ export default function WithdrawScreen() {
                                 )}
                             </Pressable>
 
-                            <ThemedText style={styles.disclaimerText}>Please review as this action cannot be undone.</ThemedText>
+                            <ThemedText style={[styles.disclaimerText, { color: mutedTextColor }]}>Please review as this action cannot be undone.</ThemedText>
                         </View>
                     ) : confirmStep === 'success' ? (
                         <View style={styles.successContainer}>
@@ -342,10 +373,10 @@ export default function WithdrawScreen() {
                                 style={{ width: 150, height: 150 }}
                             />
                             <ThemedText type="subtitle" style={styles.successTitle}>Withdrawal Processing</ThemedText>
-                            <ThemedText style={styles.successSubtitle}>Withdrawal request submitted</ThemedText>
+                            <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Withdrawal request submitted</ThemedText>
 
                             <Pressable
-                                style={[styles.confirmButton, { marginTop: 32, width: '100%' }]}
+                                style={[styles.confirmButton, { marginTop: 32, width: '100%', backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => {
                                     actionSheetRef.current?.hide();
                                     router.back();
@@ -363,12 +394,12 @@ export default function WithdrawScreen() {
                                 style={{ width: 150, height: 150 }}
                             />
                             <ThemedText type="subtitle" style={styles.successTitle}>Insufficient Balance</ThemedText>
-                            <ThemedText style={styles.successSubtitle}>
+                            <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>
                                 Your balance is insufficient.
                             </ThemedText>
 
                             <Pressable
-                                style={[styles.confirmButton, { marginTop: 32, width: '100%' }]}
+                                style={[styles.confirmButton, { marginTop: 32, width: '100%', backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => setConfirmStep('review')}
                             >
                                 <ThemedText style={styles.confirmButtonText}>Adjust Amount</ThemedText>
@@ -385,20 +416,28 @@ export default function WithdrawScreen() {
                                 style={{ width: 150, height: 150 }}
                             />
                             <ThemedText type="subtitle" style={styles.successTitle}>Withdrawal Failed</ThemedText>
-                            <ThemedText style={styles.successSubtitle}>Something went wrong with your withdrawal request.</ThemedText>
+                            <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Something went wrong with your withdrawal request.</ThemedText>
 
                             <Pressable
-                                style={[styles.confirmButton, { marginTop: 32, width: '100%' }]}
+                                style={[styles.confirmButton, { marginTop: 32, width: '100%', backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => setConfirmStep('review')}
                             >
                                 <ThemedText style={styles.confirmButtonText}>Try Again</ThemedText>
                             </Pressable>
 
                             <Pressable
-                                style={[styles.confirmButtonSecondary, { width: '100%', marginTop: 12 }]}
+                                style={[
+                                    styles.confirmButtonSecondary,
+                                    {
+                                        width: '100%',
+                                        marginTop: 12,
+                                        backgroundColor: isDark ? '#1A1A1A' : '#F7F4ED',
+                                        borderColor,
+                                    }
+                                ]}
                                 onPress={() => Linking.openURL('mailto:support@Lumina.com?subject=Withdrawal Issue')}
                             >
-                                <ThemedText style={styles.confirmButtonSecondaryText}>Contact Support</ThemedText>
+                                <ThemedText style={[styles.confirmButtonSecondaryText, { color: theme.text }]}>Contact Support</ThemedText>
                             </Pressable>
                         </View>
                     )}
@@ -567,7 +606,7 @@ const styles = StyleSheet.create({
     },
     selectedBankCard: {
         borderColor: '#000', // Active state
-        backgroundColor: '#fff',
+        backgroundColor: '#F8F8F4',
     },
     bankLogoContainer: {
         width: 40,
@@ -590,7 +629,6 @@ const styles = StyleSheet.create({
     },
     bankDetailsRow: {
         flexDirection: 'row',
-        marginTop: 4,
     },
     bankDetailText: {
         fontSize: 14,

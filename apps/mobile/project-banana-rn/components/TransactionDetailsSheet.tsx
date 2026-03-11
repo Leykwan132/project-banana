@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { View, StyleSheet, Pressable, StyleProp, TextStyle } from 'react-native';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export interface DetailItem {
     label: string;
@@ -32,7 +33,9 @@ export function TransactionDetailsSheet({
     cancelText = "Cancel Withdrawal",
     customContent,
 }: TransactionDetailsSheetProps) {
-    const insets = useSafeAreaInsets();
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
     const [view, setView] = useState<'details' | 'confirm' | 'success'>('details');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -62,11 +65,16 @@ export function TransactionDetailsSheet({
     };
 
     return (
-        <ActionSheet ref={actionSheetRef} gestureEnabled onClose={() => setView('details')}>
-            <View style={[styles.sheetContent]}>
+        <ActionSheet
+            ref={actionSheetRef}
+            gestureEnabled
+            onClose={() => setView('details')}
+            containerStyle={{ backgroundColor: theme.screenBackground }}
+        >
+            <View style={[styles.sheetContent, { backgroundColor: theme.screenBackground }]}>
                 {view === 'details' && (
                     <>
-                        <ThemedText type="subtitle" style={styles.sheetTitle}>{title}</ThemedText>
+                        <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>{title}</ThemedText>
 
                         {customContent ? (
                             customContent
@@ -75,16 +83,16 @@ export function TransactionDetailsSheet({
                                 <View key={index}>
                                     <View style={styles.detailRow}>
                                         <View>
-                                            <ThemedText style={styles.detailLabel}>{item.label}</ThemedText>
+                                            <ThemedText style={[styles.detailLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>{item.label}</ThemedText>
                                         </View>
                                         <View style={{ alignItems: 'flex-end' }}>
                                             <ThemedText type="defaultSemiBold" style={item.valueStyle}>{item.value}</ThemedText>
                                             {item.note && (
-                                                <ThemedText style={styles.noteText}>{item.note}</ThemedText>
+                                                <ThemedText style={[styles.noteText, { color: isDark ? '#8A8A8A' : '#666666' }]}>{item.note}</ThemedText>
                                             )}
                                         </View>
                                     </View>
-                                    <View style={styles.divider} />
+                                    <View style={[styles.divider, { backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0' }]} />
                                 </View>
                             ))
                         )}
@@ -99,18 +107,23 @@ export function TransactionDetailsSheet({
                         )}
 
                         <Pressable
-                            style={[styles.button, styles.dismissButton, onCancel && { marginTop: 12 }]}
+                            style={[
+                                styles.button,
+                                styles.dismissButton,
+                                { backgroundColor: isDark ? '#1A1A1A' : '#F5F5F5', borderColor: isDark ? '#333333' : 'transparent' },
+                                onCancel && { marginTop: 12 }
+                            ]}
                             onPress={handleDismiss}
                         >
-                            <ThemedText style={styles.dismissButtonText}>Dismiss</ThemedText>
+                            <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Dismiss</ThemedText>
                         </Pressable>
                     </>
                 )}
 
                 {view === 'confirm' && (
                     <View style={styles.centerContent}>
-                        <ThemedText type="subtitle" style={styles.sheetTitle}>Cancel Withdrawal?</ThemedText>
-                        <ThemedText style={styles.messageText}>Are you sure you want to cancel this withdrawal request?</ThemedText>
+                        <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Cancel Withdrawal?</ThemedText>
+                        <ThemedText style={[styles.messageText, { color: isDark ? '#A3A3A3' : '#666666' }]}>Are you sure you want to cancel this withdrawal request?</ThemedText>
 
                         <Pressable
                             style={[styles.button, styles.cancelButton, { width: '100%', marginTop: 32 }]}
@@ -125,11 +138,15 @@ export function TransactionDetailsSheet({
                         </Pressable>
 
                         <Pressable
-                            style={[styles.button, styles.dismissButton, { width: '100%', marginTop: 12 }]}
+                            style={[
+                                styles.button,
+                                styles.dismissButton,
+                                { width: '100%', marginTop: 12, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F5', borderColor: isDark ? '#333333' : 'transparent' }
+                            ]}
                             onPress={() => setView('details')}
                             disabled={isLoading}
                         >
-                            <ThemedText style={styles.dismissButtonText}>No, Keep it</ThemedText>
+                            <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>No, Keep it</ThemedText>
                         </Pressable>
                     </View>
                 )}
@@ -142,14 +159,18 @@ export function TransactionDetailsSheet({
                             loop={false}
                             style={{ width: 150, height: 150 }}
                         />
-                        <ThemedText type="subtitle" style={[styles.sheetTitle, { marginTop: 16 }]}>Cancellation Successful</ThemedText>
-                        <ThemedText style={styles.messageText}>Your withdrawal request has been cancelled.</ThemedText>
+                        <ThemedText type="subtitle" style={[styles.sheetTitle, { marginTop: 16, color: theme.text }]}>Cancellation Successful</ThemedText>
+                        <ThemedText style={[styles.messageText, { color: isDark ? '#A3A3A3' : '#666666' }]}>Your withdrawal request has been cancelled.</ThemedText>
 
                         <Pressable
-                            style={[styles.button, styles.dismissButton, { width: '100%', marginTop: 32 }]}
+                            style={[
+                                styles.button,
+                                styles.dismissButton,
+                                { width: '100%', marginTop: 32, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F5', borderColor: isDark ? '#333333' : 'transparent' }
+                            ]}
                             onPress={handleDismiss}
                         >
-                            <ThemedText style={styles.dismissButtonText}>Done</ThemedText>
+                            <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Done</ThemedText>
                         </Pressable>
                     </View>
                 )}
@@ -197,6 +218,8 @@ const styles = StyleSheet.create({
     },
     dismissButton: {
         backgroundColor: '#F5F5F5',
+        borderWidth: 1,
+        borderColor: 'transparent',
     },
     dismissButtonText: {
         color: '#000',

@@ -29,14 +29,22 @@ export function ApplicationAnalyticItem({
     onPress,
 }: ApplicationAnalyticItemProps) {
     const colorScheme = useColorScheme();
-    const iconColor = Colors[colorScheme ?? 'light'].icon;
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const iconColor = theme.icon;
+    const cardBackgroundColor = isDark ? '#1A1A1A' : '#F8F8F4';
+    const cardBorderColor = isDark ? '#2F2F2F' : '#E7E5DC';
+    const cardDividerColor = isDark ? '#2A2A2A' : '#E4E1D7';
 
     return (
         <Pressable
             onPress={onPress}
             style={({ pressed }) => [
                 styles.container,
-                { backgroundColor: Colors[colorScheme ?? 'light'].background },
+                {
+                    backgroundColor: cardBackgroundColor,
+                    borderColor: cardBorderColor,
+                },
                 pressed && { opacity: 0.7 }
             ]}
         >
@@ -46,18 +54,18 @@ export function ApplicationAnalyticItem({
                 {thumbnailUrl ? (
                     <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} />
                 ) : (
-                    <View style={styles.thumbnailPlaceholder}>
+                    <View style={[styles.thumbnailPlaceholder, { backgroundColor: isDark ? '#262626' : '#F3F4F6' }]}>
                         <Video size={24} color="#9CA3AF" />
                     </View>
                 )}
 
                 <View style={styles.textColumn}>
-                    <ThemedText type="defaultSemiBold" style={styles.applicationName}>
+                    <ThemedText type="defaultSemiBold" style={styles.applicationName} numberOfLines={2}>
                         {applicationName}
                     </ThemedText>
                     <View style={styles.dateRow}>
-                        <Calendar size={14} color="#6B7280" />
-                        <ThemedText style={styles.dateText}>
+                        <Calendar size={14} color={isDark ? '#8A8A8A' : '#6B7280'} />
+                        <ThemedText style={[styles.dateText, { color: isDark ? '#8A8A8A' : '#6B7280' }]}>
                             {submittedOn}
                         </ThemedText>
                     </View>
@@ -65,30 +73,30 @@ export function ApplicationAnalyticItem({
             </View>
 
             {/* Bottom Section - Metrics */}
-            <View style={styles.bottomSection}>
+            <View style={[styles.bottomSection, { borderTopColor: cardDividerColor }]}>
                 <View style={styles.statItem}>
                     <Eye size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{views}</ThemedText>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>{views}</ThemedText>
                 </View>
 
                 <View style={styles.statItem}>
                     <Heart size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{likes}</ThemedText>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>{likes}</ThemedText>
                 </View>
 
                 <View style={styles.statItem}>
                     <MessageCircle size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{comments}</ThemedText>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>{comments}</ThemedText>
                 </View>
 
                 <View style={styles.statItem}>
                     <Share size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{shares}</ThemedText>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>{shares}</ThemedText>
                 </View>
 
                 <View style={styles.statItem}>
                     <Wallet size={16} color={iconColor} style={styles.icon} />
-                    <ThemedText style={styles.statText}>{earnings}</ThemedText>
+                    <ThemedText style={[styles.statText, { color: isDark ? '#CFCFCF' : '#4B5563' }]}>{earnings}</ThemedText>
                 </View>
             </View>
         </Pressable>
@@ -97,10 +105,12 @@ export function ApplicationAnalyticItem({
 
 const styles = StyleSheet.create({
     container: {
+        padding: 14,
         paddingBottom: 16,
         marginBottom: 12,
         borderRadius: 12,
         backgroundColor: '#FFFFFF',
+        borderWidth: 1,
     },
     topSection: {
         flexDirection: 'row',
@@ -118,7 +128,6 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 8,
-        backgroundColor: '#F3F4F6',
         alignItems: 'center',
         justifyContent: 'center',
     },

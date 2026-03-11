@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable, Linking, Switch, Alert } from 'react-native';
+import { View, StyleSheet, Pressable, Linking, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { ArrowLeft, ChevronRight, Shield, FileText, Bell, Moon } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from 'convex/react';
+import { Switch as UISwitch } from 'react-native-ui-lib';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
@@ -22,6 +23,12 @@ export default function SettingsScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const surfaceColor = isDark ? '#171717' : '#FBFAF7';
+    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#303030' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
     const { toggleColorScheme } = useThemePreference();
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
@@ -112,14 +119,14 @@ export default function SettingsScreen() {
     ];
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
             <View style={styles.header}>
                 <Pressable
                     onPress={() => router.back()}
-                    style={[styles.backButton, { borderColor: theme.icon }]}
+                    style={[styles.backButton, { borderColor, backgroundColor: controlBackgroundColor }]}
                 >
                     <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
@@ -131,56 +138,59 @@ export default function SettingsScreen() {
 
             {/* Settings Options */}
             <View style={styles.content}>
-                <View>
+                <View style={[styles.sectionCard, { backgroundColor: surfaceColor, borderColor }]}>
                     <View style={styles.optionRow}>
-                        <View style={styles.iconContainer}>
+                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
                             <Moon size={24} color={theme.text} />
                         </View>
                         <ThemedText style={styles.optionLabel}>Dark mode</ThemedText>
-                        <Switch
+                        <UISwitch
                             value={colorScheme === 'dark'}
                             onValueChange={handleToggleTheme}
-                            trackColor={{ false: '#D1D5DB', true: '#FC4C02' }}
-                            thumbColor={colorScheme === 'dark' ? '#FC4C02' : '#FFFFFF'}
-                            ios_backgroundColor="#D1D5DB"
+                            onColor="#FC4C02"
+                            offColor="#D1D5DB"
+                            thumbColor="#FFFFFF"
+                            thumbStyle={styles.switchThumb}
                         />
                     </View>
-                    <View style={[styles.divider, { backgroundColor: theme.icon, opacity: 0.2 }]} />
-                </View>
-                <View>
+                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
                     <View style={styles.optionRow}>
-                        <View style={styles.iconContainer}>
+                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
                             <Bell size={24} color={theme.text} />
                         </View>
                         <ThemedText style={styles.optionLabel}>Allow notifications</ThemedText>
-                        <Switch
+                        <UISwitch
                             value={notificationsEnabled}
                             onValueChange={handleToggleNotifications}
                             disabled={isUpdatingNotifications}
-                            trackColor={{ false: '#D1D5DB', true: '#FC4C02' }}
-                            thumbColor={notificationsEnabled ? '#FC4C02' : '#FFFFFF'}
-                            ios_backgroundColor="#D1D5DB"
+                            onColor="#FC4C02"
+                            offColor="#D1D5DB"
+                            disabledColor="#D1D5DB"
+                            thumbColor="#FFFFFF"
+                            thumbStyle={styles.switchThumb}
                         />
                     </View>
-                    <View style={[styles.divider, { backgroundColor: theme.icon, opacity: 0.2 }]} />
                 </View>
-                {settingsOptions.map((option, index) => (
-                    <View key={option.id}>
-                        <Pressable
-                            style={styles.optionRow}
-                            onPress={option.onPress}
-                        >
-                            <View style={styles.iconContainer}>
-                                {option.icon}
-                            </View>
-                            <ThemedText style={styles.optionLabel}>{option.title}</ThemedText>
-                            <ChevronRight size={20} color={theme.icon} />
-                        </Pressable>
-                        {index < settingsOptions.length - 1 && (
-                            <View style={[styles.divider, { backgroundColor: theme.icon, opacity: 0.2 }]} />
-                        )}
-                    </View>
-                ))}
+
+                <View style={[styles.sectionCard, { backgroundColor: surfaceColor, borderColor }]}>
+                    {settingsOptions.map((option, index) => (
+                        <View key={option.id}>
+                            <Pressable
+                                style={styles.optionRow}
+                                onPress={option.onPress}
+                            >
+                                <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
+                                    {option.icon}
+                                </View>
+                                <ThemedText style={styles.optionLabel}>{option.title}</ThemedText>
+                                <ChevronRight size={20} color={theme.icon} />
+                            </Pressable>
+                            {index < settingsOptions.length - 1 && (
+                                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                            )}
+                        </View>
+                    ))}
+                </View>
             </View>
         </SafeAreaView>
     );
@@ -215,25 +225,39 @@ const styles = StyleSheet.create({
     content: {
         paddingHorizontal: 24,
         paddingTop: 16,
+        gap: 16,
+    },
+    sectionCard: {
+        borderWidth: 1,
+        borderRadius: 24,
+        overflow: 'hidden',
     },
     optionRow: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 16,
+        paddingHorizontal: 16,
     },
     iconContainer: {
         width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: 'center',
+        justifyContent: 'center',
         marginRight: 16,
+        borderWidth: 1,
     },
     optionLabel: {
         flex: 1,
         fontSize: 16,
         fontFamily: 'GoogleSans_400Regular',
     },
+    switchThumb: {
+        backgroundColor: '#FFFFFF',
+    },
     divider: {
         height: 1,
         backgroundColor: '#F0F0F0',
-        marginLeft: 56,
+        marginLeft: 72,
     },
 });

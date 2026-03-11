@@ -13,11 +13,14 @@ import LottieView from 'lottie-react-native';
 
 import { CampaignsAnalyticItem } from '@/components/CampaignsAnalyticItem';
 import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import { usePostHog } from 'posthog-react-native';
 
 const CampaignAnalyticSkeleton = () => {
     const opacity = useSharedValue(0.3);
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     useEffect(() => {
         opacity.value = withRepeat(
@@ -28,14 +31,14 @@ const CampaignAnalyticSkeleton = () => {
             -1,
             true
         );
-    }, []);
+    }, [opacity]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
     }));
 
     return (
-        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+        <Animated.View style={[styles.skeletonItem, animatedStyle, { backgroundColor: isDark ? '#1F1F1F' : '#ECE8DF' }]} />
     );
 };
 
@@ -46,6 +49,8 @@ interface CampaignsAnalyticListProps {
 export function CampaignsAnalyticList({ sortBy = 'shares' }: CampaignsAnalyticListProps) {
     const router = useRouter();
     const posthog = usePostHog();
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     // Fetch all user campaign statuses
     const statuses = useQuery(api.userCampaignStatus.getUserCampaignStatuses);
@@ -142,10 +147,10 @@ export function CampaignsAnalyticList({ sortBy = 'shares' }: CampaignsAnalyticLi
                         loop
                         style={styles.lottie}
                     />
-                    <ThemedText style={styles.emptyStateText}>
+                    <ThemedText style={[styles.emptyStateText, { color: isDark ? '#D4D4D4' : '#4B5563' }]}>
                         No campaigns found
                     </ThemedText>
-                    <ThemedText style={styles.emptyStateSubtext}>
+                    <ThemedText style={[styles.emptyStateSubtext, { color: isDark ? '#8A8A8A' : '#9CA3AF' }]}>
                         Join campaigns to track your analytics
                     </ThemedText>
                 </View>

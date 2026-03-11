@@ -23,7 +23,14 @@ export function ProfileActionSheet({
 }: ProfileActionSheetProps) {
     const router = useRouter();
     const colorScheme = useColorScheme();
-    const iconColor = Colors[colorScheme ?? 'light'].text;
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const iconColor = theme.text;
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#303030' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const mutedTextColor = isDark ? '#A0A0A0' : '#666666';
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const posthog = usePostHog();
 
@@ -79,36 +86,36 @@ export function ProfileActionSheet({
         <ActionSheet
             ref={actionSheetRef}
             gestureEnabled
-            containerStyle={{ backgroundColor: Colors[colorScheme ?? 'light'].background }}
-            indicatorStyle={{ backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+            containerStyle={{ backgroundColor: screenBackgroundColor }}
+            indicatorStyle={{ backgroundColor: dividerColor }}
         >
-            <View style={styles.sheetContent}>
+            <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                 {/* Profile Header */}
                 <View style={styles.profileHeader}>
-                    <View style={[styles.avatarContainer, { backgroundColor: colorScheme === 'dark' ? '#333' : '#f0f0f0' }]}>
+                    <View style={[styles.avatarContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
                         {profileData.avatar ? (
                             <Image
                                 source={{ uri: profileData.avatar }}
                                 style={styles.avatar}
                             />
                         ) : (
-                            <UserIcon size={40} color={colorScheme === 'dark' ? '#ccc' : "#999"} />
+                            <UserIcon size={40} color={isDark ? '#ccc' : "#999"} />
                         )}
                     </View>
                     <ThemedText type="subtitle" style={styles.name}>{profileData.name}</ThemedText>
-                    <ThemedText style={[styles.email, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>{profileData.email}</ThemedText>
+                    <ThemedText style={[styles.email, { color: mutedTextColor }]}>{profileData.email}</ThemedText>
                 </View>
 
                 {/* Stats Row */}
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
                         <ThemedText type="subtitle">{profileData.stats.campaigns}</ThemedText>
-                        <ThemedText style={[styles.statLabel, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>Earning Campaigns</ThemedText>
+                        <ThemedText style={[styles.statLabel, { color: mutedTextColor }]}>Earning Campaigns</ThemedText>
                     </View>
-                    <View style={[styles.verticalDivider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' }]} />
+                    <View style={[styles.verticalDivider, { backgroundColor: dividerColor }]} />
                     <View style={styles.statItem}>
                         <ThemedText type="subtitle">{profileData.stats.earnings}</ThemedText>
-                        <ThemedText style={[styles.statLabel, { color: colorScheme === 'dark' ? '#A0A0A0' : '#666' }]}>Lifetime Earnings</ThemedText>
+                        <ThemedText style={[styles.statLabel, { color: mutedTextColor }]}>Lifetime Earnings</ThemedText>
                     </View>
                 </View>
 
@@ -118,41 +125,41 @@ export function ProfileActionSheet({
                         style={styles.optionRow}
                         onPress={() => handleOptionPress('/referral')} // Placeholder route
                     >
-                        <View style={styles.iconContainer}>
+                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
                             <Gift size={24} color={iconColor} />
                         </View>
                         <ThemedText style={styles.optionLabel}>Referral Program</ThemedText>
                     </Pressable>
-                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]} />
+                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                     <Pressable
                         style={styles.optionRow}
                         onPress={() => handleOptionPress('/bank-account')} // Placeholder route
                     >
-                        <View style={styles.iconContainer}>
+                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
                             <Landmark size={24} color={iconColor} />
                         </View>
                         <ThemedText style={styles.optionLabel}>Bank Account</ThemedText>
                     </Pressable>
-                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]} />
+                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                     <Pressable
                         style={styles.optionRow}
                         onPress={() => handleOptionPress('/settings')} // Placeholder route
                     >
-                        <View style={styles.iconContainer}>
+                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
                             <Settings size={24} color={iconColor} />
                         </View>
                         <ThemedText style={styles.optionLabel}>Settings</ThemedText>
                     </Pressable>
-                    <View style={[styles.divider, { backgroundColor: colorScheme === 'dark' ? '#333' : '#F0F0F0' }]} />
+                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                     <Pressable
                         style={styles.optionRow}
                         onPress={handleLogout}
                         disabled={isLoggingOut}
                     >
-                        <View style={styles.iconContainer}>
+                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
                             <LogOut size={24} color="#D32F2F" />
                         </View>
                         <ThemedText style={[styles.optionLabel, { color: '#D32F2F' }]}>Logout</ThemedText>
@@ -182,6 +189,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
+        borderWidth: 1,
         overflow: 'hidden',
         marginBottom: 12,
         backgroundColor: '#f0f0f0',
@@ -232,11 +240,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 16,
+        paddingHorizontal: 16,
     },
     iconContainer: {
         width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: 'center',
-        marginRight: 16,
+        justifyContent: 'center',
+        marginRight: 8,
     },
     optionLabel: {
         fontSize: 16,

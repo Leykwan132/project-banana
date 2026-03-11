@@ -78,6 +78,19 @@ export default function ApplicationDetailScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const surfaceColor = isDark ? '#1A1A1A' : '#FBFAF7';
+    const elevatedSurfaceColor = isDark ? '#141414' : '#F7F4ED';
+    const borderColor = isDark ? '#333333' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const mutedTextColor = isDark ? '#A3A3A3' : '#666666';
+    const subduedTextColor = isDark ? '#8A8A8A' : '#999999';
+    const skeletonColor = isDark ? '#262626' : '#ECE8DF';
+    const primaryActionButtonBackground = theme.primaryButton;
+    const dismissButtonBackground = isDark ? '#1F1F1F' : '#F4F1E8';
+    const dismissButtonBorderColor = isDark ? '#333333' : '#E3DDD1';
 
     const application = useQuery(api.applications.getApplication, { applicationId });
     const submissions = useQuery(api.submissions.getSubmissionsByApplication, { applicationId });
@@ -332,7 +345,7 @@ export default function ApplicationDetailScreen() {
         }));
         return (
             <Animated.View style={animatedStyle}>
-                <ChevronDown size={20} color="#000" />
+                <ChevronDown size={20} color={theme.text} />
             </Animated.View>
         );
     };
@@ -361,7 +374,7 @@ export default function ApplicationDetailScreen() {
 
     if (application === null) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: screenBackgroundColor }]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <ThemedText>Application not found</ThemedText>
                 <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
@@ -393,28 +406,28 @@ export default function ApplicationDetailScreen() {
         return (
             <View style={{ flex: 1 }}>
                 <View style={styles.campaignInfo}>
-                    <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: 64, height: 64, borderRadius: 32, marginRight: 16 }]} />
+                    <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: 64, height: 64, borderRadius: 32, marginRight: 16 }]} />
                     <View style={{ flex: 1, gap: 8 }}>
-                        <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '70%', height: 20, borderRadius: 8 }]} />
-                        <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '45%', height: 14, borderRadius: 8 }]} />
+                        <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: '70%', height: 20, borderRadius: 8 }]} />
+                        <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: '45%', height: 14, borderRadius: 8 }]} />
                     </View>
                 </View>
-                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 180, borderRadius: 16, marginBottom: 24 }]} />
-                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 110, borderRadius: 16, marginBottom: 24 }]} />
-                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 130, borderRadius: 16, marginBottom: 24 }]} />
-                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 130, borderRadius: 16, marginBottom: 24 }]} />
-                <Animated.View style={[styles.skeletonBlock, animatedStyle, { width: '100%', height: 130, borderRadius: 16 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: '100%', height: 180, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: '100%', height: 110, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: '100%', height: 130, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: '100%', height: 130, borderRadius: 16, marginBottom: 24 }]} />
+                <Animated.View style={[styles.skeletonBlock, animatedStyle, { backgroundColor: skeletonColor, width: '100%', height: 130, borderRadius: 16 }]} />
             </View>
         );
     };
 
     if (isLoading) {
         return (
-            <View style={[styles.container, { paddingTop: insets.top }]}>
+            <View style={[styles.container, { paddingTop: insets.top, backgroundColor: screenBackgroundColor }]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
-                        <ArrowLeft size={20} color="#000" />
+                    <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: elevatedSurfaceColor }]}>
+                        <ArrowLeft size={20} color={theme.text} />
                     </Pressable>
                 </View>
                 <ScrollView
@@ -428,21 +441,21 @@ export default function ApplicationDetailScreen() {
     }
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: screenBackgroundColor }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={20} color="#000" />
+                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor, backgroundColor: elevatedSurfaceColor }]}>
+                    <ArrowLeft size={20} color={theme.text} />
                 </Pressable>
                 {resolvedCampaignId && (
                     <Pressable
-                        style={styles.viewCampaignButton}
+                        style={[styles.viewCampaignButton, { borderColor, backgroundColor: elevatedSurfaceColor }]}
                         onPress={() => router.push(`/campaign/${resolvedCampaignId}`)}
                     >
-                        <ThemedText style={styles.viewCampaignText}>View Campaign</ThemedText>
-                        <ExternalLink size={14} color="#000" />
+                        <ThemedText style={[styles.viewCampaignText, { color: theme.text }]}>View Campaign</ThemedText>
+                        <ExternalLink size={14} color={theme.text} />
                     </Pressable>
                 )}
             </View>
@@ -458,18 +471,18 @@ export default function ApplicationDetailScreen() {
                 <View style={styles.campaignInfo}>
                     <View style={styles.logoContainer}>
                         {isLogoLoading ? (
-                            <Animated.View style={[styles.logoPlaceholder, { backgroundColor: '#E5E7EB' }]} />
+                            <Animated.View style={[styles.logoPlaceholder, { backgroundColor: isDark ? '#262626' : '#E5E7EB' }]} />
                         ) : finalLogoUrl ? (
                             <Image source={{ uri: finalLogoUrl }} style={styles.logo} />
                         ) : (
-                            <View style={styles.logoPlaceholder}>
+                            <View style={[styles.logoPlaceholder, { backgroundColor: isDark ? '#1A1A1A' : '#F7F4ED' }]}>
                                 <Building size={28} color="#9CA3AF" />
                             </View>
                         )}
                     </View>
                     <View style={styles.campaignText}>
                         <ThemedText style={styles.campaignName}>{campaign?.name ?? "Campaign"}</ThemedText>
-                        <ThemedText style={styles.companyName}>{campaign?.business_name ?? "Company"}</ThemedText>
+                        <ThemedText style={[styles.companyName, { color: mutedTextColor }]}>{campaign?.business_name ?? "Company"}</ThemedText>
                     </View>
                 </View>
 
@@ -526,8 +539,8 @@ export default function ApplicationDetailScreen() {
                             state: Timeline.states.SUCCESS,
                         }}
                     >
-                        <View style={styles.timelineItem}>
-                            <Text text70BO>Application Created</Text>
+                        <View style={[styles.timelineItem, { backgroundColor: surfaceColor }]}>
+                            <Text text70BO color={theme.text}>Application Created</Text>
                         </View>
                     </Timeline>
 
@@ -549,8 +562,8 @@ export default function ApplicationDetailScreen() {
                                     : { type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }
                         }
                     >
-                        <View style={styles.timelineItem}>
-                            <Text text70BO color={currentStep >= 1 ? '#000' : '#666'}>Submit Video</Text>
+                        <View style={[styles.timelineItem, { backgroundColor: surfaceColor }]}>
+                            <Text text70BO color={currentStep >= 1 ? theme.text : mutedTextColor}>Submit Video</Text>
                         </View>
                     </Timeline>
 
@@ -572,8 +585,8 @@ export default function ApplicationDetailScreen() {
                                     : { type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }
                         }
                     >
-                        <View style={styles.timelineItem}>
-                            <Text text70BO color={currentStep >= 2 ? '#000' : '#666'}>Business Approval</Text>
+                        <View style={[styles.timelineItem, { backgroundColor: surfaceColor }]}>
+                            <Text text70BO color={currentStep >= 2 ? theme.text : mutedTextColor}>Business Approval</Text>
                         </View>
                     </Timeline>
 
@@ -591,13 +604,13 @@ export default function ApplicationDetailScreen() {
                                     : { type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }
                         }
                     >
-                        <View style={styles.timelineItem}>
-                            <Text text70BO color={currentStep >= 3 ? '#000' : '#666'}>Post and Start Earning!</Text>
+                        <View style={[styles.timelineItem, { backgroundColor: surfaceColor }]}>
+                            <Text text70BO color={currentStep >= 3 ? theme.text : mutedTextColor}>Post and Start Earning!</Text>
                         </View>
                     </Timeline>
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                 {/* My Submissions */}
                 <View style={styles.section}>
@@ -621,7 +634,7 @@ export default function ApplicationDetailScreen() {
                                     loop
                                     style={styles.lottie}
                                 />
-                                <ThemedText style={{ color: '#666', marginTop: 8 }}>
+                                <ThemedText style={{ color: mutedTextColor, marginTop: 8 }}>
                                     No submissions yet
                                 </ThemedText>
                             </View>
@@ -629,30 +642,30 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </View>
 
-                <View style={[styles.divider]} />
+                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                 {/* Requirements Accordion */}
                 <View style={styles.accordionSection}>
                     <Pressable style={styles.accordionHeader} onPress={toggleRequirements}>
                         <View>
                             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Requirements</ThemedText>
-                            <ThemedText style={styles.accordionSubtitle}>How does my post get approved?</ThemedText>
+                            <ThemedText style={[styles.accordionSubtitle, { color: mutedTextColor }]}>How does my post get approved?</ThemedText>
                         </View>
                         <Chevron progress={requirementsOpen} />
                     </Pressable>
                     <AccordionItem isExpanded={requirementsOpen}>
-                        <View style={styles.requirementsList}>
+                        <View style={[styles.requirementsList, { backgroundColor: surfaceColor }]}>
                             {(campaign?.requirements ?? []).map((req, index) => (
                                 <View key={index} style={styles.requirementItem}>
-                                    <Check size={20} color="#000" strokeWidth={3} />
-                                    <ThemedText style={styles.requirementText}>{req}</ThemedText>
+                                    <Check size={20} color={theme.text} strokeWidth={3} />
+                                    <ThemedText style={[styles.requirementText, { color: theme.text }]}>{req}</ThemedText>
                                 </View>
                             ))}
                         </View>
                     </AccordionItem>
                 </View>
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                 {/* Payouts Accordion (simulating the design request to put payouts essentially as another section if needed, or just reusing pattern) */}
                 {/* User said "insert payout under requirements as well. Ensure them follow the similar design like the payout in campaign detail" */}
@@ -661,29 +674,29 @@ export default function ApplicationDetailScreen() {
                     <Pressable style={styles.accordionHeader} onPress={togglePayouts}>
                         <View>
                             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Payouts</ThemedText>
-                            <ThemedText style={styles.accordionSubtitle}>How much do i get paid?</ThemedText>
+                            <ThemedText style={[styles.accordionSubtitle, { color: mutedTextColor }]}>How much do i get paid?</ThemedText>
                         </View>
                         <Chevron progress={payoutsOpen} />
                     </Pressable>
                     <AccordionItem isExpanded={payoutsOpen}>
-                        <View style={styles.payoutsList}>
+                        <View style={[styles.payoutsList, { backgroundColor: surfaceColor }]}>
                             <View style={styles.payoutRow}>
-                                <ThemedText style={styles.payoutCell}>Base pay per video</ThemedText>
-                                <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>
+                                <ThemedText style={[styles.payoutCell, { color: theme.text }]}>Base pay per video</ThemedText>
+                                <ThemedText style={[styles.payoutCell, { textAlign: 'right', color: theme.text }]}>
                                     {formatCurrency(campaign?.base_pay ?? 0)}
                                 </ThemedText>
                             </View>
                             <View style={styles.payoutRow}>
-                                <ThemedText style={styles.payoutCell}>Maximum payout</ThemedText>
-                                <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>
+                                <ThemedText style={[styles.payoutCell, { color: theme.text }]}>Maximum payout</ThemedText>
+                                <ThemedText style={[styles.payoutCell, { textAlign: 'right', color: theme.text }]}>
                                     {formatCurrency(campaign?.maximum_payout ?? 0)}
                                 </ThemedText>
                             </View>
-                            <View style={styles.payoutDivider} />
+                            <View style={[styles.payoutDivider, { backgroundColor: borderColor }]} />
                             {(campaign?.payout_thresholds ?? []).map((payout, index) => (
                                 <View key={index} style={styles.payoutRow}>
-                                    <ThemedText style={styles.payoutCell}>Every {formatViews(payout.views)} views</ThemedText>
-                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right' }]}>{formatCurrency(payout.payout)}</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { color: theme.text }]}>Every {formatViews(payout.views)} views</ThemedText>
+                                    <ThemedText style={[styles.payoutCell, { textAlign: 'right', color: theme.text }]}>{formatCurrency(payout.payout)}</ThemedText>
                                 </View>
                             ))}
                         </View>
@@ -698,7 +711,7 @@ export default function ApplicationDetailScreen() {
                             <Pressable style={styles.accordionHeader} onPress={toggleScripts}>
                                 <View>
                                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Scripts</ThemedText>
-                                    <ThemedText style={styles.accordionSubtitle}>Things to say in video</ThemedText>
+                                    <ThemedText style={[styles.accordionSubtitle, { color: mutedTextColor }]}>Things to say in video</ThemedText>
                                 </View>
                                 <Chevron progress={scriptsOpen} />
                             </Pressable>
@@ -707,8 +720,8 @@ export default function ApplicationDetailScreen() {
                                     {campaign.scripts.map((script, index) => (
                                         <View key={index}>
                                             <ThemedText type="defaultSemiBold" style={{ marginBottom: 8, fontSize: 16 }}>{script.type}</ThemedText>
-                                            <View style={styles.scriptBox}>
-                                                <ThemedText style={styles.scriptText}>{script.description}</ThemedText>
+                                            <View style={[styles.scriptBox, { backgroundColor: surfaceColor }]}>
+                                                <ThemedText style={[styles.scriptText, { color: theme.text }]}>{script.description}</ThemedText>
                                             </View>
                                         </View>
                                     ))}
@@ -726,7 +739,7 @@ export default function ApplicationDetailScreen() {
                             <Pressable style={styles.accordionHeader} onPress={toggleAssets}>
                                 <View>
                                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Assets</ThemedText>
-                                    <ThemedText style={styles.accordionSubtitle}>Things to show in video</ThemedText>
+                                    <ThemedText style={[styles.accordionSubtitle, { color: mutedTextColor }]}>Things to show in video</ThemedText>
                                 </View>
                                 <Chevron progress={assetsOpen} />
                             </Pressable>
@@ -735,19 +748,19 @@ export default function ApplicationDetailScreen() {
                                     style={{ paddingVertical: 8 }}
                                     onPress={() => Linking.openURL(campaign.asset_links!)}
                                 >
-                                    <ThemedText style={{ color: '#E11D48', textDecorationLine: 'underline', fontSize: 16 }}>{campaign.asset_links}</ThemedText>
+                                    <ThemedText style={{ color: isDark ? '#FB7185' : '#E11D48', textDecorationLine: 'underline', fontSize: 16 }}>{campaign.asset_links}</ThemedText>
                                 </Pressable>
                             </AccordionItem>
                         </View>
                     </>
                 )}
 
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
                 {/* Inspirations */}
                 <View style={styles.section}>
                     <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Inspirations</ThemedText>
-                    <ThemedText style={styles.sectionSubtitle}>Learn from how others get more views</ThemedText>
+                    <ThemedText style={[styles.sectionSubtitle, { color: mutedTextColor }]}>Learn from how others get more views</ThemedText>
 
                     <View style={styles.creatorList}>
                         {topApplications && topApplications.length > 0 ? (
@@ -768,7 +781,7 @@ export default function ApplicationDetailScreen() {
                                     loop
                                     style={styles.lottie}
                                 />
-                                <ThemedText style={{ color: '#666', marginTop: 8 }}>
+                                <ThemedText style={{ color: mutedTextColor, marginTop: 8 }}>
                                     No inspirations yet
                                 </ThemedText>
                             </View>
@@ -776,8 +789,8 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </View>
                 {/* Submission Sheet */}
-                <ActionSheet gestureEnabled ref={submissionSheetRef}>
-                    <View style={styles.sheetContent}>
+                <ActionSheet gestureEnabled ref={submissionSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
+                    <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                         {isSubmitting ? (
                             <Animated.View entering={SlideInRight} style={styles.successContent}>
                                 <LottieView
@@ -788,22 +801,22 @@ export default function ApplicationDetailScreen() {
                                         width: 140, height: 140, marginBottom: 16, transform: [{ scale: 2.5 }],
                                     }}
                                 />
-                                <ThemedText style={styles.successTitle}>Submitting...</ThemedText>
-                                <ThemedText style={styles.successSubtitle}>Please wait while we process your post links</ThemedText>
+                                <ThemedText style={[styles.successTitle, { color: theme.text }]}>Submitting...</ThemedText>
+                                <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Please wait while we process your post links</ThemedText>
                             </Animated.View>
                         ) : !showSuccess ? (
                             <Animated.View exiting={SlideOutLeft}>
                                 <View style={styles.sheetHeader}>
-                                    <ThemedText style={styles.sheetTitle}>Congratulations!</ThemedText>
-                                    <ThemedText style={styles.sheetSubtitle}>you are 2 steps away from earning!</ThemedText>
+                                    <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>Congratulations!</ThemedText>
+                                    <ThemedText style={[styles.sheetSubtitle, { color: mutedTextColor }]}>you are 2 steps away from earning!</ThemedText>
                                 </View>
 
                                 {/* 1. Tracking tag */}
                                 <View style={styles.inputSection}>
                                     <ThemedText type="defaultSemiBold" style={styles.inputLabel}>1. Tracking tag</ThemedText>
-                                    <ThemedText style={styles.inputDescription}>Paste this tracking tag to your post description for ownership.</ThemedText>
-                                    <View style={styles.tagContainer}>
-                                        <ThemedText style={styles.tagText}>#{application?.tracking_tag}</ThemedText>
+                                    <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>Paste this tracking tag to your post description for ownership.</ThemedText>
+                                    <View style={[styles.tagContainer, { backgroundColor: surfaceColor }]}>
+                                        <ThemedText style={[styles.tagText, { color: theme.text }]}>#{application?.tracking_tag}</ThemedText>
                                         <Pressable style={styles.copyAction} hitSlop={10} onPress={async () => {
                                             if (application?.tracking_tag) {
                                                 await Clipboard.setStringAsync(`#${application.tracking_tag}`);
@@ -817,26 +830,26 @@ export default function ApplicationDetailScreen() {
                                                     <ThemedText style={styles.copyButtonText}>Copied</ThemedText>
                                                 </>
                                             ) : (
-                                                <Copy size={18} color="#000" />
-                                            )}
-                                        </Pressable>
-                                    </View>
+                                                    <Copy size={18} color={theme.text} />
+                                                )}
+                                            </Pressable>
+                                        </View>
                                 </View>
 
                                 {/* 2. Post url */}
                                 <View style={styles.inputSection}>
                                     <ThemedText type="defaultSemiBold" style={styles.inputLabel}>2. Copy & Paste your post url</ThemedText>
-                                    <ThemedText style={styles.inputDescription}>
+                                    <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>
                                         You <ThemedText type="defaultSemiBold">CANNOT</ThemedText> edit urls after submission.
                                     </ThemedText>
 
                                     {/* Instagram */}
-                                    <View style={styles.urlInputContainer}>
-                                        <FontAwesome5 name="instagram" size={24} color="#000" style={styles.inputIcon} />
+                                    <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
+                                        <FontAwesome5 name="instagram" size={24} color={theme.text} style={styles.inputIcon} />
                                         <TextInput
-                                            style={styles.urlInput}
+                                            style={[styles.urlInput, { color: theme.text }]}
                                             placeholder="https://www.instagram.com/... (Optional)"
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={subduedTextColor}
                                             value={instagramLink}
                                             onChangeText={(text) => {
                                                 setInstagramLink(text);
@@ -847,12 +860,12 @@ export default function ApplicationDetailScreen() {
                                     </View>
 
                                     {/* TikTok */}
-                                    <View style={styles.urlInputContainer}>
-                                        <FontAwesome5 name="tiktok" size={24} color="#000" style={styles.inputIcon} />
+                                    <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
+                                        <FontAwesome5 name="tiktok" size={24} color={theme.text} style={styles.inputIcon} />
                                         <TextInput
-                                            style={styles.urlInput}
+                                            style={[styles.urlInput, { color: theme.text }]}
                                             placeholder="https://www.tiktok.com/... (Optional)"
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={subduedTextColor}
                                             value={tiktokLink}
                                             onChangeText={(text) => {
                                                 setTikTokLink(text);
@@ -861,7 +874,7 @@ export default function ApplicationDetailScreen() {
                                             autoCapitalize="none"
                                         />
                                     </View>
-                                    <ThemedText style={styles.tipText}>Tips: post both to get accumulated views</ThemedText>
+                                    <ThemedText style={[styles.tipText, { color: mutedTextColor }]}>Tips: post both to get accumulated views</ThemedText>
 
                                     {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
                                 </View>
@@ -881,14 +894,22 @@ export default function ApplicationDetailScreen() {
                                     loop={false}
                                     style={{ width: 120, height: 120, marginBottom: 16 }}
                                 />
-                                <ThemedText style={styles.successTitle}>You're earning for this post!</ThemedText>
-                                <ThemedText style={styles.successSubtitle}>and your analytics will update on a daily basis</ThemedText>
+                                <ThemedText style={[styles.successTitle, { color: theme.text }]}>You&apos;re earning for this post!</ThemedText>
+                                <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>and your analytics will update on a daily basis</ThemedText>
 
                                 <Pressable
-                                    style={[styles.actionButton, { marginTop: 32, width: '100%' }]}
+                                    style={[
+                                        styles.dismissButton,
+                                        {
+                                            marginTop: 32,
+                                            width: '100%',
+                                            backgroundColor: dismissButtonBackground,
+                                            borderColor: dismissButtonBorderColor,
+                                        }
+                                    ]}
                                     onPress={() => submissionSheetRef.current?.hide()}
                                 >
-                                    <ThemedText style={styles.actionButtonText}>Done</ThemedText>
+                                    <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Done</ThemedText>
                                 </Pressable>
                             </Animated.View>
                         )}
@@ -896,21 +917,21 @@ export default function ApplicationDetailScreen() {
                 </ActionSheet>
 
                 {/* Review & Upload Sheet */}
-                <ActionSheet gestureEnabled ref={reviewSheetRef}>
-                    <View style={styles.sheetContent}>
+                <ActionSheet gestureEnabled ref={reviewSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
+                    <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                         {/* Requirements Step */}
                         {reviewStep === 'requirements' && (
                             <Animated.View exiting={SlideOutLeft}>
                                 <View style={styles.sheetHeader}>
-                                    <ThemedText style={styles.sheetTitle}>Review Requirements</ThemedText>
-                                    <ThemedText style={styles.sheetSubtitle}>Ensure you meet all criteria before uploading</ThemedText>
+                                    <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>Review Requirements</ThemedText>
+                                    <ThemedText style={[styles.sheetSubtitle, { color: mutedTextColor }]}>Ensure you meet all criteria before uploading</ThemedText>
                                 </View>
 
-                                <View style={styles.requirementsList}>
+                                <View style={[styles.requirementsList, { backgroundColor: surfaceColor }]}>
                                     {(campaign?.requirements ?? []).map((req, index) => (
                                         <View key={index} style={styles.requirementItem}>
-                                            <Check size={20} color="#000" strokeWidth={3} />
-                                            <ThemedText style={styles.requirementText}>{req}</ThemedText>
+                                            <Check size={20} color={theme.text} strokeWidth={3} />
+                                            <ThemedText style={[styles.requirementText, { color: theme.text }]}>{req}</ThemedText>
                                         </View>
                                     ))}
                                 </View>
@@ -921,7 +942,7 @@ export default function ApplicationDetailScreen() {
                                         onValueChange={setIsReviewed}
                                         color={Colors[colorScheme ?? 'light'].tint}
                                         label="I have reviewed the requirements and am ready to submit for review."
-                                        labelStyle={styles.checkboxLabel}
+                                        labelStyle={[styles.checkboxLabel, { color: theme.text }]}
                                     />
                                 </View>
 
@@ -942,8 +963,8 @@ export default function ApplicationDetailScreen() {
                         {reviewStep === 'preview' && (
                             <Animated.View entering={SlideInRight} exiting={SlideOutLeft}>
                                 <View style={styles.sheetHeader}>
-                                    <ThemedText style={styles.sheetTitle}>Review Video</ThemedText>
-                                    <ThemedText style={styles.sheetSubtitle}>Preview your video before uploading</ThemedText>
+                                    <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>Review Video</ThemedText>
+                                    <ThemedText style={[styles.sheetSubtitle, { color: mutedTextColor }]}>Preview your video before uploading</ThemedText>
                                 </View>
 
                                 {selectedVideoUri && (
@@ -977,8 +998,8 @@ export default function ApplicationDetailScreen() {
                                         width: 140, height: 140, marginBottom: 16, transform: [{ scale: 2.5 }],
                                     }}
                                 />
-                                <ThemedText style={styles.successTitle}>Uploading...</ThemedText>
-                                <ThemedText style={styles.successSubtitle}>Please wait while we upload your video</ThemedText>
+                                <ThemedText style={[styles.successTitle, { color: theme.text }]}>Uploading...</ThemedText>
+                                <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Please wait while we upload your video</ThemedText>
                             </Animated.View>
                         )}
 
@@ -991,11 +1012,19 @@ export default function ApplicationDetailScreen() {
                                     loop={false}
                                     style={{ width: 120, height: 120, marginBottom: 16 }}
                                 />
-                                <ThemedText style={styles.successTitle}>Video Uploaded!</ThemedText>
-                                <ThemedText style={styles.successSubtitle}>Your submission is now under review</ThemedText>
+                                <ThemedText style={[styles.successTitle, { color: theme.text }]}>Video Uploaded!</ThemedText>
+                                <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Your submission is now under review</ThemedText>
 
                                 <Pressable
-                                    style={[styles.actionButton, { marginTop: 32, width: '100%' }]}
+                                    style={[
+                                        styles.dismissButton,
+                                        {
+                                            marginTop: 32,
+                                            width: '100%',
+                                            backgroundColor: dismissButtonBackground,
+                                            borderColor: dismissButtonBorderColor,
+                                        }
+                                    ]}
                                     onPress={() => {
                                         reviewSheetRef.current?.hide();
                                         setSelectedVideoUri(null);
@@ -1004,7 +1033,7 @@ export default function ApplicationDetailScreen() {
                                         setIsReviewed(false);
                                     }}
                                 >
-                                    <ThemedText style={styles.actionButtonText}>Done</ThemedText>
+                                    <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Done</ThemedText>
                                 </Pressable>
                             </Animated.View>
                         )}
@@ -1014,41 +1043,42 @@ export default function ApplicationDetailScreen() {
 
             </ScrollView>
 
-            {applicationStatus !== 'Posted' && (
-                <View style={[styles.footer, { paddingBottom: 30 }]}>
-                    <Pressable
-                        style={[
-                            styles.actionButton,
-                            applicationStatus === 'Under Review' && { backgroundColor: '#E0E0E0', opacity: 1 }
-                        ]}
-                        disabled={applicationStatus === 'Under Review'}
-                        onPress={() => {
-                            if (applicationStatus === 'Ready to Post') {
-                                setShowSuccess(false);
-                                setInstagramLink('');
-                                setTikTokLink('');
-                                setError('');
-                                submissionSheetRef.current?.show();
-                            } else {
-                                setIsReviewed(false);
-                                setReviewStep('requirements');
-                                reviewSheetRef.current?.show();
-                            }
-                        }}
-                    >
-                        <ThemedText style={[
-                            styles.actionButtonText,
-                            applicationStatus === 'Under Review' && { color: '#666' }
-                        ]}>
-                            {applicationStatus === 'Ready to Post'
+            <View style={[styles.footer, { paddingBottom: 30, backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
+                <Pressable
+                    style={[
+                        styles.actionButton,
+                        applicationStatus === 'Ready to Post' && { backgroundColor: primaryActionButtonBackground },
+                        applicationStatus === 'Under Review' && { backgroundColor: isDark ? '#262626' : '#E0E0E0', opacity: 1 }
+                    ]}
+                    disabled={applicationStatus === 'Under Review'}
+                    onPress={() => {
+                        if (applicationStatus === 'Ready to Post') {
+                            setShowSuccess(false);
+                            setInstagramLink('');
+                            setTikTokLink('');
+                            setError('');
+                            submissionSheetRef.current?.show();
+                        } else {
+                            setIsReviewed(false);
+                            setReviewStep('requirements');
+                            reviewSheetRef.current?.show();
+                        }
+                    }}
+                >
+                    <ThemedText style={[
+                        styles.actionButtonText,
+                        applicationStatus === 'Under Review' && { color: '#666' }
+                    ]}>
+                        {applicationStatus === 'Posted'
+                            ? 'Submit Another'
+                            : applicationStatus === 'Ready to Post'
                                 ? 'Start Earning'
                                 : applicationStatus === 'Under Review'
                                     ? 'Under Review'
                                     : 'Review & Upload'}
-                        </ThemedText>
-                    </Pressable>
-                </View>
-            )}
+                    </ThemedText>
+                </Pressable>
+            </View>
         </View >
     );
 }
@@ -1260,6 +1290,17 @@ const styles = StyleSheet.create({
     },
     actionButtonText: {
         color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'GoogleSans_700Bold',
+    },
+    dismissButton: {
+        borderRadius: 30,
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+    },
+    dismissButtonText: {
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
     },

@@ -4,7 +4,6 @@ import {
     Dimensions,
     Pressable,
     StyleSheet,
-    Switch,
     TextInput,
     View,
     Alert,
@@ -14,6 +13,8 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -22,8 +23,6 @@ import { api } from '../../../../packages/backend/convex/_generated/api';
 import {
     PiggyBank,
     Rocket,
-    TrendingUp,
-    Gift,
     BarChart3,
     FlaskConical,
     ArrowLeft,
@@ -34,6 +33,7 @@ import {
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
 import LottieView from 'lottie-react-native';
+import { Switch as UISwitch } from 'react-native-ui-lib';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -66,32 +66,36 @@ interface UsernameStepProps {
 }
 
 function UsernameStep({ username, onChangeUsername, isCheckingUsername, usernameError }: Omit<UsernameStepProps, 'onContinue'>) {
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+
     return (
         <KeyboardAvoidingView
             style={styles.stepContainer}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
             <View style={styles.stepContent}>
-                <ThemedText style={styles.stepTitle}>Pick a username</ThemedText>
-                <ThemedText style={styles.stepSubtitle}>
+                <ThemedText style={[styles.stepTitle, { color: theme.text }]}>Pick a username</ThemedText>
+                <ThemedText style={[styles.stepSubtitle, { color: isDark ? '#A3A3A3' : '#666666' }]}>
                     This is how brands and creators will know you.
                 </ThemedText>
 
                 <View style={styles.inputWrapper}>
-                    <ThemedText style={styles.inputPrefix}>@</ThemedText>
+                    <ThemedText style={[styles.inputPrefix, { color: isDark ? '#7A7A7A' : '#BDBDBD' }]}>@</ThemedText>
                     <TextInput
-                        style={styles.usernameInput}
+                        style={[styles.usernameInput, { color: theme.text }]}
                         value={username}
                         onChangeText={onChangeUsername}
                         placeholder="yourname"
-                        placeholderTextColor="#BDBDBD"
+                        placeholderTextColor={isDark ? '#666666' : '#BDBDBD'}
                         autoCapitalize="none"
                         autoCorrect={false}
                         autoFocus
                         maxLength={30}
                     />
                 </View>
-                <View style={styles.inputLine} />
+                <View style={[styles.inputLine, { backgroundColor: isDark ? '#2A2A2A' : '#E8E8E8' }]} />
 
                 {usernameError && (
                     <ThemedText style={styles.errorText}>{usernameError}</ThemedText>
@@ -113,11 +117,18 @@ interface GoalStepProps {
 }
 
 function GoalStep({ selectedGoals, onToggleGoal }: Pick<GoalStepProps, 'selectedGoals' | 'onToggleGoal'>) {
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const rowBackgroundColor = isDark ? '#1A1A1A' : '#F7F4ED';
+    const rowBorderColor = isDark ? '#2F2F2F' : '#E4DED2';
+    const selectedRowBackgroundColor = isDark ? '#2D1A12' : '#F3E8DB';
+
     return (
         <View style={styles.stepContainer}>
             <ScrollView style={styles.stepScrollContent} contentContainerStyle={styles.stepScrollContentContainer}>
-                <ThemedText style={styles.stepTitle}>What's your goal?</ThemedText>
-                <ThemedText style={styles.stepSubtitle}>
+                <ThemedText style={[styles.stepTitle, { color: theme.text }]}>What&apos;s your goal?</ThemedText>
+                <ThemedText style={[styles.stepSubtitle, { color: isDark ? '#A3A3A3' : '#666666' }]}>
                     Select all that apply.
                 </ThemedText>
 
@@ -129,20 +140,23 @@ function GoalStep({ selectedGoals, onToggleGoal }: Pick<GoalStepProps, 'selected
                                 key={option.id}
                                 style={[
                                     styles.optionRow,
+                                    { backgroundColor: rowBackgroundColor, borderColor: rowBorderColor },
                                     isSelected && styles.optionRowSelected,
+                                    isSelected && { backgroundColor: selectedRowBackgroundColor, borderColor: '#FC4C02' },
                                 ]}
                                 onPress={() => onToggleGoal(option.id)}
                             >
                                 <View style={[styles.optionRowIconContainer, isSelected && styles.optionRowIconContainerSelected]}>
                                     <option.Icon
                                         size={24}
-                                        color={isSelected ? '#FC4C02' : '#666666'}
+                                        color={isSelected ? '#FC4C02' : (isDark ? '#A3A3A3' : '#666666')}
                                         strokeWidth={1.8}
                                     />
                                 </View>
                                 <ThemedText
                                     style={[
                                         styles.optionRowLabel,
+                                        { color: isDark ? '#D4D4D4' : '#374151' },
                                         isSelected && styles.optionRowLabelSelected,
                                     ]}
                                 >
@@ -171,11 +185,18 @@ interface ReferralStepProps {
 }
 
 function ReferralStep({ selectedReferral, onSelectReferral }: Pick<ReferralStepProps, 'selectedReferral' | 'onSelectReferral'>) {
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const rowBackgroundColor = isDark ? '#1A1A1A' : '#F7F4ED';
+    const rowBorderColor = isDark ? '#2F2F2F' : '#E4DED2';
+    const selectedRowBackgroundColor = isDark ? '#2D1A12' : '#F3E8DB';
+
     return (
         <View style={styles.stepContainer}>
             <View style={styles.stepContent}>
-                <ThemedText style={styles.stepTitle}>How did you hear about us?</ThemedText>
-                <ThemedText style={styles.stepSubtitle}>
+                <ThemedText style={[styles.stepTitle, { color: theme.text }]}>How did you hear about us?</ThemedText>
+                <ThemedText style={[styles.stepSubtitle, { color: isDark ? '#A3A3A3' : '#666666' }]}>
                     Pick one.
                 </ThemedText>
 
@@ -188,19 +209,22 @@ function ReferralStep({ selectedReferral, onSelectReferral }: Pick<ReferralStepP
                                 key={option.id}
                                 style={[
                                     styles.optionRow,
+                                    { backgroundColor: rowBackgroundColor, borderColor: rowBorderColor },
                                     isSelected && styles.optionRowSelected,
+                                    isSelected && { backgroundColor: selectedRowBackgroundColor, borderColor: '#FC4C02' },
                                 ]}
                                 onPress={() => onSelectReferral(option.id)}
                             >
                                 <View style={[styles.optionRowIconContainer, isSelected && styles.optionRowIconContainerSelected]}>
                                     <IconComponent
                                         size={24}
-                                        color={isSelected ? '#FC4C02' : '#666666'}
+                                        color={isSelected ? '#FC4C02' : (isDark ? '#A3A3A3' : '#666666')}
                                     />
                                 </View>
                                 <ThemedText
                                     style={[
                                         styles.optionRowLabel,
+                                        { color: isDark ? '#D4D4D4' : '#374151' },
                                         isSelected && styles.optionRowLabelSelected,
                                     ]}
                                 >
@@ -231,6 +255,12 @@ function NotificationStep({
     onToggleNotifications,
     isUpdatingNotifications,
 }: NotificationStepProps) {
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const notificationBackgroundColor = isDark ? '#1A1A1A' : '#F7F4ED';
+    const notificationBorderColor = isDark ? '#2F2F2F' : '#E4DED2';
+
     return (
         <View style={styles.stepContainer}>
             <View style={styles.stepContent}>
@@ -242,29 +272,31 @@ function NotificationStep({
                         style={{ width: 140, height: 140, marginBottom: 16 }}
                     />
                 </View>
-                <ThemedText style={[styles.stepTitle, { textAlign: 'center' }]}>Stay Updated</ThemedText>
-                <ThemedText style={[styles.stepSubtitle, { textAlign: 'center' }]}>
+                <ThemedText style={[styles.stepTitle, { textAlign: 'center', color: theme.text }]}>Stay Updated</ThemedText>
+                <ThemedText style={[styles.stepSubtitle, { textAlign: 'center', color: isDark ? '#A3A3A3' : '#666666' }]}>
                     Get notified when you have important updates.
                 </ThemedText>
 
-                <View style={styles.notificationCard}>
+                <View style={[styles.notificationCard, { backgroundColor: notificationBackgroundColor, borderColor: notificationBorderColor }]}>
                     <View style={styles.notificationIconWrap}>
                         <BellRing size={22} color="#FC4C02" strokeWidth={2} />
                     </View>
                     <View style={styles.notificationCopy}>
-                        <ThemedText style={styles.notificationLabel}>Allow notifications</ThemedText>
+                        <ThemedText style={[styles.notificationLabel, { color: theme.text }]}>Allow notifications</ThemedText>
                         {/* <ThemedText style={styles.notificationDescription}>
                             Don't miss out important updates.
                         </ThemedText> */}
                     </View>
                     <View>
-                        <Switch
+                        <UISwitch
                             value={notificationsEnabled}
                             onValueChange={onToggleNotifications}
                             disabled={isUpdatingNotifications}
-                            trackColor={{ false: '#D9D9D9', true: '#FDBA8C' }}
-                            thumbColor={notificationsEnabled ? '#FC4C02' : '#FFFFFF'}
-                            ios_backgroundColor="#D9D9D9"
+                            onColor="#FDBA8C"
+                            offColor="#D9D9D9"
+                            disabledColor="#D9D9D9"
+                            thumbColor="#FFFFFF"
+                            thumbStyle={styles.switchThumb}
                         />
                     </View>
                 </View>
@@ -279,6 +311,12 @@ const TOTAL_STEPS = 4;
 
 export default function OnboardingScreen() {
     const insets = useSafeAreaInsets();
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const controlBackgroundColor = isDark ? '#1A1A1A' : '#F7F4ED';
+    const borderColor = isDark ? '#2F2F2F' : '#E4DED2';
     const [step, setStep] = useState(0);
     const [username, setUsername] = useState('');
     const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -422,7 +460,7 @@ export default function OnboardingScreen() {
 
             await pausePushNotifications({});
             setNotificationsEnabled(false);
-        } catch (error) {
+        } catch {
             Alert.alert('Error', 'Unable to update notification preferences right now.');
         } finally {
             setIsUpdatingNotifications(false);
@@ -570,7 +608,7 @@ export default function OnboardingScreen() {
     };
 
     return (
-        <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: screenBackgroundColor }]}>
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.brandingRow}>
@@ -579,7 +617,7 @@ export default function OnboardingScreen() {
                         style={styles.brandingLogoContainer}
                         contentFit="contain"
                     />
-                    <ThemedText type="defaultSemiBold" style={styles.brandingAppName}>Lumina</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={[styles.brandingAppName, { color: theme.text }]}>Lumina</ThemedText>
                 </View>
             </View>
 
@@ -590,6 +628,7 @@ export default function OnboardingScreen() {
                         key={i}
                         style={[
                             styles.progressDot,
+                            { backgroundColor: isDark ? '#2A2A2A' : '#E7E2D8' },
                             i <= step && styles.progressDotActive,
                         ]}
                     />
@@ -607,10 +646,10 @@ export default function OnboardingScreen() {
             </Animated.View>
 
             {/* Fixed footer — never animates */}
-            <View style={[styles.stepFooter, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={[styles.stepFooter, { paddingBottom: Math.max(insets.bottom, 24), backgroundColor: screenBackgroundColor }]}>
                 {step > 0 && (
-                    <Pressable style={styles.footerBackButton} onPress={handleBack}>
-                        <ArrowLeft size={24} color="#000000" strokeWidth={2} />
+                    <Pressable style={[styles.footerBackButton, { backgroundColor: controlBackgroundColor, borderColor }]} onPress={handleBack}>
+                        <ArrowLeft size={24} color={theme.text} strokeWidth={2} />
                     </Pressable>
                 )}
                 <View style={{ flex: 1 }}>
@@ -620,7 +659,7 @@ export default function OnboardingScreen() {
 
             {/* Submitting Overlay */}
             {isSubmitting && (
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }]}>
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: screenBackgroundColor, alignItems: 'center', justifyContent: 'center', zIndex: 9999 }]}>
                     <LottieView
                         source={require('@/assets/lotties/logging-in.json')}
                         autoPlay
@@ -742,6 +781,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#F3F4F6',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'transparent',
     },
 
     // Username Input
@@ -918,6 +959,9 @@ const styles = StyleSheet.create({
         color: '#111111',
         marginBottom: 4,
     },
+    switchThumb: {
+        backgroundColor: '#FFFFFF',
+    },
     notificationDescription: {
         fontSize: 14,
         fontFamily: 'GoogleSans_400Regular',
@@ -935,7 +979,7 @@ const styles = StyleSheet.create({
     // Buttons
     primaryButton: {
         width: '100%',
-        backgroundColor: '#000000',
+        backgroundColor: '#FC4C02',
         borderRadius: 30,
         paddingVertical: 18,
         alignItems: 'center',

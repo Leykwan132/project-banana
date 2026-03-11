@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { ChartSpline, Grip, House, ScrollText, WalletMinimal } from 'lucide-react-native';
+import { ChartSpline, Grip, House } from 'lucide-react-native';
 import { Image as ExpoImage } from 'expo-image';
 import React from 'react';
 
@@ -9,17 +9,26 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
+  const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+  const tabBarBackgroundColor = isDark ? '#111111' : '#F7F4ED';
+  const tabBarBorderColor = isDark ? '#222222' : '#E7E2D8';
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        sceneStyle: {
+          backgroundColor: screenBackgroundColor,
+        },
+        tabBarActiveTintColor: theme.tint,
+        tabBarInactiveTintColor: theme.icon,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: Colors[colorScheme ?? 'light'].background,
+          backgroundColor: tabBarBackgroundColor,
           borderTopWidth: 1,
-          borderTopColor: Colors[colorScheme ?? 'light'].background,
+          borderTopColor: tabBarBorderColor,
           elevation: 4,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -55,9 +64,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="payouts"
+        name="withdraw"
         options={{
-          title: 'Payouts',
+          title: 'Withdraw',
           tabBarIcon: ({ color }) => <Grip size={24} color={color} />,
         }}
       />

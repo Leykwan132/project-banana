@@ -33,6 +33,8 @@ const SORT_OPTIONS = [
 
 const CampaignSkeleton = () => {
     const opacity = useSharedValue(0.3);
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     useEffect(() => {
         opacity.value = withRepeat(
@@ -43,19 +45,22 @@ const CampaignSkeleton = () => {
             -1,
             true
         );
-    }, []);
+    }, [opacity]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
     }));
 
     return (
-        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+        <Animated.View style={[styles.skeletonItem, animatedStyle, { backgroundColor: isDark ? '#1F1F1F' : '#ECE8DF' }]} />
     );
 };
 
 export function CampaignList() {
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const filterBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const filterBorderColor = isDark ? '#303030' : '#E4DED2';
     const router = useRouter();
 
     const categorySheetRef = useRef<ActionSheetRef>(null);
@@ -161,10 +166,17 @@ export function CampaignList() {
 
         return CAMPAIGN_CATEGORIES.map(c => ({
             label: `${c.label} (${counts[c.id] || 0})`,
+            shortLabel: c.label,
+            count: counts[c.id] || 0,
             value: c.id,
             icon: c.icon
         }));
     }, [processedCampaigns]);
+
+    const selectedCategoryOption = useMemo(
+        () => categoryOptionsWithCounts.find((category) => category.value === selectedCategory),
+        [categoryOptionsWithCounts, selectedCategory]
+    );
 
     return (
         <View style={styles.container}>
@@ -178,26 +190,45 @@ export function CampaignList() {
                     <Pressable
                         style={[
                             styles.filterButton,
-                            { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                            { backgroundColor: filterBackgroundColor, borderColor: filterBorderColor },
                             selectedCategory && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
                         ]}
                         onPress={() => categorySheetRef.current?.show()}
                     >
-                        <ThemedText style={[
-                            styles.filterButtonText,
-                            selectedCategory && { color: Colors[colorScheme ?? 'light'].background }
-                        ]}>
-                            {selectedCategory ? categoryOptionsWithCounts.find(c => c.value === selectedCategory)?.label : 'Category'}
-                        </ThemedText>
-                        {(() => {
-                            const SelectedIcon = selectedCategory ? categoryOptionsWithCounts.find(c => c.value === selectedCategory)?.icon : Filter;
-                            return SelectedIcon ? <SelectedIcon size={14} color={selectedCategory ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text} /> : null;
-                        })()}
+                        {selectedCategory && selectedCategoryOption ? (
+                            <>
+                                <View style={styles.filterButtonLeading}>
+                                    <selectedCategoryOption.icon
+                                        size={14}
+                                        color={Colors[colorScheme ?? 'light'].background}
+                                    />
+                                    <ThemedText style={[
+                                        styles.filterButtonText,
+                                        { color: Colors[colorScheme ?? 'light'].background }
+                                    ]}>
+                                        {selectedCategoryOption.shortLabel}
+                                    </ThemedText>
+                                </View>
+                                <ThemedText style={[
+                                    styles.filterButtonCount,
+                                    { color: Colors[colorScheme ?? 'light'].background }
+                                ]}>
+                                    {selectedCategoryOption.count}
+                                </ThemedText>
+                            </>
+                        ) : (
+                            <>
+                                <ThemedText style={styles.filterButtonText}>
+                                    Category
+                                </ThemedText>
+                                <Filter size={14} color={Colors[colorScheme ?? 'light'].text} />
+                            </>
+                        )}
                     </Pressable>
                     <Pressable
                         style={[
                             styles.filterButton,
-                            { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                            { backgroundColor: filterBackgroundColor, borderColor: filterBorderColor },
                             selectedSort && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
                         ]}
                         onPress={() => sortSheetRef.current?.show()}
@@ -228,10 +259,10 @@ export function CampaignList() {
                             loop
                             style={styles.lottie}
                         />
-                        <ThemedText style={styles.emptyStateText}>
+                        <ThemedText style={[styles.emptyStateText, { color: isDark ? '#D4D4D4' : '#4B5563' }]}>
                             No campaigns found
                         </ThemedText>
-                        <ThemedText style={styles.emptyStateSubtext}>
+                        <ThemedText style={[styles.emptyStateSubtext, { color: isDark ? '#8A8A8A' : '#9CA3AF' }]}>
                             Try adjusting your filters
                         </ThemedText>
                     </View>
@@ -307,9 +338,19 @@ const styles = StyleSheet.create({
         borderColor: '#E0E0E0',
         backgroundColor: '#FFFFFF',
     },
+    filterButtonLeading: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
     filterButtonText: {
         fontSize: 12,
         fontFamily: 'GoogleSans_500Medium',
+    },
+    filterButtonCount: {
+        fontSize: 12,
+        fontFamily: 'GoogleSans_700Bold',
+        marginLeft: 4,
     },
     listSection: {
         paddingHorizontal: 16,

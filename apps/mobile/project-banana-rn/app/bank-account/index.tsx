@@ -33,7 +33,7 @@ interface BankAccount {
     status: BankAccountStatus;
 }
 
-const BankAccountSkeleton = () => {
+const BankAccountSkeleton = ({ backgroundColor }: { backgroundColor: string }) => {
     const opacity = useSharedValue(0.3);
 
     useEffect(() => {
@@ -45,14 +45,14 @@ const BankAccountSkeleton = () => {
             -1,
             true
         );
-    }, []);
+    }, [opacity]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
     }));
 
     return (
-        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+        <Animated.View style={[styles.skeletonItem, animatedStyle, { backgroundColor }]} />
     );
 };
 
@@ -60,6 +60,15 @@ export default function BankAccountScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const isDark = colorScheme === 'dark';
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
+    const cardBorderColor = isDark ? '#303030' : '#E4DED2';
+    const elevatedBackgroundColor = isDark ? '#1F1F1F' : '#FFFFFF';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const mutedTextColor = isDark ? '#A3A3A3' : '#6B7280';
+    const primaryButtonBackgroundColor = isDark ? '#F3F1EA' : '#000000';
+    const primaryButtonTextColor = isDark ? '#111111' : '#FFFFFF';
 
     const user = useQuery(api.users.getUser);
     const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Creator });
@@ -105,17 +114,21 @@ export default function BankAccountScreen() {
             <Pressable
                 style={({ pressed }) => [
                     styles.bankCard,
+                    {
+                        backgroundColor: cardBackgroundColor,
+                        borderColor: cardBorderColor,
+                    },
                     { opacity: pressed ? 0.7 : 1 }
                 ]}
                 onPress={handlePress}
             >
-                <View style={styles.bankLogoContainer}>
+                <View style={[styles.bankLogoContainer, { backgroundColor: '#FFFFFF', borderColor: isDark ? '#2A2A2A' : '#E7E2D8' }]}>
                     <Image source={{ uri: item.logo }} style={styles.bankLogo} contentFit="contain" />
                 </View>
                 <View style={styles.bankInfo}>
                     <ThemedText type="defaultSemiBold">{item.bankName}</ThemedText>
                     <View style={styles.bankDetailsRow}>
-                        <ThemedText style={[styles.bankDetailText]}>{item.accountNumber}</ThemedText>
+                        <ThemedText style={[styles.bankDetailText, { color: mutedTextColor }]}>{item.accountNumber}</ThemedText>
                     </View>
                 </View>
                 <ApplicationStatusBadge status={mappedStatus} />
@@ -124,10 +137,10 @@ export default function BankAccountScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
+                <Pressable onPress={() => router.back()} style={[styles.backButton, { borderColor: cardBorderColor, backgroundColor: elevatedBackgroundColor }]}>
                     <ArrowLeft size={24} color={theme.text} />
                 </Pressable>
                 <ThemedText type="title" style={styles.headerTitle}>
@@ -144,7 +157,10 @@ export default function BankAccountScreen() {
                 {isLoading ? (
                     <View>
                         {[...Array(3)].map((_, i) => (
-                            <BankAccountSkeleton key={i} />
+                            <BankAccountSkeleton
+                                key={i}
+                                backgroundColor={isDark ? '#1F1F1F' : '#ECE8DF'}
+                            />
                         ))}
                     </View>
                 ) : mappedBankAccounts.length === 0 ? (
@@ -155,10 +171,10 @@ export default function BankAccountScreen() {
                             loop
                             style={styles.lottie}
                         />
-                        <ThemedText style={styles.emptyStateText}>
+                        <ThemedText style={[styles.emptyStateText, { color: isDark ? '#D4D4D4' : '#4B5563' }]}>
                             No bank accounts found
                         </ThemedText>
-                        <ThemedText style={styles.emptyStateSubtext}>
+                        <ThemedText style={[styles.emptyStateSubtext, { color: isDark ? '#8A8A8A' : '#9CA3AF' }]}>
                             Add a bank account to start receiving payouts
                         </ThemedText>
                     </View>
@@ -175,13 +191,13 @@ export default function BankAccountScreen() {
             </View>
 
             {/* Add Bank Account Button */}
-            <View style={styles.footer}>
+            <View style={[styles.footer, { backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
                 <Pressable
-                    style={styles.addButton}
+                    style={[styles.addButton, { backgroundColor: primaryButtonBackgroundColor }]}
                     onPress={() => router.push('/bank-account/add' as any)}
                 >
-                    <Plus size={20} color="#fff" />
-                    <ThemedText style={styles.addButtonText}>Add Bank Account</ThemedText>
+                    <Plus size={20} color={primaryButtonTextColor} />
+                    <ThemedText style={[styles.addButtonText, { color: primaryButtonTextColor }]}>Add Bank Account</ThemedText>
                 </Pressable>
             </View>
         </SafeAreaView>
@@ -272,6 +288,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 16,
         paddingBottom: 32,
+        borderTopWidth: 1,
+        borderTopColor: '#F0F0F0',
     },
     addButton: {
         backgroundColor: '#000',

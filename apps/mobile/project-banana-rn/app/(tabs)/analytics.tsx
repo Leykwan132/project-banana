@@ -2,7 +2,6 @@ import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl, Dimensions, TextInput, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Wallet, ArrowDownWideNarrow, Eye, ThumbsUp, MessageCircle, Share2 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 import { LineChart, useLineChart } from 'react-native-wagmi-charts';
 import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -33,9 +32,15 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRAPH_WIDTH = SCREEN_WIDTH - 64; // (16 * 2 wrapper) + (16 * 2 container) = 64
 
 export default function AnalyticsScreen() {
-    const router = useRouter();
     const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const theme = Colors[colorScheme ?? 'light'];
     const insets = useSafeAreaInsets();
+    const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const panelBackgroundColor = isDark ? '#171717' : '#FBFAF7';
+    const panelBorderColor = isDark ? '#303030' : '#E4DED2';
+    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const filterBackgroundColor = isDark ? '#141414' : '#F7F4ED';
 
     const [refreshing, setRefreshing] = useState(false);
     const [sortBy, setSortBy] = useState<string>('earnings');
@@ -63,31 +68,31 @@ export default function AnalyticsScreen() {
     const metricConfig: Record<string, MetricConfig> = {
         views: {
             color: '#FF4500',
-            icon: <Eye size={16} color="#666" />,
+            icon: <Eye size={16} color={isDark ? '#A3A3A3' : '#666'} />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.views, 0).toLocaleString(),
         },
         likes: {
             color: '#FF4500',
-            icon: <ThumbsUp size={16} color="#666" />,
+            icon: <ThumbsUp size={16} color={isDark ? '#A3A3A3' : '#666'} />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.likes, 0).toLocaleString(),
         },
         comments: {
             color: '#FF4500',
-            icon: <MessageCircle size={16} color="#666" />,
+            icon: <MessageCircle size={16} color={isDark ? '#A3A3A3' : '#666'} />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.comments, 0).toLocaleString(),
         },
         shares: {
             color: '#FF4500',
-            icon: <Share2 size={16} color="#666" />,
+            icon: <Share2 size={16} color={isDark ? '#A3A3A3' : '#666'} />,
             showCurrency: false,
             getTotal: () => (dailyStats ?? []).reduce((sum, d) => sum + d.shares, 0).toLocaleString(),
         },
         earnings: {
             color: '#FF4500',
-            icon: <Wallet size={16} color="#666" />,
+            icon: <Wallet size={16} color={isDark ? '#A3A3A3' : '#666'} />,
             showCurrency: true,
             getTotal: () => `RM ${(dailyStats ?? []).reduce((sum, d) => sum + d.earnings, 0).toLocaleString()}`,
         },
@@ -146,7 +151,7 @@ export default function AnalyticsScreen() {
                 style={[
                     styles.container,
                     {
-                        backgroundColor: Colors[colorScheme ?? 'light'].screenBackground,
+                        backgroundColor: screenBackgroundColor,
                         paddingTop: insets.top,
                     },
                 ]}
@@ -162,12 +167,12 @@ export default function AnalyticsScreen() {
                 >
                     {/* Graph Section */}
                     <View style={styles.graphWrapper}>
-                        <View style={styles.graphContainer}>
+                        <View style={[styles.graphContainer, { backgroundColor: panelBackgroundColor, borderColor: panelBorderColor }]}>
                             <LineChart.Provider data={graphData}>
                                 <View >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                         {activeMetric.icon}
-                                        <ThemedText style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_500Medium' }}>
+                                        <ThemedText style={{ fontSize: 14, color: isDark ? '#A3A3A3' : '#666', fontFamily: 'GoogleSans_500Medium' }}>
                                             {graphHeaderLabel}
                                         </ThemedText>
                                     </View>
@@ -175,8 +180,9 @@ export default function AnalyticsScreen() {
                                         key={sortBy}
                                         totalValue={totalLabel}
                                         showCurrency={activeMetric.showCurrency}
+                                        color={theme.text}
                                     />
-                                    <InteractiveGraphDate defaultText="Last 30 Days" />
+                                    <InteractiveGraphDate defaultText="Last 30 Days" color={isDark ? '#A3A3A3' : '#666'} />
                                 </View>
 
                                 <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>
@@ -190,7 +196,7 @@ export default function AnalyticsScreen() {
                                 {/* X-Axis Labels */}
                                 <View style={{
                                     width: '100%',
-                                    borderTopColor: '#E0E0E0',
+                                    borderTopColor: dividerColor,
                                     borderTopWidth: 1,
                                     marginBottom: 12,
                                 }}>
@@ -208,11 +214,11 @@ export default function AnalyticsScreen() {
                                                 <View style={{
                                                     width: 1,
                                                     height: 4,
-                                                    borderLeftColor: '#E0E0E0',
+                                                    borderLeftColor: dividerColor,
                                                     borderLeftWidth: 1,
                                                     marginBottom: 4,
                                                 }}></View>
-                                                <ThemedText style={{ fontSize: 10, color: '#999', fontFamily: 'GoogleSans_400Regular' }}>{label}</ThemedText>
+                                                <ThemedText style={{ fontSize: 10, color: isDark ? '#7A7A7A' : '#999', fontFamily: 'GoogleSans_400Regular' }}>{label}</ThemedText>
                                             </View>
                                         ))}
                                     </View>
@@ -230,7 +236,7 @@ export default function AnalyticsScreen() {
                             <Pressable
                                 style={[
                                     styles.filterButton,
-                                    { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: colorScheme === 'dark' ? '#333' : '#E0E0E0' },
+                                    { backgroundColor: filterBackgroundColor, borderColor: panelBorderColor },
                                     sortBy && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
                                 ]}
                                 onPress={() => sortSheetRef.current?.show()}
@@ -265,7 +271,7 @@ export default function AnalyticsScreen() {
 }
 
 // Interactive Components
-function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValue: string, showCurrency?: boolean }) {
+function InteractiveGraphValue({ totalValue, showCurrency = false, color }: { totalValue: string, showCurrency?: boolean, color: string }) {
     const { currentIndex, isActive, data } = useLineChart();
     const svTotal = useSharedValue(totalValue);
     React.useEffect(() => {
@@ -296,7 +302,7 @@ function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValu
         <AnimatedTextInput
             editable={false}
             underlineColorAndroid="transparent"
-            style={{ fontSize: 32, fontFamily: 'GoogleSans_700Bold', color: '#000' }}
+            style={{ fontSize: 32, fontFamily: 'GoogleSans_700Bold', color }}
             // @ts-ignore
             animatedProps={animatedProps}
             defaultValue={totalValue}
@@ -304,7 +310,7 @@ function InteractiveGraphValue({ totalValue, showCurrency = false }: { totalValu
     );
 }
 
-function InteractiveGraphDate({ defaultText }: { defaultText: string }) {
+function InteractiveGraphDate({ defaultText, color }: { defaultText: string, color: string }) {
     const { currentIndex, isActive, data } = useLineChart();
 
     const animatedProps = useAnimatedProps(() => {
@@ -334,7 +340,7 @@ function InteractiveGraphDate({ defaultText }: { defaultText: string }) {
         <AnimatedTextInput
             editable={false}
             underlineColorAndroid="transparent"
-            style={{ fontSize: 14, color: '#666', fontFamily: 'GoogleSans_400Regular', marginTop: 4 }}
+            style={{ fontSize: 14, color, fontFamily: 'GoogleSans_400Regular', marginTop: 4 }}
             // @ts-ignore
             animatedProps={animatedProps}
             defaultValue={defaultText}
@@ -362,6 +368,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         paddingBottom: 0,
+        borderWidth: 1,
     },
     // Campaigns Section
     campaignsSection: {
