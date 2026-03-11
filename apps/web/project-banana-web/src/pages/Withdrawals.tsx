@@ -44,7 +44,7 @@ export default function Withdrawals() {
     };
 
     return (
-        <div className="p-8 font-sans text-gray-900 animate-fadeIn">
+        <div className="bg-white p-8 font-sans text-gray-900 animate-fadeIn">
             <h1 className="text-2xl font-bold mb-6">Withdrawals</h1>
 
             <div className="flex flex-col gap-8">
