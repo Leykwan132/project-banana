@@ -19,7 +19,7 @@ const pricingFaqs: PricingFaq[] = [
     },
     {
         question: 'Does it cost money to create a campaign?',
-        answer: 'Yes it depends on which plans you are on. The free plan would require a one-time RM300 payment and for each campaign.',
+        answer: 'Yes it depends on which plans you are on. The free plan would require a one-time RM100 payment and for each campaign.',
     },
     {
         question: 'Can we change plans later?',
@@ -29,10 +29,7 @@ const pricingFaqs: PricingFaq[] = [
         question: 'Can I refund my credits?',
         answer: 'Yes there will be a RM1.10 gateway service fee charge by the payment gateway provider.',
     },
-    {
-        question: 'Will that be a free trial?',
-        answer: 'Yes there will be a 14-day free trial.',
-    },
+
 ];
 
 function Footer() {
@@ -159,8 +156,7 @@ function PricingPage() {
     return (
         <div className="min-h-screen animate-in fade-in pb-12 pt-24">
             <div className="mx-auto max-w-6xl px-6 text-center">
-                <h1 className="text-5xl font-bold tracking-tight text-gray-900 md:text-6xl">Simple pricing for growing teams</h1>
-                <p className="mx-auto mt-6 max-w-2xl text-xl text-gray-600">Pick a plan that fits your campaign volume and scale when your output grows.</p>
+                <h1 className="text-5xl font-bold tracking-tight text-gray-900 md:text-6xl">Pricing</h1>
             </div>
 
             <div className="mx-auto mt-14 w-full max-w-6xl px-6">

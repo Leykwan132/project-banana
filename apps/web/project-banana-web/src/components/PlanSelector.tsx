@@ -1,4 +1,4 @@
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, X } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from './ui/Button';
@@ -10,9 +10,13 @@ const PLANS = [
         name: 'Pay As You Go',
         monthlyPrice: 0,
         annualPrice: 0,
-        description: 'One-off UGC campaigns on demand',
         features: [
-            'Pay RM 300 per campaign'
+            { text: '1 active campaign at a time', crossed: false },
+            { text: 'Limit to 50 creator submissions', crossed: false },
+            { text: 'Pay RM 100 per campaign', crossed: false },
+            { text: 'Instagram support', crossed: false },
+            { text: 'Hashtag and mention capability', crossed: true },
+            { text: 'TikTok support', crossed: true }
         ],
     },
     {
@@ -20,9 +24,13 @@ const PLANS = [
         name: 'Starter',
         monthlyPrice: 199,
         annualPrice: 1910,
-        description: 'Steady stream of UGC content',
         features: [
-            '1 active campaign at a time'
+            { text: '1 active campaign at a time', crossed: false },
+            { text: 'Unlimited creator submissions', crossed: false },
+            { text: '100 monthly platform-assisted reviews', crossed: false },
+            { text: 'Hashtag and mention capability', crossed: false },
+            { text: 'Instagram support', crossed: false },
+            { text: 'TikTok support', crossed: false }
         ],
     },
     {
@@ -30,10 +38,13 @@ const PLANS = [
         name: 'Growth',
         monthlyPrice: 299,
         annualPrice: 2870,
-        description: 'Scale with concurrent UGC campaigns',
         features: [
-            '5 active campaigns at a time',
-            'Certified business badge'
+            { text: '5 active campaigns at a time', crossed: false },
+            { text: 'Unlimited creator submissions', crossed: false },
+            { text: '200 monthly platform-assisted reviews', crossed: false },
+            { text: 'Hashtag and mention capability', crossed: false },
+            { text: 'Instagram support', crossed: false },
+            { text: 'TikTok support', crossed: false }
         ],
     },
     {
@@ -41,12 +52,14 @@ const PLANS = [
         name: 'Unlimited',
         monthlyPrice: 499,
         annualPrice: 4790,
-        description: 'Uncapped campaigns for enterprise',
         features: [
-            'Unlimited active campaigns',
-            'Certified business badge',
-            'Founder support',
-            'Feature requests'
+            { text: 'Unlimited active campaigns', crossed: false },
+            { text: 'Unlimited creator submissions', crossed: false },
+            { text: '500 monthly platform-assisted reviews', crossed: false },
+            { text: 'Hashtag and mention capability', crossed: false },
+            { text: 'Instagram support', crossed: false },
+            { text: 'TikTok support', crossed: false },
+            { text: 'Priority & Founder support', crossed: false },
         ],
     },
 ];
@@ -112,11 +125,7 @@ export default function PlanSelector({
         return plan.monthlyPrice;
     };
 
-    const getSavingsPercent = (plan: typeof PLANS[0]) => {
-        const monthlyTotal = plan.monthlyPrice * 12;
-        const savings = monthlyTotal - plan.annualPrice;
-        return Math.round((savings / monthlyTotal) * 100);
-    };
+
 
     const isCurrentPlan = (planType: PlanType) => {
         return (
@@ -142,7 +151,7 @@ export default function PlanSelector({
                         className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 cursor-pointer ${billingCycle === 'annual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
                     >
                         Annually
-                        <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full whitespace-nowrap">
                             SAVE 20%
                         </span>
                     </button>
@@ -171,31 +180,27 @@ export default function PlanSelector({
 
                             <div className="mb-4">
                                 <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                                <p className="text-sm mt-1 text-gray-500">{plan.description}</p>
                             </div>
 
                             <div className="mb-6">
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-3xl font-bold tracking-tight text-gray-900">RM {price}</span>
-                                    <span className="text-sm font-medium text-gray-500">/month</span>
-                                    {billingCycle === 'annual' && plan.monthlyPrice > 0 && (
-                                        <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                                            SAVE {getSavingsPercent(plan)}%
-                                        </span>
-                                    )}
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
+                                    <span className="text-3xl font-bold tracking-tight text-gray-900 whitespace-nowrap">RM {price}</span>
+                                    <span className="text-sm font-medium text-gray-500 whitespace-nowrap">/month</span>
                                 </div>
-                                {billingCycle === 'annual' && plan.monthlyPrice > 0 && (
-                                    <div className="text-xs text-gray-400 mt-1 line-through">
-                                        RM {plan.monthlyPrice} /month
-                                    </div>
-                                )}
+
                             </div>
 
                             <ul className="space-y-3.5 mb-8 flex-1">
                                 {plan.features.map((feature, index) => (
                                     <li key={index} className="flex items-start gap-3 text-sm text-gray-600">
-                                        <Check className="w-4 h-4 shrink-0 mt-0.5 text-blue-600" />
-                                        <span>{feature}</span>
+                                        {feature.crossed ? (
+                                            <X className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
+                                        ) : (
+                                            <Check className="w-4 h-4 shrink-0 mt-0.5 text-blue-600" />
+                                        )}
+                                        <span className={feature.crossed ? 'text-gray-400' : ''}>
+                                            {feature.text}
+                                        </span>
                                     </li>
                                 ))}
                             </ul>
@@ -209,10 +214,8 @@ export default function PlanSelector({
                                 >
                                     {isLoading && selectedPlan === plan.type ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : plan.type === 'free' ? (
-                                        'Get Started'
                                     ) : (
-                                        'Start 14-day free trial'
+                                        'Get Started'
                                     )}
                                 </Button>
                             )}

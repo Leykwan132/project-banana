@@ -95,15 +95,19 @@ const businessFaqs = [
     },
     {
         question: 'Does it cost to create a campaign?',
-        answer: "For three-tier yes, it's RM 300 flat. Otherwise every tier has the limit and available active campaign.",
+        answer: "For pay-as-you-go, it's RM 100 flat. Otherwise other subscription plan has its own limit.",
     },
     {
         question: 'What platform is supported?',
-        answer: 'TikTok and Instagram.',
+        answer: 'TikTok and Instagram depending on the plan you are on.',
     },
     {
         question: 'How is the content approved?',
         answer: 'When the user submits, it will need to be reviewed; then only it will be calculated.',
+    },
+    {
+        question: 'Can I refund my credits?',
+        answer: 'Yes there will be a RM1.10 gateway service fee charge by the payment gateway provider.',
     },
 ];
 
@@ -255,8 +259,8 @@ export default function BusinessLanding() {
             <section className="mx-auto w-full max-w-7xl px-6 pb-12 pt-16 md:pt-24">
                 <div className="max-w-4xl">
                     <h1 className="text-4xl font-medium tracking-tight text-gray-900 sm:text-5xl md:text-[3.25rem] md:leading-[1.1]">
-                        Get UGC distribution from Day 1.<br className="hidden md:block" />
-                        Only at Lumina.
+                        Bet on UGC today.<br className="hidden md:block" />
+                        Lumina make the process easy.
                     </h1>
                     <Link
                         to="/login"
