@@ -3,10 +3,8 @@ import {
     Clock,
     Eye,
     AlertCircle,
-    CheckCheck,
     CircleCheck,
     Star,
-    Check,
     BadgeCheck
 } from 'lucide-react-native';
 
@@ -14,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 
-export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Posted' | 'Active' | 'Rejected' | 'Pending' | 'Paid' | 'Processing' | 'Completed' | 'Failed';
+export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Action Required' | 'Posted' | 'Active' | 'Rejected' | 'Pending' | 'Paid' | 'Processing' | 'Completed' | 'Failed';
 
 export const getStatusConfig = (status?: ApplicationStatus) => {
     switch (status) {
@@ -49,6 +47,14 @@ export const getStatusConfig = (status?: ApplicationStatus) => {
                 border: '#D93025',
                 icon: AlertCircle,
                 iconColor: '#FF7E87'
+            };
+        case 'Action Required':
+            return {
+                bg: '#FFF4E5',
+                text: '#B45309',
+                border: '#B45309',
+                icon: AlertCircle,
+                iconColor: '#F59E0B'
             };
         case 'Posted':
             return {

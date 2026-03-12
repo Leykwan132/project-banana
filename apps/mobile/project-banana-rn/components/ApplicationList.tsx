@@ -26,6 +26,7 @@ const FILTER_OPTIONS = [
     { label: 'Under Review', value: 'reviewing' },
     { label: 'Changes Required', value: 'changes_requested' },
     { label: 'Ready to Post', value: 'ready_to_post' },
+    { label: 'Action Required', value: 'action_required' },
     { label: 'Posted', value: 'earning' },
 ];
 
@@ -83,6 +84,7 @@ export function ApplicationList() {
             'reviewing': 'Under Review',
             'changes_requested': 'Changes Required',
             'ready_to_post': 'Ready to Post',
+            'action_required': 'Action Required',
             'earning': 'Posted',
         };
         return statusMap[convexStatus] || 'Pending Submission';

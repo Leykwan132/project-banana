@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, RefreshControl, Image, Linking } from 'react-native';
+import { View, StyleSheet, Pressable, RefreshControl, Image, Linking } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronDown, Check, Copy, Building, ExternalLink } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Check, Copy, Building, ExternalLink, Hash, AtSign, AlertTriangle } from 'lucide-react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { TextInput, Alert } from 'react-native';
 import Animated, {
@@ -26,7 +26,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ActionSheetRef } from "react-native-actions-sheet";
-import ActionSheet from "react-native-actions-sheet";
+import ActionSheet, { ScrollView, FlatList } from "react-native-actions-sheet";
 import { Timeline, Text, Assets, Checkbox } from 'react-native-ui-lib';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 import { CreatorListItem } from '@/components/CreatorListItem';
@@ -43,6 +43,12 @@ const formatViews = (views: number) => {
     if (views >= 1000) return `${Math.round(views / 1000)}k`;
     return `${views}`;
 };
+
+const formatPrefixedValues = (values: string[], prefix: "#" | "@") =>
+    values.map((value) => `${prefix}${value}`).join(' ');
+
+const formatMissingList = (values: string[], prefix: "#" | "@") =>
+    values.map((value) => `${prefix}${value}`).join(', ');
 
 const formatSubmissionDate = (timestamp: number) =>
     new Date(timestamp).toLocaleString("en-MY", {
@@ -64,6 +70,8 @@ const mapBackendStatusToUiStatus = (status?: string): ApplicationStatus => {
             return "Changes Required";
         case "ready_to_post":
             return "Ready to Post";
+        case "action_required":
+            return "Action Required";
         case "earning":
             return "Posted";
         default:
@@ -118,7 +126,7 @@ export default function ApplicationDetailScreen() {
     const [instagramLink, setInstagramLink] = useState('');
     const [tiktokLink, setTikTokLink] = useState('');
     const [error, setError] = useState('');
-    const [showCopySuccess, setShowCopySuccess] = useState(false);
+    const [copiedField, setCopiedField] = useState<'tracking' | 'hashtags' | 'mentions' | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isReviewed, setIsReviewed] = useState(false);
@@ -246,11 +254,6 @@ export default function ApplicationDetailScreen() {
 
     const handleSubmit = async () => {
         setError('');
-        if (!instagramLink && !tiktokLink) {
-            setError('Please provide at least one post URL (Instagram or TikTok).');
-            return;
-        }
-
         const isValidUrl = (string: string) => {
             try {
                 new URL(string);
@@ -259,6 +262,22 @@ export default function ApplicationDetailScreen() {
                 return false;
             }
         };
+
+        if (!resolvedCampaignId || !campaign) {
+            setError('Campaign details are not available. Please try again.');
+            return;
+        }
+
+        const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
+        if (requiresBothPlatformPosts) {
+            if (!instagramLink || !tiktokLink) {
+                setError('This campaign requires both Instagram and TikTok post URLs.');
+                return;
+            }
+        } else if (!instagramLink && !tiktokLink) {
+            setError(isPayAsYouGoPlan ? 'Please provide your Instagram post URL.' : 'Please provide at least one post URL (Instagram or TikTok).');
+            return;
+        }
 
         if (instagramLink) {
             if (!isValidUrl(instagramLink)) {
@@ -273,6 +292,11 @@ export default function ApplicationDetailScreen() {
         }
 
         if (tiktokLink) {
+            if ((campaign?.business_plan_type ?? 'free').toLowerCase() === 'free') {
+                setError('Upgrade your plan to submit a TikTok URL for this campaign.');
+                return;
+            }
+
             if (!isValidUrl(tiktokLink)) {
                 setError('Please enter a valid URL for TikTok.');
                 return;
@@ -282,11 +306,6 @@ export default function ApplicationDetailScreen() {
                 setError('The TikTok link must be from tiktok.com.');
                 return;
             }
-        }
-
-        if (!resolvedCampaignId || !campaign) {
-            setError('Campaign details are not available. Please try again.');
-            return;
         }
 
         setIsSubmitting(true);
@@ -353,6 +372,72 @@ export default function ApplicationDetailScreen() {
     // Flip card animation removed (moved to component)
 
     const applicationStatus = mapBackendStatusToUiStatus(application?.status);
+    const isActionRequired = applicationStatus === 'Action Required';
+    const isReadyToPost = applicationStatus === 'Ready to Post';
+    const isPayAsYouGoPlan = (campaign?.business_plan_type ?? 'free').toLowerCase() === 'free';
+    const requiresBothPlatformPosts = campaign?.requires_both_platform_posts ?? false;
+    const missingPostDescription = application?.missing_post_description as
+        | {
+            instagram?: { trackingTagMissing: boolean; missingHashtags: string[]; missingMentions: string[] };
+            tiktok?: { trackingTagMissing: boolean; missingHashtags: string[]; missingMentions: string[] };
+            checkedAt: number;
+        }
+        | undefined;
+    const missingDescriptionCards = [
+        missingPostDescription?.instagram ? { platform: 'Instagram', details: missingPostDescription.instagram } : null,
+        missingPostDescription?.tiktok ? { platform: 'TikTok', details: missingPostDescription.tiktok } : null,
+    ].filter(Boolean) as Array<{
+        platform: 'Instagram' | 'TikTok';
+        details: { trackingTagMissing: boolean; missingHashtags: string[]; missingMentions: string[] };
+    }>;
+
+    const copyText = async (field: 'tracking' | 'hashtags' | 'mentions', value: string) => {
+        if (!value) return;
+        await Clipboard.setStringAsync(value);
+        setCopiedField(field);
+        setTimeout(() => setCopiedField(null), 1200);
+    };
+
+    const renderPrefixedCopyList = (
+        field: 'hashtags' | 'mentions',
+        values: string[],
+        prefix: "#" | "@"
+    ) => {
+        const copyValue = formatPrefixedValues(values, prefix);
+
+        return (
+            <View style={[styles.tagListContainer, { backgroundColor: surfaceColor }]}>
+                {values.map((value, index) => (
+                    <View key={`${field}-${value}-${index}`}>
+                        <View style={styles.tagListRow}>
+                            <ThemedText style={[styles.tagRowText, { color: theme.text }]}>
+                                {`${prefix}${value}`}
+                            </ThemedText>
+                            {index === 0 && (
+                                <Pressable
+                                    style={styles.copyAction}
+                                    hitSlop={10}
+                                    onPress={() => copyText(field, copyValue)}
+                                >
+                                    {copiedField === field ? (
+                                        <>
+                                            <Check size={16} color="#1E8E3E" />
+                                            <ThemedText style={styles.copyButtonText}>Copied</ThemedText>
+                                        </>
+                                    ) : (
+                                        <Copy size={18} color={theme.text} />
+                                    )}
+                                </Pressable>
+                            )}
+                        </View>
+                        {index < values.length - 1 && (
+                            <View style={[styles.tagRowSeparator, { backgroundColor: dividerColor }]} />
+                        )}
+                    </View>
+                ))}
+            </View>
+        );
+    };
 
     const getTimelineStep = (status: ApplicationStatus) => {
         switch (status) {
@@ -364,6 +449,8 @@ export default function ApplicationDetailScreen() {
                 return 1;
             case 'Ready to Post':
                 return 3;
+            case 'Action Required':
+                return 4;
             case 'Posted':
                 return 4;
             default:
@@ -790,129 +877,208 @@ export default function ApplicationDetailScreen() {
                 </View>
                 {/* Submission Sheet */}
                 <ActionSheet gestureEnabled ref={submissionSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
-                    <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
-                        {isSubmitting ? (
-                            <Animated.View entering={SlideInRight} style={styles.successContent}>
-                                <LottieView
-                                    source={require('../../assets/lotties/uploading.json')}
-                                    autoPlay
-                                    loop
-                                    style={{
-                                        width: 140, height: 140, marginBottom: 16, transform: [{ scale: 2.5 }],
-                                    }}
-                                />
-                                <ThemedText style={[styles.successTitle, { color: theme.text }]}>Submitting...</ThemedText>
-                                <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Please wait while we process your post links</ThemedText>
-                            </Animated.View>
-                        ) : !showSuccess ? (
-                            <Animated.View exiting={SlideOutLeft}>
-                                <View style={styles.sheetHeader}>
-                                    <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>Congratulations!</ThemedText>
-                                    <ThemedText style={[styles.sheetSubtitle, { color: mutedTextColor }]}>you are 2 steps away from earning!</ThemedText>
-                                </View>
-
-                                {/* 1. Tracking tag */}
-                                <View style={styles.inputSection}>
-                                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>1. Tracking tag</ThemedText>
-                                    <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>Paste this tracking tag to your post description for ownership.</ThemedText>
-                                    <View style={[styles.tagContainer, { backgroundColor: surfaceColor }]}>
-                                        <ThemedText style={[styles.tagText, { color: theme.text }]}>#{application?.tracking_tag}</ThemedText>
-                                        <Pressable style={styles.copyAction} hitSlop={10} onPress={async () => {
-                                            if (application?.tracking_tag) {
-                                                await Clipboard.setStringAsync(`#${application.tracking_tag}`);
-                                                setShowCopySuccess(true);
-                                                setTimeout(() => setShowCopySuccess(false), 1200);
-                                            }
-                                        }}>
-                                            {showCopySuccess ? (
-                                                <>
-                                                    <Check size={16} color="#1E8E3E" />
-                                                    <ThemedText style={styles.copyButtonText}>Copied</ThemedText>
-                                                </>
-                                            ) : (
-                                                    <Copy size={18} color={theme.text} />
-                                                )}
-                                            </Pressable>
+                    <View style={[styles.sheetScrollableContainer, { backgroundColor: screenBackgroundColor }]}>
+                        <ScrollView
+                            style={styles.sheetScrollView}
+                            contentContainerStyle={styles.sheetScrollContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                                {isSubmitting ? (
+                                    <Animated.View entering={SlideInRight} style={styles.successContent}>
+                                        <LottieView
+                                            source={require('../../assets/lotties/uploading.json')}
+                                            autoPlay
+                                            loop
+                                            style={{
+                                                width: 140, height: 140, marginBottom: 16, transform: [{ scale: 2.5 }],
+                                            }}
+                                        />
+                                        <ThemedText style={[styles.successTitle, { color: theme.text }]}>Submitting...</ThemedText>
+                                        <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Please wait while we process your post links</ThemedText>
+                                    </Animated.View>
+                                ) : !showSuccess ? (
+                                    <Animated.View exiting={SlideOutLeft}>
+                                        <View style={styles.sheetHeader}>
+                                            <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>
+                                                {isActionRequired ? 'Fix your post description' : 'Congratulations!'}
+                                            </ThemedText>
+                                            <ThemedText style={[styles.sheetSubtitle, { color: mutedTextColor }]}>
+                                                {isActionRequired
+                                                    ? 'Your live post is missing required copy. Update it to keep earning.'
+                                                    : 'You are close to earning with this campaign!'}
+                                            </ThemedText>
                                         </View>
-                                </View>
 
-                                {/* 2. Post url */}
-                                <View style={styles.inputSection}>
-                                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>2. Copy & Paste your post url</ThemedText>
-                                    <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>
-                                        You <ThemedText type="defaultSemiBold">CANNOT</ThemedText> edit urls after submission.
-                                    </ThemedText>
+                                        {/* 1. Tracking tag */}
+                                        <View style={styles.inputSection}>
+                                            <ThemedText type="defaultSemiBold" style={styles.inputLabel}>1. Tracking tag</ThemedText>
+                                            <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>Paste this tracking tag to your post description for ownership.</ThemedText>
+                                            <View style={[styles.tagContainer, { backgroundColor: surfaceColor }]}>
+                                                <ThemedText style={[styles.tagText, { color: theme.text }]}>#{application?.tracking_tag}</ThemedText>
+                                                <Pressable
+                                                    style={styles.copyAction}
+                                                    hitSlop={10}
+                                                    onPress={() => copyText('tracking', `#${application?.tracking_tag ?? ''}`)}
+                                                >
+                                                    {copiedField === 'tracking' ? (
+                                                        <>
+                                                            <Check size={16} color="#1E8E3E" />
+                                                            <ThemedText style={styles.copyButtonText}>Copied</ThemedText>
+                                                        </>
+                                                    ) : (
+                                                        <Copy size={18} color={theme.text} />
+                                                    )}
+                                                </Pressable>
+                                            </View>
+                                        </View>
 
-                                    {/* Instagram */}
-                                    <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
-                                        <FontAwesome5 name="instagram" size={24} color={theme.text} style={styles.inputIcon} />
-                                        <TextInput
-                                            style={[styles.urlInput, { color: theme.text }]}
-                                            placeholder="https://www.instagram.com/... (Optional)"
-                                            placeholderTextColor={subduedTextColor}
-                                            value={instagramLink}
-                                            onChangeText={(text) => {
-                                                setInstagramLink(text);
-                                                setError('');
-                                            }}
-                                            autoCapitalize="none"
+                                        {(campaign?.hashtags ?? []).length > 0 && (
+                                            <View style={styles.inputSection}>
+                                                <ThemedText type="defaultSemiBold" style={styles.inputLabel}>2. Hashtags</ThemedText>
+                                                <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>Copy every required hashtag in one tap.</ThemedText>
+                                                {renderPrefixedCopyList('hashtags', campaign?.hashtags ?? [], '#')}
+                                            </View>
+                                        )}
+
+                                        {(campaign?.mentions ?? []).length > 0 && (
+                                            <View style={styles.inputSection}>
+                                                <ThemedText type="defaultSemiBold" style={styles.inputLabel}>
+                                                    {(campaign?.hashtags ?? []).length > 0 ? '3. Mentions' : '2. Mentions'}
+                                                </ThemedText>
+                                                <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>Copy every required mention in one tap.</ThemedText>
+                                                {renderPrefixedCopyList('mentions', campaign?.mentions ?? [], '@')}
+                                            </View>
+                                        )}
+
+                                        {isActionRequired ? (
+                                            <View style={[styles.infoCard, { backgroundColor: surfaceColor, borderColor, minHeight: 0, gap: 12 }]}>
+                                                <View style={styles.infoCardHeader}>
+                                                    <AlertTriangle size={18} color={isDark ? '#FACC15' : '#B45309'} />
+                                                    <ThemedText type="defaultSemiBold" style={{ color: theme.text }}>Update your live description</ThemedText>
+                                                </View>
+                                                <ThemedText style={[styles.infoCardBody, { color: mutedTextColor }]}>
+                                                    Add the tracking tag, hashtags, and mentions above to your live post description. Your submitted URLs are already saved.
+                                                </ThemedText>
+                                                {missingDescriptionCards.length > 0 ? (
+                                                    <View style={styles.missingDescriptionList}>
+                                                        {missingDescriptionCards.map(({ platform, details }) => (
+                                                            <View key={platform} style={[styles.missingDescriptionCard, { borderColor, backgroundColor: isDark ? '#111111' : '#FFFFFF' }]}>
+                                                                <ThemedText type="defaultSemiBold" style={{ color: theme.text }}>{platform}</ThemedText>
+                                                                {details.trackingTagMissing ? (
+                                                                    <ThemedText style={[styles.missingDescriptionText, { color: mutedTextColor }]}>
+                                                                        Missing tracking tag #{application?.tracking_tag}
+                                                                    </ThemedText>
+                                                                ) : null}
+                                                                {details.missingHashtags.length > 0 ? (
+                                                                    <ThemedText style={[styles.missingDescriptionText, { color: mutedTextColor }]}>
+                                                                        Missing hashtags {formatMissingList(details.missingHashtags, '#')}
+                                                                    </ThemedText>
+                                                                ) : null}
+                                                                {details.missingMentions.length > 0 ? (
+                                                                    <ThemedText style={[styles.missingDescriptionText, { color: mutedTextColor }]}>
+                                                                        Missing mentions {formatMissingList(details.missingMentions, '@')}
+                                                                    </ThemedText>
+                                                                ) : null}
+                                                            </View>
+                                                        ))}
+                                                    </View>
+                                                ) : null}
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <View style={styles.inputSection}>
+                                                    <ThemedText type="defaultSemiBold" style={styles.inputLabel}>4. Copy & Paste your post url</ThemedText>
+                                                    <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>
+                                                        {requiresBothPlatformPosts
+                                                            ? 'This campaign requires both Instagram and TikTok URLs.'
+                                                            : 'You cannot edit URLs after submission.'}
+                                                    </ThemedText>
+
+                                                    <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
+                                                        <FontAwesome5 name="instagram" size={24} color={theme.text} style={styles.inputIcon} />
+                                                        <TextInput
+                                                            style={[styles.urlInput, { color: theme.text }]}
+                                                            placeholder={requiresBothPlatformPosts || isPayAsYouGoPlan ? "https://www.instagram.com/..." : "https://www.instagram.com/... (Optional)"}
+                                                            placeholderTextColor={subduedTextColor}
+                                                            value={instagramLink}
+                                                            onChangeText={(text) => {
+                                                                setInstagramLink(text);
+                                                                setError('');
+                                                            }}
+                                                            autoCapitalize="none"
+                                                        />
+                                                    </View>
+
+                                                    {!isPayAsYouGoPlan && (
+                                                        <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
+                                                            <FontAwesome5 name="tiktok" size={24} color={theme.text} style={styles.inputIcon} />
+                                                            <TextInput
+                                                                style={[styles.urlInput, { color: theme.text }]}
+                                                                placeholder={requiresBothPlatformPosts ? "https://www.tiktok.com/..." : "https://www.tiktok.com/... (Optional)"}
+                                                                placeholderTextColor={subduedTextColor}
+                                                                value={tiktokLink}
+                                                                onChangeText={(text) => {
+                                                                    setTikTokLink(text);
+                                                                    setError('');
+                                                                }}
+                                                                autoCapitalize="none"
+                                                            />
+                                                        </View>
+                                                    )}
+
+                                                    {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+                                                </View>
+
+                                            </>
+                                        )}
+                                    </Animated.View>
+                                ) : (
+                                    <Animated.View entering={SlideInRight} style={styles.successContent}>
+                                        <LottieView
+                                            source={require('../../assets/lotties/success.json')}
+                                            autoPlay
+                                            loop={false}
+                                            style={{ width: 120, height: 120, marginBottom: 16 }}
                                         />
-                                    </View>
+                                        <ThemedText style={[styles.successTitle, { color: theme.text }]}>You&apos;re earning for this post!</ThemedText>
+                                        <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>and your analytics will update on a daily basis</ThemedText>
 
-                                    {/* TikTok */}
-                                    <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
-                                        <FontAwesome5 name="tiktok" size={24} color={theme.text} style={styles.inputIcon} />
-                                        <TextInput
-                                            style={[styles.urlInput, { color: theme.text }]}
-                                            placeholder="https://www.tiktok.com/... (Optional)"
-                                            placeholderTextColor={subduedTextColor}
-                                            value={tiktokLink}
-                                            onChangeText={(text) => {
-                                                setTikTokLink(text);
-                                                setError('');
-                                            }}
-                                            autoCapitalize="none"
-                                        />
-                                    </View>
-                                    <ThemedText style={[styles.tipText, { color: mutedTextColor }]}>Tips: post both to get accumulated views</ThemedText>
+                                        <Pressable
+                                            style={[
+                                                styles.dismissButton,
+                                                {
+                                                    marginTop: 32,
+                                                    width: '100%',
+                                                    backgroundColor: dismissButtonBackground,
+                                                    borderColor: dismissButtonBorderColor,
+                                                }
+                                            ]}
+                                            onPress={() => submissionSheetRef.current?.hide()}
+                                        >
+                                            <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Done</ThemedText>
+                                        </Pressable>
+                                    </Animated.View>
+                                )}
+                            </View>
+                        </ScrollView>
 
-                                    {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
-                                </View>
-
-                                <Pressable
-                                    style={[styles.actionButton, { marginTop: 8 }]}
-                                    onPress={handleSubmit}
-                                >
+                        {!isSubmitting && !showSuccess && !isActionRequired ? (
+                            <View
+                                style={[
+                                    styles.sheetFooter,
+                                    {
+                                        backgroundColor: screenBackgroundColor,
+                                        borderColor,
+                                        paddingBottom: 12,
+                                    },
+                                ]}
+                            >
+                                <Pressable style={styles.actionButton} onPress={handleSubmit}>
                                     <ThemedText style={styles.actionButtonText}>Submit</ThemedText>
                                 </Pressable>
-                            </Animated.View>
-                        ) : (
-                            <Animated.View entering={SlideInRight} style={styles.successContent}>
-                                <LottieView
-                                    source={require('../../assets/lotties/success.json')}
-                                    autoPlay
-                                    loop={false}
-                                    style={{ width: 120, height: 120, marginBottom: 16 }}
-                                />
-                                <ThemedText style={[styles.successTitle, { color: theme.text }]}>You&apos;re earning for this post!</ThemedText>
-                                <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>and your analytics will update on a daily basis</ThemedText>
-
-                                <Pressable
-                                    style={[
-                                        styles.dismissButton,
-                                        {
-                                            marginTop: 32,
-                                            width: '100%',
-                                            backgroundColor: dismissButtonBackground,
-                                            borderColor: dismissButtonBorderColor,
-                                        }
-                                    ]}
-                                    onPress={() => submissionSheetRef.current?.hide()}
-                                >
-                                    <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Done</ThemedText>
-                                </Pressable>
-                            </Animated.View>
-                        )}
+                            </View>
+                        ) : null}
                     </View>
                 </ActionSheet>
 
@@ -1047,15 +1213,20 @@ export default function ApplicationDetailScreen() {
                 <Pressable
                     style={[
                         styles.actionButton,
-                        applicationStatus === 'Ready to Post' && { backgroundColor: primaryActionButtonBackground },
+                        isReadyToPost && { backgroundColor: primaryActionButtonBackground },
+                        isActionRequired && { backgroundColor: isDark ? '#92400E' : '#B45309' },
                         applicationStatus === 'Under Review' && { backgroundColor: isDark ? '#262626' : '#E0E0E0', opacity: 1 }
                     ]}
                     disabled={applicationStatus === 'Under Review'}
                     onPress={() => {
-                        if (applicationStatus === 'Ready to Post') {
+                        if (applicationStatus === 'Posted') {
+                            if (resolvedCampaignId) {
+                                router.push(`/campaign/${resolvedCampaignId}`);
+                            }
+                        } else if (isReadyToPost || isActionRequired) {
                             setShowSuccess(false);
-                            setInstagramLink('');
-                            setTikTokLink('');
+                            setInstagramLink(application?.ig_post_url ?? '');
+                            setTikTokLink(application?.tiktok_post_url ?? '');
                             setError('');
                             submissionSheetRef.current?.show();
                         } else {
@@ -1071,11 +1242,13 @@ export default function ApplicationDetailScreen() {
                     ]}>
                         {applicationStatus === 'Posted'
                             ? 'Submit Another'
-                            : applicationStatus === 'Ready to Post'
+                            : isReadyToPost
                                 ? 'Start Earning'
-                                : applicationStatus === 'Under Review'
-                                    ? 'Under Review'
-                                    : 'Review & Upload'}
+                                : isActionRequired
+                                    ? 'Fix Description'
+                                    : applicationStatus === 'Under Review'
+                                        ? 'Under Review'
+                                        : 'Review & Upload'}
                     </ThemedText>
                 </Pressable>
             </View>
@@ -1350,6 +1523,20 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
     },
+    sheetScrollableContainer: {
+        maxHeight: '100%',
+    },
+    sheetScrollView: {
+        flexShrink: 1,
+    },
+    sheetScrollContent: {
+        flexGrow: 1,
+    },
+    sheetFooter: {
+        paddingHorizontal: 24,
+        paddingTop: 12,
+        borderTopWidth: StyleSheet.hairlineWidth,
+    },
     sheetHeader: {
         alignItems: 'center',
         marginBottom: 32,
@@ -1403,11 +1590,42 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        gap: 12,
+    },
+    tagListContainer: {
+        backgroundColor: '#F9F9F9',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+    },
+    tagListRow: {
+        minHeight: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    tagRowText: {
+        flex: 1,
+        minWidth: 0,
+        fontSize: 16,
+        fontFamily: 'GoogleSans_400Regular',
+        color: '#000',
+    },
+    tagRowSeparator: {
+        height: StyleSheet.hairlineWidth,
+        width: '100%',
+    },
+    copyRowText: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     tagText: {
         fontSize: 16,
         fontFamily: 'GoogleSans_400Regular',
         color: '#000',
+        flex: 1,
     },
     copyAction: {
         flexDirection: 'row',
@@ -1447,6 +1665,30 @@ const styles = StyleSheet.create({
         fontFamily: 'GoogleSans_400Regular',
         marginTop: -4,
         marginBottom: 8,
+    },
+    infoCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    infoCardBody: {
+        fontSize: 14,
+        fontFamily: 'GoogleSans_400Regular',
+        lineHeight: 20,
+    },
+    missingDescriptionList: {
+        gap: 10,
+    },
+    missingDescriptionCard: {
+        borderWidth: 1,
+        borderRadius: 14,
+        padding: 12,
+        gap: 6,
+    },
+    missingDescriptionText: {
+        fontSize: 13,
+        fontFamily: 'GoogleSans_400Regular',
+        lineHeight: 18,
     },
     successContent: {
         alignItems: 'center',

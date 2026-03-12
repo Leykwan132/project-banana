@@ -382,11 +382,10 @@ export default function CampaignDetailsScreen() {
                                     topApps.map((app) => (
                                         <CreatorListItem
                                             key={app.id}
-                                            name={app.name}
+                                            name={app.username ? `@${app.username}` : app.name}
                                             views={app.views}
-                                            amount={app.amount}
-                                            logoUrl={app.logoUrl}
-                                            onPress={() => { }}
+                                            useUserIcon
+                                            onPress={() => Linking.openURL(app.postUrl)}
                                         />
                                     ))
                                 ) : (
@@ -411,6 +410,8 @@ export default function CampaignDetailsScreen() {
                             )}
                         </View>
                     </View>
+
+                    {/* Requirements action sheets */}
                     <ActionSheet
                         gestureEnabled
                         ref={requirementsSheetRef}
@@ -450,6 +451,7 @@ export default function CampaignDetailsScreen() {
                         </View>
                     </ActionSheet>
 
+                    {/* Payouts action sheets */}
                     <ActionSheet
                         gestureEnabled
                         ref={payoutsSheetRef}
@@ -596,7 +598,6 @@ export default function CampaignDetailsScreen() {
                             display: 'none',
                         }}
                         containerStyle={{
-                            paddingHorizontal: 24,
                             backgroundColor: screenBackgroundColor,
                             paddingBottom: 30,
                         }}
@@ -895,9 +896,9 @@ const styles = StyleSheet.create({
         gap: 0,
     },
     sheetContent: {
-        padding: 24,
-        paddingTop: 24,
+        paddingTop: 40,
         paddingBottom: 12,
+        paddingHorizontal: 24,
         backgroundColor: '#FFFFFF',
         borderRadius: 24
     },
