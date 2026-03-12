@@ -1,4 +1,4 @@
-import { Check, Loader2, X } from 'lucide-react';
+import { Check, Loader2, X, BadgeCheck } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from './ui/Button';
@@ -75,6 +75,7 @@ interface PlanSelectorProps {
     currentBillingCycle?: 'monthly' | 'annual' | null;
     isLoading?: boolean;
     selectedPlan?: PlanType | null;
+    isLandingPage?: boolean;
 }
 
 export default function PlanSelector({
@@ -86,6 +87,7 @@ export default function PlanSelector({
     currentBillingCycle = null,
     isLoading = false,
     selectedPlan = null,
+    isLandingPage = false,
 }: PlanSelectorProps) {
     const createSubscriptionCheckout = useAction(api.stripe.createSubscriptionCheckout);
 
@@ -138,67 +140,81 @@ export default function PlanSelector({
     return (
         <div className="space-y-12">
             {/* Billing Toggle */}
-            <div className="flex justify-center">
-                <div className="bg-gray-100 p-1 rounded-xl inline-flex relative">
+            <div className="flex flex-col items-center justify-center">
+                <div className="bg-gray-50/80 p-1.5 rounded-2xl inline-flex relative shadow-sm border border-gray-100">
                     <button
                         onClick={() => onBillingCycleChange('monthly')}
-                        className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${billingCycle === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                        className={`px-8 py-2.5 rounded-xl text-[15px] font-semibold transition-all duration-200 cursor-pointer ${billingCycle === 'monthly' ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-900'}`}
                     >
                         Monthly
                     </button>
                     <button
                         onClick={() => onBillingCycleChange('annual')}
-                        className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 cursor-pointer ${billingCycle === 'annual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                        className={`px-8 py-2.5 rounded-xl text-[15px] font-semibold transition-all duration-200 flex items-center gap-2 cursor-pointer ${billingCycle === 'annual' ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-900'}`}
                     >
-                        Annually
-                        <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                            SAVE 20%
-                        </span>
+                        Yearly
                     </button>
+                </div>
+                <div className="mt-5 flex items-center justify-center gap-2 text-sm font-medium text-gray-600">
+                    <BadgeCheck className="w-[18px] h-[18px] text-white fill-pink-400" />
+                    20% off yearly plans
                 </div>
             </div>
 
             {/* Plans Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 w-full mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-8 w-full mx-auto items-stretch mt-12">
                 {PLANS.map((plan) => {
                     const isCurrent = isCurrentPlan(plan.type);
+                    const isPopularPlan = isLandingPage && plan.type === 'starter';
                     const price = getPrice(plan);
 
                     return (
                         <div
                             key={plan.type}
-                            className={`rounded-2xl p-6 lg:p-7 border relative flex flex-col transition-all duration-200 ${isCurrent
-                                ? 'border-2 border-blue-600 bg-blue-50/30 shadow-lg ring-2 ring-blue-200'
-                                : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg'
+                            className={`p-6 lg:p-8 border relative flex flex-col transition-all duration-200 flex-1 ${isCurrent && !isPopularPlan
+                                ? 'rounded-3xl border-2 border-blue-600 bg-blue-50/30 shadow-lg ring-2 ring-blue-200'
+                                : isPopularPlan
+                                    ? 'rounded-3xl border-2 border-[#48BB78] bg-white shadow-xl ring-4 ring-[#48BB78]/10'
+                                    : 'rounded-3xl border-gray-200 bg-white hover:border-gray-300 hover:shadow-lg'
                                 }`}
                         >
-                            {isCurrent && (
-                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] tracking-wider font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                                    ACTIVE PLAN
-                                </div>
-                            )}
-
-                            <div className="mb-4">
+                            <div className="mb-5 flex items-center gap-2.5 flex-wrap">
                                 <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
+                                {isPopularPlan && (
+                                    <span className="bg-[#48BB78]/10 text-[#2F855A] border border-[#48BB78]/20 text-[10px] tracking-wide font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap uppercase">
+                                        Popular
+                                    </span>
+                                )}
+                                {isCurrent && (
+                                    <span className="bg-blue-500/10 text-blue-600 border border-blue-500/20 text-[10px] tracking-wide font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap uppercase">
+                                        Active
+                                    </span>
+                                )}
                             </div>
 
                             <div className="mb-6">
-                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
-                                    <span className="text-3xl font-bold tracking-tight text-gray-900 whitespace-nowrap">RM {price}</span>
-                                    <span className="text-sm font-medium text-gray-500 whitespace-nowrap">/month</span>
+                                <div className="flex items-baseline gap-2 mb-2">
+                                    <span className="text-[40px] leading-none font-bold tracking-tight text-[#1A1F36]">RM {price.toLocaleString()}</span>
                                 </div>
-
+                                <p className="text-[13px] font-medium text-gray-500/80 leading-snug min-h-[34px]">
+                                    {plan.type === 'free'
+                                        ? 'per campaign'
+                                        : billingCycle === 'annual'
+                                            ? `per month, RM ${plan.annualPrice.toLocaleString()} billed annually`
+                                            : 'per month'
+                                    }
+                                </p>
                             </div>
 
                             <ul className="space-y-3.5 mb-8 flex-1">
                                 {plan.features.map((feature, index) => (
-                                    <li key={index} className="flex items-start gap-3 text-sm text-gray-600">
+                                    <li key={index} className="flex items-start gap-3.5 text-[14px] text-gray-600">
                                         {feature.crossed ? (
-                                            <X className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
+                                            <X className="w-[18px] h-[18px] shrink-0 mt-px text-gray-300" strokeWidth={2.5} />
                                         ) : (
-                                            <Check className="w-4 h-4 shrink-0 mt-0.5 text-blue-600" />
+                                            <Check className="w-[18px] h-[18px] shrink-0 mt-px text-blue-500" strokeWidth={2.5} />
                                         )}
-                                        <span className={feature.crossed ? 'text-gray-400' : ''}>
+                                        <span className={`leading-snug ${feature.crossed ? 'text-gray-400' : 'text-gray-700'}`}>
                                             {feature.text}
                                         </span>
                                     </li>
@@ -208,14 +224,14 @@ export default function PlanSelector({
                             {!hasActiveSubscription && !isCurrent && (
                                 <Button
                                     variant="primary"
-                                    className="w-full justify-center bg-gray-900 hover:bg-black text-white shadow-sm"
+                                    className="w-full justify-center bg-[#1A1F36] hover:bg-black text-white shadow-sm mt-auto h-[46px] rounded-full text-[15px] font-bold"
                                     disabled={isLoading}
                                     onClick={() => handleStartSubscription(plan.type)}
                                 >
                                     {isLoading && selectedPlan === plan.type ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
-                                        'Get Started'
+                                        isLandingPage ? 'Try Lumina' : 'Get Started'
                                     )}
                                 </Button>
                             )}

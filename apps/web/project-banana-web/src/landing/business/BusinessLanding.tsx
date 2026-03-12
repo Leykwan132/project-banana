@@ -98,6 +98,14 @@ const businessFaqs = [
         answer: "For pay-as-you-go, it's RM 100 flat. Otherwise other subscription plan has its own limit.",
     },
     {
+        question: 'Can Lumina support Instagram and TikTok?',
+        answer: 'Pay As You Go is limited to Instagram only. TikTok is only for Starter, Growth and Unlimited.',
+    },
+    {
+        question: 'What is the monthly assisted review?',
+        answer: 'Team Lumina will have assistance to help review the submission.',
+    },
+    {
         question: 'What platform is supported?',
         answer: 'TikTok and Instagram depending on the plan you are on.',
     },

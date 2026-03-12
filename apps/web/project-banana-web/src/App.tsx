@@ -159,11 +159,12 @@ function PricingPage() {
                 <h1 className="text-5xl font-bold tracking-tight text-gray-900 md:text-6xl">Pricing</h1>
             </div>
 
-            <div className="mx-auto mt-14 w-full max-w-6xl px-6">
+            <div className="mx-auto mt-14 w-full max-w-[1400px] px-6">
                 <PlanSelector
                     billingCycle={billingCycle}
                     onBillingCycleChange={setBillingCycle}
                     onSelectPlan={() => navigate('/login')}
+                    isLandingPage={true}
                 />
             </div>
 

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAction, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
-import { Upload, Loader2, ArrowRight, Sparkles, Check } from 'lucide-react';
+import { Upload, Loader2, ArrowRight, Check } from 'lucide-react';
 import PlanSelector from '../components/PlanSelector';
 import type { PlanType } from '../components/PlanSelector';
 import { getStripePriceId } from '../lib/stripe-prices';
+import iconSvg from '../assets/icon.svg';
 
 export default function Onboarding() {
     // Check if user has business and subscription to determine initial step
@@ -149,14 +150,14 @@ export default function Onboarding() {
             {currentStep === 0 && (
                 <div className="w-full min-h-screen flex flex-col items-center justify-center animate-in fade-in duration-500 px-6 py-12 bg-white">
                     <div className="max-w-2xl mx-auto w-full flex flex-col items-center text-center">
-                        <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center border border-gray-100 mb-8 shadow-sm">
-                            <Sparkles className="w-10 h-10 text-gray-900" />
+                        <div className="w-20 h-20 mb-8 rounded-3xl overflow-hidden flex items-center justify-center">
+                            <img src={iconSvg} alt="Lumina Logo" className="w-full h-full object-contain" />
                         </div>
                         <h1 className="text-4xl lg:text-5xl font-medium tracking-tight text-gray-900 leading-tight mb-6 mt-4">
-                            Thank you for choosing Lumina
+                            Let's get started
                         </h1>
                         <p className="text-xl text-gray-500 mb-12">
-                            We're excited to have you here. Let's get your business profile set up in just a few steps.
+                            Welcome to Lumina. Let's set up your business profile and launch your first campaign in minutes.
                         </p>
 
                         <button

@@ -56,6 +56,7 @@ export default function ReviewSubmission() {
 
     const [successAction, setSuccessAction] = useState<'changes_requested' | null>(null);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [isRequestChangesConfirmOpen, setIsRequestChangesConfirmOpen] = useState(false);
 
     const approveSubmission = useMutation(api.submissions.approveSubmission);
     const requestChanges = useMutation(api.submissions.requestChanges);
@@ -95,10 +96,12 @@ export default function ReviewSubmission() {
                 submissionId: submissionId as Id<"submissions">,
                 feedback: feedback, // Required
             });
+            setIsRequestChangesConfirmOpen(false);
             setSuccessAction('changes_requested');
         } catch (error) {
             console.error("Failed to request changes:", error);
             alert("Failed to request changes. Please try again.");
+        } finally {
             setIsSubmitting(false);
         }
     };
@@ -164,7 +167,7 @@ export default function ReviewSubmission() {
                     {/* Action Buttons */}
                     <div className="flex gap-4">
                         <Button
-                            onClick={handleRequestChanges}
+                            onClick={() => setIsRequestChangesConfirmOpen(true)}
                             disabled={isSubmitting || isLoading || !!successAction}
                             className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-4 px-8 rounded-xl transition-colors text-md shadow-none"
                         >
@@ -238,6 +241,37 @@ export default function ReviewSubmission() {
                                 className="bg-black hover:bg-gray-900 text-white px-6 py-3 rounded-xl font-medium"
                             >
                                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm & Approve"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Confirm Request Changes Modal */}
+            {isRequestChangesConfirmOpen && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl relative overflow-hidden flex flex-col animate-scaleIn">
+                        <h2 className="text-xl font-bold text-gray-900 mb-3">Request Changes?</h2>
+                        <p className="text-gray-500 mb-8">
+                            Are you sure you want to request changes for this submission? The creator will be notified with your feedback.
+                        </p>
+
+                        <div className="flex gap-4 justify-end">
+                            <Button
+                                onClick={() => setIsRequestChangesConfirmOpen(false)}
+                                disabled={isSubmitting}
+                                variant="outline"
+                                className="px-6 py-3 rounded-xl font-medium"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleRequestChanges}
+                                disabled={isSubmitting}
+                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-medium"
+                            >
+                                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirm & Request Changes"}
                             </Button>
                         </div>
                     </div>

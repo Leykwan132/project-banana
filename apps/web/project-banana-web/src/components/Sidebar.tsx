@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap, Loader2, Landmark, Building2 } from 'lucide-react';
+import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap, Loader2, Landmark, Building2, Crown } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -12,17 +12,31 @@ const navigation = [
     { name: 'Approvals', href: '/approvals', icon: CheckSquare },
 ];
 
-const account = [
+const funds = [
     { name: 'Credits', href: '/credits', icon: CreditCard },
     { name: 'Withdrawals', href: '/withdrawals', icon: Landmark },
+];
+
+const account = [
     { name: 'Bank Accounts', href: '/bank-accounts', icon: Building2 },
     { name: 'Subscription', href: '/subscription', icon: Zap },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
+const getPlanDisplay = (planType?: string) => {
+    switch (planType?.toLowerCase()) {
+        case "starter": return { name: "Starter", limit: 1 };
+        case "growth": return { name: "Growth", limit: 5 };
+        case "unlimited": return { name: "Unlimited", limit: "Unlimited" };
+        case "free":
+        default: return { name: "Pay As You Go", limit: 1 };
+    }
+};
+
 export function Sidebar() {
     const navigate = useNavigate();
     const business = useQuery(api.businesses.getMyBusiness);
+    const activeCampaignCount = useQuery(api.campaigns.getActiveCampaignCount, business?._id ? { businessId: business._id } : "skip");
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const credits = business?.credit_balance ?? 0;
     const isCreditsLoading = business === undefined;
@@ -82,6 +96,29 @@ export function Sidebar() {
 
                 <div>
                     <div className="px-2 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Funds
+                    </div>
+                    <nav className="space-y-1">
+                        {funds.map((item) => (
+                            <NavLink
+                                key={item.name}
+                                to={item.href}
+                                className={({ isActive }) =>
+                                    `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${isActive
+                                        ? 'bg-gray-100 text-gray-900'
+                                        : 'text-gray-500 hover:text-gray-900'
+                                    }`
+                                }
+                            >
+                                <item.icon className="h-4 w-4" />
+                                {item.name}
+                            </NavLink>
+                        ))}
+                    </nav>
+                </div>
+
+                <div>
+                    <div className="px-2 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
                         Account
                     </div>
                     <nav className="space-y-1">
@@ -105,6 +142,42 @@ export function Sidebar() {
             </div>
 
             <div className="border-t border-[#F4F6F8] p-4">
+                <div className="mb-3 rounded-2xl border border-[#F4F6F8] bg-[#F9FAFB] p-4">
+                    {business === undefined ? (
+                        <div className="flex justify-center p-2"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                    ) : (
+                        <>
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <Crown className="w-4 h-4 text-gray-500" />
+                                    <span className="text-sm font-semibold text-gray-900">{getPlanDisplay(business?.subscription_plan_type).name}</span>
+                                </div>
+                                <button onClick={() => navigate('/subscription')} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-linear-to-r from-purple-500 to-pink-500 text-white hover:opacity-90 transition-opacity tracking-wide">
+                                    Upgrade
+                                </button>
+                            </div>
+                            <div>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <span className="text-xs text-gray-500 font-medium">Active Campaigns</span>
+                                    <span className="text-xs font-bold text-gray-900">
+                                        {activeCampaignCount ?? 0} / {getPlanDisplay(business?.subscription_plan_type).limit}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                    <div 
+                                        className="bg-black h-1.5 rounded-full" 
+                                        style={{ 
+                                            width: getPlanDisplay(business?.subscription_plan_type).limit === "Unlimited" 
+                                                ? '100%' 
+                                                : `${Math.min(100, ((activeCampaignCount ?? 0) / (getPlanDisplay(business?.subscription_plan_type).limit as number)) * 100)}%` 
+                                        }}
+                                    ></div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+
                 <button
                     type="button"
                     onClick={() => navigate('/credits')}
