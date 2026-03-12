@@ -2,6 +2,7 @@ import { NotificationType } from '@/constants/notification';
 
 type NotificationPayload = {
     type: string;
+    notificationId?: string;
     submissionId?: string;
     applicationId?: string;
     bankAccountId?: string;
@@ -19,6 +20,7 @@ const normalizePayload = (value: Record<string, unknown>): NotificationPayload |
     if (type) {
         return {
             type,
+            notificationId: getString(value.notificationId),
             submissionId: getString(value.submissionId),
             applicationId: getString(value.applicationId),
             bankAccountId: getString(value.bankAccountId),

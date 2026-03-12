@@ -19,6 +19,7 @@ import 'react-native-reanimated';
 import { ThemePreferenceProvider, useColorScheme } from '@/hooks/use-color-scheme';
 import {
   ConvexReactClient,
+  useMutation,
 } from "convex/react";
 import { PostHogProvider } from 'posthog-react-native'
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
@@ -26,7 +27,9 @@ import { authClient } from "@/lib/auth-client"
 import Toast from 'react-native-toast-message';
 import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary';
 import * as Notifications from 'expo-notifications';
-import { navigateFromNotification } from '@/lib/notificationRedirect';
+import { extractNotificationPayload, navigateFromNotification } from '@/lib/notificationRedirect';
+import { api } from '../../../../packages/backend/convex/_generated/api';
+import type { Id } from '../../../../packages/backend/convex/_generated/dataModel';
 
 
 Notifications.setNotificationHandler({
@@ -47,10 +50,55 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL as strin
   unsavedChangesWarning: false,
 });
 
+function NotificationResponseHandler() {
+  const router = useRouter();
+  const markNotificationAsRead = useMutation(api.notifications.markAsRead);
+  const handledNotificationId = useRef<string | null>(null);
+
+  useEffect(() => {
+    const handleNotificationResponse = async (response: Notifications.NotificationResponse | null) => {
+      if (!response) {
+        return;
+      }
+
+      const identifier = response.notification.request.identifier;
+      if (handledNotificationId.current === identifier) {
+        return;
+      }
+
+      handledNotificationId.current = identifier;
+
+      const payload = extractNotificationPayload(response);
+      if (payload?.notificationId) {
+        try {
+          await markNotificationAsRead({ notificationId: payload.notificationId as Id<"notifications"> });
+        } catch (error) {
+          console.error('Failed to mark notification as read before navigation:', error);
+        }
+      }
+
+      navigateFromNotification(router, response);
+      await Notifications.clearLastNotificationResponseAsync();
+    };
+
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      void handleNotificationResponse(response);
+    });
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+      void handleNotificationResponse(response);
+    });
+
+    return () => {
+      responseListener.remove();
+    };
+  }, [markNotificationAsRead, router]);
+
+  return null;
+}
+
 function RootLayoutContent() {
   const colorScheme = useColorScheme();
-  const router = useRouter();
-  const handledNotificationId = useRef<string | null>(null);
   const [loaded, error] = useFonts({
     GoogleSans_400Regular,
     GoogleSans_400Regular_Italic,
@@ -68,31 +116,6 @@ function RootLayoutContent() {
     }
   }, [loaded, error]);
 
-  useEffect(() => {
-    const handleNotificationResponse = (response: Notifications.NotificationResponse | null) => {
-      if (!response) {
-        return;
-      }
-
-      const identifier = response.notification.request.identifier;
-      if (handledNotificationId.current === identifier) {
-        return;
-      }
-
-      handledNotificationId.current = identifier;
-      navigateFromNotification(router, response);
-      void Notifications.clearLastNotificationResponseAsync();
-    };
-
-    void Notifications.getLastNotificationResponseAsync().then(handleNotificationResponse);
-
-    const responseListener = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
-
-    return () => {
-      responseListener.remove();
-    };
-  }, [router]);
-
   if (!loaded && !error) {
     return null;
   }
@@ -109,6 +132,7 @@ function RootLayoutContent() {
         <GestureHandlerRootView>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <GlobalErrorBoundary>
+              <NotificationResponseHandler />
               <Stack initialRouteName="welcome">
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen name="welcome" options={{ headerShown: false }} />
