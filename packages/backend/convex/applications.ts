@@ -7,6 +7,20 @@ import type { DataModel } from "./_generated/dataModel";
 import { components } from "./_generated/api";
 import { Triggers } from "convex-helpers/server/triggers";
 import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
+import { ConvexError } from "convex/values";
+import { ERROR_CODES } from "./errors";
+
+const platformMissingDescriptionValidator = v.object({
+    trackingTagMissing: v.boolean(),
+    missingHashtags: v.array(v.string()),
+    missingMentions: v.array(v.string()),
+});
+
+const missingPostDescriptionValidator = v.object({
+    instagram: v.optional(platformMissingDescriptionValidator),
+    tiktok: v.optional(platformMissingDescriptionValidator),
+    checkedAt: v.number(),
+});
 
 const aggregateApplicationByCampaign = new TableAggregate<{
     Key: [string, number, string];
@@ -32,6 +46,12 @@ const internalMutationWithTriggers = customMutation(
     internalMutation,
     customCtx(triggers.wrapDB),
 );
+
+const formatCompactViews = (views: number) => {
+    if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
+    if (views >= 1000) return `${Math.round(views / 1000)}k`;
+    return `${views}`;
+};
 // ============================================================
 // QUERIES
 // ============================================================
@@ -83,38 +103,108 @@ export const getTopApplicationsByCampaign = query({
         limit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        const limit = args.limit ?? 3;
+        const limit = args.limit ?? 5;
+        const results: Array<{
+            id: string;
+            name: string;
+            username?: string;
+            views: string;
+            amount?: string;
+            logoUrl?: string;
+            postUrl: string;
+        }> = [];
 
-        // 1. Fetch top earning statuses for the campaign efficiently using the index
-        const topStatuses = await ctx.db
-            .query("user_campaign_status")
-            .withIndex("by_campaign_earnings", (q) => q.eq("campaign_id", args.campaignId))
-            .order("desc")
-            .take(limit);
+        let cursor: string | undefined = undefined;
+        let isDone = false;
 
-        // 2. Fetch user details in parallel
-        // 3. Enhance with application details
+        while (!isDone && results.length < limit) {
+            const topApplicationPage = await aggregateApplicationByCampaign.paginate(ctx, {
+                bounds: {
+                    prefix: [args.campaignId],
+                },
+                cursor,
+                pageSize: Math.max(limit * 4, 20),
+            });
 
+            const applicationRows = (await Promise.all(
+                topApplicationPage.page.map((entry) => ctx.db.get(entry.id)),
+            )).filter((row): row is NonNullable<typeof row> => row !== null);
 
-        // TODO: fix this, it should query top posts by all users correctly.
-        const results = await Promise.all(
-            topStatuses.map(async (status) => {
-                // Fetch the application to get the post URL
-                const application = await ctx.db
-                    .query("applications")
-                    .withIndex("by_user_campaign", (q) => q.eq("user_id", status.user_id).eq("campaign_id", args.campaignId))
-                    .first();
+            for (const application of applicationRows) {
+                const views = application.views ?? 0;
+                const postUrl = application.ig_post_url;
 
-                return {
-                    id: status._id, // Using status ID as unique key for list
-                    name: "Unknown Creator",
-                    views: "1.5M", // Placeholder/Mock for now
-                    amount: `Rm ${(status.total_earnings || 0).toLocaleString()}`,
-                    logoUrl: undefined,
-                    postUrl: application?.ig_post_url || application?.tiktok_post_url,
-                };
-            })
-        );
+                if (!postUrl) {
+                    continue;
+                }
+
+                const [creator, user] = await Promise.all([
+                    ctx.db
+                        .query("creators")
+                        .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
+                        .unique(),
+                    ctx.db
+                        .query("users")
+                        .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", application.user_id))
+                        .unique(),
+                ]);
+
+                const username = creator?.username ?? user?.display_username ?? user?.username;
+
+                results.push({
+                    id: application._id,
+                    name: username ?? creator?.name ?? user?.name ?? "Unknown Creator",
+                    username: username ?? undefined,
+                    views: formatCompactViews(views),
+                    postUrl,
+                });
+
+                if (results.length >= limit) break;
+            }
+
+            cursor = topApplicationPage.cursor;
+            isDone = topApplicationPage.isDone;
+        }
+
+        if (results.length > 0) {
+            return results;
+        }
+
+        const applications = await ctx.db
+            .query("applications")
+            .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
+            .collect();
+
+        const fallbackApplications = applications
+            .filter((application) => !!application.ig_post_url)
+            .sort((a, b) => (b.views ?? 0) - (a.views ?? 0));
+
+        for (const application of fallbackApplications) {
+            if (results.length >= limit || !application.ig_post_url) {
+                continue;
+            }
+
+            const [creator, user] = await Promise.all([
+                ctx.db
+                    .query("creators")
+                    .withIndex("by_user", (q) => q.eq("user_id", application.user_id))
+                    .unique(),
+                ctx.db
+                    .query("users")
+                    .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", application.user_id))
+                    .unique(),
+            ]);
+
+            const username = creator?.username ?? user?.display_username ?? user?.username;
+
+            results.push({
+                id: application._id,
+                name: username ?? creator?.name ?? user?.name ?? "Unknown Creator",
+                username: username ?? undefined,
+                views: formatCompactViews(application.views ?? 0),
+                postUrl: application.ig_post_url,
+            });
+        }
 
         return results;
     },
@@ -204,7 +294,10 @@ export const getApplicationsForEarningCheck = internalQuery({
 
             if (apps && (isActive || isCancelledWithinGracePeriod)) {
                 for (const app of apps) {
-                    if (app.status === ApplicationStatus.Earning) {
+                    if (
+                        app.status === ApplicationStatus.Earning ||
+                        app.status === ApplicationStatus.ActionRequired
+                    ) {
                         applications.push({
                             ...app,
                             campaignStatusId: status._id,
@@ -273,15 +366,90 @@ export const updateApplicationStatus = mutationWithTriggers({
             throw new Error("Unauthenticated call to mutation");
         }
 
-        // Validation logic can be added here
+        const application = await ctx.db.get(args.applicationId);
+        if (!application) {
+            throw new Error("Application not found");
+        }
+
+        if (application.user_id !== identity.subject) {
+            throw new Error("Unauthorized");
+        }
+
+        const campaign = await ctx.db.get(application.campaign_id);
+        if (!campaign) {
+            throw new Error("Campaign not found");
+        }
+
+        const business = await ctx.db.get(campaign.business_id);
+        const businessPlanType = (business?.subscription_plan_type ?? "free").toLowerCase();
+        const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
+
+        if (businessPlanType === "free" && args.tiktok_post_url) {
+            throw new ConvexError({
+                code: ERROR_CODES.PLAN_RESTRICTED_FEATURE.code,
+                message: "TikTok URL submission is only available on Starter, Growth, or Unlimited plans.",
+            });
+        }
+
+        if (!args.ig_post_url && !args.tiktok_post_url) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: businessPlanType === "free"
+                    ? "Please provide your Instagram post URL."
+                    : "Please provide at least one post URL (Instagram or TikTok).",
+            });
+        }
+
+        if (requiresBothPlatformPosts && (!args.ig_post_url || !args.tiktok_post_url)) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "This campaign requires both Instagram and TikTok post URLs.",
+            });
+        }
 
         await ctx.db.patch(args.applicationId, {
             status: args.status,
             posted_at: args.status === ApplicationStatus.Earning ? Date.now() : undefined,
             ig_post_url: args.ig_post_url,
             tiktok_post_url: args.tiktok_post_url,
+            missing_post_description: args.status === ApplicationStatus.Earning ? undefined : application.missing_post_description,
+            updated_at: Date.now(),
         });
     }
+});
+
+export const setApplicationStatusFromCron = internalMutationWithTriggers({
+    args: {
+        applicationId: v.id("applications"),
+        status: v.union(v.literal(ApplicationStatus.ActionRequired), v.literal(ApplicationStatus.Earning)),
+        missingPostDescription: v.optional(missingPostDescriptionValidator),
+    },
+    handler: async (ctx, args) => {
+        const application = await ctx.db.get(args.applicationId);
+        if (!application) {
+            return { didChange: false, shouldNotify: false };
+        }
+
+        const existingPayload = application.missing_post_description;
+        const nextPayload = args.status === ApplicationStatus.ActionRequired ? args.missingPostDescription : undefined;
+        const statusChanged = application.status !== args.status;
+        const payloadChanged = JSON.stringify(existingPayload ?? null) !== JSON.stringify(nextPayload ?? null);
+
+        if (!statusChanged && !payloadChanged) {
+            return { didChange: false, shouldNotify: false };
+        }
+
+        await ctx.db.patch(args.applicationId, {
+            status: args.status,
+            missing_post_description: nextPayload,
+            updated_at: Date.now(),
+        });
+
+        return {
+            didChange: true,
+            shouldNotify: args.status === ApplicationStatus.ActionRequired && (statusChanged || payloadChanged),
+        };
+    },
 });
 
 // ============================================================

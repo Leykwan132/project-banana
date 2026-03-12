@@ -46,8 +46,17 @@ export const ErrorType = {
         message: "This username is already taken",
         severity: "low",
     },
+    CAMPAIGN_LIMIT_REACHED: {
+        code: 6005,
+        message: "Campaign limit reached for your current plan",
+        severity: "medium",
+    },
+    PLAN_RESTRICTED_FEATURE: {
+        code: 6006,
+        message: "This feature is not available on your current plan",
+        severity: "medium",
+    },
 } as const;
 
 export const ERROR_CODES = ErrorType;
-
 

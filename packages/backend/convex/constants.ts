@@ -11,6 +11,7 @@ export enum ApplicationStatus {
     Reviewing = "reviewing",
     ChangesRequested = "changes_requested",
     ReadyToPost = "ready_to_post",
+    ActionRequired = "action_required",
     Earning = "earning",
 }
 

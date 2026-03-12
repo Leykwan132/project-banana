@@ -3,8 +3,63 @@ import { internalAction } from "./_generated/server";
 import { api, internal, components } from "./_generated/api";
 import { posthog } from "./posthog";
 import { internalMutation } from "./_generated/server.js";
+import { ApplicationStatus } from "./constants";
+import { NotificationCopy, NotificationType } from "./notificationConstants";
 
 const crons = cronJobs();
+
+type PlatformMissingDescription = {
+    trackingTagMissing: boolean;
+    missingHashtags: string[];
+    missingMentions: string[];
+};
+
+type MissingPostDescription = {
+    instagram?: PlatformMissingDescription;
+    tiktok?: PlatformMissingDescription;
+    checkedAt: number;
+};
+
+const stripPrefix = (value: string, prefix: "#" | "@") => {
+    const trimmed = value.trim();
+    return trimmed.startsWith(prefix) ? trimmed.slice(1) : trimmed;
+};
+
+const normalizeAvailableValues = (values: string[], prefix?: "#" | "@") =>
+    values
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .map((value) => prefix ? stripPrefix(value, prefix) : value);
+
+const normalizeTikTokHashtags = (hashtags: Array<{ name?: string }>) =>
+    hashtags
+        .map((item) => item.name?.trim())
+        .filter((value): value is string => Boolean(value));
+
+const collectMissingDescription = (args: {
+    trackingTag?: string;
+    requiredHashtags: string[];
+    requiredMentions: string[];
+    availableHashtags: string[];
+    availableMentions: string[];
+}): PlatformMissingDescription | undefined => {
+    const availableHashtags = new Set(normalizeAvailableValues(args.availableHashtags, "#"));
+    const availableMentions = new Set(normalizeAvailableValues(args.availableMentions, "@"));
+
+    const trackingTagMissing = !!args.trackingTag && !availableHashtags.has(args.trackingTag);
+    const missingHashtags = args.requiredHashtags.filter((value) => !availableHashtags.has(value));
+    const missingMentions = args.requiredMentions.filter((value) => !availableMentions.has(value));
+
+    if (!trackingTagMissing && missingHashtags.length === 0 && missingMentions.length === 0) {
+        return undefined;
+    }
+
+    return {
+        trackingTagMissing,
+        missingHashtags,
+        missingMentions,
+    };
+};
 
 export const runDailyScrape = internalAction({
     args: {},
@@ -24,6 +79,7 @@ export const runDailyScrape = internalAction({
                 campaign_id: any;
                 campaignStatusId: any;
                 userCampaignMaxPayout: number;
+                status: string;
                 ig_post_url?: string;
                 tiktok_post_url?: string;
                 tracking_tag?: string;
@@ -60,6 +116,17 @@ export const runDailyScrape = internalAction({
                 let totalComments = 0;
                 let totalShares = 0;
                 let hasValidData = false;
+                let validatedPlatformCount = 0;
+                const submittedPlatformCount = Number(Boolean(app.ig_post_url)) + Number(Boolean(app.tiktok_post_url));
+                const missingPostDescription: MissingPostDescription = {
+                    checkedAt: Date.now(),
+                };
+                let hasMissingPostDescription = false;
+                const requiredHashtags = campaign.hashtags ?? [];
+                const requiredMentions = campaign.mentions ?? [];
+                const businessPlanType = (campaign.business_plan_type ?? "free").toLowerCase();
+                const descriptionRequiredHashtags = businessPlanType !== "free" ? requiredHashtags : [];
+                const descriptionRequiredMentions = businessPlanType !== "free" ? requiredMentions : [];
 
                 // Scrape IG
                 if (app.ig_post_url) {
@@ -72,13 +139,20 @@ export const runDailyScrape = internalAction({
 
                         if (reels && reels.length > 0) {
                             const reel = reels[0];
+                            const igMissing = collectMissingDescription({
+                                trackingTag: app.tracking_tag,
+                                requiredHashtags: descriptionRequiredHashtags,
+                                requiredMentions: descriptionRequiredMentions,
+                                availableHashtags: (reel.hashtags || []) as string[],
+                                availableMentions: (reel.mentions || []) as string[],
+                            });
 
-                            // Verify tracking tag if present
-                            const caption = (reel.caption || "") as string;
-                            if (app.tracking_tag && !caption.toLowerCase().includes(app.tracking_tag.toLowerCase())) {
-                                console.warn(`IG post for app ${app._id} missing tracking tag: ${app.tracking_tag}`);
-                                // Skip this post - tracking tag not verified
+                            if (igMissing) {
+                                console.warn(`IG post for app ${app._id} missing required structured description data`);
+                                missingPostDescription.instagram = igMissing;
+                                hasMissingPostDescription = true;
                             } else {
+                                validatedPlatformCount += 1;
                                 const views = (reel.videoPlayCount || 0) as number;
                                 const likes = (reel.likesCount || 0) as number;
                                 const comments = (reel.commentsCount || 0) as number;
@@ -110,26 +184,20 @@ export const runDailyScrape = internalAction({
                         console.log(`TikTok Scraped: ${JSON.stringify(tiktokPost)}`);
 
                         if (tiktokPost) {
-                            // Verify tracking tag if present
-                            let isTrackingTagValid = true;
-                            const description = (tiktokPost.desc || tiktokPost.description || "") as string;
+                            const tiktokMissing = collectMissingDescription({
+                                trackingTag: app.tracking_tag,
+                                requiredHashtags: descriptionRequiredHashtags,
+                                requiredMentions: descriptionRequiredMentions,
+                                availableHashtags: normalizeTikTokHashtags((tiktokPost.hashtags || []) as Array<{ name?: string }>),
+                                availableMentions: (tiktokPost.mentions || []) as string[],
+                            });
 
-                            if (app.tracking_tag) {
-                                const trackingTagLower = app.tracking_tag.toLowerCase();
-                                const hashtags = (tiktokPost.hashtags || []) as Array<{ name?: string }>;
-
-                                // Check in hashtags array, fallback to description text
-                                isTrackingTagValid = hashtags.some(ht => ht.name?.toLowerCase() === trackingTagLower) || description.toLowerCase().includes(trackingTagLower);
-                            }
-
-                            if (!isTrackingTagValid) {
-                                console.warn(`TikTok post for app ${app._id} missing tracking tag: ${app.tracking_tag}`);
-                                // Skip this post - tracking tag not verified
+                            if (tiktokMissing) {
+                                console.warn(`TikTok post for app ${app._id} missing required structured description data`);
+                                missingPostDescription.tiktok = tiktokMissing;
+                                hasMissingPostDescription = true;
                             } else {
-
-                                console.log('tracking tag found', app.tracking_tag);
-                                console.log('description', description);
-
+                                validatedPlatformCount += 1;
                                 const views = (tiktokPost.playCount || 0) as number;
                                 const likes = (tiktokPost.diggCount || 0) as number;
                                 const comments = (tiktokPost.commentCount || 0) as number;
@@ -149,6 +217,47 @@ export const runDailyScrape = internalAction({
                     } catch (e) {
                         console.error(`Failed to scrape TikTok for app ${app._id}:`, e);
                     }
+                }
+
+                if (hasMissingPostDescription) {
+                    const result = await ctx.runMutation(internal.applications.setApplicationStatusFromCron, {
+                        applicationId: app._id,
+                        status: ApplicationStatus.ActionRequired,
+                        missingPostDescription,
+                    });
+
+                    if (result.shouldNotify) {
+                        await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
+                            betterAuthUserId: app.user_id,
+                            title: NotificationCopy.postDescriptionMissing.title,
+                            description: NotificationCopy.postDescriptionMissing.description(
+                                campaign.name,
+                            ),
+                            data: {
+                                type: NotificationType.PostDescriptionMissing,
+                                applicationId: app._id,
+                                missingPostDescription,
+                            },
+                        });
+                    }
+
+                    console.log(`Application ${app._id} moved to action_required because required copy is missing`);
+                    totalApplicationsProcessed++;
+                    continue;
+                }
+
+                const allSubmittedPlatformsValidated = submittedPlatformCount > 0 && validatedPlatformCount === submittedPlatformCount;
+
+                if (app.status === ApplicationStatus.ActionRequired && allSubmittedPlatformsValidated) {
+                    await ctx.runMutation(internal.applications.setApplicationStatusFromCron, {
+                        applicationId: app._id,
+                        status: ApplicationStatus.Earning,
+                        missingPostDescription: undefined,
+                    });
+                } else if (app.status === ApplicationStatus.ActionRequired) {
+                    console.log(`Application ${app._id} remains action_required until all submitted platforms are revalidated`);
+                    totalApplicationsProcessed++;
+                    continue;
                 }
 
                 // Save aggregated stats if we have valid data

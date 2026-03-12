@@ -1,6 +1,18 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const platformMissingDescriptionValidator = v.object({
+    trackingTagMissing: v.boolean(),
+    missingHashtags: v.array(v.string()),
+    missingMentions: v.array(v.string()),
+});
+
+const missingPostDescriptionValidator = v.object({
+    instagram: v.optional(platformMissingDescriptionValidator),
+    tiktok: v.optional(platformMissingDescriptionValidator),
+    checkedAt: v.number(),
+});
+
 export default defineSchema({
     // ============================================================
     // NOTIFICATION USERS
@@ -82,6 +94,9 @@ export default defineSchema({
             type: v.string(),
             description: v.string(),
         }))),
+        hashtags: v.optional(v.array(v.string())),
+        mentions: v.optional(v.array(v.string())),
+        requires_both_platform_posts: v.optional(v.boolean()),
         pending_approvals: v.optional(v.number()),
         category: v.array(v.string()),
         cancelled_at: v.optional(v.number()),
@@ -167,12 +182,13 @@ export default defineSchema({
     applications: defineTable({
         user_id: v.string(),
         campaign_id: v.id("campaigns"),
-        status: v.string(), // "pending_submission" | "reviewing" | "changes_requested" | "ready_to_post" | "earning"
+        status: v.string(), // "pending_submission" | "reviewing" | "changes_requested" | "ready_to_post" | "action_required" | "earning"
         ig_post_url: v.optional(v.string()),
         tiktok_post_url: v.optional(v.string()),
         tracking_tag: v.optional(v.string()),
         posted_at: v.optional(v.number()),
         approved_submission_id: v.optional(v.id("submissions")),
+        missing_post_description: v.optional(missingPostDescriptionValidator),
         // Cached high-level analytics to avoid recomputing for list rendering
         views: v.optional(v.number()),
         likes: v.optional(v.number()),
@@ -278,6 +294,7 @@ export default defineSchema({
             bankAccountId: v.optional(v.id("bank_accounts")),
             bankAccountType: v.optional(v.string()),
             endingDigits: v.optional(v.string()),
+            missingPostDescription: v.optional(missingPostDescriptionValidator),
         })),
         is_read: v.boolean(),
     })

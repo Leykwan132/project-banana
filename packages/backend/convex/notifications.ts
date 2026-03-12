@@ -6,6 +6,16 @@ import type { Id } from "./_generated/dataModel";
 import { NotificationType } from "./notificationConstants";
 
 const pushNotifications = new PushNotifications(components.pushNotifications);
+const platformMissingDescriptionValidator = v.object({
+    trackingTagMissing: v.boolean(),
+    missingHashtags: v.array(v.string()),
+    missingMentions: v.array(v.string()),
+});
+const missingPostDescriptionValidator = v.object({
+    instagram: v.optional(platformMissingDescriptionValidator),
+    tiktok: v.optional(platformMissingDescriptionValidator),
+    checkedAt: v.number(),
+});
 const notificationDataValidator = v.object({
     type: v.string(),
     submissionId: v.optional(v.id("submissions")),
@@ -13,6 +23,7 @@ const notificationDataValidator = v.object({
     bankAccountId: v.optional(v.id("bank_accounts")),
     bankAccountType: v.optional(v.string()),
     endingDigits: v.optional(v.string()),
+    missingPostDescription: v.optional(missingPostDescriptionValidator),
 });
 
 export const getNotificationUser = internalQuery({
@@ -50,6 +61,7 @@ const getRedirectFields = (data: {
 }) => {
     switch (data.type) {
         case NotificationType.SubmissionApproved:
+        case NotificationType.PostDescriptionMissing:
             return {
                 redirectType: "application",
                 redirectId: data.applicationId,
@@ -373,21 +385,23 @@ export const deliverCreatorNotification = internalMutation({
             is_read: false,
         });
 
-        console.log('notification user', notificationUser);
-
         const status = await pushNotifications.getStatusForUser(ctx, {
             userId: notificationUser._id,
         });
-        console.log("Notification status:", status);
         const pushSent = status.hasToken && !status.paused;
 
         if (pushSent) {
+            const pushData = {
+                ...args.data,
+                notificationId,
+            };
+
             await pushNotifications.sendPushNotification(ctx, {
                 userId: notificationUser._id,
                 notification: {
                     title: args.title,
                     body: args.description,
-                    data: args.data,
+                    data: pushData,
                 },
             });
         }

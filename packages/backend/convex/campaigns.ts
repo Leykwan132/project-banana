@@ -7,6 +7,107 @@ import { ERROR_CODES } from "./errors";
 import { generateDownloadUrl, generateUploadUrl } from "./r2";
 import { CampaignStatus } from "./constants";
 import { posthog } from "./posthog";
+
+const getBusinessPlanType = (planType?: string | null) => (planType ?? "free").toLowerCase();
+
+const getActiveCampaignLimit = (planType?: string | null) => {
+    switch (getBusinessPlanType(planType)) {
+        case "growth":
+            return 5;
+        case "unlimited":
+            return null;
+        case "starter":
+        case "free":
+        default:
+            return 1;
+    }
+};
+
+const sanitizeCampaignValues = (
+    values: string[] | undefined,
+    label: "hashtags" | "mentions",
+    limit: number,
+    prefix: "#" | "@",
+) => {
+    const sanitized = (values ?? [])
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+    const bareValues = sanitized.map((value) => value.startsWith(prefix) ? value.slice(1).trim() : value);
+
+    const uniqueValues = Array.from(new Set(bareValues.filter(Boolean)));
+
+    if (uniqueValues.length > limit) {
+        throw new ConvexError({
+            code: ERROR_CODES.INVALID_INPUT.code,
+            message: `You can only add up to ${limit} ${label}.`,
+        });
+    }
+
+    return uniqueValues;
+};
+
+const areStringArraysEqual = (left: string[] = [], right: string[] = []) =>
+    left.length === right.length && left.every((value, index) => value === right[index]);
+
+const assertMentionsAndHashtagsAllowed = (planType?: string | null, hashtags: string[] = [], mentions: string[] = []) => {
+    if (getBusinessPlanType(planType) !== "free") {
+        return;
+    }
+
+    if (hashtags.length === 0 && mentions.length === 0) {
+        return;
+    }
+
+    throw new ConvexError({
+        code: ERROR_CODES.PLAN_RESTRICTED_FEATURE.code,
+        message: "Upgrade to Starter, Growth, or Unlimited to unlock hashtags and mentions.",
+    });
+};
+
+const assertBothPlatformsAllowed = (planType?: string | null, requiresBothPlatformPosts?: boolean) => {
+    if (!requiresBothPlatformPosts) {
+        return;
+    }
+
+    if (getBusinessPlanType(planType) === "free") {
+        throw new ConvexError({
+            code: ERROR_CODES.PLAN_RESTRICTED_FEATURE.code,
+            message: "Upgrade to Starter, Growth, or Unlimited to require both Instagram and TikTok posts.",
+        });
+    }
+};
+
+const assertCampaignLimit = async (
+    ctx: any,
+    businessId: any,
+    planType?: string | null,
+    excludedCampaignId?: any,
+) => {
+    const activeCampaignLimit = getActiveCampaignLimit(planType);
+    if (activeCampaignLimit == null) {
+        return;
+    }
+
+    const activeCampaigns = await ctx.db
+        .query("campaigns")
+        .withIndex("by_business", (q: any) => q.eq("business_id", businessId))
+        .filter((q: any) => q.eq(q.field("status"), CampaignStatus.Active))
+        .collect();
+
+    const relevantCampaigns = excludedCampaignId
+        ? activeCampaigns.filter((campaign: any) => campaign._id !== excludedCampaignId)
+        : activeCampaigns;
+
+    if (relevantCampaigns.length >= activeCampaignLimit) {
+        throw new ConvexError({
+            code: ERROR_CODES.CAMPAIGN_LIMIT_REACHED.code,
+            message: "You have reached your active campaign limit. Upgrade your plan or end an active campaign to continue.",
+            limit: activeCampaignLimit,
+            activeCampaigns: relevantCampaigns.length,
+        });
+    }
+};
 // ============================================================
 // QUERIES
 // ============================================================
@@ -28,6 +129,10 @@ export const getCampaign = query({
             ...campaign,
             logo_url: campaign.logo_url ?? business?.logo_url,
             logo_r2_key: campaign.logo_r2_key ?? business?.logo_r2_key,
+            hashtags: campaign.hashtags ?? [],
+            mentions: campaign.mentions ?? [],
+            requires_both_platform_posts: campaign.requires_both_platform_posts ?? false,
+            business_plan_type: business?.subscription_plan_type ?? "free",
             pendingApprovals,
         };
     },
@@ -44,6 +149,18 @@ export const getCampaignsByBusiness = query({
             .withIndex("by_business", (q) => q.eq("business_id", args.businessId))
             .order("desc")
             .paginate(args.paginationOpts);
+    },
+});
+
+export const getActiveCampaignCount = query({
+    args: { businessId: v.id("businesses") },
+    handler: async (ctx, args) => {
+        const campaigns = await ctx.db
+            .query("campaigns")
+            .withIndex("by_business", (q) => q.eq("business_id", args.businessId))
+            .filter((q) => q.eq(q.field("status"), "active"))
+            .collect();
+        return campaigns.length;
     },
 });
 
@@ -133,6 +250,9 @@ export const createCampaign = mutation({
             type: v.string(),
             description: v.string(),
         }))),
+        hashtags: v.array(v.string()),
+        mentions: v.array(v.string()),
+        requires_both_platform_posts: v.boolean(),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -145,10 +265,17 @@ export const createCampaign = mutation({
             throw new Error("Business not found");
         }
 
+        const hashtags = sanitizeCampaignValues(args.hashtags, "hashtags", 3, "#");
+        const mentions = sanitizeCampaignValues(args.mentions, "mentions", 2, "@");
+        assertMentionsAndHashtagsAllowed(business.subscription_plan_type, hashtags, mentions);
+        assertBothPlatformsAllowed(business.subscription_plan_type, args.requires_both_platform_posts);
+
         const now = Date.now();
 
         // Only deduct credits if the campaign is active (not draft)
         if (args.status === "active") {
+            await assertCampaignLimit(ctx, args.businessId, business.subscription_plan_type);
+
             if (business.credit_balance < args.total_budget) {
                 throw new ConvexError({
                     code: ERROR_CODES.INSUFFICIENT_CREDITS.code,
@@ -176,6 +303,9 @@ export const createCampaign = mutation({
             payout_thresholds: args.payout_thresholds,
             requirements: args.requirements,
             scripts: args.scripts,
+            hashtags,
+            mentions,
+            requires_both_platform_posts: args.requires_both_platform_posts,
             submissions: 0,
             created_at: now,
             updated_at: now,
@@ -232,11 +362,15 @@ export const updateCampaignStatus = mutation({
         const campaign = await ctx.db.get(args.campaignId);
         if (!campaign) throw new Error("Campaign not found");
 
+        const business = await ctx.db.get(campaign.business_id);
+        if (!business) throw new Error("Business not found");
+
+        if (args.status === CampaignStatus.Active && campaign.status !== CampaignStatus.Active) {
+            await assertCampaignLimit(ctx, campaign.business_id, business.subscription_plan_type, campaign._id);
+        }
+
         // Logic for activating a draft campaign
         if (campaign.status === "draft" && args.status === "active") {
-            const business = await ctx.db.get(campaign.business_id);
-            if (!business) throw new Error("Business not found");
-
             if (business.credit_balance < campaign.total_budget) {
                 throw new ConvexError({
                     code: ERROR_CODES.INSUFFICIENT_CREDITS.code,
@@ -297,6 +431,9 @@ export const updateCampaign = mutation({
             type: v.string(),
             description: v.string(),
         }))),
+        hashtags: v.optional(v.array(v.string())),
+        mentions: v.optional(v.array(v.string())),
+        requires_both_platform_posts: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -312,6 +449,37 @@ export const updateCampaign = mutation({
         const business = await ctx.db.get(campaign.business_id);
         if (!business) {
             throw new Error("Business not found");
+        }
+
+        const hashtags = campaign.hashtags ?? [];
+        const mentions = campaign.mentions ?? [];
+        const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
+
+        if (args.hashtags !== undefined) {
+            const requestedHashtags = sanitizeCampaignValues(args.hashtags, "hashtags", 3, "#");
+            if (!areStringArraysEqual(requestedHashtags, hashtags)) {
+                throw new ConvexError({
+                    code: ERROR_CODES.INVALID_INPUT.code,
+                    message: "Hashtags cannot be changed after the campaign is created.",
+                });
+            }
+        }
+
+        if (args.mentions !== undefined) {
+            const requestedMentions = sanitizeCampaignValues(args.mentions, "mentions", 2, "@");
+            if (!areStringArraysEqual(requestedMentions, mentions)) {
+                throw new ConvexError({
+                    code: ERROR_CODES.INVALID_INPUT.code,
+                    message: "Mentions cannot be changed after the campaign is created.",
+                });
+            }
+        }
+
+        if (args.requires_both_platform_posts !== undefined && args.requires_both_platform_posts !== requiresBothPlatformPosts) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "Platform posting requirements cannot be changed after the campaign is created.",
+            });
         }
 
         if (args.total_budget < campaign.budget_claimed) {
@@ -373,6 +541,9 @@ export const updateCampaign = mutation({
             payout_thresholds: args.payout_thresholds,
             requirements: args.requirements,
             scripts: args.scripts,
+            hashtags,
+            mentions,
+            requires_both_platform_posts: requiresBothPlatformPosts,
             updated_at: Date.now(),
         });
 

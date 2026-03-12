@@ -1,6 +1,7 @@
 export enum NotificationType {
     SubmissionApproved = "submission_approved",
     SubmissionRejected = "submission_rejected",
+    PostDescriptionMissing = "post_description_missing",
     BankAccountApproved = "bank_account_approved",
     BankAccountRejected = "bank_account_rejected",
 }
@@ -8,12 +9,18 @@ export enum NotificationType {
 export const NotificationCopy = {
     submissionApproved: {
         title: "Submission Approved! 🥳",
-        description: (campaignName: string) => `Amazing! Your submission for ${campaignName} has been approved. You're all set to share it and start earning!`,
+        description: (campaignName: string) => `Amazing! Your submission for ${campaignName} has been approved. Please check the next step before posting!`,
+
     },
     submissionRejected: {
-        title: "Action Required: Update your submission 📝",
+        title: "Update your submission 📝",
         description: (businessName: string, campaignName: string) =>
             `${businessName} left feedback on your video for ${campaignName}. Tap to view and resubmit!`,
+    },
+    postDescriptionMissing: {
+        title: "Fix your post description ✍️",
+        description: (campaignName: string) =>
+            `Your post for ${campaignName} is missing some information. See what's missing here.`,
     },
     bankAccountApproved: {
         title: "Bank account approved ✅",
@@ -21,7 +28,7 @@ export const NotificationCopy = {
             `Your bank account ending in ${endingDigits} is verified! You can now withdraw your earnings.`,
     },
     bankAccountRejected: {
-        title: "Action Needed: Bank account rejected ⚠️",
+        title: "Bank account rejected ⚠️",
         description: (endingDigits: string) =>
             `We couldn't verify your bank account ending in ${endingDigits}. Tap here to add a new one and get paid!`,
     },
