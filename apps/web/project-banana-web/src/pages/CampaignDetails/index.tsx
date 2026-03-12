@@ -5,7 +5,7 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { Skeleton } from "@heroui/skeleton";
-import { ArrowUpRight, ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Play } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Play, Hash, AtSign } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -728,6 +728,9 @@ export default function CampaignDetails() {
     const parsedTotalPayouts = parseFloat(formik.values.totalPayouts);
     const proposedTotalPayouts = Number.isFinite(parsedTotalPayouts) ? parsedTotalPayouts : 0;
     const isLowerThanCurrentAmount = formik.values.totalPayouts !== "" && proposedTotalPayouts < campaign.total_budget;
+    const campaignHashtags = campaign.hashtags ?? [];
+    const campaignMentions = campaign.mentions ?? [];
+    const campaignRequiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
 
     return (
         <div className="animate-fadeIn relative pb-24 p-8">
@@ -1275,6 +1278,72 @@ export default function CampaignDetails() {
                                             }}
                                         />
                                     </label>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-1">
+                                    <label className="font-semibold text-gray-900 block">Hashtags & Mentions</label>
+                                    <p className="text-sm text-gray-500 mb-4">Required social copy for creator posts.</p>
+                                    <div className="rounded-3xl bg-[#F8F9FA] p-6 space-y-5">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                                                <Hash className="w-4 h-4 text-gray-500" />
+                                                <span>Hashtags</span>
+                                            </div>
+                                            {campaignHashtags.length > 0 ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {campaignHashtags.map((hashtag) => (
+                                                        <span key={hashtag} className="inline-flex items-center rounded-full bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm">
+                                                            #{hashtag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-gray-400">No hashtags required.</p>
+                                            )}
+                                        </div>
+
+                                        <div className="border-t border-dashed border-gray-200" />
+
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                                                <AtSign className="w-4 h-4 text-gray-500" />
+                                                <span>Mentions</span>
+                                            </div>
+                                            {campaignMentions.length > 0 ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {campaignMentions.map((mention) => (
+                                                        <span key={mention} className="inline-flex items-center rounded-full bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm">
+                                                            @{mention}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-gray-400">No mentions required.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-xs font-medium text-gray-400">Note: These are locked after campaign creation.</p>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="font-semibold text-gray-900 block">Posting requirement</label>
+                                    <p className="text-sm text-gray-500 mb-4">Platform posting rule set when the campaign was created.</p>
+                                    <div className="rounded-3xl bg-[#F8F9FA] p-6">
+                                        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                                            <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Current rule</span>
+                                            <span className="block text-base font-semibold text-gray-900">
+                                                {campaignRequiresBothPlatformPosts ? 'Require Instagram and TikTok' : 'Allow Instagram or TikTok'}
+                                            </span>
+                                            <span className="block text-sm text-gray-500 mt-1">
+                                                {campaignRequiresBothPlatformPosts
+                                                    ? 'Creators must submit both an Instagram post and a TikTok post.'
+                                                    : 'Creators can submit either one Instagram post or one TikTok post.'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs font-medium text-gray-400">Note: This is locked after campaign creation.</p>
                                 </div>
                             </div>
                         </div>

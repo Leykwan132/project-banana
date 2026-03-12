@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
-import { ChevronLeft, Plus, X, Check, Eye, DollarSign, Wallet, ArrowRight, Info, Upload, Building, Users, CircleDollarSign, Ghost, Heart, ArrowLeft, MessageSquare, Mic } from 'lucide-react';
+import { ChevronLeft, Plus, X, Check, Eye, DollarSign, Wallet, ArrowRight, Info, Upload, Building, Hash, AtSign, Lock } from 'lucide-react';
 import { ERROR_CODES } from '../../../../../packages/backend/convex/errors';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -603,6 +603,110 @@ export const ScriptsModal = ({ onClose, onSave, initialData }: {
     );
 };
 
+const HandleListField = ({
+    title,
+    description,
+    icon: Icon,
+    prefix,
+    placeholder,
+    limit,
+    values,
+    onChange,
+}: {
+    title: string;
+    description: string;
+    icon: typeof Hash;
+    prefix: "#" | "@";
+    placeholder: string;
+    limit: number;
+    values: string[];
+    onChange: (values: string[]) => void;
+}) => {
+    const [inputValue, setInputValue] = useState("");
+
+    const addValue = () => {
+        const trimmedValue = inputValue.trim();
+        const bareValue = trimmedValue.startsWith(prefix) ? trimmedValue.slice(1).trim() : trimmedValue;
+        if (!bareValue || values.includes(bareValue) || values.length >= limit) {
+            return;
+        }
+
+        onChange([...values, bareValue]);
+        setInputValue("");
+    };
+
+    return (
+        <div className="bg-[#F8F9FA] rounded-3xl p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                            <Icon className="w-4 h-4 text-gray-900" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-gray-900">{title}</h3>
+                            <p className="text-sm text-gray-500">{description}</p>
+                        </div>
+                    </div>
+                </div>
+                <span className="text-xs font-semibold text-gray-400">{values.length}/{limit}</span>
+            </div>
+
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">{prefix}</span>
+                    <input
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                addValue();
+                            }
+                        }}
+                        placeholder={placeholder}
+                        className="w-full bg-white rounded-xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-400"
+                    />
+                </div>
+                <button
+                    type="button"
+                    onClick={addValue}
+                    disabled={!inputValue.trim() || values.length >= limit}
+                    className="px-4 rounded-xl bg-black text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    Add
+                </button>
+            </div>
+
+            {values.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                    {values.map((value) => (
+                        <div key={value} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm">
+                            <span>{prefix}{value}</span>
+                            <button
+                                type="button"
+                                onClick={() => onChange(values.filter((item) => item !== value))}
+                                className="text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-sm text-gray-400">No {title.toLowerCase()} added yet.</p>
+            )}
+        </div>
+    );
+};
+
+const PremiumBadge = () => (
+    <span className="inline-flex items-center rounded-full bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+        Premium
+    </span>
+);
+
 export default function CreateCampaign() {
     const business = useQuery(api.businesses.getMyBusiness);
     const createCampaign = useMutation(api.campaigns.createCampaign);
@@ -631,10 +735,16 @@ export default function CreateCampaign() {
             'Please add at least one payout threshold',
             (value) => value ? value.some(t => t.views && t.amount) : false
         ),
+        hashtags: Yup.array().max(3, 'You can add up to 3 hashtags'),
+        mentions: Yup.array().max(2, 'You can add up to 2 mentions'),
+        requiresBothPlatformPosts: Yup.boolean(),
         reqData: Yup.object().test(
             'at-least-one-requirement',
             'Please set campaign requirements',
-            (value: any) => value.noAi || value.followScript || value.language || value.location || value.custom.length > 0
+            (value) => {
+                const reqValue = value as RequirementsData | undefined;
+                return !!reqValue && (reqValue.noAi || reqValue.followScript || !!reqValue.language || !!reqValue.location || (reqValue.custom && reqValue.custom.length > 0));
+            }
         )
     }), []);
 
@@ -745,7 +855,10 @@ export default function CreateCampaign() {
                 product: '',
                 cta: '',
                 custom: []
-            } as ScriptsData
+            } as ScriptsData,
+            hashtags: [] as string[],
+            mentions: [] as string[],
+            requiresBothPlatformPosts: true,
         },
         validationSchema,
         onSubmit: async (values, { setSubmitting }) => {
@@ -796,20 +909,36 @@ export default function CreateCampaign() {
                         ...(values.scriptsData.product ? [{ type: "Product", description: values.scriptsData.product }] : []),
                         ...(values.scriptsData.cta ? [{ type: "CTA", description: values.scriptsData.cta }] : []),
                         ...values.scriptsData.custom
-                    ]
+                    ],
+                    hashtags: values.hashtags,
+                    mentions: values.mentions,
+                    requires_both_platform_posts: values.requiresBothPlatformPosts,
                 });
                 setCreatedCampaignId(campaignId);
                 setIsReviewModalOpen(false);
                 setShowSuccess(true);
 
-            } catch (error: any) {
+            } catch (error: unknown) {
+                const convexError = error as { data?: { code?: number; message?: string } };
                 console.error("Failed to publish campaign:", error);
 
-                switch (error.data?.code) {
+                switch (convexError.data?.code) {
                     case ERROR_CODES.INSUFFICIENT_CREDITS.code:
-                        alert(error.data.message);
+                    case ERROR_CODES.CAMPAIGN_LIMIT_REACHED.code:
+                    case ERROR_CODES.PLAN_RESTRICTED_FEATURE.code:
+                    case ERROR_CODES.INVALID_INPUT.code:
+                        addToast({
+                            title: "Unable to publish campaign",
+                            description: convexError.data?.message ?? "Please try again.",
+                            color: "danger",
+                        });
                         break;
                     default:
+                        addToast({
+                            title: "Unable to publish campaign",
+                            description: "Please try again.",
+                            color: "danger",
+                        });
                         break;
                 }
             } finally {
@@ -839,11 +968,11 @@ export default function CreateCampaign() {
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
     const businessPlanType = (business?.subscription_plan_type ?? 'free').toLowerCase();
     const isFreePlan = businessPlanType === 'free';
+    const isSocialCopyUnlocked = !isFreePlan;
     const campaignBudget = parseFloat(formik.values.totalPayouts) || 0;
     const launchFee = isFreePlan ? LAUNCH_FEE_AMOUNT : 0;
     const totalCharge = campaignBudget + launchFee;
     const estimatedRemainingCredits = (business?.credit_balance ?? 0) - totalCharge;
-    const previewThresholds = formik.values.thresholdData.filter((t) => t.views && t.amount);
 
     const handleOpenReviewModal = async () => {
         if (formik.isSubmitting) return;
@@ -1017,7 +1146,7 @@ export default function CreateCampaign() {
                         </div>
                     </div>
 
-                    {/* Category */}
+                    {/* Row 2: Category */}
                     <div className="space-y-4">
                         <div className="space-y-1">
                             <label className="font-semibold text-gray-900 block w-fit relative">
@@ -1226,96 +1355,6 @@ export default function CreateCampaign() {
                         </div>
                     </div>
 
-                    {/* Row 3: Scripts & Assets */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Scripts */}
-                        <div className="space-y-1">
-                            <label className="font-semibold text-gray-900 block w-fit relative">
-                                Scripts
-                            </label>
-                            <p className="text-sm text-gray-500 mb-4">Provide dialogue or instructions for creators.</p>
-                            {formik.values.scriptsData.hook || formik.values.scriptsData.product || formik.values.scriptsData.cta || formik.values.scriptsData.custom.length > 0 ? (
-                                <div className="bg-[#F8F9FA] rounded-3xl p-6">
-                                    <h3 className="font-bold text-sm mb-4 text-gray-900">Current Scripts</h3>
-                                    <div className="space-y-4 mb-6">
-                                        {formik.values.scriptsData.hook && (
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
-                                                <div className="flex-1">
-                                                    <span className="text-sm font-bold text-gray-900 block">Hook</span>
-                                                    <p className="text-xs text-gray-500 line-clamp-2">{formik.values.scriptsData.hook}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {formik.values.scriptsData.product && (
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
-                                                <div className="flex-1">
-                                                    <span className="text-sm font-bold text-gray-900 block">Product</span>
-                                                    <p className="text-xs text-gray-500 line-clamp-2">{formik.values.scriptsData.product}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {formik.values.scriptsData.cta && (
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
-                                                <div className="flex-1">
-                                                    <span className="text-sm font-bold text-gray-900 block">CTA</span>
-                                                    <p className="text-xs text-gray-500 line-clamp-2">{formik.values.scriptsData.cta}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {formik.values.scriptsData.custom.map((item, i) => (
-                                            <div key={i} className="flex items-start gap-3">
-                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
-                                                <div className="flex-1">
-                                                    <span className="text-sm font-bold text-gray-900 block">{item.type}</span>
-                                                    <p className="text-xs text-gray-500 line-clamp-2">{item.description}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsScriptsModalOpen(true)}
-                                        className="w-full bg-white rounded-xl py-3 font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors text-gray-900"
-                                    >
-                                        Update Scripts
-                                    </button>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsScriptsModalOpen(true)}
-                                    className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 flex items-center justify-center font-medium hover:bg-gray-200 transition-colors gap-2"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Add Scripts
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Assets */}
-                        <div className="space-y-1">
-                            <label className="font-semibold text-gray-900 block w-fit relative">
-                                Assets link
-                            </label>
-                            <p className="text-sm text-gray-500 mb-4">Share folder with images or reference videos.</p>
-                            <input
-                                type="text"
-                                name="assets"
-                                value={formik.values.assets}
-                                onChange={formik.handleChange}
-                                onBlur={formik.handleBlur}
-                                placeholder="https://www.drive.google.com/..."
-                                className={`w-full bg-[#F4F6F8] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-400 ${formik.touched.assets && formik.errors.assets ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
-                            />
-                            {formik.touched.assets && formik.errors.assets && (
-                                <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.assets as string}</p>
-                            )}
-                        </div>
-                    </div>
-
                     {/* Row 4: Campaign Logo & Cover */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-1">
@@ -1416,6 +1455,228 @@ export default function CreateCampaign() {
                             </label>
                         </div>
                     </div>
+
+                    {/* Row 5: Scripts & Assets */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+                        {/* Scripts */}
+                        <div className="space-y-1">
+                            <label className="font-semibold text-gray-900 block w-fit relative">
+                                Scripts
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">Provide dialogue or instructions for creators.</p>
+                            {formik.values.scriptsData.hook || formik.values.scriptsData.product || formik.values.scriptsData.cta || formik.values.scriptsData.custom.length > 0 ? (
+                                <div className="bg-[#F8F9FA] rounded-3xl p-6">
+                                    <h3 className="font-bold text-sm mb-4 text-gray-900">Current Scripts</h3>
+                                    <div className="space-y-4 mb-6">
+                                        {formik.values.scriptsData.hook && (
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <span className="text-sm font-bold text-gray-900 block">Hook</span>
+                                                    <p className="text-xs text-gray-500 line-clamp-2">{formik.values.scriptsData.hook}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {formik.values.scriptsData.product && (
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <span className="text-sm font-bold text-gray-900 block">Product</span>
+                                                    <p className="text-xs text-gray-500 line-clamp-2">{formik.values.scriptsData.product}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {formik.values.scriptsData.cta && (
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <span className="text-sm font-bold text-gray-900 block">CTA</span>
+                                                    <p className="text-xs text-gray-500 line-clamp-2">{formik.values.scriptsData.cta}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {formik.values.scriptsData.custom.map((item, i) => (
+                                            <div key={i} className="flex items-start gap-3">
+                                                <div className="w-2 h-2 rounded-sm bg-black mt-1.5 shrink-0" />
+                                                <div className="flex-1">
+                                                    <span className="text-sm font-bold text-gray-900 block">{item.type}</span>
+                                                    <p className="text-xs text-gray-500 line-clamp-2">{item.description}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsScriptsModalOpen(true)}
+                                        className="w-full bg-white rounded-xl py-3 font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors text-gray-900"
+                                    >
+                                        Update Scripts
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsScriptsModalOpen(true)}
+                                    className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 flex items-center justify-center font-medium hover:bg-gray-200 transition-colors gap-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Add Scripts
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Assets */}
+                        <div className="space-y-1">
+                            <label className="font-semibold text-gray-900 block w-fit relative">
+                                Assets link
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">Share folder with images or reference videos.</p>
+                            <input
+                                type="text"
+                                name="assets"
+                                value={formik.values.assets}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                placeholder="https://www.drive.google.com/..."
+                                className={`w-full bg-[#F4F6F8] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all placeholder:text-gray-400 ${formik.touched.assets && formik.errors.assets ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
+                            />
+                            {formik.touched.assets && formik.errors.assets && (
+                                <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.assets as string}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Row 6: Post description */}
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-3">
+                                <label className="font-semibold text-gray-900 block">Hashtags & Mentions</label>
+                                <PremiumBadge />
+                            </div>
+                            <p className="text-sm text-gray-500">Add the hashtags and mentions creators must keep in their live post description.</p>
+                        </div>
+
+                        {isSocialCopyUnlocked ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <HandleListField
+                                        title="Hashtags"
+                                        description="Up to 3 hashtags. Case-sensitive."
+                                        icon={Hash}
+                                        prefix="#"
+                                        placeholder="YourBrand"
+                                        limit={3}
+                                        values={formik.values.hashtags}
+                                        onChange={(values) => void formik.setFieldValue('hashtags', values)}
+                                    />
+                                    {formik.errors.hashtags && typeof formik.errors.hashtags === 'string' ? (
+                                        <p className="text-red-500 text-sm font-medium">{formik.errors.hashtags}</p>
+                                    ) : null}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <HandleListField
+                                        title="Mentions"
+                                        description="Up to 2 mentions. Case-sensitive."
+                                        icon={AtSign}
+                                        prefix="@"
+                                        placeholder="YourBrand"
+                                        limit={2}
+                                        values={formik.values.mentions}
+                                        onChange={(values) => void formik.setFieldValue('mentions', values)}
+                                    />
+                                    {formik.errors.mentions && typeof formik.errors.mentions === 'string' ? (
+                                        <p className="text-red-500 text-sm font-medium">{formik.errors.mentions}</p>
+                                    ) : null}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="rounded-3xl border border-[#E7D9B7] bg-[#FFF9EC] p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                                        <Lock className="w-5 h-5 text-gray-900" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-semibold text-gray-900">Want to require hashtags and mentions?</h3>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                            Upgrade to Starter to require hashtags and mentions in creator posts.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/subscription')}
+                                    className="bg-black text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-gray-900 transition-colors"
+                                >
+                                    Upgrade plan
+                                </button>
+                            </div>
+                        )}
+
+                        <p className="text-xs font-medium text-gray-400">Note: These cannot be changed after the campaign is created.</p>
+                    </div>
+
+                    {/* Row 7: Post requirements */}
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-3">
+                                <label className="font-semibold text-gray-900 block">Posting requirement</label>
+                                <PremiumBadge />
+                            </div>
+                            <p className="text-sm text-gray-500">Choose whether creators can post on either Instagram or TikTok, or must post on both.</p>
+                        </div>
+
+                        {isSocialCopyUnlocked ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => void formik.setFieldValue('requiresBothPlatformPosts', false)}
+                                    className={`rounded-2xl border-2 p-5 text-left transition-all ${!formik.values.requiresBothPlatformPosts ? 'border-black bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                >
+                                    <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Posting rule</span>
+                                    <span className="block text-base font-semibold text-gray-900">Allow Instagram or TikTok</span>
+                                    <span className="block text-sm text-gray-500 mt-1">Creators can submit either one Instagram post or one TikTok post.</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void formik.setFieldValue('requiresBothPlatformPosts', true)}
+                                    className={`rounded-2xl border-2 p-5 text-left transition-all ${formik.values.requiresBothPlatformPosts ? 'border-black bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                >
+                                    <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Posting rule</span>
+                                    <span className="block text-base font-semibold text-gray-900">Require Instagram and TikTok</span>
+                                    <span className="block text-sm text-gray-500 mt-1">Creators must submit both an Instagram post and a TikTok post.</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="rounded-3xl border border-[#E7D9B7] bg-[#FFF9EC] p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                                        <Lock className="w-5 h-5 text-gray-900" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-semibold text-gray-900">Want to choose platform posting rules?</h3>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                            Upgrade to Starter to let creators post on one platform or require both Instagram and TikTok.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/subscription')}
+                                    className="bg-black text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-gray-900 transition-colors"
+                                >
+                                    Upgrade plan
+                                </button>
+                            </div>
+                        )}
+
+                        <p className="text-xs font-medium text-gray-400">Note: This cannot be changed after the campaign is created.</p>
+                    </div>
+
                 </div>
 
                 <div className="fixed bottom-8 right-8 flex gap-4 z-40">
