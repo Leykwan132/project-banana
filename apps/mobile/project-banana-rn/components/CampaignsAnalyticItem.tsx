@@ -87,7 +87,12 @@ export function CampaignsAnalyticItem({
                         <ThemedText style={[styles.companyName, { color: isDark ? '#8A8A8A' : '#6B7280' }]}>
                             {companyName}
                         </ThemedText>
-                        <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={styles.name}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                        >
                             {name}
                         </ThemedText>
                     </View>
@@ -165,12 +170,14 @@ const styles = StyleSheet.create({
     },
     titleContainer: {
         flex: 1,
+        minWidth: 0,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
     },
     textColumn: {
         flex: 1,
+        minWidth: 0,
         marginRight: 8,
     },
     name: {

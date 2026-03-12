@@ -107,7 +107,12 @@ export function CampaignListItem({
                                 </View>
                             )}
                         </View>
-                        <ThemedText type="defaultSemiBold" style={styles.name} numberOfLines={2}>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={styles.name}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                        >
                             {name}
                         </ThemedText>
                     </View>
@@ -177,6 +182,7 @@ const styles = StyleSheet.create({
     },
     topLeft: {
         flex: 1,
+        minWidth: 0,
         flexDirection: 'row',
         alignItems: 'center',
         paddingRight: 12,
@@ -208,6 +214,7 @@ const styles = StyleSheet.create({
     },
     textColumn: {
         flex: 1,
+        minWidth: 0,
         justifyContent: 'center',
     },
     companyRow: {

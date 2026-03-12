@@ -1,5 +1,5 @@
 import { View, StyleSheet, Image, Pressable } from 'react-native';
-import { ArrowUpRight } from 'lucide-react-native';
+import { ArrowUpRight, User } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -8,8 +8,9 @@ import { Colors } from '@/constants/theme';
 interface CreatorListItemProps {
     name: string;
     views: string;
-    amount: string;
+    amount?: string;
     logoUrl?: string;
+    useUserIcon?: boolean;
     onPress?: () => void;
 }
 
@@ -18,6 +19,7 @@ export function CreatorListItem({
     views,
     amount,
     logoUrl,
+    useUserIcon = false,
     onPress,
 }: CreatorListItemProps) {
     const colorScheme = useColorScheme();
@@ -28,7 +30,11 @@ export function CreatorListItem({
         <Pressable onPress={onPress} style={styles.container}>
             <View style={styles.leftSection}>
                 <View style={styles.logoContainer}>
-                    {logoUrl ? (
+                    {useUserIcon ? (
+                        <View style={[styles.logoPlaceholder, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', borderColor: isDark ? '#333333' : '#EEEEEE' }]}>
+                            <User size={22} color={theme.text} />
+                        </View>
+                    ) : logoUrl ? (
                         <Image source={{ uri: logoUrl }} style={styles.logo} />
                     ) : (
                         <View style={[styles.logoPlaceholder, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', borderColor: isDark ? '#333333' : '#EEEEEE' }]}>
@@ -40,7 +46,9 @@ export function CreatorListItem({
                     <ThemedText type="defaultSemiBold" style={styles.name}>{name}</ThemedText>
                     <View style={styles.metaRow}>
                         <ThemedText style={[styles.metaTextHighlight, { color: theme.text }]}>{views} views</ThemedText>
-                        <ThemedText style={[styles.metaText, { color: isDark ? '#9CA3AF' : '#666666' }]}>  {amount} received</ThemedText>
+                        {amount ? (
+                            <ThemedText style={[styles.metaText, { color: isDark ? '#9CA3AF' : '#666666' }]}>  {amount} received</ThemedText>
+                        ) : null}
                     </View>
                 </View>
             </View>
@@ -108,7 +116,7 @@ const styles = StyleSheet.create({
     metaTextHighlight: {
         fontSize: 13,
         color: '#000000',
-        fontFamily: 'GoogleSans_700Bold',
+        fontFamily: 'GoogleSans_400Regular',
     },
     arrowContainer: {
         width: 40,

@@ -38,12 +38,13 @@ export function ProfileActionSheet({
     const { data: session } = authClient.useSession();
     const user = session?.user;
 
+    const creator = useQuery(api.creators.getCreator);
     const convexUser = useQuery(api.users.getUser);
     const campaignsCount = convexUser?.campaigns_count ?? 0;
     const totalEarnings = convexUser?.total_earnings ?? 0;
 
     const profileData = {
-        name: user?.name ?? "User",
+        name: creator?.username ? `@${creator.username}` : user?.name ?? "User",
         avatar: user?.image,
         email: user?.email ?? "",
         stats: {
@@ -121,7 +122,7 @@ export function ProfileActionSheet({
 
                 {/* Options List */}
                 <View style={styles.optionsList}>
-                    <Pressable
+                    {/* <Pressable
                         style={styles.optionRow}
                         onPress={() => handleOptionPress('/referral')} // Placeholder route
                     >
@@ -130,7 +131,7 @@ export function ProfileActionSheet({
                         </View>
                         <ThemedText style={styles.optionLabel}>Referral Program</ThemedText>
                     </Pressable>
-                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                    <View style={[styles.divider, { backgroundColor: dividerColor }]} /> */}
 
                     <Pressable
                         style={styles.optionRow}
@@ -178,8 +179,8 @@ export function ProfileActionSheet({
 
 const styles = StyleSheet.create({
     sheetContent: {
-        padding: 24,
-        paddingBottom: 40,
+        paddingTop: 24,
+        paddingBottom: 24,
     },
     profileHeader: {
         alignItems: 'center',
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
     optionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
+        paddingVertical: 8,
         paddingHorizontal: 16,
     },
     iconContainer: {
