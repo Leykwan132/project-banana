@@ -1,10 +1,11 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import {
     Dimensions,
     Pressable,
     StyleSheet,
     View, Image,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -14,6 +15,7 @@ import {
 import { ActionSheetRef } from 'react-native-actions-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { LoginActionSheet } from '@/components/LoginActionSheet';
+import { TypingText } from '@/components/ui/TypingText';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { authClient } from "@/lib/auth-client";
@@ -116,6 +118,7 @@ export default function WelcomeScreen() {
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
 
     const loginActionSheetRef = useRef<ActionSheetRef>(null);
+    const [isCheckingSession, setIsCheckingSession] = useState(false);
 
     const convex = useConvex();
 
@@ -123,6 +126,7 @@ export default function WelcomeScreen() {
         const checkSession = async () => {
             const session = await authClient.getSession();
             if (session.data) {
+                setIsCheckingSession(true);
                 try {
                     await convex.query(api.creators.getCreator, {});
                     router.replace('/(tabs)');
@@ -135,6 +139,7 @@ export default function WelcomeScreen() {
                     } else {
                         // For any other unexpected errors, we just stay on the welcome screen
                         console.error('Session check error:', error);
+                        setIsCheckingSession(false);
                     }
                 }
             }
@@ -191,6 +196,22 @@ export default function WelcomeScreen() {
             <LoginActionSheet
                 actionSheetRef={loginActionSheetRef}
             />
+
+            {/* Loading overlay shown while verifying session against the server */}
+            {isCheckingSession && (
+                <View style={[StyleSheet.absoluteFill, styles.loadingOverlay, { backgroundColor: screenBackgroundColor }]}>
+                    <LottieView
+                        source={require('@/assets/lotties/logging-in.json')}
+                        autoPlay
+                        loop
+                        style={{ width: 180, height: 180 }}
+                    />
+                    <TypingText
+                        text="Logging you in"
+                        style={[styles.loadingText, { color: isDark ? '#ECEDEE' : '#000000' }]}
+                    />
+                </View>
+            )}
         </View>
     );
 }
@@ -199,6 +220,17 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+    },
+    loadingOverlay: {
+        alignItems: 'center',
+        borderRadius: 12,
+        justifyContent: 'center',
+        zIndex: 9999,
+    },
+    loadingText: {
+        marginTop: 8,
+        fontSize: 18,
+        fontFamily: 'GoogleSans_600SemiBold',
     },
     carouselContainer: {
         flex: 1,

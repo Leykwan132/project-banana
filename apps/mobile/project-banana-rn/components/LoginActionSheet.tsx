@@ -12,6 +12,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { ThemedText } from '@/components/themed-text';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
+import { TypingText } from '@/components/ui/TypingText';
 import { Colors } from '@/constants/theme';
 import { authClient } from "@/lib/auth-client";
 import { router } from 'expo-router';
@@ -198,7 +199,10 @@ export function LoginActionSheet({
                         loop
                         style={styles.loggingInLottie}
                     />
-                    <ThemedText style={[styles.loggingInText, { color: theme.text }]}>Logging you in…</ThemedText>
+                    <TypingText
+                        text="Logging you in"
+                        style={[styles.loggingInText, { color: theme.text }]}
+                    />
                 </View>
             ) : (
                 <View style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
@@ -272,6 +276,7 @@ export function LoginActionSheet({
 const styles = StyleSheet.create({
     loggingInContainer: {
         paddingVertical: 40,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
