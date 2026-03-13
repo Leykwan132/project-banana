@@ -70,10 +70,12 @@ const mapBackendStatusToUiStatus = (status?: string): ApplicationStatus => {
             return "Changes Required";
         case "ready_to_post":
             return "Ready to Post";
+        case "verifying":
+            return "Verifying";
         case "action_required":
             return "Action Required";
         case "earning":
-            return "Posted";
+            return "Earning";
         default:
             return "Pending Submission";
     }
@@ -133,6 +135,7 @@ export default function ApplicationDetailScreen() {
 
     const submissionSheetRef = useRef<ActionSheetRef>(null);
     const reviewSheetRef = useRef<ActionSheetRef>(null);
+    const statusInfoSheetRef = useRef<ActionSheetRef>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [instagramLink, setInstagramLink] = useState('');
     const [tiktokLink, setTikTokLink] = useState('');
@@ -280,12 +283,21 @@ export default function ApplicationDetailScreen() {
         }
 
         const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
-        if (requiresBothPlatformPosts) {
-            if (!instagramLink || !tiktokLink) {
-                setError('This campaign requires both Instagram and TikTok post URLs.');
-                return;
-            }
-        } else if (!instagramLink && !tiktokLink) {
+        const isTargetedRelink = isActionRequired && hasRelinkRequiredPlatform;
+        const requiresInstagramLink = isTargetedRelink ? instagramNeedsRelink : (requiresBothPlatformPosts || isPayAsYouGoPlan);
+        const requiresTikTokLink = isTargetedRelink ? tiktokNeedsRelink : requiresBothPlatformPosts;
+
+        if (requiresInstagramLink && !instagramLink) {
+            setError('Please provide your Instagram post URL.');
+            return;
+        }
+
+        if (requiresTikTokLink && !tiktokLink) {
+            setError('Please provide your TikTok post URL.');
+            return;
+        }
+
+        if (!requiresInstagramLink && !requiresTikTokLink && !instagramLink && !tiktokLink) {
             setError(isPayAsYouGoPlan ? 'Please provide your Instagram post URL.' : 'Please provide at least one post URL (Instagram or TikTok).');
             return;
         }
@@ -333,7 +345,7 @@ export default function ApplicationDetailScreen() {
             await Promise.all([
                 updateApplicationStatus({
                     applicationId,
-                    status: "earning",
+                    status: "verifying",
                     ig_post_url: instagramLink ? instagramLink.trim() : undefined,
                     tiktok_post_url: tiktokLink ? tiktokLink.trim() : undefined,
                 }),
@@ -385,6 +397,8 @@ export default function ApplicationDetailScreen() {
     const applicationStatus = mapBackendStatusToUiStatus(application?.status);
     const isActionRequired = applicationStatus === 'Action Required';
     const isReadyToPost = applicationStatus === 'Ready to Post';
+    const isVerifying = applicationStatus === 'Verifying';
+    const isEarning = applicationStatus === 'Earning';
     const isPayAsYouGoPlan = (campaign?.business_plan_type ?? 'free').toLowerCase() === 'free';
     const requiresBothPlatformPosts = campaign?.requires_both_platform_posts ?? false;
     const missingPostDescription = application?.missing_post_description as
@@ -407,8 +421,42 @@ export default function ApplicationDetailScreen() {
     });
     const instagramNeedsRelink = missingPostDescription?.instagram?.reuploadRequired === true;
     const tiktokNeedsRelink = missingPostDescription?.tiktok?.reuploadRequired === true;
+    const requiresMultipleRelinks = instagramNeedsRelink && tiktokNeedsRelink;
     const hasRelinkRequiredPlatform = orderedMissingDescriptionCards.some(({ details }) => details.reuploadRequired);
     const canResubmitLinks = !isActionRequired || hasRelinkRequiredPlatform;
+
+    const statusBreakdown: Array<{ status: ApplicationStatus; action: string }> = [
+        {
+            status: 'Pending Submission',
+            action: 'Upload your video draft for review.',
+        },
+        {
+            status: 'Under Review',
+            action: 'Hang tight while the business reviews your submission.',
+        },
+        {
+            status: 'Changes Required',
+            action: 'Review the feedback and upload a revised version.',
+        },
+        {
+            status: 'Ready to Post',
+            action: 'Publish your approved content, then submit the live post URL.',
+        },
+        {
+            status: 'Verifying',
+            action: 'Lumina will verify your live post and description at 12am.',
+        },
+        {
+            status: 'Action Required',
+            action: hasRelinkRequiredPlatform
+                ? 'Update the affected post link and resubmit it here.'
+                : 'Fix the live post description so all required tags are included.',
+        },
+        {
+            status: 'Earning',
+            action: 'Track your earnings and post performance here.',
+        },
+    ];
 
     const copyText = async (field: 'tracking' | 'hashtags' | 'mentions', value: string) => {
         if (!value) return;
@@ -531,6 +579,7 @@ export default function ApplicationDetailScreen() {
                                                 {details.reuploadReason}
                                             </ThemedText>
                                         ) : null}
+
                                     </View>
                                 ) : null}
                                 {details.trackingTagMissing ? (
@@ -563,6 +612,9 @@ export default function ApplicationDetailScreen() {
                             ) : null}
                         </View>
                     ))}
+                    <ThemedText style={[styles.actionRequiredNote, { color: mutedTextColor }]}>
+                        Note: The next check will happen at 12.15am the next day.
+                    </ThemedText>
                 </View>
             ) : null}
         </View>
@@ -578,10 +630,12 @@ export default function ApplicationDetailScreen() {
                 return 1;
             case 'Ready to Post':
                 return 3;
+            case 'Verifying':
             case 'Action Required':
                 return 4;
+            case 'Earning':
             case 'Posted':
-                return 4;
+                return 5;
             default:
                 return 1;
         }
@@ -702,8 +756,8 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </View>
 
-                {/* Flippable Earnings Card - only shown when Posted */}
-                {applicationStatus === 'Posted' && (
+                {/* Flippable Earnings Card - only shown when Earning */}
+                {isEarning && (
                     <FlippableEarningsCard
                         style={{ marginBottom: 24 }}
                         frontContent={
@@ -743,7 +797,10 @@ export default function ApplicationDetailScreen() {
                 <View style={styles.timelineSection}>
                     <View style={styles.sectionHeaderRow}>
                         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Application Status</ThemedText>
-                        <ApplicationStatusBadge status={applicationStatus} />
+                        <ApplicationStatusBadge
+                            status={applicationStatus}
+                            onPress={() => statusInfoSheetRef.current?.show()}
+                        />
                     </View>
 
                     {/* Step 1: Application Created - Always Success */}
@@ -808,11 +865,15 @@ export default function ApplicationDetailScreen() {
                         </View>
                     </Timeline>
 
-                    {/* Step 4: Post and Start Earning */}
+                    {/* Step 4: Post & Lumina Verify */}
                     <Timeline
                         topLine={{
                             type: Timeline.lineTypes.DASHED,
                             color: currentStep >= 3 ? Colors[colorScheme ?? 'light'].tint : '#E0E0E0'
+                        }}
+                        bottomLine={{
+                            type: Timeline.lineTypes.DASHED,
+                            color: currentStep >= 4 ? Colors[colorScheme ?? 'light'].tint : '#E0E0E0'
                         }}
                         point={
                             currentStep >= 4
@@ -823,7 +884,26 @@ export default function ApplicationDetailScreen() {
                         }
                     >
                         <View style={[styles.timelineItem, { backgroundColor: surfaceColor }]}>
-                            <Text text70BO color={currentStep >= 3 ? theme.text : mutedTextColor}>Post and Start Earning!</Text>
+                            <Text text70BO color={currentStep >= 4 ? theme.text : mutedTextColor}>Post &amp; Lumina Verify</Text>
+                        </View>
+                    </Timeline>
+
+                    {/* Step 5: Earning */}
+                    <Timeline
+                        topLine={{
+                            type: Timeline.lineTypes.DASHED,
+                            color: currentStep >= 4 ? Colors[colorScheme ?? 'light'].tint : '#E0E0E0'
+                        }}
+                        point={
+                            currentStep >= 5
+                                ? { icon: Assets.internal.icons.checkSmall, state: Timeline.states.SUCCESS }
+                                : currentStep === 4
+                                    ? { type: Timeline.pointTypes.OUTLINE, color: '#FFB300' }
+                                    : { type: Timeline.pointTypes.CIRCLE, color: '#E0E0E0' }
+                        }
+                    >
+                        <View style={[styles.timelineItem, { backgroundColor: surfaceColor }]}>
+                            <Text text70BO color={currentStep >= 5 ? theme.text : mutedTextColor}>Earning</Text>
                         </View>
                     </Timeline>
                 </View>
@@ -1037,14 +1117,14 @@ export default function ApplicationDetailScreen() {
                                                     ? hasRelinkRequiredPlatform
                                                         ? 'Update post link'
                                                         : 'Post description'
-                                                    : 'Congratulations!'}
+                                                    : 'Submit your post'}
                                             </ThemedText>
                                             <ThemedText style={[styles.sheetSubtitle, { color: mutedTextColor }]}>
                                                 {isActionRequired
                                                     ? hasRelinkRequiredPlatform
                                                         ? 'Copy the latest public post link for the affected platform and paste it below.'
                                                         : 'Copy the required tracking tag, hashtags, and mentions for your live post.'
-                                                    : 'You are close to earning with this campaign!'}
+                                                    : 'Paste your live post links so Lumina can verify your post at 12am before earning starts.'}
                                             </ThemedText>
                                         </View>
 
@@ -1095,7 +1175,10 @@ export default function ApplicationDetailScreen() {
                                                     <ThemedText type="defaultSemiBold" style={styles.inputLabel}>4. Copy & Paste your post url</ThemedText>
                                                     <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>
                                                         {isActionRequired && hasRelinkRequiredPlatform
-                                                            ? 'Paste the replacement link for each affected platform. Make sure the account is public.'
+                                                            ? `${requiresMultipleRelinks
+                                                                ? 'Paste the replacement link for each affected platform.'
+                                                                : 'Paste the replacement link for the affected platform.'
+                                                            }`
                                                             : requiresBothPlatformPosts
                                                                 ? 'This campaign requires both Instagram and TikTok URLs.'
                                                                 : 'You cannot edit URLs after submission.'}
@@ -1144,13 +1227,13 @@ export default function ApplicationDetailScreen() {
                                 ) : (
                                     <Animated.View entering={SlideInRight} style={styles.successContent}>
                                         <LottieView
-                                            source={require('../../assets/lotties/success.json')}
+                                            source={require('../../assets/lotties/checking.json')}
                                             autoPlay
-                                            loop={false}
+                                            loop
                                             style={{ width: 120, height: 120, marginBottom: 16 }}
                                         />
-                                        <ThemedText style={[styles.successTitle, { color: theme.text }]}>You&apos;re earning for this post!</ThemedText>
-                                        <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>and your analytics will update on a daily basis</ThemedText>
+                                        <ThemedText style={[styles.successTitle, { color: theme.text }]}>We are verifying!</ThemedText>
+                                        <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Lumina will verify your post at 12am. Once approved, you will start earning.</ThemedText>
 
                                         <Pressable
                                             style={[
@@ -1317,6 +1400,70 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </ActionSheet>
 
+                <ActionSheet gestureEnabled ref={statusInfoSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
+                    <View style={[styles.statusSheetContainer, { backgroundColor: screenBackgroundColor }]}>
+                        <View style={styles.sheetHeader}>
+                            <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>Status</ThemedText>
+                        </View>
+
+                        <ScrollView
+                            style={styles.statusSheetScrollView}
+                            contentContainerStyle={styles.statusSheetScrollContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {statusBreakdown.map(({ status, action }) => {
+                                const isCurrentStatus = status === applicationStatus;
+
+                                return (
+                                    <View
+                                        key={status}
+                                        style={[
+                                            styles.statusBreakdownCard,
+                                            isCurrentStatus && styles.statusBreakdownCurrentCard,
+                                            {
+                                                backgroundColor: isCurrentStatus
+                                                    ? (isDark ? '#1B241D' : '#EEF8F0')
+                                                    : surfaceColor,
+                                                borderColor: isCurrentStatus ? theme.tint : borderColor,
+                                            },
+                                        ]}
+                                    >
+                                        <ApplicationStatusBadge status={status} style={styles.statusBreakdownBadge} />
+                                        <ThemedText style={[styles.statusBreakdownBody, { color: theme.text }]}>
+                                            {action}
+                                        </ThemedText>
+                                    </View>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <View
+                            style={[
+                                styles.sheetFooter,
+                                {
+                                    backgroundColor: screenBackgroundColor,
+                                    borderTopColor: dividerColor,
+                                    paddingBottom: Math.max(insets.bottom, 24),
+                                }
+                            ]}
+                        >
+                            <Pressable
+                                style={[
+                                    styles.dismissButton,
+                                    {
+                                        width: '100%',
+                                        backgroundColor: dismissButtonBackground,
+                                        borderColor: dismissButtonBorderColor,
+                                    }
+                                ]}
+                                onPress={() => statusInfoSheetRef.current?.hide()}
+                            >
+                                <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Got it</ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </ActionSheet>
+
 
             </ScrollView>
 
@@ -1326,18 +1473,18 @@ export default function ApplicationDetailScreen() {
                         styles.actionButton,
                         { backgroundColor: defaultActionButtonBackground },
                         isReadyToPost && { backgroundColor: primaryActionButtonBackground },
-                        applicationStatus === 'Under Review' && { backgroundColor: isDark ? '#262626' : '#E0E0E0', opacity: 1 }
+                        (applicationStatus === 'Under Review' || isVerifying) && { backgroundColor: isDark ? '#262626' : '#E0E0E0', opacity: 1 }
                     ]}
-                    disabled={applicationStatus === 'Under Review'}
+                    disabled={applicationStatus === 'Under Review' || isVerifying}
                     onPress={() => {
-                        if (applicationStatus === 'Posted') {
+                        if (isEarning) {
                             if (resolvedCampaignId) {
                                 router.push(`/campaign/${resolvedCampaignId}`);
                             }
                         } else if (isReadyToPost || isActionRequired) {
                             setShowSuccess(false);
-                            setInstagramLink(application?.ig_post_url ?? '');
-                            setTikTokLink(application?.tiktok_post_url ?? '');
+                            setInstagramLink('');
+                            setTikTokLink('');
                             setError('');
                             submissionSheetRef.current?.show();
                         } else {
@@ -1351,19 +1498,21 @@ export default function ApplicationDetailScreen() {
                         styles.actionButtonText,
                         { color: defaultActionButtonTextColor },
                         isReadyToPost && { color: '#FFFFFF' },
-                        applicationStatus === 'Under Review' && { color: '#666' }
+                        (applicationStatus === 'Under Review' || isVerifying) && { color: '#666' }
                     ]}>
-                        {applicationStatus === 'Posted'
+                        {isEarning
                             ? 'Submit Another'
                             : isReadyToPost
-                                ? 'Start Earning'
+                                ? 'Submit Post'
                                 : isActionRequired
                                     ? hasRelinkRequiredPlatform
                                         ? 'Re-upload Link'
                                         : 'Post Descriptions'
-                                    : applicationStatus === 'Under Review'
-                                        ? 'Under Review'
-                                        : 'Review & Upload'}
+                                    : isVerifying
+                                        ? 'Verifying'
+                                        : applicationStatus === 'Under Review'
+                                            ? 'Under Review'
+                                            : 'Review & Upload'}
                     </ThemedText>
                 </Pressable>
             </View>
@@ -1511,6 +1660,28 @@ const styles = StyleSheet.create({
         fontFamily: 'GoogleSans_400Regular',
         color: '#000',
     },
+    statusBreakdownCard: {
+        gap: 12,
+        padding: 16,
+        marginBottom: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+    },
+    statusBreakdownCurrentCard: {
+        borderWidth: 2,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+        elevation: 4,
+    },
+    statusBreakdownBadge: {
+        alignSelf: 'flex-start',
+    },
+    statusBreakdownBody: {
+        fontSize: 14,
+        lineHeight: 20,
+        fontFamily: 'GoogleSans_400Regular',
+    },
     payoutsList: {
         marginTop: 8,
         padding: 16,
@@ -1655,6 +1826,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
+    },
+    statusSheetContainer: {
+        height: '100%',
+        paddingTop: 24,
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+    },
+    statusSheetScrollView: {
+        flex: 1,
+    },
+    statusSheetScrollContent: {
+        paddingHorizontal: 24,
+        paddingBottom: 16,
     },
     sheetScrollableContainer: {
         maxHeight: '100%',
@@ -1810,6 +1995,7 @@ const styles = StyleSheet.create({
     },
     actionRequiredNote: {
         fontSize: 12,
+        marginTop: 12,
         fontFamily: 'GoogleSans_400Regular',
         lineHeight: 18,
     },

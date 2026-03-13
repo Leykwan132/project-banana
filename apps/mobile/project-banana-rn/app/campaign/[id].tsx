@@ -640,10 +640,19 @@ export default function CampaignDetailsScreen() {
                                 </Timeline>
                                 <Timeline
                                     topLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                    bottomLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
                                     point={{ type: Timeline.pointTypes.CIRCLE, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
                                 >
                                     <View style={{ backgroundColor: panelBackgroundColor, borderRadius: 12, padding: 16, borderWidth: 1, borderColor }}>
-                                        <Text text70BO color={colorScheme === 'dark' ? '#9CA3AF' : '#666'}>Post and Start Earning!</Text>
+                                        <Text text70BO color={colorScheme === 'dark' ? '#9CA3AF' : '#666'}>Post &amp; Lumina Verify</Text>
+                                    </View>
+                                </Timeline>
+                                <Timeline
+                                    topLine={{ type: Timeline.lineTypes.DASHED, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                    point={{ type: Timeline.pointTypes.CIRCLE, color: colorScheme === 'dark' ? '#333' : '#E0E0E0' }}
+                                >
+                                    <View style={{ backgroundColor: panelBackgroundColor, borderRadius: 12, padding: 16, borderWidth: 1, borderColor }}>
+                                        <Text text70BO color={colorScheme === 'dark' ? '#9CA3AF' : '#666'}>Earning</Text>
                                     </View>
                                 </Timeline>
                             </View>

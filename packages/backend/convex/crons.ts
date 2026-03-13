@@ -30,6 +30,9 @@ const PRIVATE_OR_MISSING_POST_ERROR_PATTERNS = [
     "restricted access",
 ];
 
+const isVerifyingStatus = (status?: string) =>
+    status === ApplicationStatus.Verifying;
+
 const stripPrefix = (value: string, prefix: "#" | "@") => {
     const trimmed = value.trim();
     return trimmed.startsWith(prefix) ? trimmed.slice(1) : trimmed;
@@ -351,7 +354,10 @@ export const runDailyScrape = internalAction({
 
                 const allSubmittedPlatformsValidated = submittedPlatformCount > 0 && validatedPlatformCount === submittedPlatformCount;
 
-                if (app.status === ApplicationStatus.ActionRequired && allSubmittedPlatformsValidated) {
+                if (
+                    (isVerifyingStatus(app.status) || app.status === ApplicationStatus.ActionRequired)
+                    && allSubmittedPlatformsValidated
+                ) {
                     await ctx.runMutation(internal.applications.setApplicationStatusFromCron, {
                         applicationId: app._id,
                         status: ApplicationStatus.Earning,
@@ -359,6 +365,10 @@ export const runDailyScrape = internalAction({
                     });
                 } else if (app.status === ApplicationStatus.ActionRequired) {
                     console.log(`Application ${app._id} remains action_required until all submitted platforms are revalidated`);
+                    totalApplicationsProcessed++;
+                    continue;
+                } else if (isVerifyingStatus(app.status)) {
+                    console.log(`Application ${app._id} remains verifying until all submitted platforms are validated`);
                     totalApplicationsProcessed++;
                     continue;
                 }

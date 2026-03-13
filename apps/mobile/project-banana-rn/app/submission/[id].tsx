@@ -30,8 +30,10 @@ const mapSubmissionStatus = (status?: string): ApplicationStatus => {
             return "Changes Required";
         case "ready_to_post":
             return "Ready to Post";
+        case "verifying":
+            return "Verifying";
         case "earning":
-            return "Posted";
+            return "Earning";
         default:
             return "Pending Submission";
     }

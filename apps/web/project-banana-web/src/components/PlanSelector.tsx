@@ -16,7 +16,7 @@ const PLANS = [
             { text: 'Pay RM 100 per campaign', crossed: false },
             { text: 'Instagram support', crossed: false },
             { text: 'Hashtag and mention capability', crossed: true },
-            { text: 'TikTok support', crossed: true }
+            { text: 'TikTok support (Beta)', crossed: true }
         ],
     },
     {
@@ -30,7 +30,7 @@ const PLANS = [
             { text: '100 monthly platform-assisted reviews', crossed: false },
             { text: 'Hashtag and mention capability', crossed: false },
             { text: 'Instagram support', crossed: false },
-            { text: 'TikTok support', crossed: false }
+            { text: 'TikTok support (Beta)', crossed: false }
         ],
     },
     {
@@ -44,7 +44,7 @@ const PLANS = [
             { text: '200 monthly platform-assisted reviews', crossed: false },
             { text: 'Hashtag and mention capability', crossed: false },
             { text: 'Instagram support', crossed: false },
-            { text: 'TikTok support', crossed: false }
+            { text: 'TikTok support (Beta)', crossed: false }
         ],
     },
     {
@@ -58,7 +58,7 @@ const PLANS = [
             { text: '500 monthly platform-assisted reviews', crossed: false },
             { text: 'Hashtag and mention capability', crossed: false },
             { text: 'Instagram support', crossed: false },
-            { text: 'TikTok support', crossed: false },
+            { text: 'TikTok support (Beta)', crossed: false },
             { text: 'Priority & Founder support', crossed: false },
         ],
     },

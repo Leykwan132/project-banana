@@ -13,6 +13,7 @@ export const ApplicationStatus = {
     Reviewing: "reviewing",
     ChangesRequested: "changes_requested",
     ReadyToPost: "ready_to_post",
+    Verifying: "verifying",
     Earning: "earning",
 } as const;
 export type ApplicationStatus = (typeof ApplicationStatus)[keyof typeof ApplicationStatus];

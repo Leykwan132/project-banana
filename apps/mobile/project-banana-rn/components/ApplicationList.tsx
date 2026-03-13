@@ -14,7 +14,7 @@ import LottieView from 'lottie-react-native';
 import { usePaginatedQuery } from 'convex/react';
 
 import { ApplicationListItem } from '@/components/ApplicationListItem';
-import { ApplicationStatus } from '@/components/ApplicationStatusBadge';
+import { ApplicationStatus, getStatusConfig } from '@/components/ApplicationStatusBadge';
 import { SelectionSheet } from '@/components/SelectionSheet';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
@@ -22,12 +22,13 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 
 const FILTER_OPTIONS = [
-    { label: 'Pending Submission', value: 'pending_submission' },
-    { label: 'Under Review', value: 'reviewing' },
-    { label: 'Changes Required', value: 'changes_requested' },
-    { label: 'Ready to Post', value: 'ready_to_post' },
-    { label: 'Action Required', value: 'action_required' },
-    { label: 'Posted', value: 'earning' },
+    { label: 'Pending Submission', value: 'pending_submission', icon: getStatusConfig('Pending Submission').icon },
+    { label: 'Under Review', value: 'reviewing', icon: getStatusConfig('Under Review').icon },
+    { label: 'Changes Required', value: 'changes_requested', icon: getStatusConfig('Changes Required').icon },
+    { label: 'Ready to Post', value: 'ready_to_post', icon: getStatusConfig('Ready to Post').icon },
+    { label: 'Verifying', value: 'verifying', icon: getStatusConfig('Verifying').icon },
+    { label: 'Action Required', value: 'action_required', icon: getStatusConfig('Action Required').icon },
+    { label: 'Earning', value: 'earning', icon: getStatusConfig('Earning').icon },
 ];
 
 const ApplicationSkeleton = () => {
@@ -84,8 +85,9 @@ export function ApplicationList() {
             'reviewing': 'Under Review',
             'changes_requested': 'Changes Required',
             'ready_to_post': 'Ready to Post',
+            'verifying': 'Verifying',
             'action_required': 'Action Required',
-            'earning': 'Posted',
+            'earning': 'Earning',
         };
         return statusMap[convexStatus] || 'Pending Submission';
     };

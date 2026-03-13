@@ -223,7 +223,7 @@ export default function ReviewSubmission() {
                     <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl relative overflow-hidden flex flex-col animate-scaleIn">
                         <h2 className="text-xl font-bold text-gray-900 mb-3">Approve Submission?</h2>
                         <p className="text-gray-500 mb-8">
-                            Are you sure you want to approve this submission? The creator will be notified to post and start earning.
+                            Are you sure you want to approve this submission? The creator will be notified to post and enter Lumina verification before earning starts.
                         </p>
 
                         <div className="flex gap-4 justify-end">

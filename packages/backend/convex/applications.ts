@@ -54,6 +54,9 @@ const formatCompactViews = (views: number) => {
     if (views >= 1000) return `${Math.round(views / 1000)}k`;
     return `${views}`;
 };
+
+const isVerifyingStatus = (status?: string) =>
+    status === ApplicationStatus.Verifying;
 // ============================================================
 // QUERIES
 // ============================================================
@@ -266,7 +269,7 @@ export const getApplicationsForEarningCheck = internalQuery({
         paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        // Find users/campaigns that are actively earning with pagination
+        // Find enrolled users/campaigns that should be evaluated during the nightly earning check.
         const earningStatusesResult = await ctx.db
             .query("user_campaign_status")
             .withIndex("by_status", (q) => q.eq("status", UserCampaignStatus.Earning))
@@ -297,6 +300,7 @@ export const getApplicationsForEarningCheck = internalQuery({
             if (apps && (isActive || isCancelledWithinGracePeriod)) {
                 for (const app of apps) {
                     if (
+                        isVerifyingStatus(app.status) ||
                         app.status === ApplicationStatus.Earning ||
                         app.status === ApplicationStatus.ActionRequired
                     ) {
@@ -357,7 +361,7 @@ export const createApplication = mutationWithTriggers({
 export const updateApplicationStatus = mutationWithTriggers({
     args: {
         applicationId: v.id("applications"),
-        status: v.string(), // e.g. "ready_to_post", "earning"
+        status: v.string(), // e.g. "ready_to_post", "verifying"
         // Optional fields to update
         ig_post_url: v.optional(v.string()),
         tiktok_post_url: v.optional(v.string()),
@@ -385,6 +389,24 @@ export const updateApplicationStatus = mutationWithTriggers({
         const business = await ctx.db.get(campaign.business_id);
         const businessPlanType = (business?.subscription_plan_type ?? "free").toLowerCase();
         const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
+        const missingPostDescription = application.missing_post_description as
+            | {
+                instagram?: { reuploadRequired?: boolean };
+                tiktok?: { reuploadRequired?: boolean };
+            }
+            | undefined;
+        const isTargetedRelink =
+            application.status === ApplicationStatus.ActionRequired &&
+            (
+                missingPostDescription?.instagram?.reuploadRequired === true ||
+                missingPostDescription?.tiktok?.reuploadRequired === true
+            );
+        const requiresInstagramLink = isTargetedRelink
+            ? missingPostDescription?.instagram?.reuploadRequired === true
+            : (requiresBothPlatformPosts || businessPlanType === "free");
+        const requiresTikTokLink = isTargetedRelink
+            ? missingPostDescription?.tiktok?.reuploadRequired === true
+            : requiresBothPlatformPosts;
 
         if (businessPlanType === "free" && args.tiktok_post_url) {
             throw new ConvexError({
@@ -393,7 +415,21 @@ export const updateApplicationStatus = mutationWithTriggers({
             });
         }
 
-        if (!args.ig_post_url && !args.tiktok_post_url) {
+        if (requiresInstagramLink && !args.ig_post_url) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "Please provide your Instagram post URL.",
+            });
+        }
+
+        if (requiresTikTokLink && !args.tiktok_post_url) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "Please provide your TikTok post URL.",
+            });
+        }
+
+        if (!requiresInstagramLink && !requiresTikTokLink && !args.ig_post_url && !args.tiktok_post_url) {
             throw new ConvexError({
                 code: ERROR_CODES.INVALID_INPUT.code,
                 message: businessPlanType === "free"
@@ -402,18 +438,11 @@ export const updateApplicationStatus = mutationWithTriggers({
             });
         }
 
-        if (requiresBothPlatformPosts && (!args.ig_post_url || !args.tiktok_post_url)) {
-            throw new ConvexError({
-                code: ERROR_CODES.INVALID_INPUT.code,
-                message: "This campaign requires both Instagram and TikTok post URLs.",
-            });
-        }
-
         await ctx.db.patch(args.applicationId, {
             status: args.status,
-            posted_at: args.status === ApplicationStatus.Earning ? Date.now() : undefined,
-            ig_post_url: args.ig_post_url,
-            tiktok_post_url: args.tiktok_post_url,
+            posted_at: args.status === ApplicationStatus.Verifying ? Date.now() : application.posted_at,
+            ig_post_url: args.ig_post_url ?? application.ig_post_url,
+            tiktok_post_url: args.tiktok_post_url ?? application.tiktok_post_url,
             missing_post_description: args.status === ApplicationStatus.Earning ? undefined : application.missing_post_description,
             updated_at: Date.now(),
         });
@@ -423,7 +452,11 @@ export const updateApplicationStatus = mutationWithTriggers({
 export const setApplicationStatusFromCron = internalMutationWithTriggers({
     args: {
         applicationId: v.id("applications"),
-        status: v.union(v.literal(ApplicationStatus.ActionRequired), v.literal(ApplicationStatus.Earning)),
+        status: v.union(
+            v.literal(ApplicationStatus.Verifying),
+            v.literal(ApplicationStatus.ActionRequired),
+            v.literal(ApplicationStatus.Earning),
+        ),
         missingPostDescription: v.optional(missingPostDescriptionValidator),
     },
     handler: async (ctx, args) => {

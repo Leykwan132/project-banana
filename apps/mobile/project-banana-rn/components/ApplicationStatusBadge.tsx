@@ -1,18 +1,19 @@
-import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { View, StyleSheet, StyleProp, ViewStyle, Pressable } from 'react-native';
 import {
     Clock,
     Eye,
     AlertCircle,
     CircleCheck,
-    Star,
-    BadgeCheck
+    BadgeCheck,
+    LoaderPinwheel,
+    Sprout
 } from 'lucide-react-native';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 
-export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Action Required' | 'Posted' | 'Active' | 'Rejected' | 'Pending' | 'Paid' | 'Processing' | 'Completed' | 'Failed';
+export type ApplicationStatus = 'Pending Submission' | 'Under Review' | 'Changes Required' | 'Ready to Post' | 'Verifying' | 'Action Required' | 'Earning' | 'Posted' | 'Active' | 'Rejected' | 'Pending' | 'Paid' | 'Processing' | 'Completed' | 'Failed';
 
 export const getStatusConfig = (status?: ApplicationStatus) => {
     switch (status) {
@@ -40,6 +41,14 @@ export const getStatusConfig = (status?: ApplicationStatus) => {
                 icon: Eye,
                 iconColor: '#FFF93C'
             };
+        case 'Verifying':
+            return {
+                bg: '#FEF7E0',
+                text: '#B08800',
+                border: '#B08800',
+                icon: LoaderPinwheel,
+                iconColor: '#F4C542'
+            };
         case 'Changes Required':
             return {
                 bg: '#FCE8E6',
@@ -56,13 +65,14 @@ export const getStatusConfig = (status?: ApplicationStatus) => {
                 icon: AlertCircle,
                 iconColor: '#FF7E87'
             };
+        case 'Earning':
         case 'Posted':
             return {
                 bg: '#E6F4EA',
                 text: '#1E8E3E',
                 border: '#1E8E3E',
-                icon: Star,
-                iconColor: '#FFD700'
+                icon: Sprout,
+                iconColor: '#4CAF50'
             };
         case 'Active':
             return {
@@ -125,9 +135,10 @@ export const getStatusConfig = (status?: ApplicationStatus) => {
 interface ApplicationStatusBadgeProps {
     status?: ApplicationStatus;
     style?: StyleProp<ViewStyle>;
+    onPress?: () => void;
 }
 
-export function ApplicationStatusBadge({ status, style }: ApplicationStatusBadgeProps) {
+export function ApplicationStatusBadge({ status, style, onPress }: ApplicationStatusBadgeProps) {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const theme = Colors[colorScheme ?? 'light'];
@@ -136,7 +147,7 @@ export function ApplicationStatusBadge({ status, style }: ApplicationStatusBadge
 
     const { icon: StatusIcon, iconColor } = getStatusConfig(status);
 
-    return (
+    const content = (
         <View
             style={[
                 styles.statusBadge,
@@ -152,6 +163,16 @@ export function ApplicationStatusBadge({ status, style }: ApplicationStatusBadge
                 {status}
             </ThemedText>
         </View>
+    );
+
+    if (!onPress) {
+        return content;
+    }
+
+    return (
+        <Pressable onPress={onPress} hitSlop={8} style={({ pressed }) => pressed ? { opacity: 0.8 } : undefined}>
+            {content}
+        </Pressable>
     );
 }
 

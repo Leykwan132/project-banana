@@ -184,7 +184,7 @@ export default defineSchema({
     applications: defineTable({
         user_id: v.string(),
         campaign_id: v.id("campaigns"),
-        status: v.string(), // "pending_submission" | "reviewing" | "changes_requested" | "ready_to_post" | "action_required" | "earning"
+        status: v.string(), // "pending_submission" | "reviewing" | "changes_requested" | "ready_to_post" | "verifying" | "action_required" | "earning"
         ig_post_url: v.optional(v.string()),
         tiktok_post_url: v.optional(v.string()),
         tracking_tag: v.optional(v.string()),
