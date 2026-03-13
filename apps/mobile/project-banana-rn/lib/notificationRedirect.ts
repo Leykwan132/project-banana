@@ -91,14 +91,7 @@ export const navigateFromNotification = (router: { push: (href: any) => void }, 
             return payload;
         case NotificationType.BankAccountApproved:
         case NotificationType.BankAccountRejected:
-            router.push({
-                pathname: '/modal',
-                params: {
-                    type: payload.type,
-                    bankAccountId: payload.bankAccountId ?? '',
-                    endingDigits: payload.endingDigits ?? '',
-                },
-            });
+            router.push('/bank-account');
             return payload;
         default:
             return payload;
