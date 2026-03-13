@@ -5,6 +5,8 @@ const platformMissingDescriptionValidator = v.object({
     trackingTagMissing: v.boolean(),
     missingHashtags: v.array(v.string()),
     missingMentions: v.array(v.string()),
+    reuploadRequired: v.optional(v.boolean()),
+    reuploadReason: v.optional(v.string()),
 });
 
 const missingPostDescriptionValidator = v.object({

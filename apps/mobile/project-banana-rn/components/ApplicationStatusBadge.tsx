@@ -50,11 +50,11 @@ export const getStatusConfig = (status?: ApplicationStatus) => {
             };
         case 'Action Required':
             return {
-                bg: '#FFF4E5',
-                text: '#B45309',
-                border: '#B45309',
+                bg: '#FCE8E6',
+                text: '#D93025',
+                border: '#D93025',
                 icon: AlertCircle,
-                iconColor: '#F59E0B'
+                iconColor: '#FF7E87'
             };
         case 'Posted':
             return {

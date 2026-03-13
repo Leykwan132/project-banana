@@ -79,6 +79,14 @@ const mapBackendStatusToUiStatus = (status?: string): ApplicationStatus => {
     }
 };
 
+type PlatformActionRequiredDetails = {
+    trackingTagMissing: boolean;
+    missingHashtags: string[];
+    missingMentions: string[];
+    reuploadRequired?: boolean;
+    reuploadReason?: string;
+};
+
 export default function ApplicationDetailScreen() {
     const { id, campaignId } = useLocalSearchParams();
     const applicationId = id as Id<"applications">;
@@ -97,10 +105,13 @@ export default function ApplicationDetailScreen() {
     const subduedTextColor = isDark ? '#8A8A8A' : '#999999';
     const skeletonColor = isDark ? '#262626' : '#ECE8DF';
     const primaryActionButtonBackground = theme.primaryButton;
+    const defaultActionButtonBackground = isDark ? '#F3F1EA' : '#000000';
+    const defaultActionButtonTextColor = isDark ? '#111111' : '#FFFFFF';
     const dismissButtonBackground = isDark ? '#1F1F1F' : '#F4F1E8';
     const dismissButtonBorderColor = isDark ? '#333333' : '#E3DDD1';
 
     const application = useQuery(api.applications.getApplication, { applicationId });
+
     const submissions = useQuery(api.submissions.getSubmissionsByApplication, { applicationId });
     const resolvedCampaignId = application?.campaign_id ?? routeCampaignId;
     const campaign = useQuery(
@@ -378,8 +389,8 @@ export default function ApplicationDetailScreen() {
     const requiresBothPlatformPosts = campaign?.requires_both_platform_posts ?? false;
     const missingPostDescription = application?.missing_post_description as
         | {
-            instagram?: { trackingTagMissing: boolean; missingHashtags: string[]; missingMentions: string[] };
-            tiktok?: { trackingTagMissing: boolean; missingHashtags: string[]; missingMentions: string[] };
+            instagram?: PlatformActionRequiredDetails;
+            tiktok?: PlatformActionRequiredDetails;
             checkedAt: number;
         }
         | undefined;
@@ -388,8 +399,16 @@ export default function ApplicationDetailScreen() {
         missingPostDescription?.tiktok ? { platform: 'TikTok', details: missingPostDescription.tiktok } : null,
     ].filter(Boolean) as Array<{
         platform: 'Instagram' | 'TikTok';
-        details: { trackingTagMissing: boolean; missingHashtags: string[]; missingMentions: string[] };
+        details: PlatformActionRequiredDetails;
     }>;
+    const orderedMissingDescriptionCards = [...missingDescriptionCards].sort((a, b) => {
+        if (a.platform === b.platform) return 0;
+        return a.platform === 'TikTok' ? -1 : 1;
+    });
+    const instagramNeedsRelink = missingPostDescription?.instagram?.reuploadRequired === true;
+    const tiktokNeedsRelink = missingPostDescription?.tiktok?.reuploadRequired === true;
+    const hasRelinkRequiredPlatform = orderedMissingDescriptionCards.some(({ details }) => details.reuploadRequired);
+    const canResubmitLinks = !isActionRequired || hasRelinkRequiredPlatform;
 
     const copyText = async (field: 'tracking' | 'hashtags' | 'mentions', value: string) => {
         if (!value) return;
@@ -438,6 +457,116 @@ export default function ApplicationDetailScreen() {
             </View>
         );
     };
+
+    const renderMissingPills = (values: string[], prefix: "#" | "@") => (
+        <View style={styles.missingPillRow}>
+            {values.map((value, index) => (
+                <View
+                    key={`${prefix}-${value}-${index}`}
+                    style={[styles.missingPill, { backgroundColor: isDark ? '#111111' : '#F3EEE3', borderColor: isDark ? '#303030' : '#DDD6C7' }]}
+                >
+                    <ThemedText style={[styles.missingPillText, { color: theme.text }]}>
+                        {`${prefix}${value}`}
+                    </ThemedText>
+                </View>
+            ))}
+        </View>
+    );
+
+    const renderActionRequiredCard = () => (
+        <View
+            style={[
+                styles.infoCard,
+                styles.actionRequiredCard,
+                {
+                    backgroundColor: isDark ? '#171717' : '#FBFAF7',
+                    borderColor: isDark ? '#3A2B2B' : '#E5D5D0',
+                    minHeight: 0,
+                    gap: 12,
+                }
+            ]}
+        >
+            <View
+                style={[
+                    styles.actionRequiredBanner,
+                    {
+                        backgroundColor: isDark ? '#2A1215' : '#FFF1F0',
+                        borderColor: isDark ? '#5C0011' : '#FFCCC7',
+                    }
+                ]}
+            >
+                <AlertTriangle size={16} color={isDark ? '#FFCCC7' : '#A8071A'} />
+                <ThemedText type="defaultSemiBold" style={{ color: isDark ? '#FFCCC7' : '#A8071A' }}>
+                    {hasRelinkRequiredPlatform ? 'Re-upload your post link' : 'Edit your post description'}
+                </ThemedText>
+            </View>
+
+            {orderedMissingDescriptionCards.length > 0 ? (
+                <View style={styles.missingDescriptionList}>
+                    {orderedMissingDescriptionCards.map(({ platform, details }, index) => (
+                        <View key={platform} style={styles.missingDescriptionSection}>
+                            <View style={styles.missingDescriptionCard}>
+                                <ThemedText type="defaultSemiBold" style={{ color: theme.text }}>
+                                    {`Platform: ${platform}`}
+                                </ThemedText>
+                                {platform === 'Instagram' && application?.ig_post_url ? (
+                                    <Pressable onPress={() => Linking.openURL(application.ig_post_url!)} hitSlop={8}>
+                                        <ThemedText style={[styles.submittedLinkText, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>
+                                            {application.ig_post_url}
+                                        </ThemedText>
+                                    </Pressable>
+                                ) : null}
+                                {platform === 'TikTok' && application?.tiktok_post_url ? (
+                                    <Pressable onPress={() => Linking.openURL(application.tiktok_post_url!)} hitSlop={8}>
+                                        <ThemedText style={[styles.submittedLinkText, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>
+                                            {application.tiktok_post_url}
+                                        </ThemedText>
+                                    </Pressable>
+                                ) : null}
+                                {details.reuploadRequired ? (
+                                    <View style={styles.missingDescriptionItem}>
+
+                                        {details.reuploadReason ? (
+                                            <ThemedText style={[styles.infoCardBody, { color: theme.text }]}>
+                                                {details.reuploadReason}
+                                            </ThemedText>
+                                        ) : null}
+                                    </View>
+                                ) : null}
+                                {details.trackingTagMissing ? (
+                                    <View style={styles.missingDescriptionItem}>
+                                        <ThemedText style={[styles.missingDescriptionLabel, { color: mutedTextColor }]}>
+                                            Missing tracking tag
+                                        </ThemedText>
+                                        {application?.tracking_tag ? renderMissingPills([application.tracking_tag], '#') : null}
+                                    </View>
+                                ) : null}
+                                {details.missingHashtags.length > 0 ? (
+                                    <View style={styles.missingDescriptionItem}>
+                                        <ThemedText style={[styles.missingDescriptionLabel, { color: mutedTextColor }]}>
+                                            Missing hashtags
+                                        </ThemedText>
+                                        {renderMissingPills(details.missingHashtags, '#')}
+                                    </View>
+                                ) : null}
+                                {details.missingMentions.length > 0 ? (
+                                    <View style={styles.missingDescriptionItem}>
+                                        <ThemedText style={[styles.missingDescriptionLabel, { color: mutedTextColor }]}>
+                                            Missing mentions
+                                        </ThemedText>
+                                        {renderMissingPills(details.missingMentions, '@')}
+                                    </View>
+                                ) : null}
+                            </View>
+                            {index < orderedMissingDescriptionCards.length - 1 ? (
+                                <View style={[styles.missingDescriptionSeparator, { backgroundColor: dividerColor }]} />
+                            ) : null}
+                        </View>
+                    ))}
+                </View>
+            ) : null}
+        </View>
+    );
 
     const getTimelineStep = (status: ApplicationStatus) => {
         switch (status) {
@@ -608,6 +737,8 @@ export default function ApplicationDetailScreen() {
                         }
                     />
                 )}
+
+                {isActionRequired ? renderActionRequiredCard() : null}
 
                 <View style={styles.timelineSection}>
                     <View style={styles.sectionHeaderRow}>
@@ -858,6 +989,7 @@ export default function ApplicationDetailScreen() {
                                     views={creator.views}
                                     amount={creator.amount}
                                     logoUrl={creator.logoUrl}
+                                    onPress={() => creator.postUrl ? Linking.openURL(creator.postUrl) : undefined}
                                 />
                             ))
                         ) : (
@@ -901,11 +1033,17 @@ export default function ApplicationDetailScreen() {
                                     <Animated.View exiting={SlideOutLeft}>
                                         <View style={styles.sheetHeader}>
                                             <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>
-                                                {isActionRequired ? 'Fix your post description' : 'Congratulations!'}
+                                                {isActionRequired
+                                                    ? hasRelinkRequiredPlatform
+                                                        ? 'Update post link'
+                                                        : 'Post description'
+                                                    : 'Congratulations!'}
                                             </ThemedText>
                                             <ThemedText style={[styles.sheetSubtitle, { color: mutedTextColor }]}>
                                                 {isActionRequired
-                                                    ? 'Your live post is missing required copy. Update it to keep earning.'
+                                                    ? hasRelinkRequiredPlatform
+                                                        ? 'Copy the latest public post link for the affected platform and paste it below.'
+                                                        : 'Copy the required tracking tag, hashtags, and mentions for your live post.'
                                                     : 'You are close to earning with this campaign!'}
                                             </ThemedText>
                                         </View>
@@ -951,66 +1089,36 @@ export default function ApplicationDetailScreen() {
                                             </View>
                                         )}
 
-                                        {isActionRequired ? (
-                                            <View style={[styles.infoCard, { backgroundColor: surfaceColor, borderColor, minHeight: 0, gap: 12 }]}>
-                                                <View style={styles.infoCardHeader}>
-                                                    <AlertTriangle size={18} color={isDark ? '#FACC15' : '#B45309'} />
-                                                    <ThemedText type="defaultSemiBold" style={{ color: theme.text }}>Update your live description</ThemedText>
-                                                </View>
-                                                <ThemedText style={[styles.infoCardBody, { color: mutedTextColor }]}>
-                                                    Add the tracking tag, hashtags, and mentions above to your live post description. Your submitted URLs are already saved.
-                                                </ThemedText>
-                                                {missingDescriptionCards.length > 0 ? (
-                                                    <View style={styles.missingDescriptionList}>
-                                                        {missingDescriptionCards.map(({ platform, details }) => (
-                                                            <View key={platform} style={[styles.missingDescriptionCard, { borderColor, backgroundColor: isDark ? '#111111' : '#FFFFFF' }]}>
-                                                                <ThemedText type="defaultSemiBold" style={{ color: theme.text }}>{platform}</ThemedText>
-                                                                {details.trackingTagMissing ? (
-                                                                    <ThemedText style={[styles.missingDescriptionText, { color: mutedTextColor }]}>
-                                                                        Missing tracking tag #{application?.tracking_tag}
-                                                                    </ThemedText>
-                                                                ) : null}
-                                                                {details.missingHashtags.length > 0 ? (
-                                                                    <ThemedText style={[styles.missingDescriptionText, { color: mutedTextColor }]}>
-                                                                        Missing hashtags {formatMissingList(details.missingHashtags, '#')}
-                                                                    </ThemedText>
-                                                                ) : null}
-                                                                {details.missingMentions.length > 0 ? (
-                                                                    <ThemedText style={[styles.missingDescriptionText, { color: mutedTextColor }]}>
-                                                                        Missing mentions {formatMissingList(details.missingMentions, '@')}
-                                                                    </ThemedText>
-                                                                ) : null}
-                                                            </View>
-                                                        ))}
-                                                    </View>
-                                                ) : null}
-                                            </View>
-                                        ) : (
+                                        {canResubmitLinks ? (
                                             <>
                                                 <View style={styles.inputSection}>
                                                     <ThemedText type="defaultSemiBold" style={styles.inputLabel}>4. Copy & Paste your post url</ThemedText>
                                                     <ThemedText style={[styles.inputDescription, { color: mutedTextColor }]}>
-                                                        {requiresBothPlatformPosts
-                                                            ? 'This campaign requires both Instagram and TikTok URLs.'
-                                                            : 'You cannot edit URLs after submission.'}
+                                                        {isActionRequired && hasRelinkRequiredPlatform
+                                                            ? 'Paste the replacement link for each affected platform. Make sure the account is public.'
+                                                            : requiresBothPlatformPosts
+                                                                ? 'This campaign requires both Instagram and TikTok URLs.'
+                                                                : 'You cannot edit URLs after submission.'}
                                                     </ThemedText>
 
-                                                    <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
-                                                        <FontAwesome5 name="instagram" size={24} color={theme.text} style={styles.inputIcon} />
-                                                        <TextInput
-                                                            style={[styles.urlInput, { color: theme.text }]}
-                                                            placeholder={requiresBothPlatformPosts || isPayAsYouGoPlan ? "https://www.instagram.com/..." : "https://www.instagram.com/... (Optional)"}
-                                                            placeholderTextColor={subduedTextColor}
-                                                            value={instagramLink}
-                                                            onChangeText={(text) => {
-                                                                setInstagramLink(text);
-                                                                setError('');
-                                                            }}
-                                                            autoCapitalize="none"
-                                                        />
-                                                    </View>
+                                                    {!isActionRequired || instagramNeedsRelink ? (
+                                                        <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
+                                                            <FontAwesome5 name="instagram" size={24} color={theme.text} style={styles.inputIcon} />
+                                                            <TextInput
+                                                                style={[styles.urlInput, { color: theme.text }]}
+                                                                placeholder={requiresBothPlatformPosts || isPayAsYouGoPlan ? "https://www.instagram.com/..." : "https://www.instagram.com/... (Optional)"}
+                                                                placeholderTextColor={subduedTextColor}
+                                                                value={instagramLink}
+                                                                onChangeText={(text) => {
+                                                                    setInstagramLink(text);
+                                                                    setError('');
+                                                                }}
+                                                                autoCapitalize="none"
+                                                            />
+                                                        </View>
+                                                    ) : null}
 
-                                                    {!isPayAsYouGoPlan && (
+                                                    {(!isPayAsYouGoPlan && (!isActionRequired || tiktokNeedsRelink)) ? (
                                                         <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
                                                             <FontAwesome5 name="tiktok" size={24} color={theme.text} style={styles.inputIcon} />
                                                             <TextInput
@@ -1025,13 +1133,13 @@ export default function ApplicationDetailScreen() {
                                                                 autoCapitalize="none"
                                                             />
                                                         </View>
-                                                    )}
+                                                    ) : null}
 
                                                     {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
                                                 </View>
 
                                             </>
-                                        )}
+                                        ) : null}
                                     </Animated.View>
                                 ) : (
                                     <Animated.View entering={SlideInRight} style={styles.successContent}>
@@ -1063,7 +1171,7 @@ export default function ApplicationDetailScreen() {
                             </View>
                         </ScrollView>
 
-                        {!isSubmitting && !showSuccess && !isActionRequired ? (
+                        {!isSubmitting && !showSuccess && canResubmitLinks ? (
                             <View
                                 style={[
                                     styles.sheetFooter,
@@ -1074,8 +1182,10 @@ export default function ApplicationDetailScreen() {
                                     },
                                 ]}
                             >
-                                <Pressable style={styles.actionButton} onPress={handleSubmit}>
-                                    <ThemedText style={styles.actionButtonText}>Submit</ThemedText>
+                                <Pressable style={[styles.actionButton, { backgroundColor: primaryActionButtonBackground }]} onPress={handleSubmit}>
+                                    <ThemedText style={[styles.actionButtonText, { color: '#FFFFFF' }]}>
+                                        {isActionRequired ? 'Re-upload Link' : 'Submit'}
+                                    </ThemedText>
                                 </Pressable>
                             </View>
                         ) : null}
@@ -1115,12 +1225,13 @@ export default function ApplicationDetailScreen() {
                                 <Pressable
                                     style={[
                                         styles.actionButton,
+                                        { backgroundColor: defaultActionButtonBackground },
                                         { marginTop: 24, opacity: isReviewed ? 1 : 0.5 }
                                     ]}
                                     onPress={handleSelectVideo}
                                     disabled={!isReviewed}
                                 >
-                                    <ThemedText style={styles.actionButtonText}>Select Video</ThemedText>
+                                    <ThemedText style={[styles.actionButtonText, { color: defaultActionButtonTextColor }]}>Select Video</ThemedText>
                                 </Pressable>
                             </Animated.View>
                         )}
@@ -1145,10 +1256,10 @@ export default function ApplicationDetailScreen() {
                                 )}
 
                                 <Pressable
-                                    style={[styles.actionButton, { marginTop: 8 }]}
+                                    style={[styles.actionButton, { marginTop: 8, backgroundColor: primaryActionButtonBackground }]}
                                     onPress={handleUpload}
                                 >
-                                    <ThemedText style={styles.actionButtonText}>Submit</ThemedText>
+                                    <ThemedText style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Submit</ThemedText>
                                 </Pressable>
                             </Animated.View>
                         )}
@@ -1213,8 +1324,8 @@ export default function ApplicationDetailScreen() {
                 <Pressable
                     style={[
                         styles.actionButton,
+                        { backgroundColor: defaultActionButtonBackground },
                         isReadyToPost && { backgroundColor: primaryActionButtonBackground },
-                        isActionRequired && { backgroundColor: isDark ? '#92400E' : '#B45309' },
                         applicationStatus === 'Under Review' && { backgroundColor: isDark ? '#262626' : '#E0E0E0', opacity: 1 }
                     ]}
                     disabled={applicationStatus === 'Under Review'}
@@ -1238,6 +1349,8 @@ export default function ApplicationDetailScreen() {
                 >
                     <ThemedText style={[
                         styles.actionButtonText,
+                        { color: defaultActionButtonTextColor },
+                        isReadyToPost && { color: '#FFFFFF' },
                         applicationStatus === 'Under Review' && { color: '#666' }
                     ]}>
                         {applicationStatus === 'Posted'
@@ -1245,7 +1358,9 @@ export default function ApplicationDetailScreen() {
                             : isReadyToPost
                                 ? 'Start Earning'
                                 : isActionRequired
-                                    ? 'Fix Description'
+                                    ? hasRelinkRequiredPlatform
+                                        ? 'Re-upload Link'
+                                        : 'Post Descriptions'
                                     : applicationStatus === 'Under Review'
                                         ? 'Under Review'
                                         : 'Review & Upload'}
@@ -1484,14 +1599,32 @@ const styles = StyleSheet.create({
     },
     infoCard: {
         flex: 1,
-        backgroundColor: '#F5F5F5',
+        // backgroundColor: '#F5F5F5',
         borderRadius: 20,
-        padding: 16,
+        // padding: 16,
         gap: 24,
         minHeight: 140,
         justifyContent: 'space-between',
+        // borderWidth: 1,
+        // borderColor: '#EEEEEE',
+    },
+    actionRequiredCard: {
+        marginBottom: 24,
+        padding: 16,
         borderWidth: 1,
-        borderColor: '#EEEEEE',
+        borderRadius: 18,
+        justifyContent: 'flex-start',
+    },
+    actionRequiredBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 0,
     },
     infoIconContainer: {
         width: 32,
@@ -1663,7 +1796,6 @@ const styles = StyleSheet.create({
         color: '#D32F2F',
         fontSize: 12,
         fontFamily: 'GoogleSans_400Regular',
-        marginTop: -4,
         marginBottom: 8,
     },
     infoCardHeader: {
@@ -1676,19 +1808,60 @@ const styles = StyleSheet.create({
         fontFamily: 'GoogleSans_400Regular',
         lineHeight: 20,
     },
+    actionRequiredNote: {
+        fontSize: 12,
+        fontFamily: 'GoogleSans_400Regular',
+        lineHeight: 18,
+    },
     missingDescriptionList: {
-        gap: 10,
+        gap: 0,
+    },
+    missingDescriptionSection: {
+        gap: 12,
     },
     missingDescriptionCard: {
-        borderWidth: 1,
-        borderRadius: 14,
-        padding: 12,
+        paddingVertical: 2,
+        gap: 10,
+    },
+    missingDescriptionSeparator: {
+        height: StyleSheet.hairlineWidth,
+        width: '100%',
+        marginBottom: 8,
+    },
+    missingDescriptionItem: {
         gap: 6,
     },
-    missingDescriptionText: {
+    missingDescriptionLabel: {
         fontSize: 13,
         fontFamily: 'GoogleSans_400Regular',
         lineHeight: 18,
+    },
+    missingDescriptionValue: {
+        fontSize: 13,
+        fontFamily: 'GoogleSans_500Medium',
+        lineHeight: 18,
+    },
+    missingPillRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    missingPill: {
+        borderWidth: 1,
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    missingPillText: {
+        fontSize: 12,
+        fontFamily: 'GoogleSans_500Medium',
+        lineHeight: 16,
+    },
+    submittedLinkText: {
+        fontSize: 13,
+        fontFamily: 'GoogleSans_500Medium',
+        lineHeight: 18,
+        textDecorationLine: 'underline',
     },
     successContent: {
         alignItems: 'center',

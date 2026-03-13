@@ -12,6 +12,8 @@ type PlatformMissingDescription = {
     trackingTagMissing: boolean;
     missingHashtags: string[];
     missingMentions: string[];
+    reuploadRequired?: boolean;
+    reuploadReason?: string;
 };
 
 type MissingPostDescription = {
@@ -19,6 +21,14 @@ type MissingPostDescription = {
     tiktok?: PlatformMissingDescription;
     checkedAt: number;
 };
+
+const PRIVATE_OR_MISSING_POST_ERROR_PATTERNS = [
+    "post not found or private",
+    "post not found",
+    "private",
+    "restricted_page",
+    "restricted access",
+];
 
 const stripPrefix = (value: string, prefix: "#" | "@") => {
     const trimmed = value.trim();
@@ -60,6 +70,69 @@ const collectMissingDescription = (args: {
         missingMentions,
     };
 };
+
+const getScrapeErrorMessage = (value: unknown) => {
+    if (!value || typeof value !== "object") {
+        return undefined;
+    }
+
+    const error = (value as { error?: unknown }).error;
+    const errorDescription = (value as { errorDescription?: unknown }).errorDescription;
+    const normalizedError = typeof error === "string" && error.trim() ? error.trim() : undefined;
+    const normalizedDescription =
+        typeof errorDescription === "string" && errorDescription.trim()
+            ? errorDescription.trim()
+            : undefined;
+
+    if (normalizedError && normalizedDescription) {
+        return `${normalizedError}: ${normalizedDescription}`;
+    }
+
+    return normalizedError ?? normalizedDescription;
+};
+
+const getThrowableMessage = (value: unknown) => {
+    if (value instanceof Error) {
+        return value.message;
+    }
+
+    return typeof value === "string" ? value : undefined;
+};
+
+const shouldRequireRelink = (message?: string) => {
+    if (!message) {
+        return false;
+    }
+
+    const normalized = message.toLowerCase();
+    return PRIVATE_OR_MISSING_POST_ERROR_PATTERNS.some((pattern) => normalized.includes(pattern));
+};
+
+const formatRelinkReason = (platform: "Instagram" | "TikTok", reason?: string) => {
+    const normalized = reason?.toLowerCase() ?? "";
+
+    if (
+        normalized.includes("restricted_page") ||
+        normalized.includes("restricted access") ||
+        normalized.includes("post not found") ||
+        normalized.includes("private")
+    ) {
+        return `We couldn't verify this ${platform} post. Please make sure your account is public and resubmit the link.`;
+    }
+
+    return `We couldn't verify this ${platform} post. Please make sure your account is public and resubmit the link.`;
+};
+
+const buildRelinkRequiredDescription = (
+    platform: "Instagram" | "TikTok",
+    reason?: string,
+): PlatformMissingDescription => ({
+    trackingTagMissing: false,
+    missingHashtags: [],
+    missingMentions: [],
+    reuploadRequired: true,
+    reuploadReason: formatRelinkReason(platform, reason),
+});
 
 export const runDailyScrape = internalAction({
     args: {},
@@ -139,37 +212,54 @@ export const runDailyScrape = internalAction({
 
                         if (reels && reels.length > 0) {
                             const reel = reels[0];
-                            const igMissing = collectMissingDescription({
-                                trackingTag: app.tracking_tag,
-                                requiredHashtags: descriptionRequiredHashtags,
-                                requiredMentions: descriptionRequiredMentions,
-                                availableHashtags: (reel.hashtags || []) as string[],
-                                availableMentions: (reel.mentions || []) as string[],
-                            });
+                            if (reel) {
+                                const scrapeError = getScrapeErrorMessage(reel);
+                                if (shouldRequireRelink(scrapeError)) {
+                                    console.warn(`IG post for app ${app._id} needs a new public link: ${scrapeError}`);
+                                    missingPostDescription.instagram = buildRelinkRequiredDescription("Instagram", scrapeError);
+                                    hasMissingPostDescription = true;
+                                } else {
+                                    const igMissing = collectMissingDescription({
+                                        trackingTag: app.tracking_tag,
+                                        requiredHashtags: descriptionRequiredHashtags,
+                                        requiredMentions: descriptionRequiredMentions,
+                                        availableHashtags: (reel.hashtags || []) as string[],
+                                        availableMentions: (reel.mentions || []) as string[],
+                                    });
 
-                            if (igMissing) {
-                                console.warn(`IG post for app ${app._id} missing required structured description data`);
-                                missingPostDescription.instagram = igMissing;
-                                hasMissingPostDescription = true;
+                                    if (igMissing) {
+                                        console.warn(`IG post for app ${app._id} missing required structured description data`);
+                                        missingPostDescription.instagram = igMissing;
+                                        hasMissingPostDescription = true;
+                                    } else {
+                                        validatedPlatformCount += 1;
+                                        const views = (reel.videoPlayCount || 0) as number;
+                                        const likes = (reel.likesCount || 0) as number;
+                                        const comments = (reel.commentsCount || 0) as number;
+                                        const shares = (reel.sharesCount || 0) as number;
+
+                                        console.log(`IG Scraped for app ${app._id}: Views=${views}, Likes=${likes}, Comments=${comments}, Shares=${shares}`);
+
+                                        totalViews = totalViews + views;
+                                        totalLikes = totalLikes + likes;
+                                        totalComments = totalComments + comments;
+                                        totalShares = totalShares + shares;
+                                        hasValidData = true;
+                                    }
+                                }
                             } else {
-                                validatedPlatformCount += 1;
-                                const views = (reel.videoPlayCount || 0) as number;
-                                const likes = (reel.likesCount || 0) as number;
-                                const comments = (reel.commentsCount || 0) as number;
-                                const shares = (reel.sharesCount || 0) as number;
-
-                                console.log(`IG Scraped for app ${app._id}: Views=${views}, Likes=${likes}, Comments=${comments}, Shares=${shares}`);
-
-                                totalViews = totalViews + views;
-                                totalLikes = totalLikes + likes;
-                                totalComments = totalComments + comments;
-                                totalShares = totalShares + shares;
-                                hasValidData = true;
+                                console.log("No IG reel data found for this URL");
                             }
                         } else {
                             console.log("No IG reel data found for this URL");
                         }
                     } catch (e) {
+                        const errorMessage = getThrowableMessage(e);
+                        if (shouldRequireRelink(errorMessage)) {
+                            console.warn(`IG post for app ${app._id} needs a new public link: ${errorMessage}`);
+                            missingPostDescription.instagram = buildRelinkRequiredDescription("Instagram", errorMessage);
+                            hasMissingPostDescription = true;
+                        }
                         console.error(`Failed to scrape IG for app ${app._id}:`, e);
                     }
                 }
@@ -184,37 +274,50 @@ export const runDailyScrape = internalAction({
                         console.log(`TikTok Scraped: ${JSON.stringify(tiktokPost)}`);
 
                         if (tiktokPost) {
-                            const tiktokMissing = collectMissingDescription({
-                                trackingTag: app.tracking_tag,
-                                requiredHashtags: descriptionRequiredHashtags,
-                                requiredMentions: descriptionRequiredMentions,
-                                availableHashtags: normalizeTikTokHashtags((tiktokPost.hashtags || []) as Array<{ name?: string }>),
-                                availableMentions: (tiktokPost.mentions || []) as string[],
-                            });
-
-                            if (tiktokMissing) {
-                                console.warn(`TikTok post for app ${app._id} missing required structured description data`);
-                                missingPostDescription.tiktok = tiktokMissing;
+                            const scrapeError = getScrapeErrorMessage(tiktokPost);
+                            if (shouldRequireRelink(scrapeError)) {
+                                console.warn(`TikTok post for app ${app._id} needs a new public link: ${scrapeError}`);
+                                missingPostDescription.tiktok = buildRelinkRequiredDescription("TikTok", scrapeError);
                                 hasMissingPostDescription = true;
                             } else {
-                                validatedPlatformCount += 1;
-                                const views = (tiktokPost.playCount || 0) as number;
-                                const likes = (tiktokPost.diggCount || 0) as number;
-                                const comments = (tiktokPost.commentCount || 0) as number;
-                                const shares = (tiktokPost.shareCount || 0) as number;
+                                const tiktokMissing = collectMissingDescription({
+                                    trackingTag: app.tracking_tag,
+                                    requiredHashtags: descriptionRequiredHashtags,
+                                    requiredMentions: descriptionRequiredMentions,
+                                    availableHashtags: normalizeTikTokHashtags((tiktokPost.hashtags || []) as Array<{ name?: string }>),
+                                    availableMentions: (tiktokPost.mentions || []) as string[],
+                                });
 
-                                console.log(`TikTok Scraped: Views=${views}, Likes=${likes}, Comments=${comments}, Shares=${shares}`);
+                                if (tiktokMissing) {
+                                    console.warn(`TikTok post for app ${app._id} missing required structured description data`);
+                                    missingPostDescription.tiktok = tiktokMissing;
+                                    hasMissingPostDescription = true;
+                                } else {
+                                    validatedPlatformCount += 1;
+                                    const views = (tiktokPost.playCount || 0) as number;
+                                    const likes = (tiktokPost.diggCount || 0) as number;
+                                    const comments = (tiktokPost.commentCount || 0) as number;
+                                    const shares = (tiktokPost.shareCount || 0) as number;
 
-                                totalViews = totalViews + views;
-                                totalLikes = totalLikes + likes;
-                                totalComments = totalComments + comments;
-                                totalShares = totalShares + shares;
-                                hasValidData = true;
+                                    console.log(`TikTok Scraped: Views=${views}, Likes=${likes}, Comments=${comments}, Shares=${shares}`);
+
+                                    totalViews = totalViews + views;
+                                    totalLikes = totalLikes + likes;
+                                    totalComments = totalComments + comments;
+                                    totalShares = totalShares + shares;
+                                    hasValidData = true;
+                                }
                             }
                         } else {
                             console.log("No TikTok post data found for this URL");
                         }
                     } catch (e) {
+                        const errorMessage = getThrowableMessage(e);
+                        if (shouldRequireRelink(errorMessage)) {
+                            console.warn(`TikTok post for app ${app._id} needs a new public link: ${errorMessage}`);
+                            missingPostDescription.tiktok = buildRelinkRequiredDescription("TikTok", errorMessage);
+                            hasMissingPostDescription = true;
+                        }
                         console.error(`Failed to scrape TikTok for app ${app._id}:`, e);
                     }
                 }
@@ -241,7 +344,7 @@ export const runDailyScrape = internalAction({
                         });
                     }
 
-                    console.log(`Application ${app._id} moved to action_required because required copy is missing`);
+                    console.log(`Application ${app._id} moved to action_required because the post needs attention`);
                     totalApplicationsProcessed++;
                     continue;
                 }

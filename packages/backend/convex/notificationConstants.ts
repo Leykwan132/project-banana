@@ -18,9 +18,9 @@ export const NotificationCopy = {
             `${businessName} left feedback on your video for ${campaignName}. Tap to view and resubmit!`,
     },
     postDescriptionMissing: {
-        title: "Fix your post description ✍️",
+        title: "Fix your post details ✍️",
         description: (campaignName: string) =>
-            `Your post for ${campaignName} is missing some information. See what's missing here.`,
+            `Your post for ${campaignName} needs attention. Review the issue and re-upload link if needed.`,
     },
     bankAccountApproved: {
         title: "Bank account approved ✅",

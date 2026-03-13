@@ -81,7 +81,7 @@ export const createUserCampaignStatus = mutation({
             .unique();
 
         if (existing) {
-            throw new Error("User campaign status already exists");
+            return existing._id;
         }
 
         const now = Date.now();
