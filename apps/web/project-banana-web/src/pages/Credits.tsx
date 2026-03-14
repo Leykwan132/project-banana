@@ -1,4 +1,4 @@
-import { Coins, CreditCard, ChevronLeft, ChevronRight, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';

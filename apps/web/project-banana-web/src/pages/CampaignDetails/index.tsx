@@ -5,7 +5,7 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { Skeleton } from "@heroui/skeleton";
-import { ArrowUpRight, ChevronDown, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, AlertCircle, Swords, Star, Video, MessageSquare, Mic, Scissors, MonitorPlay, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Play, Hash, AtSign } from 'lucide-react';
+import { ArrowUpRight, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, Star, MessageSquare, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Hash, AtSign } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
@@ -53,24 +53,6 @@ const formatCampaignMetricValue = (metric: CampaignAnalyticsMetric, value: numbe
 
 const normalizeExternalUrl = (url: string) => /^https?:\/\//i.test(url) ? url : `https://${url}`;
 
-const MOCK_DAILY_STATS = Array.from({ length: 30 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-    // Make the graph grow nicely
-    const baseValue = 500 + i * 800 + Math.random() * 1500;
-    return {
-        date: dateStr,
-        views: Math.floor(baseValue * 28),
-        likes: Math.floor(baseValue * 2.5),
-        comments: Math.floor(baseValue * 0.4),
-        shares: Math.floor(baseValue * 0.2),
-        earnings: Math.floor(baseValue * 0.1),
-    };
-});
 
 const UnsavedChangesModal = ({ isOpen, onClose, onConfirm, changes = [] }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; changes?: { label: string; icon: any }[] }) => {
     if (!isOpen) return null;
@@ -603,42 +585,28 @@ export default function CampaignDetails() {
     const hasCompanyLogo = !!(business?.logo_url || business?.logo_r2_key || companyLogoPreview);
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
     const hasMediaChanges = !!logoFile || !!coverFile || (campaign ? useCompanyLogo !== Boolean(campaign.use_company_logo) : false);
-    const isCampaignAnalyticsLoading = false;
-    const isCampaignTopPostsLoading = false;
-    const isCampaignTopCreatorsLoading = false;
+    const isCampaignAnalyticsLoading = campaignDailyStats === undefined || campaignTotalStats === undefined;
+    const isCampaignTopPostsLoading = campaignTopOverviewLists === undefined;
+    const isCampaignTopCreatorsLoading = campaignTopCreatorsByViews === undefined;
 
-    const topCampaignPosts = [
-        { applicationId: 'mock-1', platform: 'TikTok', postUrl: 'https://tiktok.com', views: 854000 },
-        { applicationId: 'mock-2', platform: 'Instagram', postUrl: 'https://instagram.com', views: 432000 },
-        { applicationId: 'mock-3', platform: 'YouTube', postUrl: 'https://youtube.com', views: 215000 },
-        { applicationId: 'mock-4', platform: 'TikTok', postUrl: 'https://tiktok.com', views: 185000 },
-        { applicationId: 'mock-5', platform: 'Instagram', postUrl: 'https://instagram.com', views: 95000 },
-    ];
-
-    const topCampaignCreators = [
-        { userId: 'mock-c1', creatorName: 'Alex Johnson', views: 1250000 },
-        { userId: 'mock-c2', creatorName: 'Sarah Style', views: 842000 },
-        { userId: 'mock-c3', creatorName: 'Mike Tech', views: 425000 },
-        { userId: 'mock-c4', creatorName: 'Emily Eats', views: 215000 },
-        { userId: 'mock-c5', creatorName: 'Chris Fits', views: 185000 },
-    ];
+    const topCampaignPosts = campaignTopOverviewLists?.posts ?? [];
+    const topCampaignCreators = campaignTopCreatorsByViews ?? [];
 
     const campaignAnalyticsTotals: Record<CampaignAnalyticsMetric, number> = {
-        Views: 3840000,
-        Likes: 254000,
-        Comments: 31200,
-        Shares: 18500,
-        'Amount Spend': 5400,
+        Views: campaignTotalStats?.views ?? 0,
+        Likes: campaignTotalStats?.likes ?? 0,
+        Comments: campaignTotalStats?.comments ?? 0,
+        Shares: campaignTotalStats?.shares ?? 0,
+        'Amount Spend': campaignTotalStats?.earnings ?? 0,
     };
 
     const campaignGraphData = useMemo(() => {
         const metricField = campaignMetricFieldMap[analyticsMetric];
-        return MOCK_DAILY_STATS.map((point) => ({
+        return (campaignDailyStats ?? []).map((point) => ({
             name: formatDateLabel(point.date),
             value: point[metricField],
         }));
-    }, [analyticsMetric]);
-    const latestCampaignGraphPoint = campaignGraphData[campaignGraphData.length - 1];
+    }, [analyticsMetric, campaignDailyStats]);
 
     useEffect(() => {
         setActiveChartData(null);
@@ -1381,17 +1349,22 @@ export default function CampaignDetails() {
                             <div className="flex flex-col mb-8 pointer-events-none">
                                 <div className="flex items-center gap-2 mb-4">
                                     <CurrentMetricIcon size={20} className="text-gray-500" />
-                                    <span className="text-gray-500 font-medium text-sm">Total {analyticsMetric}</span>
+                                    <span className="text-gray-500 font-medium text-sm">
+                                        {activeChartData ? analyticsMetric : `Total ${analyticsMetric}`}
+                                    </span>
                                 </div>
-                                <h3 className="text-5xl font-bold text-gray-900 mb-2">
-                                    {formatCampaignMetricValue(analyticsMetric, campaignAnalyticsTotals[analyticsMetric])}
+                                <h3 className="text-5xl font-bold text-gray-900 mb-2 transition-all duration-150">
+                                    {formatCampaignMetricValue(
+                                        analyticsMetric,
+                                        activeChartData ? activeChartData.value : campaignAnalyticsTotals[analyticsMetric]
+                                    )}
                                 </h3>
                                 <span className="text-gray-500 text-sm">
-                                    As of {new Date().toLocaleDateString('en-US', {
+                                    {activeChartData ? activeChartData.name : `As of ${new Date().toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                         year: 'numeric'
-                                    })}
+                                    })}`}
                                 </span>
                             </div>
 
@@ -1658,7 +1631,7 @@ export default function CampaignDetails() {
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <span className="text-gray-500">New Total Budget</span>
-                                                <span className="font-[800] text-gray-900">RM {requestedTotalBudget.toFixed(2)}</span>
+                                                <span className="font-extrabold text-gray-900">RM {requestedTotalBudget.toFixed(2)}</span>
                                             </div>
                                             <div className="flex justify-between items-center mt-2 border-t border-gray-100 pt-3">
                                                 <span className="text-gray-500">Maximum Payout for 1 User</span>
