@@ -46,13 +46,11 @@ export default function SettingsScreen() {
     }, [pushNotificationPreference]);
 
     const handlePrivacyPress = () => {
-        // Could navigate to a privacy page or open a URL
-        Linking.openURL('https://example.com/privacy');
+        router.push('/privacy-policy');
     };
 
     const handleTermsPress = () => {
-        // Could navigate to a terms page or open a URL
-        Linking.openURL('https://example.com/terms');
+        router.push('/terms-and-conditions');
     };
 
     const handleReportIssuePress = () => {

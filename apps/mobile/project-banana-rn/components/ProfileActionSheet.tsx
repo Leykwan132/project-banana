@@ -32,14 +32,14 @@ export function ProfileActionSheet({
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
     const iconColor = theme.text;
-    
+
     // Aligned with CampaignListItem design
     const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
     const cardBorderColor = isDark ? '#303030' : '#E4DED2';
     const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
     const badgeBackgroundColor = isDark ? '#111111' : '#F3EEE3';
     const badgeLabelColor = isDark ? '#9CA3AF' : '#6F6758';
-    
+
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const posthog = usePostHog();
@@ -148,7 +148,7 @@ export function ProfileActionSheet({
                                 <ExpoImage
                                     source={require('../assets/images/icon.svg')}
                                     style={styles.communityIcon}
-                                    resizeMode="contain"
+                                    contentFit="contain"
                                 />
                             </View>
                             <ThemedText style={styles.optionLabel}>Join our creator community</ThemedText>
