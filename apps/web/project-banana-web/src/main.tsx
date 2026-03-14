@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import { AuthKitProvider } from "@workos-inc/authkit-react";
 import { ConvexReactClient } from "convex/react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ToastProvider } from "@heroui/toast";
@@ -61,47 +60,42 @@ createRoot(document.getElementById('root')!).render(
           <ToastProvider placement='top-center' toastOffset={30} toastProps={{
             timeout: 2000,
           }} />
-          <AuthKitProvider
-            clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}
-            redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}
-          >
-            <BrowserRouter>
-              <PostHogPageViewTracker />
-              <Routes>
-                <Route path="/" element={<App />} />
-                <Route path="/business" element={<App />} />
-                <Route path="/pricing" element={<App />} />
-                <Route path="/about" element={<App />} />
-                <Route path="/support" element={<App />} />
-                <Route path="/privacy-policy" element={<App />} />
-                <Route path="/terms-and-conditions" element={<App />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/onboarding" element={<Onboarding />} />
-                <Route element={<DashboardLayout />}>
-                  <Route path="/overview" element={<Overview />} />
-                  <Route path="/campaigns" element={<Campaigns />} />
-                  <Route path="/campaign/new" element={<CreateCampaign />} />
-                  <Route path="/campaigns/:campaignId" element={<CampaignDetails />} />
-                  <Route path="/approvals" element={<Approvals />} />
-                  <Route path="/approvals/:id" element={<ApprovalDetails />} />
-                  <Route path="/approvals/:id/submission/:submissionId" element={<ReviewSubmission />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/credits" element={<Credits />} />
-                  <Route path="/withdrawals" element={<Withdrawals />} />
-                  <Route path="/withdrawals/request" element={<RequestWithdrawal />} />
-                  <Route path="/bank-accounts" element={<BankAccounts />} />
-                  <Route path="/credits/topup" element={<TopUp />} />
-                  <Route path="/subscription" element={<Subscription />} />
-                </Route>
-                <Route element={<AdminLayout />}>
-                  <Route path="/admin" element={null} />
-                  <Route path="/admin/bank-approvals" element={<AdminBankApprovals />} />
-                  <Route path="/admin/submissions" element={<AdminSubmissions />} />
-                  <Route path="/admin/payouts" element={<AdminPayouts />} />
-                </Route>
-              </Routes>
-            </BrowserRouter>
-          </AuthKitProvider>
+          <BrowserRouter>
+            <PostHogPageViewTracker />
+            <Routes>
+              <Route path="/" element={<App />} />
+              <Route path="/business" element={<App />} />
+              <Route path="/pricing" element={<App />} />
+              <Route path="/about" element={<App />} />
+              <Route path="/support" element={<App />} />
+              <Route path="/privacy-policy" element={<App />} />
+              <Route path="/terms-and-conditions" element={<App />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route element={<DashboardLayout />}>
+                <Route path="/overview" element={<Overview />} />
+                <Route path="/campaigns" element={<Campaigns />} />
+                <Route path="/campaign/new" element={<CreateCampaign />} />
+                <Route path="/campaigns/:campaignId" element={<CampaignDetails />} />
+                <Route path="/approvals" element={<Approvals />} />
+                <Route path="/approvals/:id" element={<ApprovalDetails />} />
+                <Route path="/approvals/:id/submission/:submissionId" element={<ReviewSubmission />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/credits" element={<Credits />} />
+                <Route path="/withdrawals" element={<Withdrawals />} />
+                <Route path="/withdrawals/request" element={<RequestWithdrawal />} />
+                <Route path="/bank-accounts" element={<BankAccounts />} />
+                <Route path="/credits/topup" element={<TopUp />} />
+                <Route path="/subscription" element={<Subscription />} />
+              </Route>
+              <Route element={<AdminLayout />}>
+                <Route path="/admin" element={null} />
+                <Route path="/admin/bank-approvals" element={<AdminBankApprovals />} />
+                <Route path="/admin/submissions" element={<AdminSubmissions />} />
+                <Route path="/admin/payouts" element={<AdminPayouts />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
         </HeroUIProvider>
       </ConvexBetterAuthProvider>
     </PostHogProvider>
