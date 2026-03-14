@@ -4,6 +4,8 @@ import { api, components, internal } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import type Stripe from "stripe";
 import { authComponent, createAuth } from "./auth";
+import { generateWebhookSignature, generateChecksumSHA512 } from "./utils";
+
 
 const priceIdToPlan: Record<string, string> = {};
 
@@ -18,310 +20,11 @@ if (process.env.STRIPE_PRICE_UNLIMITED_ANNUAL) priceIdToPlan[process.env.STRIPE_
 
 const http = httpRouter();
 
-// ============================================================
-// RAZORPAY WEBHOOK (For Top-up/Credits only)
-// ============================================================
-
 authComponent.registerRoutes(http, createAuth, { cors: true });
-
-
-http.route({
-    path: "/webhooks/razorpay",
-    method: "POST",
-    handler: httpAction(async (ctx, request) => {
-        try {
-            // Get raw body for signature verification
-            const body = await request.text();
-            const signature = request.headers.get("x-razorpay-signature");
-
-            if (!signature) {
-                return new Response(
-                    JSON.stringify({ error: "Missing signature header" }),
-                    { status: 400, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            // Verify webhook signature
-            const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-            if (!webhookSecret) {
-                console.error("RAZORPAY_WEBHOOK_SECRET not configured");
-                return new Response(
-                    JSON.stringify({ error: "Webhook not configured" }),
-                    { status: 500, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            const expectedSignature = await generateWebhookSignature(body, webhookSecret);
-            if (expectedSignature !== signature) {
-                console.error("Invalid webhook signature");
-                return new Response(
-                    JSON.stringify({ error: "Invalid signature" }),
-                    { status: 401, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            // Parse the webhook payload
-            const payload = JSON.parse(body);
-            const event = payload.event;
-
-            // Only process order.paid events (for top-up/credits)
-            if (event === "order.paid") {
-                const orderId = payload.payload.order.entity.id;
-                const paymentId = payload.payload.payment.entity.id;
-
-                // Process the payment (add credits)
-                await ctx.runMutation(api.topup.processWebhookPayment, {
-                    orderId,
-                    razorpayPaymentId: paymentId,
-                });
-
-                console.log(`Processed order.paid for order: ${orderId}`);
-            }
-
-            return new Response(
-                JSON.stringify({ success: true }),
-                { status: 200, headers: { "Content-Type": "application/json" } }
-            );
-        } catch (error) {
-            console.error("Razorpay webhook error:", error);
-            return new Response(
-                JSON.stringify({ error: "Webhook processing failed" }),
-                { status: 500, headers: { "Content-Type": "application/json" } }
-            );
-        }
-    }),
-});
-
-// ============================================================
-// BILLPLZ WEBHOOK (For Top-up/Credits)
-// ============================================================
-
-
-http.route({
-    path: "/webhooks/billplz",
-    method: "POST",
-    handler: httpAction(async (ctx, request) => {
-        try {
-            const xSignatureKey = process.env.BILLPLZ_X_SIGNATURE_KEY;
-            if (!xSignatureKey) {
-                console.error("BILLPLZ_X_SIGNATURE_KEY not configured");
-                return new Response(
-                    JSON.stringify({ error: "Webhook not configured" }),
-                    { status: 500, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            // Read and parse body
-            const contentType = request.headers.get("content-type") || "";
-            let params: Record<string, any> = {};
-
-            if (contentType.includes("application/json")) {
-                params = await request.json();
-            } else {
-                // Default to x-www-form-urlencoded as per Billplz docs/usage
-                const text = await request.text();
-                const urlParams = new URLSearchParams(text);
-                urlParams.forEach((value, key) => {
-                    params[key] = value;
-                });
-            }
-
-            // Extract signature from body
-            const signature = params.x_signature;
-            if (!signature) {
-                console.error("Missing x_signature in Billplz webhook body");
-                return new Response(
-                    JSON.stringify({ error: "Missing signature" }),
-                    { status: 400, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            // Verify Signature
-            // Source: https://www.billplz.com/api#x-signature
-            // 1. Gather all fields except 'x_signature'
-            // 2. Construct source string: key + value
-            // 3. Sort elements (case-insensitive)
-            // 4. Join with |
-            // 5. HMAC-SHA256 with X Signature Key
-
-            const sourceString = Object.keys(params)
-                .filter((key) => key !== "x_signature")
-                .map((key) => {
-                    // Ensure value is string
-                    const value = params[key] !== null && params[key] !== undefined ? String(params[key]) : "";
-                    return `${key}${value}`;
-                })
-                .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-                .join("|");
-
-
-            const expectedSignature = await generateWebhookSignature(sourceString, xSignatureKey);
-
-
-            if (expectedSignature !== signature) {
-                console.error(`Invalid Billplz signature. Expected: ${expectedSignature}, Got: ${signature}`);
-                return new Response(
-                    JSON.stringify({ error: "Invalid signature" }),
-                    { status: 401, headers: { "Content-Type": "application/json" } }
-                );
-            }
-            const id = params.id;
-            const paid = params.paid === "true" || params.paid === true;
-
-            if (id) {
-                console.log(`Processing Billplz webhook for bill ${id}, paid: ${paid}`);
-                await ctx.runMutation(internal.topup.processBillplzWebhook, {
-                    billplzId: id,
-                    paid: paid,
-                    paidAmount: params.paid_amount ? parseFloat(params.paid_amount) : undefined,
-                });
-                console.log(`Successfully processed Billplz webhook for bill ${id}`);
-            }
-
-            return new Response(
-                JSON.stringify({ success: true }),
-                { status: 200, headers: { "Content-Type": "application/json" } }
-            );
-
-        } catch (error) {
-            console.error("Billplz webhook error:", error);
-            return new Response(
-                JSON.stringify({ error: "Webhook processing failed" }),
-                { status: 500, headers: { "Content-Type": "application/json" } }
-            );
-        }
-    }),
-});
-
-// Helper function to generate HMAC-SHA256 signature for webhook verification
-async function generateWebhookSignature(data: string, secret: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    const messageData = encoder.encode(data);
-
-    const cryptoKey = await crypto.subtle.importKey(
-        "raw",
-        keyData,
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"]
-    );
-
-    const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-    const hashArray = Array.from(new Uint8Array(signature));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// Helper function to generate HMAC-SHA512 signature for Billplz V5 checksum verification
-async function generateChecksumSHA512(data: string, secret: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    const messageData = encoder.encode(data);
-
-    const cryptoKey = await crypto.subtle.importKey(
-        "raw",
-        keyData,
-        { name: "HMAC", hash: "SHA-512" },
-        false,
-        ["sign"]
-    );
-
-    const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-    const hashArray = Array.from(new Uint8Array(signature));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// ============================================================
-// BILLPLZ PAYMENT ORDER CALLBACK (For Payouts)
-// ============================================================
-
-http.route({
-    path: "/webhooks/billplz/payment_order",
-    method: "POST",
-    handler: httpAction(async (ctx, request) => {
-        try {
-            const xSignatureKey = process.env.BILLPLZ_X_SIGNATURE_KEY;
-            if (!xSignatureKey) {
-                console.error("BILLPLZ_X_SIGNATURE_KEY not configured");
-                return new Response(
-                    JSON.stringify({ error: "Webhook not configured" }),
-                    { status: 500, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            // Parse body (form-urlencoded or JSON)
-            const contentType = request.headers.get("content-type") || "";
-            let params: Record<string, any> = {};
-
-            if (contentType.includes("application/json")) {
-                params = await request.json();
-            } else {
-                const text = await request.text();
-                const urlParams = new URLSearchParams(text);
-                urlParams.forEach((value, key) => {
-                    params[key] = value;
-                });
-            }
-
-            const checksum = params.checksum;
-            if (!checksum) {
-                console.error("Missing checksum in Billplz payment order callback");
-                return new Response(
-                    JSON.stringify({ error: "Missing checksum" }),
-                    { status: 400, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            // Verify SHA-512 checksum
-            // Callback checksum fields (strict order): [id, bank_account_number, status, total, reference_id, epoch]
-            const id = params.id || "";
-            const bankAccountNumber = params.bank_account_number || "";
-            const status = params.status || "";
-            const total = params.total !== undefined ? String(params.total) : "";
-            const referenceId = params.reference_id || "";
-            const epoch = params.epoch !== undefined ? String(params.epoch) : "";
-
-            const rawString = `${id}${bankAccountNumber}${status}${total}${referenceId}${epoch}`;
-            const expectedChecksum = await generateChecksumSHA512(rawString, xSignatureKey);
-
-            if (expectedChecksum !== checksum) {
-                console.error(`Invalid Billplz Payment Order checksum. Expected: ${expectedChecksum}, Got: ${checksum}`);
-                return new Response(
-                    JSON.stringify({ error: "Invalid checksum" }),
-                    { status: 401, headers: { "Content-Type": "application/json" } }
-                );
-            }
-
-            // Only process "completed" or "refunded" statuses
-            if (status === "completed" || status === "refunded") {
-                console.log(`Processing Billplz Payment Order callback: ${id}, status: ${status}`);
-                await ctx.runMutation(internal.payouts.processPaymentOrderCallback, {
-                    billplzPaymentOrderId: id,
-                    status: status,
-                });
-                console.log(`Successfully processed Billplz Payment Order callback: ${id}`);
-            } else {
-                console.log(`Ignoring Billplz Payment Order callback with status: ${status}`);
-            }
-
-            return new Response(
-                JSON.stringify({ success: true }),
-                { status: 200, headers: { "Content-Type": "application/json" } }
-            );
-        } catch (error) {
-            console.error("Billplz Payment Order webhook error:", error);
-            return new Response(
-                JSON.stringify({ error: "Webhook processing failed" }),
-                { status: 500, headers: { "Content-Type": "application/json" } }
-            );
-        }
-    }),
-});
 
 // ============================================================
 // STRIPE WEBHOOK (For Subscriptions)
 // ============================================================
-
 registerRoutes(http, components.stripe, {
     webhookPath: "/stripe/webhook",
     events: {
@@ -425,10 +128,198 @@ registerRoutes(http, components.stripe, {
             console.log(`Subscription deleted: ${businessId}, status: ${status}`);
         },
     },
+    //@ts-ignore
     onEvent: async (ctx, event: Stripe.Event) => {
         // Called for ALL events - useful for logging/analytics
         console.log("Stripe event:", event.type);
     },
+});
+
+// ============================================================
+// BILLPLZ WEBHOOK (For Top-up/Credits)
+// ============================================================
+http.route({
+    path: "/webhooks/billplz",
+    method: "POST",
+    handler: httpAction(async (ctx, request) => {
+        try {
+            const xSignatureKey = process.env.BILLPLZ_X_SIGNATURE_KEY;
+            if (!xSignatureKey) {
+                console.error("BILLPLZ_X_SIGNATURE_KEY not configured");
+                return new Response(
+                    JSON.stringify({ error: "Webhook not configured" }),
+                    { status: 500, headers: { "Content-Type": "application/json" } }
+                );
+            }
+
+            // Read and parse body
+            const contentType = request.headers.get("content-type") || "";
+            let params: Record<string, any> = {};
+
+            if (contentType.includes("application/json")) {
+                params = await request.json();
+            } else {
+                // Default to x-www-form-urlencoded as per Billplz docs/usage
+                const text = await request.text();
+                const urlParams = new URLSearchParams(text);
+                urlParams.forEach((value, key) => {
+                    params[key] = value;
+                });
+            }
+
+            // Extract signature from body
+            const signature = params.x_signature;
+            if (!signature) {
+                console.error("Missing x_signature in Billplz webhook body");
+                return new Response(
+                    JSON.stringify({ error: "Missing signature" }),
+                    { status: 400, headers: { "Content-Type": "application/json" } }
+                );
+            }
+
+            // Verify Signature
+            // Source: https://www.billplz.com/api#x-signature
+            // 1. Gather all fields except 'x_signature'
+            // 2. Construct source string: key + value
+            // 3. Sort elements (case-insensitive)
+            // 4. Join with |
+            // 5. HMAC-SHA256 with X Signature Key
+
+            const sourceString = Object.keys(params)
+                .filter((key) => key !== "x_signature")
+                .map((key) => {
+                    // Ensure value is string
+                    const value = params[key] !== null && params[key] !== undefined ? String(params[key]) : "";
+                    return `${key}${value}`;
+                })
+                .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+                .join("|");
+
+
+            const expectedSignature = await generateWebhookSignature(sourceString, xSignatureKey);
+
+
+            if (expectedSignature !== signature) {
+                console.error(`Invalid Billplz signature. Expected: ${expectedSignature}, Got: ${signature}`);
+                return new Response(
+                    JSON.stringify({ error: "Invalid signature" }),
+                    { status: 401, headers: { "Content-Type": "application/json" } }
+                );
+            }
+            const id = params.id;
+            const paid = params.paid === "true" || params.paid === true;
+
+            if (id) {
+                console.log(`Processing Billplz webhook for bill ${id}, paid: ${paid}`);
+                await ctx.runMutation(internal.topup.processBillplzWebhook, {
+                    billplzId: id,
+                    paid: paid,
+                    paidAmount: params.paid_amount ? parseFloat(params.paid_amount) : undefined,
+                });
+                console.log(`Successfully processed Billplz webhook for bill ${id}`);
+            }
+
+            return new Response(
+                JSON.stringify({ success: true }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            );
+
+        } catch (error) {
+            console.error("Billplz webhook error:", error);
+            return new Response(
+                JSON.stringify({ error: "Webhook processing failed" }),
+                { status: 500, headers: { "Content-Type": "application/json" } }
+            );
+        }
+    }),
+});
+
+
+// ============================================================
+// BILLPLZ PAYMENT ORDER CALLBACK (For Payouts)
+// ============================================================
+
+http.route({
+    path: "/webhooks/billplz/payment_order",
+    method: "POST",
+    handler: httpAction(async (ctx, request) => {
+        try {
+            const xSignatureKey = process.env.BILLPLZ_X_SIGNATURE_KEY;
+            if (!xSignatureKey) {
+                console.error("BILLPLZ_X_SIGNATURE_KEY not configured");
+                return new Response(
+                    JSON.stringify({ error: "Webhook not configured" }),
+                    { status: 500, headers: { "Content-Type": "application/json" } }
+                );
+            }
+
+            // Parse body (form-urlencoded or JSON)
+            const contentType = request.headers.get("content-type") || "";
+            let params: Record<string, any> = {};
+
+            if (contentType.includes("application/json")) {
+                params = await request.json();
+            } else {
+                const text = await request.text();
+                const urlParams = new URLSearchParams(text);
+                urlParams.forEach((value, key) => {
+                    params[key] = value;
+                });
+            }
+
+            const checksum = params.checksum;
+            if (!checksum) {
+                console.error("Missing checksum in Billplz payment order callback");
+                return new Response(
+                    JSON.stringify({ error: "Missing checksum" }),
+                    { status: 400, headers: { "Content-Type": "application/json" } }
+                );
+            }
+
+            // Verify SHA-512 checksum
+            // Callback checksum fields (strict order): [id, bank_account_number, status, total, reference_id, epoch]
+            const id = params.id || "";
+            const bankAccountNumber = params.bank_account_number || "";
+            const status = params.status || "";
+            const total = params.total !== undefined ? String(params.total) : "";
+            const referenceId = params.reference_id || "";
+            const epoch = params.epoch !== undefined ? String(params.epoch) : "";
+
+            const rawString = `${id}${bankAccountNumber}${status}${total}${referenceId}${epoch}`;
+            const expectedChecksum = await generateChecksumSHA512(rawString, xSignatureKey);
+
+            if (expectedChecksum !== checksum) {
+                console.error(`Invalid Billplz Payment Order checksum. Expected: ${expectedChecksum}, Got: ${checksum}`);
+                return new Response(
+                    JSON.stringify({ error: "Invalid checksum" }),
+                    { status: 401, headers: { "Content-Type": "application/json" } }
+                );
+            }
+
+            // Only process "completed" or "refunded" statuses
+            if (status === "completed" || status === "refunded") {
+                console.log(`Processing Billplz Payment Order callback: ${id}, status: ${status}`);
+                await ctx.runMutation(internal.payouts.processPaymentOrderCallback, {
+                    billplzPaymentOrderId: id,
+                    status: status,
+                });
+                console.log(`Successfully processed Billplz Payment Order callback: ${id}`);
+            } else {
+                console.log(`Ignoring Billplz Payment Order callback with status: ${status}`);
+            }
+
+            return new Response(
+                JSON.stringify({ success: true }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            );
+        } catch (error) {
+            console.error("Billplz Payment Order webhook error:", error);
+            return new Response(
+                JSON.stringify({ error: "Webhook processing failed" }),
+                { status: 500, headers: { "Content-Type": "application/json" } }
+            );
+        }
+    }),
 });
 
 export default http;

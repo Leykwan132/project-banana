@@ -1,4 +1,4 @@
-import { action, query } from "./_generated/server";
+import { query } from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { createClient, type GenericCtx, type AuthFunctions } from "@convex-dev/better-auth";

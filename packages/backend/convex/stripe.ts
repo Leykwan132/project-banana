@@ -2,7 +2,7 @@ import { action, mutation, query } from "./_generated/server";
 import { components, api } from "./_generated/api";
 import { StripeSubscriptions, } from "@convex-dev/stripe";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 
 const stripeClient = new StripeSubscriptions(components.stripe, {});
 
@@ -11,7 +11,6 @@ const stripeClient = new StripeSubscriptions(components.stripe, {});
 // ============================================================
 
 type PlanType = "starter" | "growth" | "unlimited";
-type BillingCycle = "monthly" | "annual";
 
 // Plan configuration mapping
 const PLAN_CONFIG: Record<PlanType, {

@@ -6,6 +6,7 @@ import { ApifyClient } from "apify-client";
 
 export const getTiktokPost = action({
     args: { url: v.string() },
+    // @ts-ignore
     handler: async (ctx, args) => {
         const apifyToken = process.env.APIFY_API_TOKEN;
         if (!apifyToken) {

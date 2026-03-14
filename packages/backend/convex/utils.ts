@@ -1,26 +1,37 @@
-import { internalAction } from "./_generated/server";
-import { v } from "convex/values";
+// Helper function to generate HMAC-SHA256 signature for webhook verification
+export async function generateWebhookSignature(data: string, secret: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(data);
 
-export const scrapeSocialMediaStats = internalAction({
-    args: {
-        url: v.string(),
-        platform: v.string(), // "instagram" | "tiktok"
-    },
-    handler: async (ctx, args) => {
-        // TODO: Implement external scraping logic here.
-        // For now, we return mock data or 0.
-        // The user asked to "leave the function calling part".
+    const cryptoKey = await crypto.subtle.importKey(
+        "raw",
+        keyData,
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+    );
 
-        console.log(`Scraping ${args.platform} url: ${args.url}`);
+    const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+    const hashArray = Array.from(new Uint8Array(signature));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
-        // Mock response
-        const stats = {
-            views: 1000,
-            likes: 100,
-            comments: 10,
-            shares: 5,
-        };
+// Helper function to generate HMAC-SHA512 signature for Billplz V5 checksum verification
+export async function generateChecksumSHA512(data: string, secret: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(data);
 
-        return stats;
-    },
-});
+    const cryptoKey = await crypto.subtle.importKey(
+        "raw",
+        keyData,
+        { name: "HMAC", hash: "SHA-512" },
+        false,
+        ["sign"]
+    );
+
+    const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+    const hashArray = Array.from(new Uint8Array(signature));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}

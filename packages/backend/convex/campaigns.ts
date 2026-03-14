@@ -1,5 +1,4 @@
 import { action, mutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError } from "convex/values";

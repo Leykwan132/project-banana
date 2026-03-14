@@ -30,7 +30,6 @@ import type * as posthog from "../posthog.js";
 import type * as r2 from "../r2.js";
 import type * as stripe from "../stripe.js";
 import type * as submissions from "../submissions.js";
-import type * as testFunctions from "../testFunctions.js";
 import type * as tiktok from "../tiktok.js";
 import type * as topup from "../topup.js";
 import type * as userCampaignStatus from "../userCampaignStatus.js";
@@ -66,7 +65,6 @@ declare const fullApi: ApiFromModules<{
   r2: typeof r2;
   stripe: typeof stripe;
   submissions: typeof submissions;
-  testFunctions: typeof testFunctions;
   tiktok: typeof tiktok;
   topup: typeof topup;
   userCampaignStatus: typeof userCampaignStatus;

@@ -1,4 +1,4 @@
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { ErrorType } from "./errors";
 import { internal } from "./_generated/api";
@@ -23,7 +23,7 @@ export const getCreatorByUserId = query({
 
 export const getCreator = query({
     args: {},
-    handler: async (ctx, args) => {
+    handler: async (ctx) => {
         const user = await ctx.auth.getUserIdentity();
 
         if (!user) {
