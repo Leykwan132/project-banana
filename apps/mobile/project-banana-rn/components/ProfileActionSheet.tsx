@@ -1,12 +1,17 @@
-import { View, StyleSheet, Pressable, Image } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Landmark, Settings, LogOut, Gift, User as UserIcon } from 'lucide-react-native';
-
+import {
+    Landmark,
+    Settings,
+    LogOut,
+    User as UserIcon,
+} from 'lucide-react-native';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
-
+import { Image as ExpoImage } from 'expo-image';
+import { CreatorCommunitySheet } from '@/components/CreatorCommunitySheet';
 import { ThemedText } from '@/components/themed-text';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { authClient } from "@/lib/auth-client";
@@ -21,16 +26,21 @@ interface ProfileActionSheetProps {
 export function ProfileActionSheet({
     actionSheetRef,
 }: ProfileActionSheetProps) {
+    const communitySheetRef = useRef<ActionSheetRef>(null);
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
     const iconColor = theme.text;
+    
+    // Aligned with CampaignListItem design
+    const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
+    const cardBorderColor = isDark ? '#303030' : '#E4DED2';
+    const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const badgeBackgroundColor = isDark ? '#111111' : '#F3EEE3';
+    const badgeLabelColor = isDark ? '#9CA3AF' : '#6F6758';
+    
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
-    const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
-    const borderColor = isDark ? '#303030' : '#E4DED2';
-    const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
-    const mutedTextColor = isDark ? '#A0A0A0' : '#666666';
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const posthog = usePostHog();
 
@@ -60,6 +70,13 @@ export function ProfileActionSheet({
         }, 300);
     };
 
+    const handleCommunityPress = () => {
+        actionSheetRef.current?.hide();
+        setTimeout(() => {
+            communitySheetRef.current?.show();
+        }, 250);
+    };
+
     const handleLogout = async () => {
         setIsLoggingOut(true);
         try {
@@ -84,96 +101,101 @@ export function ProfileActionSheet({
     };
 
     return (
-        <ActionSheet
-            ref={actionSheetRef}
-            gestureEnabled
-            containerStyle={{ backgroundColor: screenBackgroundColor }}
-            indicatorStyle={{ backgroundColor: dividerColor }}
-        >
-            <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
-                {/* Profile Header */}
-                <View style={styles.profileHeader}>
-                    <View style={[styles.avatarContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                        {profileData.avatar ? (
-                            <Image
-                                source={{ uri: profileData.avatar }}
-                                style={styles.avatar}
-                            />
-                        ) : (
-                            <UserIcon size={40} color={isDark ? '#ccc' : "#999"} />
-                        )}
+        <>
+            <ActionSheet
+                ref={actionSheetRef}
+                gestureEnabled
+                containerStyle={{ backgroundColor: screenBackgroundColor }}
+                indicatorStyle={{ backgroundColor: cardDividerColor }}
+            >
+                <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                    {/* Profile Header */}
+                    <View style={styles.profileHeader}>
+                        <View style={[styles.avatarContainer, { backgroundColor: cardBackgroundColor, borderColor: cardBorderColor }]}>
+                            {profileData.avatar ? (
+                                <ExpoImage
+                                    source={{ uri: profileData.avatar }}
+                                    style={styles.avatar}
+                                />
+                            ) : (
+                                <UserIcon size={40} color={isDark ? '#ccc' : "#999"} />
+                            )}
+                        </View>
+                        <ThemedText type="subtitle" style={styles.name}>{profileData.name}</ThemedText>
+                        <ThemedText style={[styles.email, { color: badgeLabelColor }]}>{profileData.email}</ThemedText>
                     </View>
-                    <ThemedText type="subtitle" style={styles.name}>{profileData.name}</ThemedText>
-                    <ThemedText style={[styles.email, { color: mutedTextColor }]}>{profileData.email}</ThemedText>
-                </View>
 
-                {/* Stats Row */}
-                <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
-                        <ThemedText type="subtitle">{profileData.stats.campaigns}</ThemedText>
-                        <ThemedText style={[styles.statLabel, { color: mutedTextColor }]}>Earning Campaigns</ThemedText>
+                    {/* Stats Row */}
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statItem}>
+                            <ThemedText type="subtitle">{profileData.stats.campaigns}</ThemedText>
+                            <ThemedText style={[styles.statLabel, { color: badgeLabelColor }]}>Earning Campaigns</ThemedText>
+                        </View>
+                        <View style={[styles.verticalDivider, { backgroundColor: cardDividerColor }]} />
+                        <View style={styles.statItem}>
+                            <ThemedText type="subtitle">{profileData.stats.earnings}</ThemedText>
+                            <ThemedText style={[styles.statLabel, { color: badgeLabelColor }]}>Lifetime Earnings</ThemedText>
+                        </View>
                     </View>
-                    <View style={[styles.verticalDivider, { backgroundColor: dividerColor }]} />
-                    <View style={styles.statItem}>
-                        <ThemedText type="subtitle">{profileData.stats.earnings}</ThemedText>
-                        <ThemedText style={[styles.statLabel, { color: mutedTextColor }]}>Lifetime Earnings</ThemedText>
+
+                    {/* Options List */}
+                    <View style={styles.optionsList}>
+                        <Pressable
+                            style={styles.optionRow}
+                            onPress={handleCommunityPress}
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
+                                <ExpoImage
+                                    source={require('../assets/images/icon.svg')}
+                                    style={styles.communityIcon}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                            <ThemedText style={styles.optionLabel}>Join our creator community</ThemedText>
+                        </Pressable>
+                        <View style={[styles.divider, { backgroundColor: cardDividerColor }]} />
+
+                        <Pressable
+                            style={styles.optionRow}
+                            onPress={() => handleOptionPress('/bank-account')} // Placeholder route
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
+                                <Landmark size={24} color={iconColor} />
+                            </View>
+                            <ThemedText style={styles.optionLabel}>Bank Account</ThemedText>
+                        </Pressable>
+                        <View style={[styles.divider, { backgroundColor: cardDividerColor }]} />
+
+                        <Pressable
+                            style={styles.optionRow}
+                            onPress={() => handleOptionPress('/settings')} // Placeholder route
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
+                                <Settings size={24} color={iconColor} />
+                            </View>
+                            <ThemedText style={styles.optionLabel}>Settings</ThemedText>
+                        </Pressable>
+                        <View style={[styles.divider, { backgroundColor: cardDividerColor }]} />
+
+                        <Pressable
+                            style={styles.optionRow}
+                            onPress={handleLogout}
+                            disabled={isLoggingOut}
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
+                                <LogOut size={24} color="#D32F2F" />
+                            </View>
+                            <ThemedText style={[styles.optionLabel, { color: '#D32F2F' }]}>Logout</ThemedText>
+                            {isLoggingOut && (
+                                <LoadingIndicator size="small" color="#D32F2F" style={{ marginLeft: 10 }} />
+                            )}
+                        </Pressable>
                     </View>
                 </View>
+            </ActionSheet>
 
-                {/* Options List */}
-                <View style={styles.optionsList}>
-                    {/* <Pressable
-                        style={styles.optionRow}
-                        onPress={() => handleOptionPress('/referral')} // Placeholder route
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                            <Gift size={24} color={iconColor} />
-                        </View>
-                        <ThemedText style={styles.optionLabel}>Referral Program</ThemedText>
-                    </Pressable>
-                    <View style={[styles.divider, { backgroundColor: dividerColor }]} /> */}
-
-                    <Pressable
-                        style={styles.optionRow}
-                        onPress={() => handleOptionPress('/bank-account')} // Placeholder route
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                            <Landmark size={24} color={iconColor} />
-                        </View>
-                        <ThemedText style={styles.optionLabel}>Bank Account</ThemedText>
-                    </Pressable>
-                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-                    <Pressable
-                        style={styles.optionRow}
-                        onPress={() => handleOptionPress('/settings')} // Placeholder route
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                            <Settings size={24} color={iconColor} />
-                        </View>
-                        <ThemedText style={styles.optionLabel}>Settings</ThemedText>
-                    </Pressable>
-                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-                    <Pressable
-                        style={styles.optionRow}
-                        onPress={handleLogout}
-                        disabled={isLoggingOut}
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                            <LogOut size={24} color="#D32F2F" />
-                        </View>
-                        <ThemedText style={[styles.optionLabel, { color: '#D32F2F' }]}>Logout</ThemedText>
-                        {isLoggingOut && (
-                            <LoadingIndicator size="small" color="#D32F2F" style={{ marginLeft: 10 }} />
-                        )}
-                    </Pressable>
-                </View>
-
-                {/* Optional Cancel/Dismiss Button explicitly requested? No, but good for UX */}
-                {/* User said "just put every in the list", so maybe keep it simple. */}
-            </View>
-        </ActionSheet>
+            <CreatorCommunitySheet actionSheetRef={communitySheetRef} />
+        </>
     );
 }
 
@@ -250,6 +272,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 8,
+    },
+    communityIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
     },
     optionLabel: {
         fontSize: 16,

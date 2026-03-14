@@ -1,8 +1,10 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { usePostHog } from 'posthog-react-native';
 import { ArrowRight } from 'lucide-react-native';
+import { ActionSheetRef } from 'react-native-actions-sheet';
 
+import { CreatorCommunitySheet } from '@/components/CreatorCommunitySheet';
 import { HowItWorksModal } from '@/components/HowItWorksModal';
 import { NewAccountModal } from '@/components/NewAccountModal';
 import { CreatorCampaignModal } from '@/components/CreatorCampaignModal';
@@ -15,6 +17,7 @@ export enum BannerType {
     PROMO = 'promo',
     NEW_ACCOUNT = 'new_account',
     CREATOR_CAMPAIGN = 'creator_campaign',
+    LUMINA_CIRCLE = 'lumina_circle',
 }
 
 interface BannerProps {
@@ -66,9 +69,17 @@ const defaultConfigs: Record<BannerType, { title: string, description: string, b
         titleColor: '#FFF1E0',
         descColor: '#FFFFFF',
     },
+    [BannerType.LUMINA_CIRCLE]: {
+        title: 'Lumina Circle',
+        description: 'Connect, learn, and stay updated with our creator community.',
+        bg: '#1F6A46',
+        titleColor: '#D7F5E4',
+        descColor: '#FFFFFF',
+    },
 };
 
 export function Banner({ type, title, description }: BannerProps) {
+    const creatorCommunitySheetRef = useRef<ActionSheetRef>(null);
     const [showHowItWorks, setShowHowItWorks] = useState(false);
     const [showNewAccount, setShowNewAccount] = useState(false);
     const [showCreatorCampaign, setShowCreatorCampaign] = useState(false);
@@ -99,6 +110,9 @@ export function Banner({ type, title, description }: BannerProps) {
                 break;
             case BannerType.CREATOR_CAMPAIGN:
                 setShowCreatorCampaign(true);
+                break;
+            case BannerType.LUMINA_CIRCLE:
+                creatorCommunitySheetRef.current?.show();
                 break;
         }
     };
@@ -141,6 +155,8 @@ export function Banner({ type, title, description }: BannerProps) {
                 visible={showCreatorCampaign}
                 onDismiss={() => setShowCreatorCampaign(false)}
             />
+
+            <CreatorCommunitySheet actionSheetRef={creatorCommunitySheetRef} />
         </>
     );
 }
