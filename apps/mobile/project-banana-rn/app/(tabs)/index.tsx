@@ -42,7 +42,7 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <BannerCarousel types={[BannerType.HOW_IT_WORKS, BannerType.CREATOR_CAMPAIGN]} />
+        <BannerCarousel types={[BannerType.HOW_IT_WORKS, BannerType.LUMINA_CIRCLE]} />
         <CampaignList />
       </ScrollView>
     </View>

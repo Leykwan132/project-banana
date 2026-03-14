@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, Linking, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { ArrowLeft, ChevronRight, Shield, FileText, Bell, Moon } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Shield, FileText, Bell, Moon, Bug, MessageCircle, Mail } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from 'convex/react';
 import { Switch as UISwitch } from 'react-native-ui-lib';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
+import { REPORT_ISSUE_FORM_URL } from '@/constants/support';
 import { useColorScheme, useThemePreference } from '@/hooks/use-color-scheme';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -52,6 +53,18 @@ export default function SettingsScreen() {
     const handleTermsPress = () => {
         // Could navigate to a terms page or open a URL
         Linking.openURL('https://example.com/terms');
+    };
+
+    const handleReportIssuePress = () => {
+        Linking.openURL(REPORT_ISSUE_FORM_URL);
+    };
+
+    const handleChatWithUsPress = () => {
+        Linking.openURL('https://wa.me/60129499394');
+    };
+
+    const handleEmailUsPress = () => {
+        Linking.openURL('mailto:admin@lumina-app.my');
     };
 
     const handleToggleNotifications = useCallback(async (nextValue: boolean) => {
@@ -104,6 +117,24 @@ export default function SettingsScreen() {
     }, [toggleColorScheme]);
 
     const settingsOptions: SettingsOption[] = [
+        {
+            id: 'report-issue',
+            title: 'Report an issue',
+            icon: <Bug size={24} color={theme.text} />,
+            onPress: handleReportIssuePress,
+        },
+        {
+            id: 'chat-with-us',
+            title: 'Chat Support',
+            icon: <MessageCircle size={24} color={theme.text} />,
+            onPress: handleChatWithUsPress,
+        },
+        {
+            id: 'email-us',
+            title: 'Email Us',
+            icon: <Mail size={24} color={theme.text} />,
+            onPress: handleEmailUsPress,
+        },
         {
             id: 'privacy',
             title: 'Privacy',
