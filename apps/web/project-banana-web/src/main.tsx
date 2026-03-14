@@ -71,6 +71,10 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/" element={<App />} />
                 <Route path="/business" element={<App />} />
                 <Route path="/pricing" element={<App />} />
+                <Route path="/about" element={<App />} />
+                <Route path="/support" element={<App />} />
+                <Route path="/privacy-policy" element={<App />} />
+                <Route path="/terms-and-conditions" element={<App />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route element={<DashboardLayout />}>

@@ -1,4 +1,4 @@
-import { ChevronDown, Github, Instagram, Linkedin, Twitter, ArrowRight } from 'lucide-react';
+import { ChevronDown, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authClient } from './lib/auth-client';
@@ -6,6 +6,10 @@ import PlanSelector from './components/PlanSelector';
 import BusinessLanding from './landing/business/BusinessLanding';
 import CreatorLanding from './landing/creator/CreatorLanding';
 import iconLight from './assets/icon.svg';
+import AboutPage from './pages/public/About';
+import SupportPage from './pages/public/Support';
+import PrivacyPolicyPage from './pages/public/PrivacyPolicy';
+import TermsAndConditionsPage from './pages/public/TermsAndConditions';
 
 type PricingFaq = {
     question: string;
@@ -32,6 +36,12 @@ const pricingFaqs: PricingFaq[] = [
 
 ];
 
+const socialLinks = [
+    { label: 'IG', ariaLabel: 'Instagram', href: '#' },
+    { label: 'TikTok', ariaLabel: 'TikTok', href: '#' },
+    { label: 'LinkedIn', ariaLabel: 'LinkedIn', href: '#' },
+];
+
 function Footer() {
     const { data: session } = authClient.useSession();
     const isAuthenticated = !!session?.user;
@@ -45,19 +55,17 @@ function Footer() {
                         <span className="text-lg tracking-tight">Lumina</span>
                     </div>
                     <p className="max-w-xs leading-relaxed">The operating layer for modern UGC execution, from brief to payout.</p>
-                    <div className="flex gap-4 pt-2">
-                        <a href="#" className="text-gray-400 transition-colors hover:text-gray-900" aria-label="X">
-                            <Twitter size={18} />
-                        </a>
-                        <a href="#" className="text-gray-400 transition-colors hover:text-gray-900" aria-label="Instagram">
-                            <Instagram size={18} />
-                        </a>
-                        <a href="#" className="text-gray-400 transition-colors hover:text-gray-900" aria-label="LinkedIn">
-                            <Linkedin size={18} />
-                        </a>
-                        <a href="#" className="text-gray-400 transition-colors hover:text-gray-900" aria-label="GitHub">
-                            <Github size={18} />
-                        </a>
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 pt-2">
+                        {socialLinks.map((link) => (
+                            <a
+                                key={link.label}
+                                href={link.href}
+                                className="text-sm font-medium text-gray-400 transition-colors hover:text-gray-900"
+                                aria-label={link.ariaLabel}
+                            >
+                                {link.label}
+                            </a>
+                        ))}
                     </div>
                 </div>
 
@@ -74,13 +82,7 @@ function Footer() {
                                 For Creators
                             </Link>
                         </li>
-                        {isAuthenticated ? (
-                            <li>
-                                <Link to="/overview" className="transition-colors hover:text-gray-900">
-                                    Go to dashboard
-                                </Link>
-                            </li>
-                        ) : (
+                        {!isAuthenticated && (
                             <li>
                                 <Link to="/login" className="transition-colors hover:text-gray-900">
                                     Log In
@@ -91,22 +93,33 @@ function Footer() {
                 </div>
 
                 <div>
+                    <h4 className="mb-4 font-semibold text-gray-900">Company</h4>
+                    <ul className="space-y-3">
+                        <li>
+                            <Link to="/about" className="transition-colors hover:text-gray-900">
+                                About
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/support" className="transition-colors hover:text-gray-900">
+                                Support
+                            </Link>
+                        </li>
+                    </ul>
+                </div>
+
+                <div>
                     <h4 className="mb-4 font-semibold text-gray-900">Legal</h4>
                     <ul className="space-y-3">
                         <li>
-                            <a href="#" className="transition-colors hover:text-gray-900">
+                            <Link to="/privacy-policy" className="transition-colors hover:text-gray-900">
                                 Privacy Policy
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a href="#" className="transition-colors hover:text-gray-900">
-                                Terms of Service
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" className="transition-colors hover:text-gray-900">
-                                Cookie Policy
-                            </a>
+                            <Link to="/terms-and-conditions" className="transition-colors hover:text-gray-900">
+                                Terms & Conditions
+                            </Link>
                         </li>
                     </ul>
                 </div>
@@ -177,10 +190,23 @@ function PricingPage() {
 
 export default function App() {
     const location = useLocation();
-    const isBusiness = location.pathname.startsWith('/business');
-    const isPricing = location.pathname.startsWith('/pricing');
+    const pathname = location.pathname;
+    const isBusiness = pathname.startsWith('/business');
+    const isPricing = pathname.startsWith('/pricing');
+    const isAbout = pathname.startsWith('/about');
+    const isSupport = pathname.startsWith('/support');
+    const isPrivacy = pathname.startsWith('/privacy-policy');
+    const isTerms = pathname.startsWith('/terms-and-conditions');
     const { data: session } = authClient.useSession();
     const isAuthenticated = !!session?.user;
+
+    let content = <CreatorLanding />;
+    if (isPricing) content = <PricingPage />;
+    else if (isBusiness) content = <BusinessLanding />;
+    else if (isAbout) content = <AboutPage />;
+    else if (isSupport) content = <SupportPage />;
+    else if (isPrivacy) content = <PrivacyPolicyPage />;
+    else if (isTerms) content = <TermsAndConditionsPage />;
 
     return (
         <div className="flex min-h-screen flex-col bg-white font-sans text-gray-900">
@@ -192,12 +218,12 @@ export default function App() {
                     </Link>
 
                     <div className="flex items-center gap-6">
-                        {(isBusiness || isPricing) && (
+                        {(isBusiness || isPricing || isAbout || isSupport || isPrivacy || isTerms) && (
                             <Link to="/" className="hidden text-sm font-semibold text-gray-500 transition-colors hover:text-gray-900 md:block">
                                 For Creators
                             </Link>
                         )}
-                        {!isBusiness && !isPricing && (
+                        {!isBusiness && (
                             <Link to="/business" className="hidden text-sm font-semibold text-gray-500 transition-colors hover:text-gray-900 md:block">
                                 For Business
                             </Link>
@@ -210,6 +236,12 @@ export default function App() {
                                 Pricing
                             </Link>
                         )}
+                        <Link
+                            to="/about"
+                            className={`hidden text-sm font-semibold transition-colors md:block ${isAbout ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            About
+                        </Link>
 
                         <div className="hidden h-4 w-px bg-gray-200 md:block" />
 
@@ -227,7 +259,7 @@ export default function App() {
                 </div>
             </header>
 
-            <main className="flex-1">{isPricing ? <PricingPage /> : isBusiness ? <BusinessLanding /> : <CreatorLanding />}</main>
+            <main className="flex-1">{content}</main>
 
             <Footer />
         </div>

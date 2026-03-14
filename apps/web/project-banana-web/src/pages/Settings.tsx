@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Building } from 'lucide-react';
+import { Plus, Building, Bug, MessageCircle, ArrowUpRight } from 'lucide-react';
 import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { authClient } from '../lib/auth-client';
+import { CHAT_SUPPORT_URL, REPORT_ISSUE_FORM_URL } from '../lib/support-links';
 
 const industryOptions = ['E-commerce', 'SaaS', 'Agency', 'Health', 'Education', 'Fintech', 'Food & Beverage', 'Other'];
 const sizeOptions = ['1-10', '11-50', '51-200', '201-500', '500+'];
@@ -258,41 +259,69 @@ export default function Settings() {
                                 </div>
                             </div>
                         </div>
+                        <div className="flex justify-end pt-8">
+                            {!isEditing && (
+                                <button
+                                    type="button"
+                                    onClick={handleStartEdit}
+                                    className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 transition-colors"
+                                >
+                                    Edit
+                                </button>
+                            )}
+                            {isEditing && (
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={handleCancel}
+                                        className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    {hasChanges && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSave}
+                                            disabled={isSaving || !businessName.trim() || (businessIndustry === 'Other' && !customIndustry.trim())}
+                                            className="rounded-xl bg-[#1C1C1C] text-white px-5 py-2.5 text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {isSaving ? 'Saving...' : 'Save changes'}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
 
-                <div className="flex justify-end pt-4">
-                    {!isEditing && (
-                        <button
-                            type="button"
-                            onClick={handleStartEdit}
-                            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 transition-colors"
-                        >
-                            Edit
-                        </button>
-                    )}
-                    {isEditing && (
-                        <div className="flex items-center gap-4">
-                            <button
-                                type="button"
-                                onClick={handleCancel}
-                                className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+                <section>
+                    <h2 className="text-lg font-bold mb-4">Support</h2>
+                    <div className="overflow-hidden rounded-xl bg-white">
+                            <a
+                                href={REPORT_ISSUE_FORM_URL}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group flex items-center gap-4 px-3 py-4 transition-colors hover:bg-gray-50"
                             >
-                                Cancel
-                            </button>
-                            {hasChanges && (
-                                <button
-                                    type="button"
-                                    onClick={handleSave}
-                                    disabled={isSaving || !businessName.trim() || (businessIndustry === 'Other' && !customIndustry.trim())}
-                                    className="rounded-xl bg-[#1C1C1C] text-white px-5 py-2.5 text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isSaving ? 'Saving...' : 'Save changes'}
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
+                                <Bug className="h-4 w-4 shrink-0 text-gray-500" />
+                                <div className="min-w-0 flex-1 text-sm font-semibold text-gray-900">Report an issue</div>
+                                <ArrowUpRight className="h-5 w-5 shrink-0 text-gray-300 transition-colors group-hover:text-gray-900" />
+                            </a>
+
+                            <div className="h-px bg-gray-100" />
+
+                            <a
+                                href={CHAT_SUPPORT_URL}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="group flex items-center gap-4 px-3 py-4 transition-colors hover:bg-gray-50"
+                            >
+                                <MessageCircle className="h-4 w-4 shrink-0 text-gray-500" />
+                                <div className="min-w-0 flex-1 text-sm font-semibold text-gray-900">Chat support</div>
+                                <ArrowUpRight className="h-5 w-5 shrink-0 text-gray-300 transition-colors group-hover:text-gray-900" />
+                            </a>
+                    </div>
+                </section>
                 {error && <p className="text-sm text-red-500">{error}</p>}
             </div >
             <style>{`
