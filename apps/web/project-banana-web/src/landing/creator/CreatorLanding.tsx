@@ -249,10 +249,10 @@ export default function CreatorLanding() {
                 <div className="grid items-center gap-12 md:grid-cols-2 lg:gap-16">
                     <div>
                         <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
-                            <Sparkles className="h-3.5 w-3.5" /> Built for Malaysian creators
+                            <Sparkles className="h-3.5 w-3.5" /> Built for Malaysians
                         </div>
                         <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 md:text-6xl">
-                            Get paid with views.
+                            Anyone can earn from content now.
                         </h1>
                         <p className="mt-6 max-w-xl text-xl text-gray-600">
                             Lumina is a open platform for creators like you to earn.
