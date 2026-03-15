@@ -7,7 +7,6 @@
   "packageManager": "bun@1.2.0",
   "workspaces": [
     "apps/web/*",
-    "apps/mobile/*",
     "packages/*"
   ]
 }
