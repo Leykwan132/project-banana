@@ -79,6 +79,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
             "exp://[IP_ADDRESS]/**",      // Trust 192.168.x.x IP range with any port and path
             "exp://192.168.100.250:8081",
             "https://appleid.apple.com",
+            "https://lumina-app.my",
             siteUrl,
         ],
         socialProviders: {
