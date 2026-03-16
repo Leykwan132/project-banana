@@ -1,5 +1,7 @@
 import { ChevronDown, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem, NavbarMenu, NavbarMenuItem, NavbarMenuToggle } from '@heroui/react';
+import { FaInstagram, FaLinkedinIn, FaTiktok } from 'react-icons/fa6';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authClient } from './lib/auth-client';
 import PlanSelector from './components/PlanSelector';
@@ -14,6 +16,14 @@ import TermsAndConditionsPage from './pages/public/TermsAndConditions';
 type PricingFaq = {
     question: string;
     answer: string;
+};
+
+type NavLink = {
+    label: string;
+    to: string;
+    isActive: boolean;
+    isPrimary?: boolean;
+    show?: boolean;
 };
 
 const pricingFaqs: PricingFaq[] = [
@@ -37,10 +47,19 @@ const pricingFaqs: PricingFaq[] = [
 ];
 
 const socialLinks = [
-    { label: 'IG', ariaLabel: 'Instagram', href: '#' },
-    { label: 'TikTok', ariaLabel: 'TikTok', href: '#' },
-    { label: 'LinkedIn', ariaLabel: 'LinkedIn', href: '#' },
+    { ariaLabel: 'Instagram', href: '#', icon: FaInstagram },
+    { ariaLabel: 'TikTok', href: '#', icon: FaTiktok },
+    { ariaLabel: 'LinkedIn', href: '#', icon: FaLinkedinIn },
 ];
+
+function getMobileMenuLinkClassName(link: NavLink) {
+    if (link.isPrimary) {
+        return 'inline-flex items-center rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800';
+    }
+
+    return `block w-full rounded-2xl px-4 py-3 text-base font-semibold transition-colors ${link.isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        }`;
+}
 
 function Footer() {
     const { data: session } = authClient.useSession();
@@ -57,13 +76,8 @@ function Footer() {
                     <p className="max-w-xs leading-relaxed">The operating layer for modern UGC execution, from brief to payout.</p>
                     <div className="flex flex-wrap gap-x-5 gap-y-2 pt-2">
                         {socialLinks.map((link) => (
-                            <a
-                                key={link.label}
-                                href={link.href}
-                                className="text-sm font-medium text-gray-400 transition-colors hover:text-gray-900"
-                                aria-label={link.ariaLabel}
-                            >
-                                {link.label}
+                            <a key={link.ariaLabel} href={link.href} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-900" aria-label={link.ariaLabel}>
+                                <link.icon className="h-4.5 w-4.5" />
                             </a>
                         ))}
                     </div>
@@ -127,10 +141,6 @@ function Footer() {
 
             <div className="mx-auto mt-12 flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-gray-100 px-6 pt-12 md:flex-row">
                 <p>© {new Date().getFullYear()} Lumina. All rights reserved.</p>
-                <span className="flex items-center gap-1.5">
-                    <div className="h-2 w-2 rounded-full bg-green-500" />
-                    All systems operational
-                </span>
             </div>
         </footer>
     );
@@ -199,6 +209,48 @@ export default function App() {
     const isTerms = pathname.startsWith('/terms-and-conditions');
     const { data: session } = authClient.useSession();
     const isAuthenticated = !!session?.user;
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    useEffect(() => {
+        setIsMenuOpen(false);
+    }, [pathname]);
+
+    const topNavLinks: NavLink[] = [
+        {
+            label: 'For Creators',
+            to: '/',
+            show: isBusiness || isPricing || isAbout || isSupport || isPrivacy || isTerms,
+            isActive: pathname === '/',
+        },
+        {
+            label: 'For Business',
+            to: '/business',
+            show: !isBusiness,
+            isActive: isBusiness,
+        },
+        {
+            label: 'Pricing',
+            to: '/pricing',
+            show: isBusiness || isPricing,
+            isActive: isPricing,
+        },
+        {
+            label: 'About',
+            to: '/about',
+            show: true,
+            isActive: isAbout,
+        },
+    ].filter((link) => link.show);
+
+    const mobileMenuLinks: NavLink[] = [
+        ...topNavLinks,
+        {
+            label: isAuthenticated ? 'Go to dashboard' : 'Log in',
+            to: isAuthenticated ? '/overview' : '/login',
+            isActive: pathname === '/login' || pathname === '/overview',
+            isPrimary: true,
+        },
+    ];
 
     let content = <CreatorLanding />;
     if (isPricing) content = <PricingPage />;
@@ -210,41 +262,42 @@ export default function App() {
 
     return (
         <div className="flex min-h-screen flex-col bg-white font-sans text-gray-900">
-            <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
-                <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-                    <Link to="/" className="flex items-center gap-2 font-semibold">
-                        <img src={iconLight} alt="Lumina" className="h-8 w-8 object-contain" />
-                        <span className="text-xl tracking-tight">Lumina</span>
-                    </Link>
-
-                    <div className="flex items-center gap-6">
-                        {(isBusiness || isPricing || isAbout || isSupport || isPrivacy || isTerms) && (
-                            <Link to="/" className="hidden text-sm font-semibold text-gray-500 transition-colors hover:text-gray-900 md:block">
-                                For Creators
-                            </Link>
-                        )}
-                        {!isBusiness && (
-                            <Link to="/business" className="hidden text-sm font-semibold text-gray-500 transition-colors hover:text-gray-900 md:block">
-                                For Business
-                            </Link>
-                        )}
-                        {(isBusiness || isPricing) && (
-                            <Link
-                                to="/pricing"
-                                className={`hidden text-sm font-semibold transition-colors md:block ${isPricing ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                            >
-                                Pricing
-                            </Link>
-                        )}
-                        <Link
-                            to="/about"
-                            className={`hidden text-sm font-semibold transition-colors md:block ${isAbout ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                        >
-                            About
+            <Navbar
+                position="sticky"
+                isMenuOpen={isMenuOpen}
+                onMenuOpenChange={setIsMenuOpen}
+                maxWidth="xl"
+                className="border-b border-gray-100 bg-white/85 backdrop-blur-md"
+                classNames={{
+                    wrapper: 'h-16 max-w-6xl px-6',
+                    item: 'data-[active=true]:text-gray-900',
+                    menu: 'border-t border-gray-100 bg-white px-6 pb-6 pt-4',
+                }}
+            >
+                <NavbarContent justify="start">
+                    <NavbarBrand>
+                        <Link to="/" className="flex items-center gap-2 font-semibold">
+                            <img src={iconLight} alt="Lumina" className="h-8 w-8 object-contain" />
+                            <span className="text-xl tracking-tight">Lumina</span>
                         </Link>
+                    </NavbarBrand>
+                </NavbarContent>
 
-                        <div className="hidden h-4 w-px bg-gray-200 md:block" />
+                <NavbarContent className="hidden gap-6 md:flex" justify="end">
+                    {topNavLinks.map((link) => (
+                        <NavbarItem key={link.to} isActive={link.isActive}>
+                            <Link
+                                to={link.to}
+                                className={`text-sm font-semibold transition-colors ${link.isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                            >
+                                {link.label}
+                            </Link>
+                        </NavbarItem>
+                    ))}
 
+                    <div className="h-4 w-px bg-gray-200" />
+
+                    <NavbarItem>
                         {isAuthenticated ? (
                             <Link to="/overview" className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
                                 Go to dashboard
@@ -255,9 +308,26 @@ export default function App() {
                                 Log in
                             </Link>
                         )}
-                    </div>
-                </div>
-            </header>
+                    </NavbarItem>
+                </NavbarContent>
+
+                <NavbarContent className="md:hidden" justify="end">
+                    <NavbarMenuToggle
+                        aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                        className="text-gray-900"
+                    />
+                </NavbarContent>
+
+                <NavbarMenu>
+                    {mobileMenuLinks.map((link) => (
+                        <NavbarMenuItem key={link.to} isActive={link.isActive}>
+                            <Link to={link.to} onClick={() => setIsMenuOpen(false)} className={getMobileMenuLinkClassName(link)}>
+                                {link.label}
+                            </Link>
+                        </NavbarMenuItem>
+                    ))}
+                </NavbarMenu>
+            </Navbar>
 
             <main className="flex-1">{content}</main>
 
