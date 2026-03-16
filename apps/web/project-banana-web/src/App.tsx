@@ -243,12 +243,16 @@ export default function App() {
 
     const mobileMenuLinks: NavLink[] = [
         ...topNavLinks,
-        {
-            label: isAuthenticated ? 'Go to dashboard' : 'Log in',
-            to: isAuthenticated ? '/overview' : '/login',
-            isActive: pathname === '/login' || pathname === '/overview',
-            isPrimary: true,
-        },
+        ...(isBusiness
+            ? [
+                  {
+                      label: isAuthenticated ? 'Go to dashboard' : 'Log in',
+                      to: isAuthenticated ? '/overview' : '/login',
+                      isActive: pathname === '/login' || pathname === '/overview',
+                      isPrimary: true,
+                  },
+              ]
+            : []),
     ];
 
     let content = <CreatorLanding />;
@@ -281,16 +285,17 @@ export default function App() {
 
                         <div className="h-4 w-px bg-gray-200" />
 
-                        {isAuthenticated ? (
-                            <Link to="/overview" className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
-                                Go to dashboard
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                        ) : (
-                            <Link to="/login" className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
-                                Log in
-                            </Link>
-                        )}
+                        {isBusiness &&
+                            (isAuthenticated ? (
+                                <Link to="/overview" className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+                                    Go to dashboard
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            ) : (
+                                <Link to="/login" className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+                                    Log in
+                                </Link>
+                            ))}
                     </div>
 
                     <button

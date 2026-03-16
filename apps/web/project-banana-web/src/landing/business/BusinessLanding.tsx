@@ -53,7 +53,7 @@ type AlternatingFeature = {
 const newBusinessFeatures: AlternatingFeature[] = [
     {
         title: 'Easy Campaign Setup',
-        description: 'Launch your first campaigns under 5 minutes.',
+        description: 'Set your requirements, pay per views, hashtags, etc.',
         image: '/landing-setup-campaign.png',
     },
     {
@@ -63,7 +63,7 @@ const newBusinessFeatures: AlternatingFeature[] = [
     },
     {
         title: 'Real-time performance analytics',
-        description: 'Track the ROI of every piece of content with real-time performance data and actionable insights.',
+        description: 'Track the ROI of every campaign with real-time performance data and actionable insights.',
         image: '/landing-analytics.png',
     }
 ];
@@ -267,8 +267,7 @@ export default function BusinessLanding() {
             <section className="mx-auto w-full max-w-7xl px-6 pb-12 pt-16 md:pt-24">
                 <div className="max-w-4xl">
                     <h1 className="text-4xl font-medium tracking-tight text-gray-900 sm:text-5xl md:text-[3.25rem] md:leading-[1.1]">
-                        Bet on UGC today.<br className="hidden md:block" />
-                        Lumina make the process easy.
+                        Launch open campaigns in minutes.
                     </h1>
                     <Link
                         to="/login"
