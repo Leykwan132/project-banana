@@ -6,6 +6,8 @@ import type { Id } from "./_generated/dataModel";
 
 const stripeClient = new StripeSubscriptions(components.stripe, {});
 
+const SITE_URL = process.env.SITE_URL;
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -116,7 +118,6 @@ export const updateStripeSubscriptionStatus = mutation({
     },
     handler: async (ctx, args) => {
         const business = await ctx.db.get(args.businessId as Id<"businesses">);
-
         if (!business) {
             return { success: false, error: "Business not found" };
         }
@@ -210,8 +211,8 @@ export const createSubscriptionCheckout = action({
                 "line_items[0][quantity]": "1",
                 // TODO: update this to 14 days
                 // "subscription_data[trial_period_days]": "14",
-                "success_url": "http://localhost:5173/overview?success=true",
-                "cancel_url": "http://localhost:5173/overview?canceled=true",
+                "success_url": `${SITE_URL}/overview?success=true`,
+                "cancel_url": `${SITE_URL}/overview?canceled=true`,
                 "client_reference_id": business._id,
                 "customer": customer.customerId,
                 "metadata[businessId]": business._id,
@@ -259,8 +260,8 @@ export const createPaymentCheckout = action({
             customerId: customer.customerId,
             metadata: { userId: identity.subject, type: "topup_credit" },
             mode: "payment",
-            successUrl: "http://localhost:5173/credits?success=true",
-            cancelUrl: "http://localhost:5173/credits?canceled=true",
+            successUrl: `${SITE_URL}/credits?success=true`,
+            cancelUrl: `${SITE_URL}/credits?canceled=true`,
             paymentIntentMetadata: { userId: identity.subject, type: "topup_credit" },
         });
     },
