@@ -167,7 +167,7 @@ export default function Subscription() {
                                     </>
                                 ) : (
                                     <>
-                                        Update Subscription
+                                        Update Plan
                                         <ExternalLink className="w-4 h-4 ml-2" />
                                     </>
                                 )}
