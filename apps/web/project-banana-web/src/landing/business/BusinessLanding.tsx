@@ -267,7 +267,7 @@ export default function BusinessLanding() {
             <section className="mx-auto w-full max-w-7xl px-6 pb-12 pt-16 md:pt-24">
                 <div className="max-w-4xl">
                     <h1 className="text-4xl font-medium tracking-tight text-gray-900 sm:text-5xl md:text-[3.25rem] md:leading-[1.1]">
-                        Launch open campaigns in minutes.
+                        Launch content campaigns in minutes.
                     </h1>
                     <Link
                         to="/login"
