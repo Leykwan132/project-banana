@@ -7,8 +7,8 @@ export const authClient = createAuthClient({
     baseURL: process.env.EXPO_PUBLIC_CONVEX_SITE_URL,
     plugins: [
         expoClient({
-            scheme: "projectbanana",
-            storagePrefix: "projectbanana",
+            scheme: "lumina",
+            storagePrefix: "lumina",
             storage: SecureStore,
         }),
         convexClient(),
