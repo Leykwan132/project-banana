@@ -133,11 +133,6 @@ export default function Overview() {
     // Check if user has a business
     const business = useQuery(api.businesses.getMyBusiness);
 
-    useEffect(() => {
-        if (business === null || (business && business.is_onboarded === false)) {
-            navigate('/onboarding');
-        }
-    }, [business, navigate]);
 
     useEffect(() => {
         const syncTourState = () => {

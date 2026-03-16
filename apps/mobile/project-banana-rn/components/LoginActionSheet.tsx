@@ -30,7 +30,6 @@ export function LoginActionSheet({
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
-    const { data: session } = authClient.useSession();
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isAppleLoading, setIsAppleLoading] = useState(false);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -84,7 +83,7 @@ export function LoginActionSheet({
             try {
                 const creator = await convex.query(api.creators.getCreator, {});
                 isTestUser = !!(creator as any)?.is_test_user;
-            } catch (_) { /* new user, no creator yet */ }
+            } catch { /* new user, no creator yet */ }
 
             posthog.register({
                 is_test_user: isTestUser,
@@ -94,7 +93,7 @@ export function LoginActionSheet({
             });
 
             router.replace(isNew ? '/onboarding' : '/(tabs)');
-        } catch (error) {
+        } catch {
             setIsLoggingIn(false);
             Alert.alert('Login Failed', 'Something went wrong. Please try again.');
         }
@@ -115,7 +114,7 @@ export function LoginActionSheet({
                 throw new Error("Failed to get Apple identity token");
             }
 
-            const { data, error } = await authClient.signIn.social({
+            const { error } = await authClient.signIn.social({
                 provider: "apple",
                 idToken: {
                     token: credential.identityToken,
@@ -139,7 +138,7 @@ export function LoginActionSheet({
                 console.error("Session not found after Apple login success");
                 setIsAppleLoading(false);
             }
-        } catch (error) {
+        } catch {
             setIsAppleLoading(false);
             Alert.alert("Login Failed", "There was an error signing in with Apple.");
         }
@@ -149,10 +148,8 @@ export function LoginActionSheet({
         signupMethodRef.current = 'google';
         setIsGoogleLoading(true);
         try {
-            const { data, error } = await authClient.signIn.social({
+            const { error } = await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/(tabs)", // this will be converted to a deep link (eg. `myapp://dashboard`) on native
-                newUserCallbackURL: "/onboarding",
             });
 
             if (error) {
@@ -171,7 +168,7 @@ export function LoginActionSheet({
                 setIsGoogleLoading(false);
             }
 
-        } catch (error) {
+        } catch {
             setIsGoogleLoading(false);
             Alert.alert("Login Failed", "There was an error signing in with Google.");
         }

@@ -47,7 +47,7 @@ export function Sidebar() {
             await authClient.signOut({
                 fetchOptions: {
                     onSuccess: () => {
-                        navigate("/", { replace: true });
+                        navigate("/business", { replace: true });
                     },
                 },
             });
@@ -164,12 +164,12 @@ export function Sidebar() {
                                     </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                    <div 
-                                        className="bg-black h-1.5 rounded-full" 
-                                        style={{ 
-                                            width: getPlanDisplay(business?.subscription_plan_type).limit === "Unlimited" 
-                                                ? '100%' 
-                                                : `${Math.min(100, ((activeCampaignCount ?? 0) / (getPlanDisplay(business?.subscription_plan_type).limit as number)) * 100)}%` 
+                                    <div
+                                        className="bg-black h-1.5 rounded-full"
+                                        style={{
+                                            width: getPlanDisplay(business?.subscription_plan_type).limit === "Unlimited"
+                                                ? '100%'
+                                                : `${Math.min(100, ((activeCampaignCount ?? 0) / (getPlanDisplay(business?.subscription_plan_type).limit as number)) * 100)}%`
                                         }}
                                     ></div>
                                 </div>

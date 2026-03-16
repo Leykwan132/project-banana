@@ -9,6 +9,7 @@ import { authClient } from "./lib/auth-client";
 import { PostHogProvider } from '@posthog/react'
 import App from './App'
 import Login from './pages/Login'
+import AuthRedirect from './pages/AuthRedirect'
 import Onboarding from './pages/Onboarding'
 import Overview from './pages/Overview'
 import Campaigns from './pages/Campaigns'
@@ -71,6 +72,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/privacy-policy" element={<App />} />
               <Route path="/terms-and-conditions" element={<App />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/auth-redirect" element={<AuthRedirect />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/overview" element={<Overview />} />
