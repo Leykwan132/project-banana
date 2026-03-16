@@ -38,10 +38,6 @@ export default function Login() {
                         Continue with Google
                     </button>
                 </div>
-
-                <div className="mt-8 text-center text-[13px] text-gray-500 font-medium">
-                    Don't have an account? <Link to="#" className="text-gray-900 hover:underline">Sign up</Link>
-                </div>
             </div>
 
             <div className="absolute bottom-6 md:bottom-8 text-center w-full">
