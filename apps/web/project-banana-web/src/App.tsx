@@ -1,5 +1,4 @@
-import { ChevronDown, ArrowRight } from 'lucide-react';
-import { Navbar, NavbarBrand, NavbarContent, NavbarItem, NavbarMenu, NavbarMenuItem, NavbarMenuToggle } from '@heroui/react';
+import { ChevronDown, ArrowRight, Menu, X } from 'lucide-react';
 import { FaInstagram, FaLinkedinIn, FaTiktok } from 'react-icons/fa6';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -54,7 +53,7 @@ const socialLinks = [
 
 function getMobileMenuLinkClassName(link: NavLink) {
     if (link.isPrimary) {
-        return 'inline-flex items-center rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800';
+        return 'inline-flex self-start items-center rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800';
     }
 
     return `block w-full rounded-2xl px-4 py-3 text-base font-semibold transition-colors ${link.isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -262,42 +261,26 @@ export default function App() {
 
     return (
         <div className="flex min-h-screen flex-col bg-white font-sans text-gray-900">
-            <Navbar
-                position="sticky"
-                isMenuOpen={isMenuOpen}
-                onMenuOpenChange={setIsMenuOpen}
-                maxWidth="xl"
-                className="border-b border-gray-100 bg-white/85 backdrop-blur-md"
-                classNames={{
-                    wrapper: 'h-16 max-w-6xl px-6',
-                    item: 'data-[active=true]:text-gray-900',
-                    menu: 'border-t border-gray-100 bg-white px-6 pb-6 pt-4',
-                }}
-            >
-                <NavbarContent justify="start">
-                    <NavbarBrand>
-                        <Link to="/" className="flex items-center gap-2 font-semibold">
-                            <img src={iconLight} alt="Lumina" className="h-8 w-8 object-contain" />
-                            <span className="text-xl tracking-tight">Lumina</span>
-                        </Link>
-                    </NavbarBrand>
-                </NavbarContent>
+            <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
+                <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+                    <Link to="/" className="flex items-center gap-2 font-semibold">
+                        <img src={iconLight} alt="Lumina" className="h-8 w-8 object-contain" />
+                        <span className="text-xl tracking-tight">Lumina</span>
+                    </Link>
 
-                <NavbarContent className="hidden gap-6 md:flex" justify="end">
-                    {topNavLinks.map((link) => (
-                        <NavbarItem key={link.to} isActive={link.isActive}>
+                    <div className="hidden items-center gap-6 md:flex">
+                        {topNavLinks.map((link) => (
                             <Link
+                                key={link.to}
                                 to={link.to}
                                 className={`text-sm font-semibold transition-colors ${link.isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
                             >
                                 {link.label}
                             </Link>
-                        </NavbarItem>
-                    ))}
+                        ))}
 
-                    <div className="h-4 w-px bg-gray-200" />
+                        <div className="h-4 w-px bg-gray-200" />
 
-                    <NavbarItem>
                         {isAuthenticated ? (
                             <Link to="/overview" className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
                                 Go to dashboard
@@ -308,26 +291,32 @@ export default function App() {
                                 Log in
                             </Link>
                         )}
-                    </NavbarItem>
-                </NavbarContent>
+                    </div>
 
-                <NavbarContent className="md:hidden" justify="end">
-                    <NavbarMenuToggle
+                    <button
+                        type="button"
+                        onClick={() => setIsMenuOpen((open) => !open)}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-900 transition-colors hover:bg-gray-100 md:hidden"
                         aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-                        className="text-gray-900"
-                    />
-                </NavbarContent>
+                        aria-expanded={isMenuOpen}
+                        aria-controls="mobile-navigation-menu"
+                    >
+                        {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    </button>
+                </div>
 
-                <NavbarMenu>
-                    {mobileMenuLinks.map((link) => (
-                        <NavbarMenuItem key={link.to} isActive={link.isActive}>
-                            <Link to={link.to} onClick={() => setIsMenuOpen(false)} className={getMobileMenuLinkClassName(link)}>
-                                {link.label}
-                            </Link>
-                        </NavbarMenuItem>
-                    ))}
-                </NavbarMenu>
-            </Navbar>
+                {isMenuOpen && (
+                    <div id="mobile-navigation-menu" className="fixed inset-x-0 top-16 z-40 border-t border-gray-100 bg-white md:hidden">
+                        <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col gap-3 px-6 py-6">
+                            {mobileMenuLinks.map((link) => (
+                                <Link key={link.to} to={link.to} onClick={() => setIsMenuOpen(false)} className={getMobileMenuLinkClassName(link)}>
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </header>
 
             <main className="flex-1">{content}</main>
 
