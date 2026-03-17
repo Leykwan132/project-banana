@@ -207,6 +207,7 @@ export const runDailyScrape = internalAction({
                 // Scrape IG
                 if (app.ig_post_url) {
                     try {
+                        console.log("Scraping IG for app", app._id);
                         const reels = await ctx.runAction(api.instagram.getInstagramReels, {
                             link: app.ig_post_url,
                         });
@@ -270,6 +271,7 @@ export const runDailyScrape = internalAction({
                 // Scrape TikTok
                 if (app.tiktok_post_url) {
                     try {
+                        console.log("Scraping TikTok for app", app._id);
                         const tiktokPost = await ctx.runAction(api.tiktok.getTiktokPost, {
                             url: app.tiktok_post_url,
                         });
