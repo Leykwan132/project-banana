@@ -122,7 +122,7 @@ function RootLayoutContent() {
 
   return (
     <PostHogProvider
-      apiKey="phc_Eg1WmAo9rYJfbI3V46iDdWyC6setYTdu6aj8fJmkp6F"
+      apiKey="phc_S4ojOcH5qjGjokjI6GJw30lU963g15u0P3L3pQ36D8W"
       options={{
         host: "https://us.i.posthog.com",
       }}

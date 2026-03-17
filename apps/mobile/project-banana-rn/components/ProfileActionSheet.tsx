@@ -43,6 +43,9 @@ export function ProfileActionSheet({
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const posthog = usePostHog();
+    const shouldShowCommunityButton = Boolean(
+        posthog.isFeatureEnabled('display-community-button')
+    );
 
     // Dynamic Data
     const { data: session } = authClient.useSession();
@@ -140,20 +143,24 @@ export function ProfileActionSheet({
 
                     {/* Options List */}
                     <View style={styles.optionsList}>
-                        <Pressable
-                            style={styles.optionRow}
-                            onPress={handleCommunityPress}
-                        >
-                            <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
-                                <ExpoImage
-                                    source={require('../assets/images/icon.svg')}
-                                    style={styles.communityIcon}
-                                    contentFit="contain"
-                                />
-                            </View>
-                            <ThemedText style={styles.optionLabel}>Join our creator community</ThemedText>
-                        </Pressable>
-                        <View style={[styles.divider, { backgroundColor: cardDividerColor }]} />
+                        {shouldShowCommunityButton ? (
+                            <>
+                                <Pressable
+                                    style={styles.optionRow}
+                                    onPress={handleCommunityPress}
+                                >
+                                    <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
+                                        <ExpoImage
+                                            source={require('../assets/images/icon.svg')}
+                                            style={styles.communityIcon}
+                                            contentFit="contain"
+                                        />
+                                    </View>
+                                    <ThemedText style={styles.optionLabel}>Join our creator community</ThemedText>
+                                </Pressable>
+                                <View style={[styles.divider, { backgroundColor: cardDividerColor }]} />
+                            </>
+                        ) : null}
 
                         <Pressable
                             style={styles.optionRow}
