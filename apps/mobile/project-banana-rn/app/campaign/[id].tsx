@@ -693,23 +693,27 @@ export default function CampaignDetailsScreen() {
 
             {/* Sticky Footer */}
             <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
-                <Pressable
-                    style={[
-                        styles.joinButton,
-                        isJoining && styles.joinButtonDisabled,
-                        { backgroundColor: hasExistingNonEarningApplication ? '#000000' : joinButtonBackground }
-                    ]}
-                    onPress={handleJoin}
-                    disabled={isJoining || isLoading}
-                >
-                    {isJoining ? (
-                        <LoadingIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                        <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>
-                            {hasExistingNonEarningApplication ? "View Application" : "Join"}
-                        </ThemedText>
-                    )}
-                </Pressable>
+                {isLoading ? (
+                    <SkeletonBlock style={styles.joinButtonSkeleton} />
+                ) : (
+                    <Pressable
+                        style={[
+                            styles.joinButton,
+                            isJoining && styles.joinButtonDisabled,
+                            { backgroundColor: hasExistingNonEarningApplication ? '#000000' : joinButtonBackground }
+                        ]}
+                        onPress={handleJoin}
+                        disabled={isJoining}
+                    >
+                        {isJoining ? (
+                            <LoadingIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                            <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>
+                                {hasExistingNonEarningApplication ? "View Application" : "Join"}
+                            </ThemedText>
+                        )}
+                    </Pressable>
+                )}
             </View>
         </View>
     );
@@ -978,6 +982,11 @@ const styles = StyleSheet.create({
     },
     joinButtonDisabled: {
         opacity: 0.7,
+    },
+    joinButtonSkeleton: {
+        width: '100%',
+        height: 56,
+        borderRadius: 30,
     },
     joinButtonText: {
         color: '#FFFFFF',
