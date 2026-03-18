@@ -28,8 +28,12 @@ interface Transaction {
     id: string;
     type: 'payout' | 'withdrawal';
     campaignName: string;
+    companyName?: string;
     date: string;
     amount: string;
+    totalPayoutAmount?: number;
+    basePayAmount?: number;
+    performanceBreakdownAmount?: number;
     rawAmount?: number;      // original requested withdrawal amount (for fee breakdown)
     gatewayFee?: number;     // total fee stored on the withdrawal record
     status?: ApplicationStatus;
@@ -111,6 +115,8 @@ export default function WithdrawalsScreen() {
         return `${sign}RM ${absAmount.toFixed(0)}`;
     };
 
+    const formatDetailAmount = (amount: number): string => `RM ${amount.toFixed(2)}`;
+
     // Mask account number helper
     const maskAccountNumber = (accountNumber: string): string => {
         if (accountNumber.length <= 4) return accountNumber;
@@ -124,7 +130,7 @@ export default function WithdrawalsScreen() {
         return withdrawalsData.map((withdrawal) => ({
             id: withdrawal._id,
             type: 'withdrawal' as const,
-            campaignName: 'Withdraw',
+            campaignName: withdrawal.bank_name ?? 'Withdrawal',
             date: formatDate(withdrawal.created_at),
             amount: formatAmount(withdrawal.amount, false),
             rawAmount: withdrawal.amount,
@@ -140,9 +146,13 @@ export default function WithdrawalsScreen() {
         return payoutsData.map((payout) => ({
             id: payout._id,
             type: 'payout' as const,
-            campaignName: 'Payout',
-            date: formatDate(payout.created_at),
+            campaignName: payout.campaign_name ?? 'Payout',
+            companyName: payout.company_name ?? undefined,
+            date: formatDate(payout.updated_at ?? payout.created_at),
             amount: formatAmount(payout.amount, true),
+            totalPayoutAmount: payout.amount,
+            basePayAmount: payout.base_pay_amount ?? 0,
+            performanceBreakdownAmount: payout.performance_breakdown_amount ?? 0,
             status: 'Paid' as ApplicationStatus,
         }));
     }, [payoutsData]);
@@ -203,8 +213,9 @@ export default function WithdrawalsScreen() {
         return data.map((item) => (
             <PastPayoutListItem
                 key={item.id}
+                transactionType={item.type}
                 campaignName={item.campaignName}
-                subtitle={item.bankName}
+                subtitle={item.type === 'payout' ? item.companyName : item.accountNumber}
                 accountNumber={item.accountNumber}
                 date={item.date}
                 amount={item.amount}
@@ -282,20 +293,69 @@ export default function WithdrawalsScreen() {
         );
     };
 
+    const renderCustomPayoutContent = () => {
+        if (!selectedTransaction || selectedTransaction.type !== 'payout') return null;
+
+        return (
+            <View>
+                <View style={styles.reviewRow}>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Last updated on</ThemedText>
+                    <ThemedText type="defaultSemiBold">{selectedTransaction.date}</ThemedText>
+                </View>
+
+                <View style={styles.reviewRow}>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Company</ThemedText>
+                    <ThemedText type="defaultSemiBold">{selectedTransaction.companyName ?? '-'}</ThemedText>
+                </View>
+
+                <View style={styles.reviewRow}>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Campaign</ThemedText>
+                    <ThemedText type="defaultSemiBold">{selectedTransaction.campaignName}</ThemedText>
+                </View>
+
+                <View style={[styles.divider, { backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0' }]} />
+
+                <View style={styles.reviewRow}>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Base pay</ThemedText>
+                    <ThemedText type="defaultSemiBold">{formatDetailAmount(selectedTransaction.basePayAmount ?? 0)}</ThemedText>
+                </View>
+
+                <View style={styles.reviewRow}>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Performance breakdown</ThemedText>
+                    <ThemedText type="defaultSemiBold">{formatDetailAmount(selectedTransaction.performanceBreakdownAmount ?? 0)}</ThemedText>
+                </View>
+
+                <View style={styles.reviewRow}>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Total payout</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={{ color: '#22C55E', fontSize: 18 }}>
+                        {formatDetailAmount(selectedTransaction.totalPayoutAmount ?? 0)}
+                    </ThemedText>
+                </View>
+            </View>
+        );
+    };
+
     const sheetDetails = useMemo((): DetailItem[] => {
         if (!selectedTransaction || selectedTransaction.type === 'withdrawal') return [];
 
         const details: DetailItem[] = [];
 
-        details.push({ label: 'Type', value: selectedTransaction.campaignName });
-        details.push({ label: 'Date', value: selectedTransaction.date });
-        details.push({ label: 'Amount', value: selectedTransaction.amount });
-        if (selectedTransaction.bankName) {
-            details.push({ label: 'Company', value: selectedTransaction.bankName });
-        }
-        if (selectedTransaction.status) {
-            details.push({ label: 'Status', value: selectedTransaction.status });
-        }
+        details.push({ label: 'Last updated on', value: selectedTransaction.date });
+        details.push({ label: 'Company', value: selectedTransaction.companyName ?? '-' });
+        details.push({ label: 'Campaign', value: selectedTransaction.campaignName });
+        details.push({
+            label: 'Base pay',
+            value: formatDetailAmount(selectedTransaction.basePayAmount ?? 0),
+        });
+        details.push({
+            label: 'Performance breakdown',
+            value: formatDetailAmount(selectedTransaction.performanceBreakdownAmount ?? 0),
+        });
+        details.push({
+            label: 'Total payout',
+            value: formatDetailAmount(selectedTransaction.totalPayoutAmount ?? 0),
+            valueStyle: { color: '#22C55E' },
+        });
 
         return details;
     }, [selectedTransaction]);
@@ -363,7 +423,7 @@ export default function WithdrawalsScreen() {
                 actionSheetRef={actionSheetRef}
                 title={selectedTransaction?.type === 'withdrawal' ? "Withdrawal Details" : "Payout Details"}
                 details={sheetDetails}
-                customContent={renderCustomWithdrawalContent()}
+                customContent={selectedTransaction?.type === 'withdrawal' ? renderCustomWithdrawalContent() : renderCustomPayoutContent()}
                 onCancel={showCancelButton ? handleCancelWithdrawal : undefined}
             />
         </View>

@@ -1,5 +1,5 @@
 import { View, StyleSheet, Image, Pressable } from 'react-native';
-import { Calendar } from 'lucide-react-native';
+import { Calendar, DollarSign, Landmark } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ApplicationStatusBadge, ApplicationStatus } from './ApplicationStatusBadge';
@@ -7,6 +7,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface PastPayoutListItemProps {
+    transactionType?: 'payout' | 'withdrawal';
     logoUrl?: string;
     campaignName: string;
     subtitle?: string;
@@ -18,6 +19,7 @@ interface PastPayoutListItemProps {
 }
 
 export function PastPayoutListItem({
+    transactionType = 'payout',
     logoUrl,
     campaignName,
     subtitle,
@@ -29,19 +31,24 @@ export function PastPayoutListItem({
 }: PastPayoutListItemProps) {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
+    const theme = Colors[colorScheme ?? 'light'];
     const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
     const cardBorderColor = isDark ? '#303030' : '#E4DED2';
     const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
     const logoChipBorderColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const iconColor = isDark ? '#D4D4D4' : theme.text;
+    const TransactionIcon = transactionType === 'withdrawal' ? Landmark : DollarSign;
     const subtitleText = subtitle ?? accountNumber;
     const datePrefix =
-        status === 'Paid' || status === 'Completed'
-            ? 'Paid on '
-            : ['Pending', 'Processing'].includes(status || '')
-                ? 'Requested on '
-                : status
-                    ? 'Withdraw on '
-                    : 'Paid on ';
+        transactionType === 'payout'
+            ? 'Updated on '
+            : status === 'Paid' || status === 'Completed'
+                ? 'Paid on '
+                : ['Pending', 'Processing'].includes(status || '')
+                    ? 'Requested on '
+                    : status
+                        ? 'Withdraw on '
+                        : 'Paid on ';
 
 
     return (
@@ -64,7 +71,7 @@ export function PastPayoutListItem({
                                 style={styles.logo}
                             />
                         ) : (
-                            <View style={styles.logoPlaceholder} />
+                            <TransactionIcon size={20} color={iconColor} />
                         )}
                     </View>
 
@@ -75,7 +82,14 @@ export function PastPayoutListItem({
                                     {subtitleText}
                                 </ThemedText>
                             )}
-                            <ThemedText type="defaultSemiBold" style={styles.name}>{campaignName}</ThemedText>
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={styles.name}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                            >
+                                {campaignName}
+                            </ThemedText>
                         </View>
                         <ThemedText
                             type="defaultSemiBold"
@@ -141,6 +155,8 @@ const styles = StyleSheet.create({
         height: 48,
         borderRadius: 24,
         backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     titleContainer: {
         flex: 1,
