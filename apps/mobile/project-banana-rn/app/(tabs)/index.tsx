@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePostHog } from 'posthog-react-native';
 
 import { Header } from '@/components/Header';
 import { BannerCarousel } from '@/components/BannerCarousel';
@@ -12,9 +13,16 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
+  const posthog = usePostHog();
   const [refreshing, setRefreshing] = useState(false);
   const isDark = colorScheme === 'dark';
   const screenBackgroundColor = isDark ? Colors[colorScheme ?? 'light'].screenBackground : '#F4F3EE';
+  const shouldShowCommunityButton = Boolean(
+    posthog.isFeatureEnabled('display-community-button')
+  );
+  const bannerTypes = shouldShowCommunityButton
+    ? [BannerType.HOW_IT_WORKS, BannerType.LUMINA_CIRCLE]
+    : [BannerType.HOW_IT_WORKS];
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -42,7 +50,7 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <BannerCarousel types={[BannerType.HOW_IT_WORKS, BannerType.LUMINA_CIRCLE]} />
+        <BannerCarousel types={bannerTypes} />
         <CampaignList />
       </ScrollView>
     </View>

@@ -43,10 +43,7 @@ export function ProfileActionSheet({
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const posthog = usePostHog();
-    const shouldShowCommunityButton = Boolean(
-        posthog.isFeatureEnabled('display-community-button')
-    );
-
+    const shouldShowCommunityButton = posthog.isFeatureEnabled('display-community-button');
     // Dynamic Data
     const { data: session } = authClient.useSession();
     const user = session?.user;

@@ -44,7 +44,7 @@ export default function PostsScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                <BannerCarousel types={[BannerType.NEW_ACCOUNT, BannerType.CREATOR_CAMPAIGN]} />
+                <BannerCarousel types={[BannerType.NEW_ACCOUNT]} />
                 <ApplicationList />
             </ScrollView>
         </View>
