@@ -54,6 +54,15 @@ export const WithdrawalStatus = {
 
 export type WithdrawalStatus = (typeof WithdrawalStatus)[keyof typeof WithdrawalStatus];
 
+export const PayoutStatus = {
+    Pending: "pending",
+    Processing: "processing",
+    Completed: "completed",
+    Failed: "failed",
+} as const;
+
+export type PayoutStatus = (typeof PayoutStatus)[keyof typeof PayoutStatus];
+
 export const WithdrawalSourceType = {
     Creator: "creator",
     Business: "business",

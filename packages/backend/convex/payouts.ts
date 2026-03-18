@@ -2,7 +2,7 @@ import { action, mutation, query, internalMutation, internalQuery } from "./_gen
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { WithdrawalStatus, WithdrawalSourceType, PAYOUT_GATEWAY_FEE, PAYOUT_PLATFORM_FEE_RATE, MIN_WITHDRAWAL_AMOUNT } from "./constants";
+import { PayoutStatus, WithdrawalStatus, WithdrawalSourceType, PAYOUT_GATEWAY_FEE, PAYOUT_PLATFORM_FEE_RATE, MIN_WITHDRAWAL_AMOUNT } from "./constants";
 import { ErrorType } from "./errors";
 
 // ============================================================
@@ -18,11 +18,34 @@ export const getUserPayouts = query({
 
         if (!user) return [];
 
-        return await ctx.db
+        const payouts = await ctx.db
             .query("payouts")
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
-            .order("desc")
             .collect();
+
+        const enrichedPayouts = await Promise.all(
+            payouts.map(async (payout) => {
+                let campaign = payout.campaign_id ? await ctx.db.get(payout.campaign_id) : null;
+
+                if (!campaign && payout.application_id) {
+                    const application = await ctx.db.get(payout.application_id);
+                    campaign = application?.campaign_id ? await ctx.db.get(application.campaign_id) : null;
+                }
+
+                const business = campaign?.business_id ? await ctx.db.get(campaign.business_id) : null;
+                const basePayAmount = campaign?.base_pay ?? 0;
+
+                return {
+                    ...payout,
+                    campaign_name: payout.campaign_name ?? campaign?.name ?? "Payout",
+                    company_name: payout.company_name ?? campaign?.business_name ?? business?.name ?? undefined,
+                    base_pay_amount: basePayAmount,
+                    performance_breakdown_amount: Math.max(0, payout.amount - basePayAmount),
+                };
+            }),
+        );
+
+        return enrichedPayouts.sort((left, right) => right.updated_at - left.updated_at);
     },
 });
 
@@ -341,12 +364,61 @@ export const createPayout = mutation({
             user_id: args.userId,
             application_id: args.applicationId,
             amount: args.amount,
-            status: "pending",
+            status: PayoutStatus.Pending,
             created_at: now,
             updated_at: now,
         });
 
         return payoutId;
+    },
+});
+
+export const upsertCampaignPayout = internalMutation({
+    args: {
+        userId: v.string(),
+        applicationId: v.optional(v.id("applications")),
+        campaignId: v.id("campaigns"),
+        amountDelta: v.number(),
+        companyName: v.optional(v.string()),
+        campaignName: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        if (args.amountDelta <= 0) {
+            return null;
+        }
+
+        const now = Date.now();
+        const existing = await ctx.db
+            .query("payouts")
+            .withIndex("by_user_campaign", (q) =>
+                q.eq("user_id", args.userId).eq("campaign_id", args.campaignId)
+            )
+            .unique();
+
+        if (existing) {
+            await ctx.db.patch(existing._id, {
+                application_id: args.applicationId ?? existing.application_id,
+                company_name: args.companyName ?? existing.company_name,
+                campaign_name: args.campaignName ?? existing.campaign_name,
+                amount: existing.amount + args.amountDelta,
+                status: PayoutStatus.Completed,
+                updated_at: now,
+            });
+
+            return existing._id;
+        }
+
+        return await ctx.db.insert("payouts", {
+            user_id: args.userId,
+            application_id: args.applicationId,
+            campaign_id: args.campaignId,
+            company_name: args.companyName,
+            campaign_name: args.campaignName,
+            amount: args.amountDelta,
+            status: PayoutStatus.Completed,
+            created_at: now,
+            updated_at: now,
+        });
     },
 });
 

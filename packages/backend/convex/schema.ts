@@ -240,12 +240,16 @@ export default defineSchema({
     payouts: defineTable({
         user_id: v.string(),
         application_id: v.optional(v.id("applications")),
+        campaign_id: v.optional(v.id("campaigns")),
+        company_name: v.optional(v.string()),
+        campaign_name: v.optional(v.string()),
         amount: v.number(),
         status: v.string(), // "pending" | "processing" | "completed" | "failed"
         created_at: v.number(),
         updated_at: v.number(),
     })
         .index("by_user", ["user_id"])
+        .index("by_user_campaign", ["user_id", "campaign_id"])
         .index("by_status", ["status"]),
 
     withdrawals: defineTable({

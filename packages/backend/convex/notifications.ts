@@ -64,6 +64,7 @@ const getRedirectFields = (data: {
     switch (data.type) {
         case NotificationType.SubmissionApproved:
         case NotificationType.PostDescriptionMissing:
+        case NotificationType.PostEarning:
             return {
                 redirectType: "application",
                 redirectId: data.applicationId,

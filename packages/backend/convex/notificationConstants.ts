@@ -2,6 +2,7 @@ export const NotificationType = {
     SubmissionApproved: "submission_approved",
     SubmissionRejected: "submission_rejected",
     PostDescriptionMissing: "post_description_missing",
+    PostEarning: "post_earning",
     BankAccountApproved: "bank_account_approved",
     BankAccountRejected: "bank_account_rejected",
 } as const;
@@ -23,6 +24,11 @@ export const NotificationCopy = {
         title: "Fix your post details ✍️",
         description: (campaignName: string) =>
             `Your post for ${campaignName} needs attention. Review the issue and re-upload link if needed.`,
+    },
+    postEarning: {
+        title: "Your post is earning 💰",
+        description: (campaignName: string) =>
+            `Your post for ${campaignName} is now earning. Track your payout anytime.`,
     },
     bankAccountApproved: {
         title: "Bank account approved ✅",

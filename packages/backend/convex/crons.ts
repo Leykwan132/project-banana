@@ -360,11 +360,23 @@ export const runDailyScrape = internalAction({
                     (isVerifyingStatus(app.status) || app.status === ApplicationStatus.ActionRequired)
                     && allSubmittedPlatformsValidated
                 ) {
-                    await ctx.runMutation(internal.applications.setApplicationStatusFromCron, {
+                    const earningTransition = await ctx.runMutation(internal.applications.setApplicationStatusFromCron, {
                         applicationId: app._id,
                         status: ApplicationStatus.Earning,
                         missingPostDescription: undefined,
                     });
+
+                    if (earningTransition.didEnterEarning) {
+                        await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
+                            betterAuthUserId: app.user_id,
+                            title: NotificationCopy.postEarning.title,
+                            description: NotificationCopy.postEarning.description(campaign.name),
+                            data: {
+                                type: NotificationType.PostEarning,
+                                applicationId: app._id,
+                            },
+                        });
+                    }
                 } else if (app.status === ApplicationStatus.ActionRequired) {
                     console.log(`Application ${app._id} remains action_required until all submitted platforms are revalidated`);
                     totalApplicationsProcessed++;
@@ -398,6 +410,17 @@ export const runDailyScrape = internalAction({
                     const earningsDelta = scrapeDeltas?.earningsDelta ?? 0;
 
                     console.log(`Deltas for app ${app._id}: views=${viewsDelta}, likes=${likesDelta}, comments=${commentsDelta}, shares=${sharesDelta}, earnings=${earningsDelta}`);
+
+                    if (earningsDelta > 0) {
+                        await ctx.runMutation(internal.payouts.upsertCampaignPayout, {
+                            userId: app.user_id,
+                            applicationId: app._id,
+                            campaignId: app.campaign_id,
+                            amountDelta: earningsDelta,
+                            companyName: campaign.business_name,
+                            campaignName: campaign.name,
+                        });
+                    }
 
                     // 2. App Analytics — additive delta (same as all other daily stats)
                     await ctx.runMutation(api.analytics.saveDailyAppStats, {

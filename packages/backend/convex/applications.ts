@@ -483,6 +483,7 @@ export const setApplicationStatusFromCron = internalMutationWithTriggers({
         return {
             didChange: true,
             shouldNotify: args.status === ApplicationStatus.ActionRequired && (statusChanged || payloadChanged),
+            didEnterEarning: args.status === ApplicationStatus.Earning && statusChanged,
         };
     },
 });
