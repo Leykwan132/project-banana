@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        flex: 1,
+        // flex: 1,
     },
     statItemRight: {
         justifyContent: 'flex-end',
