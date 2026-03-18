@@ -67,9 +67,7 @@ export default function WithdrawalsScreen() {
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
-    const historyBorderColor = isDark ? '#303030' : '#E4DED2';
     const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
-    const mutedTextColor = isDark ? '#A3A3A3' : '#666666';
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -145,12 +143,11 @@ export default function WithdrawalsScreen() {
             campaignName: 'Payout',
             date: formatDate(payout.created_at),
             amount: formatAmount(payout.amount, true),
-            status: undefined,
+            status: 'Paid' as ApplicationStatus,
         }));
     }, [payoutsData]);
 
     const selectedHistoryType = selectedHistoryIndex === 0 ? 'payouts' : 'withdrawals';
-    const historyTitle = selectedHistoryType === 'payouts' ? 'Past Payouts' : 'Past Withdrawals';
 
     const handleItemPress = (item: Transaction) => {
         setSelectedTransaction(item);
@@ -207,6 +204,7 @@ export default function WithdrawalsScreen() {
             <PastPayoutListItem
                 key={item.id}
                 campaignName={item.campaignName}
+                subtitle={item.bankName}
                 accountNumber={item.accountNumber}
                 date={item.date}
                 amount={item.amount}
@@ -292,6 +290,9 @@ export default function WithdrawalsScreen() {
         details.push({ label: 'Type', value: selectedTransaction.campaignName });
         details.push({ label: 'Date', value: selectedTransaction.date });
         details.push({ label: 'Amount', value: selectedTransaction.amount });
+        if (selectedTransaction.bankName) {
+            details.push({ label: 'Company', value: selectedTransaction.bankName });
+        }
         if (selectedTransaction.status) {
             details.push({ label: 'Status', value: selectedTransaction.status });
         }

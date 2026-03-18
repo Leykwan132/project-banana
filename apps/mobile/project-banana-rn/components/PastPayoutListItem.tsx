@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 interface PastPayoutListItemProps {
     logoUrl?: string;
     campaignName: string;
+    subtitle?: string;
     accountNumber?: string;
     date: string;
     amount: string;
@@ -19,6 +20,7 @@ interface PastPayoutListItemProps {
 export function PastPayoutListItem({
     logoUrl,
     campaignName,
+    subtitle,
     accountNumber,
     date,
     amount,
@@ -31,6 +33,15 @@ export function PastPayoutListItem({
     const cardBorderColor = isDark ? '#303030' : '#E4DED2';
     const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
     const logoChipBorderColor = isDark ? '#2A2A2A' : '#E7E2D8';
+    const subtitleText = subtitle ?? accountNumber;
+    const datePrefix =
+        status === 'Paid' || status === 'Completed'
+            ? 'Paid on '
+            : ['Pending', 'Processing'].includes(status || '')
+                ? 'Requested on '
+                : status
+                    ? 'Withdraw on '
+                    : 'Paid on ';
 
 
     return (
@@ -47,17 +58,21 @@ export function PastPayoutListItem({
                 {/* Top Section */}
                 <View style={styles.topSection}>
                     <View style={[styles.logoContainer, { borderColor: logoChipBorderColor }]}>
-                        <Image
-                            source={{ uri: logoUrl || 'https://picsum.photos/200' }}
-                            style={styles.logo}
-                        />
+                        {logoUrl ? (
+                            <Image
+                                source={{ uri: logoUrl }}
+                                style={styles.logo}
+                            />
+                        ) : (
+                            <View style={styles.logoPlaceholder} />
+                        )}
                     </View>
 
                     <View style={styles.titleContainer}>
                         <View style={styles.textColumn}>
-                            {accountNumber && (
+                            {subtitleText && (
                                 <ThemedText style={[styles.subText, { color: isDark ? '#8A8A8A' : '#6B7280' }]}>
-                                    {accountNumber}
+                                    {subtitleText}
                                 </ThemedText>
                             )}
                             <ThemedText type="defaultSemiBold" style={styles.name}>{campaignName}</ThemedText>
@@ -77,14 +92,12 @@ export function PastPayoutListItem({
                 {/* Bottom Section */}
                 <View style={[styles.bottomSection, { borderTopColor: cardDividerColor }]}>
                     <View>
-                        {status && (
-                            <ApplicationStatusBadge status={status} />
-                        )}
+                        {status && <ApplicationStatusBadge status={status} />}
                     </View>
                     <View style={styles.dateContainer}>
                         <Calendar size={16} color={Colors[colorScheme ?? 'light'].icon} style={styles.icon} />
                         <ThemedText style={[styles.date, { color: isDark ? '#8A8A8A' : '#666666' }]}>
-                            {['Pending', 'Processing'].includes(status || '') ? 'Requested on ' : status ? 'Withdraw on ' : 'Paid on '}{date}
+                            {datePrefix}{date}
                         </ThemedText>
                     </View>
                 </View>
@@ -118,6 +131,12 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     logo: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
+    },
+    logoPlaceholder: {
         width: 48,
         height: 48,
         borderRadius: 24,

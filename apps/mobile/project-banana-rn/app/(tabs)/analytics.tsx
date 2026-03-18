@@ -54,9 +54,10 @@ export default function AnalyticsScreen() {
         { label: 'Earnings', value: 'earnings' },
     ];
 
-    const dailyStats = useQuery((api as any).analytics.getCreatorDailyStatsLast30Days) as
-        | Array<{ timestamp: number; views: number; likes: number; comments: number; shares: number; earnings: number }>
+    const liveDailyStats = useQuery((api as any).analytics.getCreatorDailyStatsLast30Days) as
+        | { timestamp: number; views: number; likes: number; comments: number; shares: number; earnings: number }[]
         | undefined;
+    const dailyStats = liveDailyStats;
 
     type MetricConfig = {
         color: string;
@@ -103,16 +104,21 @@ export default function AnalyticsScreen() {
     const selectedMetricLabel = sortOptions.find((opt) => opt.value === sortBy)?.label ?? 'Earnings';
     const graphHeaderLabel = `Total ${selectedMetricLabel}`;
 
-    const mappedGraphData: GraphDataPoint[] = (dailyStats ?? []).map((point) => ({
-        timestamp: point.timestamp,
-        value: point[sortBy as keyof typeof point] as number,
-        label: '',
-    }));
-    const graphData = mappedGraphData.length > 0 ? mappedGraphData : [{
-        timestamp: Date.now(),
-        value: 0,
-        label: '',
-    }];
+    const graphData = useMemo<GraphDataPoint[]>(() => {
+        const mappedGraphData = (dailyStats ?? []).map((point) => ({
+            timestamp: point.timestamp,
+            value: point[sortBy as keyof typeof point] as number,
+            label: '',
+        }));
+
+        return mappedGraphData.length > 0
+            ? mappedGraphData
+            : [{
+                timestamp: Date.now(),
+                value: 0,
+                label: '',
+            }];
+    }, [dailyStats, sortBy]);
     const totalLabel = activeMetric.getTotal();
 
     const onRefresh = useCallback(() => {
