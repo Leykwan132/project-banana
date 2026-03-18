@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAction, useMutation, useQuery } from 'convex/react';
+import { usePostHog } from '@posthog/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { ChevronLeft, Plus, X, Check, Eye, DollarSign, Wallet, ArrowRight, Info, Upload, Building, Hash, AtSign, Lock } from 'lucide-react';
 import { ERROR_CODES } from '../../../../../packages/backend/convex/errors';
@@ -623,6 +624,16 @@ const HandleListField = ({
     onChange: (values: string[]) => void;
 }) => {
     const [inputValue, setInputValue] = useState("");
+    const isHashtagField = prefix === "#";
+    const tagToneClasses = isHashtagField
+        ? {
+            chip: "border-[#F3D7A6] bg-[#FFF7EA] text-[#7A4B00]",
+            remove: "text-[#C18A2D] hover:text-[#8A5A00] hover:bg-[#FFE8BC]",
+        }
+        : {
+            chip: "border-[#CFE0FF] bg-[#F4F8FF] text-[#1F4B99]",
+            remove: "text-[#6F8ED0] hover:text-[#1F4B99] hover:bg-[#DDE9FF]",
+        };
 
     const addValue = () => {
         const trimmedValue = inputValue.trim();
@@ -682,12 +693,15 @@ const HandleListField = ({
             {values.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                     {values.map((value) => (
-                        <div key={value} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm">
+                        <div
+                            key={value}
+                            className={`inline-flex items-center gap-2 rounded-2xl border px-2.5 py-2 text-sm font-medium shadow-sm transition-colors ${tagToneClasses.chip}`}
+                        >
                             <span>{prefix}{value}</span>
                             <button
                                 type="button"
                                 onClick={() => onChange(values.filter((item) => item !== value))}
-                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                className={`rounded-full p-1 transition-colors ${tagToneClasses.remove}`}
                             >
                                 <X className="w-3.5 h-3.5" />
                             </button>
@@ -712,6 +726,7 @@ export default function CreateCampaign() {
     const createCampaign = useMutation(api.campaigns.createCampaign);
     const generateCampaignImageUploadUrl = useAction(api.campaigns.generateCampaignImageUploadUrl);
     const generateBusinessLogoAccessUrl = useAction(api.businesses.generateLogoAccessUrl);
+    const posthog = usePostHog();
     const navigate = useNavigate();
 
     const LAUNCH_FEE_AMOUNT = import.meta.env.VITE_LAUNCH_FEE ? Number(import.meta.env.VITE_LAUNCH_FEE) : 300;
@@ -760,6 +775,23 @@ export default function CreateCampaign() {
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
     const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
     const [useCompanyLogo, setUseCompanyLogo] = useState(false);
+    const [isTikTokFeatureEnabled, setIsTikTokFeatureEnabled] = useState(
+        () => posthog.isFeatureEnabled('enable-tiktok-feature') ?? false
+    );
+
+    useEffect(() => {
+        const syncFeatureFlag = () => {
+            setIsTikTokFeatureEnabled(posthog.isFeatureEnabled('enable-tiktok-feature') ?? false);
+        };
+
+        syncFeatureFlag();
+
+        const unsubscribe = posthog.onFeatureFlags(() => {
+            syncFeatureFlag();
+        });
+
+        return unsubscribe;
+    }, [posthog]);
 
     useEffect(() => {
         if (!logoFile) {
@@ -912,7 +944,7 @@ export default function CreateCampaign() {
                     ],
                     hashtags: values.hashtags,
                     mentions: values.mentions,
-                    requires_both_platform_posts: values.requiresBothPlatformPosts,
+                    requires_both_platform_posts: isTikTokFeatureEnabled ? values.requiresBothPlatformPosts : false,
                 });
                 setCreatedCampaignId(campaignId);
                 setIsReviewModalOpen(false);
@@ -924,13 +956,19 @@ export default function CreateCampaign() {
 
                 switch (convexError.data?.code) {
                     case ERROR_CODES.INSUFFICIENT_CREDITS.code:
-                    case ERROR_CODES.CAMPAIGN_LIMIT_REACHED.code:
                     case ERROR_CODES.PLAN_RESTRICTED_FEATURE.code:
                     case ERROR_CODES.INVALID_INPUT.code:
                         addToast({
                             title: "Unable to publish campaign",
                             description: convexError.data?.message ?? "Please try again.",
                             color: "danger",
+                        });
+                        break;
+                    case ERROR_CODES.CAMPAIGN_LIMIT_REACHED.code:
+                        addToast({
+                            title: "Active campaign limit reached",
+                            description: "You have reached the maximum number of active campaigns for your current plan. End or pause one active campaign before publishing a new one.",
+                            color: "warning",
                         });
                         break;
                     default:
@@ -973,6 +1011,12 @@ export default function CreateCampaign() {
     const launchFee = isFreePlan ? LAUNCH_FEE_AMOUNT : 0;
     const totalCharge = campaignBudget + launchFee;
     const estimatedRemainingCredits = (business?.credit_balance ?? 0) - totalCharge;
+
+    useEffect(() => {
+        if (!isTikTokFeatureEnabled && formik.values.requiresBothPlatformPosts) {
+            void formik.setFieldValue('requiresBothPlatformPosts', false);
+        }
+    }, [formik.setFieldValue, formik.values.requiresBothPlatformPosts, isTikTokFeatureEnabled]);
 
     const handleOpenReviewModal = async () => {
         if (formik.isSubmitting) return;
@@ -1618,64 +1662,65 @@ export default function CreateCampaign() {
                         <p className="text-xs font-medium text-gray-400">Note: These cannot be changed after the campaign is created.</p>
                     </div>
 
-                    {/* Row 7: Post requirements */}
-                    <div className="space-y-4">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-3">
-                                <label className="font-semibold text-gray-900 block">Posting requirement</label>
-                                <PremiumBadge />
-                            </div>
-                            <p className="text-sm text-gray-500">Choose whether creators can post on either Instagram or TikTok, or must post on both.</p>
-                        </div>
-
-                        {isSocialCopyUnlocked ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => void formik.setFieldValue('requiresBothPlatformPosts', false)}
-                                    className={`rounded-2xl border-2 p-5 text-left transition-all ${!formik.values.requiresBothPlatformPosts ? 'border-black bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                                >
-                                    <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Posting rule</span>
-                                    <span className="block text-base font-semibold text-gray-900">Allow Instagram or TikTok</span>
-                                    <span className="block text-sm text-gray-500 mt-1">Creators can submit either one Instagram post or one TikTok post.</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => void formik.setFieldValue('requiresBothPlatformPosts', true)}
-                                    className={`rounded-2xl border-2 p-5 text-left transition-all ${formik.values.requiresBothPlatformPosts ? 'border-black bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                                >
-                                    <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Posting rule</span>
-                                    <span className="block text-base font-semibold text-gray-900">Require Instagram and TikTok</span>
-                                    <span className="block text-sm text-gray-500 mt-1">Creators must submit both an Instagram post and a TikTok post.</span>
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="rounded-3xl border border-[#E7D9B7] bg-[#FFF9EC] p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-sm">
-                                        <Lock className="w-5 h-5 text-gray-900" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="font-semibold text-gray-900">Want to choose platform posting rules?</h3>
-                                        </div>
-                                        <p className="text-sm text-gray-600">
-                                            Upgrade to Starter to let creators post on one platform or require both Instagram and TikTok.
-                                        </p>
-                                    </div>
+                    {isTikTokFeatureEnabled && (
+                        <div className="space-y-4">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-3">
+                                    <label className="font-semibold text-gray-900 block">Posting requirement</label>
+                                    <PremiumBadge />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/subscription')}
-                                    className="bg-black text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-gray-900 transition-colors"
-                                >
-                                    Upgrade plan
-                                </button>
+                                <p className="text-sm text-gray-500">Choose whether creators can post on either Instagram or TikTok, or must post on both.</p>
                             </div>
-                        )}
 
-                        <p className="text-xs font-medium text-gray-400">Note: This cannot be changed after the campaign is created.</p>
-                    </div>
+                            {isSocialCopyUnlocked ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => void formik.setFieldValue('requiresBothPlatformPosts', false)}
+                                        className={`rounded-2xl border-2 p-5 text-left transition-all ${!formik.values.requiresBothPlatformPosts ? 'border-black bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                    >
+                                        <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Posting rule</span>
+                                        <span className="block text-base font-semibold text-gray-900">Allow Instagram or TikTok</span>
+                                        <span className="block text-sm text-gray-500 mt-1">Creators can submit either one Instagram post or one TikTok post.</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => void formik.setFieldValue('requiresBothPlatformPosts', true)}
+                                        className={`rounded-2xl border-2 p-5 text-left transition-all ${formik.values.requiresBothPlatformPosts ? 'border-black bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                    >
+                                        <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 mb-2">Posting rule</span>
+                                        <span className="block text-base font-semibold text-gray-900">Require Instagram and TikTok</span>
+                                        <span className="block text-sm text-gray-500 mt-1">Creators must submit both an Instagram post and a TikTok post.</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="rounded-3xl border border-[#E7D9B7] bg-[#FFF9EC] p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                                            <Lock className="w-5 h-5 text-gray-900" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="font-semibold text-gray-900">Want to choose platform posting rules?</h3>
+                                            </div>
+                                            <p className="text-sm text-gray-600">
+                                                Upgrade to Starter to let creators post on one platform or require both Instagram and TikTok.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/subscription')}
+                                        className="bg-black text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-gray-900 transition-colors"
+                                    >
+                                        Upgrade plan
+                                    </button>
+                                </div>
+                            )}
+
+                            <p className="text-xs font-medium text-gray-400">Note: This cannot be changed after the campaign is created.</p>
+                        </div>
+                    )}
 
                 </div>
 

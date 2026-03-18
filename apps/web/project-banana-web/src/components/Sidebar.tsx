@@ -165,7 +165,12 @@ export function Sidebar() {
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                                     <div
-                                        className="bg-black h-1.5 rounded-full"
+                                        className={`h-1.5 rounded-full ${
+                                            typeof getPlanDisplay(business?.subscription_plan_type).limit === 'number'
+                                                && (activeCampaignCount ?? 0) >= (getPlanDisplay(business?.subscription_plan_type).limit as number)
+                                                ? 'bg-red-500'
+                                                : 'bg-black'
+                                        }`}
                                         style={{
                                             width: getPlanDisplay(business?.subscription_plan_type).limit === "Unlimited"
                                                 ? '100%'

@@ -6,11 +6,12 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Layers, Check, Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
 import { Skeleton } from "@heroui/skeleton";
+import { addToast } from "@heroui/toast";
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
 
 // Empty State Component
-const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
+const EmptyState = ({ onCreate, isCreateDisabled = false }: { onCreate: () => void; isCreateDisabled?: boolean }) => (
     <div className="flex flex-col items-center justify-center p-20 bg-[#F9FAFB] rounded-3xl text-center animate-fadeIn">
         <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
             <Rocket className="w-10 h-10 text-gray-900" />
@@ -21,8 +22,9 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => (
         </p>
         <button
             onClick={onCreate}
+            disabled={isCreateDisabled}
             data-tour-id="campaigns-create-button"
-            className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+            className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#1C1C1C]"
         >
             <Plus className="w-4 h-4" />
             Create Campaign
@@ -90,6 +92,19 @@ const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
     },
 ];
 
+const getActiveCampaignLimit = (planType?: string | null) => {
+    switch ((planType ?? 'free').toLowerCase()) {
+        case 'growth':
+            return 5;
+        case 'unlimited':
+            return null;
+        case 'starter':
+        case 'free':
+        default:
+            return 1;
+    }
+};
+
 const CampaignsSkeleton = () => {
     return (
         <div className="bg-white overflow-hidden">
@@ -140,6 +155,10 @@ export default function Campaigns() {
 
     // Data Fetching
     const business = useQuery(api.businesses.getMyBusiness);
+    const activeCampaignCount = useQuery(
+        api.campaigns.getActiveCampaignCount,
+        business?._id ? { businessId: business._id } : "skip",
+    );
 
     // Fetch campaigns
     // If business is not loaded yet, we skip. 
@@ -152,6 +171,33 @@ export default function Campaigns() {
 
     // Filter campaigns
     const campaigns = (isTourActive ? TOUR_MOCK_CAMPAIGNS : (results || [])) as CampaignData[];
+    const activeCampaignLimit = getActiveCampaignLimit(business?.subscription_plan_type);
+    const isCheckingCampaignLimit = !isTourActive
+        && Boolean(business?._id)
+        && activeCampaignLimit !== null
+        && activeCampaignCount === undefined;
+    const hasReachedCampaignLimit = !isTourActive
+        && activeCampaignLimit !== null
+        && (activeCampaignCount ?? 0) >= activeCampaignLimit;
+    const activeCampaignToManage = campaigns.find((campaign) => campaign.status === 'active');
+
+    const handleCreateCampaign = () => {
+        if (isCheckingCampaignLimit) {
+            return;
+        }
+
+        if (hasReachedCampaignLimit) {
+            addToast({
+                title: 'Active campaign limit reached',
+                description: 'You have reached the maximum number of active campaigns for your current plan. End or pause one active campaign before creating a new one.',
+                color: 'warning',
+            });
+
+            return;
+        }
+
+        navigate('/campaign/new');
+    };
 
     // Derived state for filtered lists
     const ongoingCampaigns = campaigns.filter((c) =>
@@ -276,7 +322,7 @@ export default function Campaigns() {
         return (
             <div className="p-8 font-sans text-gray-900 animate-fadeIn">
                 <h1 className="text-2xl font-bold mb-6">Campaigns</h1>
-                <EmptyState onCreate={() => navigate('/campaign/new')} />
+                <EmptyState onCreate={handleCreateCampaign} isCreateDisabled={isCheckingCampaignLimit} />
             </div>
         )
     }
@@ -290,9 +336,10 @@ export default function Campaigns() {
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-semibold">Ongoing Campaigns</h2>
                     <button
-                        onClick={() => navigate('/campaign/new')}
+                        onClick={handleCreateCampaign}
+                        disabled={isCheckingCampaignLimit}
                         data-tour-id="campaigns-create-button"
-                        className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                        className="bg-[#1C1C1C] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#1C1C1C]"
                     >
                         <Plus className="w-4 h-4" />
                         Create Campaign
