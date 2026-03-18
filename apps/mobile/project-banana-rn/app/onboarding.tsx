@@ -18,6 +18,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
+import { TypingText } from '@/components/ui/TypingText';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import {
@@ -666,6 +667,10 @@ export default function OnboardingScreen() {
                         loop
                         style={{ width: 220, height: 220 }}
                     />
+                    <TypingText
+                        text="Logging you in"
+                        style={[styles.loadingText, { color: isDark ? '#ECEDEE' : '#000000' }]}
+                    />
                 </View>
             )}
         </View>
@@ -678,6 +683,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+    },
+    loadingText: {
+        marginTop: 8,
+        fontSize: 18,
+        fontFamily: 'GoogleSans_600SemiBold',
     },
 
     // Header

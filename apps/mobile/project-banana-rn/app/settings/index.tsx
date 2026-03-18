@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, Linking, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { ArrowLeft, ChevronRight, Shield, FileText, Bell, Moon, Bug, MessageCircle, Mail } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Shield, FileText, Bell, Moon, Bug, MessageCircle, Mail, LogOut } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from 'convex/react';
 import { Switch as UISwitch } from 'react-native-ui-lib';
+import { usePostHog } from 'posthog-react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { Colors } from '@/constants/theme';
 import { REPORT_ISSUE_FORM_URL } from '@/constants/support';
 import { useColorScheme, useThemePreference } from '@/hooks/use-color-scheme';
+import { authClient } from '@/lib/auth-client';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
@@ -33,11 +36,15 @@ export default function SettingsScreen() {
     const { toggleColorScheme } = useThemePreference();
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const posthog = usePostHog();
+    const { data: session } = authClient.useSession();
+    const user = session?.user;
 
     const recordPushNotificationToken = useMutation(api.notifications.recordPushNotificationToken);
     const pausePushNotifications = useMutation(api.notifications.pausePushNotifications);
     const unpausePushNotifications = useMutation(api.notifications.unpausePushNotifications);
-    const pushNotificationPreference = useQuery(api.notifications.getPushNotificationPreference);
+    const pushNotificationPreference = useQuery(api.notifications.getPushNotificationPreference, user ? {} : 'skip');
 
     useEffect(() => {
         if (pushNotificationPreference) {
@@ -114,6 +121,31 @@ export default function SettingsScreen() {
         await toggleColorScheme();
     }, [toggleColorScheme]);
 
+    const handleLogout = useCallback(async () => {
+        if (isLoggingOut) return;
+
+        setIsLoggingOut(true);
+        try {
+            await authClient.signOut({
+                fetchOptions: {
+                    onSuccess: () => {
+                        posthog.reset();
+                        router.replace('/welcome');
+                        setIsLoggingOut(false);
+                    },
+                    onError: () => {
+                        setIsLoggingOut(false);
+                        Alert.alert('Logout failed', 'Unable to log out right now. Please try again.');
+                    },
+                },
+            });
+        } catch (error) {
+            console.error('Logout error:', error);
+            setIsLoggingOut(false);
+            Alert.alert('Logout failed', 'Unable to log out right now. Please try again.');
+        }
+    }, [isLoggingOut, posthog, router]);
+
     const settingsOptions: SettingsOption[] = [
         {
             id: 'report-issue',
@@ -167,59 +199,83 @@ export default function SettingsScreen() {
 
             {/* Settings Options */}
             <View style={styles.content}>
-                <View style={[styles.sectionCard, { backgroundColor: surfaceColor, borderColor }]}>
-                    <View style={styles.optionRow}>
-                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                            <Moon size={24} color={theme.text} />
+                <View style={styles.sections}>
+                    <View style={[styles.sectionCard, { backgroundColor: surfaceColor, borderColor }]}>
+                        <View style={styles.optionRow}>
+                            <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
+                                <Moon size={24} color={theme.text} />
+                            </View>
+                            <ThemedText style={styles.optionLabel}>Dark mode</ThemedText>
+                            <UISwitch
+                                value={colorScheme === 'dark'}
+                                onValueChange={handleToggleTheme}
+                                onColor="#FC4C02"
+                                offColor="#D1D5DB"
+                                thumbColor="#FFFFFF"
+                                thumbStyle={styles.switchThumb}
+                            />
                         </View>
-                        <ThemedText style={styles.optionLabel}>Dark mode</ThemedText>
-                        <UISwitch
-                            value={colorScheme === 'dark'}
-                            onValueChange={handleToggleTheme}
-                            onColor="#FC4C02"
-                            offColor="#D1D5DB"
-                            thumbColor="#FFFFFF"
-                            thumbStyle={styles.switchThumb}
-                        />
+                        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                        <View style={styles.optionRow}>
+                            <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
+                                <Bell size={24} color={theme.text} />
+                            </View>
+                            <ThemedText style={styles.optionLabel}>Allow notifications</ThemedText>
+                            <UISwitch
+                                value={notificationsEnabled}
+                                onValueChange={handleToggleNotifications}
+                                disabled={isUpdatingNotifications}
+                                onColor="#FC4C02"
+                                offColor="#D1D5DB"
+                                disabledColor="#D1D5DB"
+                                thumbColor="#FFFFFF"
+                                thumbStyle={styles.switchThumb}
+                            />
+                        </View>
                     </View>
-                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-                    <View style={styles.optionRow}>
-                        <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                            <Bell size={24} color={theme.text} />
-                        </View>
-                        <ThemedText style={styles.optionLabel}>Allow notifications</ThemedText>
-                        <UISwitch
-                            value={notificationsEnabled}
-                            onValueChange={handleToggleNotifications}
-                            disabled={isUpdatingNotifications}
-                            onColor="#FC4C02"
-                            offColor="#D1D5DB"
-                            disabledColor="#D1D5DB"
-                            thumbColor="#FFFFFF"
-                            thumbStyle={styles.switchThumb}
-                        />
+
+                    <View style={[styles.sectionCard, { backgroundColor: surfaceColor, borderColor }]}>
+                        {settingsOptions.map((option, index) => (
+                            <View key={option.id}>
+                                <Pressable
+                                    style={styles.optionRow}
+                                    onPress={option.onPress}
+                                >
+                                    <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
+                                        {option.icon}
+                                    </View>
+                                    <ThemedText style={styles.optionLabel}>{option.title}</ThemedText>
+                                    <ChevronRight size={20} color={theme.icon} />
+                                </Pressable>
+                                {index < settingsOptions.length - 1 && (
+                                    <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+                                )}
+                            </View>
+                        ))}
                     </View>
                 </View>
 
-                <View style={[styles.sectionCard, { backgroundColor: surfaceColor, borderColor }]}>
-                    {settingsOptions.map((option, index) => (
-                        <View key={option.id}>
-                            <Pressable
-                                style={styles.optionRow}
-                                onPress={option.onPress}
-                            >
-                                <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                                    {option.icon}
-                                </View>
-                                <ThemedText style={styles.optionLabel}>{option.title}</ThemedText>
-                                <ChevronRight size={20} color={theme.icon} />
-                            </Pressable>
-                            {index < settingsOptions.length - 1 && (
-                                <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-                            )}
-                        </View>
-                    ))}
-                </View>
+                <Pressable
+                    style={[
+                        styles.logoutButton,
+                        {
+                            backgroundColor: isDark ? '#2A1313' : '#FFF1F1',
+                            borderColor: isDark ? '#5C2323' : '#F2CACA',
+                        },
+                        isLoggingOut && styles.logoutButtonDisabled,
+                    ]}
+                    onPress={handleLogout}
+                    disabled={isLoggingOut}
+                >
+                    {isLoggingOut ? (
+                        <LoadingIndicator size="small" color="#D32F2F" />
+                    ) : (
+                        <>
+                            <LogOut size={20} color="#D32F2F" />
+                            <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
+                        </>
+                    )}
+                </Pressable>
             </View>
         </SafeAreaView>
     );
@@ -252,8 +308,13 @@ const styles = StyleSheet.create({
         width: 40,
     },
     content: {
+        flex: 1,
         paddingHorizontal: 24,
         paddingTop: 16,
+        paddingBottom: 24,
+        justifyContent: 'space-between',
+    },
+    sections: {
         gap: 16,
     },
     sectionCard: {
@@ -288,5 +349,23 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: '#F0F0F0',
         marginLeft: 72,
+    },
+    logoutButton: {
+        minHeight: 56,
+        borderRadius: 28,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingHorizontal: 20,
+    },
+    logoutButtonDisabled: {
+        opacity: 0.7,
+    },
+    logoutButtonText: {
+        color: '#D32F2F',
+        fontSize: 16,
+        fontFamily: 'GoogleSans_700Bold',
     },
 });

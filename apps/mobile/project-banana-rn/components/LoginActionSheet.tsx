@@ -150,6 +150,7 @@ export function LoginActionSheet({
         try {
             const { error } = await authClient.signIn.social({
                 provider: "google",
+                callbackURL: "lumina://",
             });
 
             if (error) {

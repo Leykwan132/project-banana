@@ -50,9 +50,10 @@ export function ProfileActionSheet({
     // Dynamic Data
     const { data: session } = authClient.useSession();
     const user = session?.user;
+    const shouldFetchProfile = Boolean(user) && !isLoggingOut;
 
-    const creator = useQuery(api.creators.getCreator);
-    const convexUser = useQuery(api.users.getUser);
+    const creator = useQuery(api.creators.getCreator, shouldFetchProfile ? {} : 'skip');
+    const convexUser = useQuery(api.users.getUser, shouldFetchProfile ? {} : 'skip');
     const campaignsCount = convexUser?.campaigns_count ?? 0;
     const totalEarnings = convexUser?.total_earnings ?? 0;
 
