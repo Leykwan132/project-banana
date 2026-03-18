@@ -21,6 +21,7 @@ import LottieView from 'lottie-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAction, useMutation, useQuery } from 'convex/react';
+import { usePostHog } from 'posthog-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
@@ -132,6 +133,7 @@ export default function ApplicationDetailScreen() {
     const updateApplicationStatus = useMutation(api.applications.updateApplicationStatus);
     const createUserCampaignStatus = useMutation(api.userCampaignStatus.createUserCampaignStatus);
     const generateVideoUploadUrl = useAction(api.submissions.generateVideoUploadUrl);
+    const posthog = usePostHog();
 
     const submissionSheetRef = useRef<ActionSheetRef>(null);
     const reviewSheetRef = useRef<ActionSheetRef>(null);
@@ -284,8 +286,18 @@ export default function ApplicationDetailScreen() {
 
         const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
         const isTargetedRelink = isActionRequired && hasRelinkRequiredPlatform;
-        const requiresInstagramLink = isTargetedRelink ? instagramNeedsRelink : (requiresBothPlatformPosts || isPayAsYouGoPlan);
-        const requiresTikTokLink = isTargetedRelink ? tiktokNeedsRelink : requiresBothPlatformPosts;
+        const shouldAllowTikTokSubmission = (campaign.business_plan_type ?? 'free').toLowerCase() !== 'free' && (
+            isTikTokFeatureEnabled ||
+            requiresBothPlatformPosts ||
+            tiktokNeedsRelink ||
+            Boolean(application?.tiktok_post_url)
+        );
+        const requiresInstagramLink = isTargetedRelink
+            ? instagramNeedsRelink
+            : (requiresBothPlatformPosts || isPayAsYouGoPlan || !shouldAllowTikTokSubmission);
+        const requiresTikTokLink = isTargetedRelink
+            ? tiktokNeedsRelink
+            : (requiresBothPlatformPosts && shouldAllowTikTokSubmission);
 
         if (requiresInstagramLink && !instagramLink) {
             setError('Please provide your Instagram post URL.');
@@ -298,7 +310,7 @@ export default function ApplicationDetailScreen() {
         }
 
         if (!requiresInstagramLink && !requiresTikTokLink && !instagramLink && !tiktokLink) {
-            setError(isPayAsYouGoPlan ? 'Please provide your Instagram post URL.' : 'Please provide at least one post URL (Instagram or TikTok).');
+            setError(shouldAllowTikTokSubmission ? 'Please provide at least one post URL (Instagram or TikTok).' : 'Please provide your Instagram post URL.');
             return;
         }
 
@@ -314,7 +326,7 @@ export default function ApplicationDetailScreen() {
             }
         }
 
-        if (tiktokLink) {
+        if (shouldAllowTikTokSubmission && tiktokLink) {
             if ((campaign?.business_plan_type ?? 'free').toLowerCase() === 'free') {
                 setError('Upgrade your plan to submit a TikTok URL for this campaign.');
                 return;
@@ -347,7 +359,7 @@ export default function ApplicationDetailScreen() {
                     applicationId,
                     status: "verifying",
                     ig_post_url: instagramLink ? instagramLink.trim() : undefined,
-                    tiktok_post_url: tiktokLink ? tiktokLink.trim() : undefined,
+                    tiktok_post_url: shouldAllowTikTokSubmission && tiktokLink ? tiktokLink.trim() : undefined,
                 }),
                 createStatusPromise,
             ]);
@@ -400,6 +412,7 @@ export default function ApplicationDetailScreen() {
     const isVerifying = applicationStatus === 'Verifying';
     const isEarning = applicationStatus === 'Earning';
     const isPayAsYouGoPlan = (campaign?.business_plan_type ?? 'free').toLowerCase() === 'free';
+    const isTikTokFeatureEnabled = posthog.isFeatureEnabled('enable-tiktok-feature') ?? false;
     const requiresBothPlatformPosts = campaign?.requires_both_platform_posts ?? false;
     const missingPostDescription = application?.missing_post_description as
         | {
@@ -424,6 +437,18 @@ export default function ApplicationDetailScreen() {
     const requiresMultipleRelinks = instagramNeedsRelink && tiktokNeedsRelink;
     const hasRelinkRequiredPlatform = orderedMissingDescriptionCards.some(({ details }) => details.reuploadRequired);
     const canResubmitLinks = !isActionRequired || hasRelinkRequiredPlatform;
+    const shouldShowTikTokSubmissionOption = !isPayAsYouGoPlan && (
+        isTikTokFeatureEnabled ||
+        requiresBothPlatformPosts ||
+        tiktokNeedsRelink ||
+        Boolean(application?.tiktok_post_url)
+    );
+
+    useEffect(() => {
+        if (!shouldShowTikTokSubmissionOption && tiktokLink) {
+            setTikTokLink('');
+        }
+    }, [shouldShowTikTokSubmissionOption, tiktokLink]);
 
     const statusBreakdown: Array<{ status: ApplicationStatus; action: string }> = [
         {
@@ -1124,7 +1149,7 @@ export default function ApplicationDetailScreen() {
                                                     ? hasRelinkRequiredPlatform
                                                         ? 'Copy the latest public post link for the affected platform and paste it below.'
                                                         : 'Copy the required tracking tag, hashtags, and mentions for your live post.'
-                                                    : 'Paste your live post links so Lumina can verify your post at 12am before earning starts.'}
+                                                    : 'Lumina will verify your post at 12am before earning starts.'}
                                             </ThemedText>
                                         </View>
 
@@ -1189,7 +1214,7 @@ export default function ApplicationDetailScreen() {
                                                             <FontAwesome5 name="instagram" size={24} color={theme.text} style={styles.inputIcon} />
                                                             <TextInput
                                                                 style={[styles.urlInput, { color: theme.text }]}
-                                                                placeholder={requiresBothPlatformPosts || isPayAsYouGoPlan ? "https://www.instagram.com/..." : "https://www.instagram.com/... (Optional)"}
+                                                                placeholder={requiresBothPlatformPosts || !shouldShowTikTokSubmissionOption ? "https://www.instagram.com/..." : "https://www.instagram.com/... (Optional)"}
                                                                 placeholderTextColor={subduedTextColor}
                                                                 value={instagramLink}
                                                                 onChangeText={(text) => {
@@ -1201,7 +1226,7 @@ export default function ApplicationDetailScreen() {
                                                         </View>
                                                     ) : null}
 
-                                                    {(!isPayAsYouGoPlan && (!isActionRequired || tiktokNeedsRelink)) ? (
+                                                    {(shouldShowTikTokSubmissionOption && (!isActionRequired || tiktokNeedsRelink)) ? (
                                                         <View style={[styles.urlInputContainer, { backgroundColor: surfaceColor }]}>
                                                             <FontAwesome5 name="tiktok" size={24} color={theme.text} style={styles.inputIcon} />
                                                             <TextInput
