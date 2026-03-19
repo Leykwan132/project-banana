@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { api, internal } from "./_generated/api";
 import { posthog } from "./posthog";
+import { getBillplzBaseUrl } from "./utils";
 
 // ============================================================
 // QUERIES
@@ -582,9 +583,10 @@ export const createBillplzBill = action({
         const amountCents = Math.round(args.amount * 100);
         const receiptId = `rcpt_${crypto.randomUUID().replace(/-/g, "")}`;
         const description = `Topup for ${business.name}`;
+        const billplzBaseUrl = getBillplzBaseUrl();
 
         // Create Bill
-        const response = await fetch("https://www.billplz-sandbox.com/api/v3/bills", {
+        const response = await fetch(`${billplzBaseUrl}/api/v3/bills`, {
             method: "POST",
             headers: {
                 Authorization: `Basic ${btoa(apiKey + ":")}`,

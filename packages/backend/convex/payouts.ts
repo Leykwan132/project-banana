@@ -4,6 +4,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { PayoutStatus, WithdrawalStatus, WithdrawalSourceType, PAYOUT_GATEWAY_FEE, PAYOUT_PLATFORM_FEE_RATE, MIN_WITHDRAWAL_AMOUNT } from "./constants";
 import { ErrorType } from "./errors";
+import { getBillplzBaseUrl } from "./utils";
 
 // ============================================================
 // PAYOUT QUERIES
@@ -210,13 +211,14 @@ async function createBillplzPaymentOrder(args: {
     }
 
     const epoch = Math.floor(Date.now() / 1000);
+    const billplzBaseUrl = getBillplzBaseUrl();
 
     // Checksum raw string: join values in strict order
     // [payment_order_collection_id, bank_account_number, total, epoch]
     const rawString = `${paymentOrderCollectionId}${args.bankAccountNumber}${args.total}${epoch}`;
     const checksum = await generateChecksumSHA512(rawString, xSignatureKey);
 
-    const response = await fetch("https://www.billplz-sandbox.com/api/v5/payment_orders", {
+    const response = await fetch(`${billplzBaseUrl}/api/v5/payment_orders`, {
         method: "POST",
         headers: {
             Authorization: `Basic ${btoa(apiKey + ":")}`,
@@ -224,7 +226,7 @@ async function createBillplzPaymentOrder(args: {
         },
         body: new URLSearchParams({
             payment_order_collection_id: paymentOrderCollectionId,
-            bank_code: "https://www.billplz-sandbox.com/api/v5/payment_orders".includes("-sandbox") ? "DUMMYBANKVERIFIED" : args.bankCode,
+            bank_code: billplzBaseUrl.includes("-sandbox") ? "DUMMYBANKVERIFIED" : args.bankCode,
             bank_account_number: args.bankAccountNumber,
             name: args.name,
             description: args.description,
@@ -282,18 +284,14 @@ async function createBillplzPaymentOrderCollection(args: {
         );
     }
 
-    const isSandbox = true; // flip to false for production
-    const baseUrl = isSandbox
-        ? "https://www.billplz-sandbox.com"
-        : "https://www.billplz.com";
-
     const epoch = Math.floor(Date.now() / 1000);
+    const billplzBaseUrl = getBillplzBaseUrl();
 
     // Checksum raw string: join values in strict order [title, callback_url, epoch]
     const rawString = `${args.title}${args.callbackUrl}${epoch}`;
     const checksum = await generateChecksumSHA512(rawString, xSignatureKey);
 
-    const response = await fetch(`${baseUrl}/api/v5/payment_order_collections`, {
+    const response = await fetch(`${billplzBaseUrl}/api/v5/payment_order_collections`, {
         method: "POST",
         headers: {
             Authorization: `Basic ${btoa(apiKey + ":")}`,

@@ -35,3 +35,9 @@ export async function generateChecksumSHA512(data: string, secret: string): Prom
     const hashArray = Array.from(new Uint8Array(signature));
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+export function getBillplzBaseUrl() {
+    return process.env.ENV === "production"
+        ? "https://www.billplz.com"
+        : "https://www.billplz-sandbox.com";
+}

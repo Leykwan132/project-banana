@@ -58,6 +58,8 @@ export const authComponent: any = createClient<DataModel>(components.betterAuth,
     },
 });
 
+export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
+
 
 
 export const getCurrentUser = query({
