@@ -1,4 +1,4 @@
-import { action, mutation, query } from "./_generated/server";
+import { action, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
@@ -90,6 +90,26 @@ export const getPendingBankAccountsCount = query({
             .withIndex("by_status", (q) => q.eq("status", "pending_review"))
             .collect();
         return all.length;
+    },
+});
+
+export const getPendingBankAccountsForCron = internalQuery({
+    args: {},
+    handler: async (ctx) => {
+        const accounts = await ctx.db
+            .query("bank_accounts")
+            .withIndex("by_status", (q) => q.eq("status", "pending_review"))
+            .order("desc")
+            .collect();
+
+        return accounts.map((account) => ({
+            _id: account._id,
+            bank_name: account.bank_name,
+            account_holder_name: account.account_holder_name,
+            account_number: account.account_number,
+            source_type: account.source_type ?? WithdrawalSourceType.Creator,
+            created_at: account.created_at,
+        }));
     },
 });
 

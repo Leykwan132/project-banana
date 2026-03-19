@@ -137,6 +137,64 @@ const buildRelinkRequiredDescription = (
     reuploadReason: formatRelinkReason(platform, reason),
 });
 
+const TELEGRAM_SUMMARY_TIMEZONE = "Asia/Kuala_Lumpur";
+const PENDING_BANK_ACCOUNT_SUMMARY_PREVIEW_LIMIT = 10;
+
+const formatPendingBankAccountsSummary = (
+    accounts: Array<{
+        _id: string;
+        bank_name: string;
+        account_holder_name: string;
+        account_number: string;
+        source_type: string;
+        created_at?: number;
+    }>,
+) => {
+    const summaryDate = new Intl.DateTimeFormat("en-MY", {
+        timeZone: TELEGRAM_SUMMARY_TIMEZONE,
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+    }).format(new Date());
+
+    if (accounts.length === 0) {
+        return [
+            "Daily bank account pending review summary",
+            `As of ${summaryDate} (${TELEGRAM_SUMMARY_TIMEZONE})`,
+            "Pending bank accounts: 0",
+            "No bank accounts are pending review right now.",
+        ].join("\n");
+    }
+
+    const preview = accounts.slice(0, PENDING_BANK_ACCOUNT_SUMMARY_PREVIEW_LIMIT);
+    const lines = preview.map((account, index) => {
+        const source = account.source_type === "business" ? "business" : "creator";
+        const submittedAt = account.created_at
+            ? new Intl.DateTimeFormat("en-MY", {
+                timeZone: TELEGRAM_SUMMARY_TIMEZONE,
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+            }).format(new Date(account.created_at))
+            : "unknown";
+
+        return `${index + 1}. ${source} | ${account.bank_name} | ${account.account_holder_name} | ****${account.account_number.slice(-4)} | submitted ${submittedAt} | ${account._id}`;
+    });
+
+    const remaining = accounts.length - preview.length;
+
+    return [
+        "Daily bank account pending review summary",
+        `As of ${summaryDate} (${TELEGRAM_SUMMARY_TIMEZONE})`,
+        `Pending bank accounts: ${accounts.length}`,
+        ...lines,
+        ...(remaining > 0 ? [`...and ${remaining} more pending bank account(s).`] : []),
+    ].join("\n");
+};
+
 export const runDailyScrape = internalAction({
     args: {},
     handler: async (ctx) => {
@@ -523,6 +581,24 @@ export const sendPendingApprovalsReminder = internalAction({
     },
 });
 
+export const sendPendingBankAccountsTelegramSummary = internalAction({
+    args: {},
+    handler: async (ctx) => {
+        console.log("Starting pending bank accounts Telegram summary cron job");
+
+        const accounts = await ctx.runQuery((internal as any).admin.getPendingBankAccountsForCron, {});
+        const text = formatPendingBankAccountsSummary(accounts);
+
+        await ctx.runAction((internal as any).telegram.sendBankAccountSubmissionAlert, {
+            text,
+        });
+
+        console.log(
+            `Finished pending bank accounts Telegram summary cron job. Pending accounts: ${accounts.length}`,
+        );
+    },
+});
+
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 export const cleanupResend = internalMutation({
     args: {},
@@ -555,6 +631,12 @@ crons.cron(
     "pending approvals reminder",
     "30 0 * * *", // 8:30 AM SGT/MYT (00:30 UTC)
     (internal as any).crons.sendPendingApprovalsReminder,
+);
+
+crons.cron(
+    "pending bank accounts telegram summary",
+    "0 1 * * *", // 9:00 AM SGT/MYT (01:00 UTC)
+    (internal as any).crons.sendPendingBankAccountsTelegramSummary,
 );
 
 export default crons;
