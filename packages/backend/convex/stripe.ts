@@ -212,7 +212,7 @@ export const createSubscriptionCheckout = action({
                 // TODO: update this to 14 days
                 // "subscription_data[trial_period_days]": "14",
                 "success_url": `${SITE_URL}/overview?success=true`,
-                "cancel_url": `${SITE_URL}/overview?canceled=true`,
+                "cancel_url": `${SITE_URL}/onboarding?canceled=true`,
                 "client_reference_id": business._id,
                 "customer": customer.customerId,
                 "metadata[businessId]": business._id,
