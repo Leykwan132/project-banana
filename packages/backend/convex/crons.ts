@@ -491,6 +491,38 @@ export const runDailyScrape = internalAction({
     },
 });
 
+export const sendPendingApprovalsReminder = internalAction({
+    args: {},
+    handler: async (ctx) => {
+        console.log("Starting pending approvals reminder cron job");
+
+        const businesses = await ctx.runQuery((internal as any).businesses.getBusinessesWithPendingApprovals, {});
+        const siteUrl = (process.env.SITE_URL ?? "https://lumina-app.my").replace(/\/$/, "");
+        const redirectUrl = `${siteUrl}/approvals`;
+        let emailsSent = 0;
+
+        for (const business of businesses) {
+            if (!business.email) {
+                console.warn(
+                    `Skipping pending approvals email for business ${business.businessName} (${business.businessId}) because no email is configured`,
+                );
+                continue;
+            }
+
+            await ctx.runAction((internal as any).emails.sendPendingApprovalsEmail, {
+                email: business.email,
+                count: business.count,
+                redirectUrl,
+            });
+            emailsSent += 1;
+        }
+
+        console.log(
+            `Finished pending approvals reminder cron job. Businesses checked: ${businesses.length}, emails sent: ${emailsSent}`,
+        );
+    },
+});
+
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 export const cleanupResend = internalMutation({
     args: {},
@@ -517,6 +549,12 @@ crons.cron(
     "daily scrape",
     "15 16 * * *", // 12:15 AM SGT/MYT (16:15 UTC)
     (internal as any).crons.runDailyScrape,
+);
+
+crons.cron(
+    "pending approvals reminder",
+    "30 0 * * *", // 8:30 AM SGT/MYT (00:30 UTC)
+    (internal as any).crons.sendPendingApprovalsReminder,
 );
 
 export default crons;

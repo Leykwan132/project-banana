@@ -203,3 +203,25 @@ export const sendEarningsUpdateEmail = internalAction({
         });
     },
 });
+
+/**
+ * Send an email to notify a business that they have submissions pending approval.
+ * Data variables: count
+ */
+export const sendPendingApprovalsEmail = internalAction({
+    args: {
+        email: v.string(),
+        count: v.number(),
+        redirectUrl: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await sendTemplateEmail(ctx, {
+            email: args.email,
+            templateId: "pending_approvals",
+            variables: {
+                count: `${args.count}`,
+                redirectUrl: args.redirectUrl,
+            },
+        });
+    },
+});

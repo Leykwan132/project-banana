@@ -1,9 +1,10 @@
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server";
 import { generateUploadUrl, generateDownloadUrl } from "./r2";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { posthog } from "./posthog";
+import { authComponent } from "./auth";
 
 // ============================================================
 // QUERIES
@@ -47,6 +48,29 @@ export const getBusinessByUserId = query({
             .query("businesses")
             .withIndex("by_user", (q) => q.eq("user_id", args.userId))
             .unique();
+    },
+});
+
+export const getBusinessesWithPendingApprovals = internalQuery({
+    args: {},
+    handler: async (ctx) => {
+        const businesses = await ctx.db.query("businesses").collect();
+        const businessesWithPendingApprovals = businesses.filter(
+            (business) => (business.pending_approvals ?? 0) > 0,
+        );
+
+        return await Promise.all(
+            businessesWithPendingApprovals.map(async (business) => {
+                const user = await authComponent.getAnyUserById(ctx, business.user_id);
+
+                return {
+                    businessId: business._id,
+                    businessName: business.name,
+                    email: user?.email ?? null,
+                    count: business.pending_approvals ?? 0,
+                };
+            }),
+        );
     },
 });
 
