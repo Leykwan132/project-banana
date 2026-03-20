@@ -3,8 +3,10 @@ export const NotificationType = {
     SubmissionRejected: "submission_rejected",
     PostDescriptionMissing: "post_description_missing",
     PostEarning: "post_earning",
+    ApplicationUpdatesSummary: "application_updates_summary",
     BankAccountApproved: "bank_account_approved",
     BankAccountRejected: "bank_account_rejected",
+    WithdrawalPaid: "withdrawal_paid",
 } as const;
 
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
@@ -30,6 +32,13 @@ export const NotificationCopy = {
         description: (campaignName: string) =>
             `Your post for ${campaignName} is now earning. Track your payout anytime.`,
     },
+    applicationUpdatesSummary: {
+        title: "Applications need updates ⚠️",
+        description: (count: number) =>
+            count === 1
+                ? "You have 1 application that needs to be updated."
+                : `You have ${count} applications that need to be updated.`,
+    },
     bankAccountApproved: {
         title: "Bank account approved ✅",
         description: (endingDigits: string) =>
@@ -39,5 +48,10 @@ export const NotificationCopy = {
         title: "Bank account rejected ⚠️",
         description: (endingDigits: string) =>
             `We couldn't verify your bank account ending in ${endingDigits}. Tap here to add a new one and get paid!`,
+    },
+    withdrawalPaid: {
+        title: "Your payout has landed",
+        description: (amount: string, endingDigits: string) =>
+            `${amount} has been sent to your bank account ending in ${endingDigits}. Tap to view it.`,
     },
 } as const;

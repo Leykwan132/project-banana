@@ -23,10 +23,37 @@ const notificationDataValidator = v.object({
     submissionId: v.optional(v.id("submissions")),
     applicationId: v.optional(v.id("applications")),
     bankAccountId: v.optional(v.id("bank_accounts")),
+    withdrawalId: v.optional(v.id("withdrawals")),
     bankAccountType: v.optional(v.string()),
     endingDigits: v.optional(v.string()),
     missingPostDescription: v.optional(missingPostDescriptionValidator),
 });
+type NotificationData = {
+    type: string;
+    submissionId?: Id<"submissions">;
+    applicationId?: Id<"applications">;
+    bankAccountId?: Id<"bank_accounts">;
+    withdrawalId?: Id<"withdrawals">;
+    bankAccountType?: string;
+    endingDigits?: string;
+    missingPostDescription?: {
+        instagram?: {
+            trackingTagMissing: boolean;
+            missingHashtags: string[];
+            missingMentions: string[];
+            reuploadRequired?: boolean;
+            reuploadReason?: string;
+        };
+        tiktok?: {
+            trackingTagMissing: boolean;
+            missingHashtags: string[];
+            missingMentions: string[];
+            reuploadRequired?: boolean;
+            reuploadReason?: string;
+        };
+        checkedAt: number;
+    };
+};
 
 export const getNotificationUser = internalQuery({
     args: {
@@ -55,11 +82,47 @@ const ensureNotificationUser = async (ctx: any, betterAuthUserId: string) => {
     return await ctx.db.get(userId);
 };
 
+const sendPushNotification = async (
+    ctx: any,
+    args: {
+        notificationUserId: Id<"users">;
+        title: string;
+        description: string;
+        data: NotificationData;
+        notificationId?: Id<"notifications">;
+    },
+) => {
+    const status = await pushNotifications.getStatusForUser(ctx, {
+        userId: args.notificationUserId,
+    });
+    const pushSent = status.hasToken && !status.paused;
+
+    if (!pushSent) {
+        return { pushSent };
+    }
+
+    const pushData = args.notificationId
+        ? { ...args.data, notificationId: args.notificationId }
+        : args.data;
+
+    await pushNotifications.sendPushNotification(ctx, {
+        userId: args.notificationUserId,
+        notification: {
+            title: args.title,
+            body: args.description,
+            data: pushData,
+        },
+    });
+
+    return { pushSent };
+};
+
 const getRedirectFields = (data: {
     type: string;
     submissionId?: string;
     applicationId?: string;
     bankAccountId?: string;
+    withdrawalId?: string;
 }) => {
     switch (data.type) {
         case NotificationType.SubmissionApproved:
@@ -68,6 +131,11 @@ const getRedirectFields = (data: {
             return {
                 redirectType: "application",
                 redirectId: data.applicationId,
+            };
+        case NotificationType.ApplicationUpdatesSummary:
+            return {
+                redirectType: "notification",
+                redirectId: undefined,
             };
         case NotificationType.SubmissionRejected:
             return {
@@ -79,6 +147,11 @@ const getRedirectFields = (data: {
             return {
                 redirectType: "bank-account",
                 redirectId: data.bankAccountId,
+            };
+        case NotificationType.WithdrawalPaid:
+            return {
+                redirectType: "withdrawal",
+                redirectId: data.withdrawalId,
             };
         default:
             return {
@@ -338,19 +411,6 @@ export const unpausePushNotifications = mutation({
 });
 
 
-export const sendPushNotification = mutation({
-    args: { title: v.string(), to: v.id("users") },
-    handler: async (ctx, args) => {
-        // Sending a notification
-        return pushNotifications.sendPushNotification(ctx, {
-            userId: args.to,
-            notification: {
-                title: args.title,
-            },
-        });
-    },
-});
-
 export const getNotificationStatus = query({
     args: { id: v.string() },
     handler: async (ctx, args) => {
@@ -363,7 +423,7 @@ export const getNotificationStatus = query({
 // INTERNAL DELIVERY HELPERS
 // ============================================================
 
-export const deliverCreatorNotification = internalMutation({
+export const createAndSendNotification = internalMutation({
     args: {
         betterAuthUserId: v.string(),
         title: v.string(),
@@ -388,31 +448,40 @@ export const deliverCreatorNotification = internalMutation({
             is_read: false,
         });
 
-        const status = await pushNotifications.getStatusForUser(ctx, {
-            userId: notificationUser._id,
+        const { pushSent } = await sendPushNotification(ctx, {
+            notificationUserId: notificationUser._id,
+            title: args.title,
+            description: args.description,
+            data: args.data,
+            notificationId,
         });
-        const pushSent = status.hasToken && !status.paused;
-
-        if (pushSent) {
-            const pushData = {
-                ...args.data,
-                notificationId,
-            };
-
-            await pushNotifications.sendPushNotification(ctx, {
-                userId: notificationUser._id,
-                notification: {
-                    title: args.title,
-                    body: args.description,
-                    data: pushData,
-                },
-            });
-        }
 
         return {
             notificationId,
             pushSent,
         };
+    },
+});
+
+export const sendCreatorChangesSummary = internalMutation({
+    args: {
+        betterAuthUserId: v.string(),
+        title: v.string(),
+        description: v.string(),
+        data: notificationDataValidator,
+    },
+    handler: async (ctx, args): Promise<{ pushSent: boolean }> => {
+        const notificationUser = await ensureNotificationUser(ctx, args.betterAuthUserId);
+        if (!notificationUser) {
+            throw new Error("Failed to create notification user");
+        }
+
+        return await sendPushNotification(ctx, {
+            notificationUserId: notificationUser._id,
+            title: args.title,
+            description: args.description,
+            data: args.data,
+        });
     },
 });
 
@@ -431,7 +500,7 @@ export const dispatchSubmissionOutcome = internalAction({
             betterAuthUserId: args.userId,
         });
 
-        const delivery = await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
+        const delivery = await ctx.runMutation(internal.notifications.createAndSendNotification, {
             betterAuthUserId: args.userId,
             title: args.title,
             description: args.description,
@@ -483,7 +552,7 @@ export const dispatchCreatorBankAccountOutcome = internalAction({
             betterAuthUserId: args.userId,
         });
 
-        const delivery = await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
+        const delivery = await ctx.runMutation(internal.notifications.createAndSendNotification, {
             betterAuthUserId: args.userId,
             title: args.title,
             description: args.description,
@@ -526,6 +595,23 @@ export const dispatchCreatorBankAccountOutcome = internalAction({
     },
 });
 
+export const dispatchCreatorWithdrawalPaid = internalAction({
+    args: {
+        userId: v.string(),
+        title: v.string(),
+        description: v.string(),
+        data: notificationDataValidator,
+    },
+    handler: async (ctx, args): Promise<{ notificationId: Id<"notifications">; pushSent: boolean }> => {
+        return await ctx.runMutation(internal.notifications.createAndSendNotification, {
+            betterAuthUserId: args.userId,
+            title: args.title,
+            description: args.description,
+            data: args.data,
+        });
+    },
+});
+
 export const dispatchBusinessBankAccountOutcome = internalAction({
     args: {
         userId: v.string(),
@@ -563,5 +649,42 @@ export const dispatchBusinessBankAccountOutcome = internalAction({
         });
 
         return { pushSent: false };
+    },
+});
+
+export const dispatchBusinessWithdrawalPaidEmail = internalAction({
+    args: {
+        userId: v.string(),
+        amount: v.string(),
+        netAmount: v.string(),
+        bankName: v.string(),
+        endingDigits: v.string(),
+        redirectPath: v.string(),
+    },
+    handler: async (ctx, args): Promise<{ emailSent: boolean }> => {
+        const authUser = await ctx.runQuery(internal.notifications.getNotificationUser, {
+            betterAuthUserId: args.userId,
+        });
+
+        if (!authUser?.email) {
+            return { emailSent: false };
+        }
+
+        const redirectUrl = buildProductUrl(args.redirectPath) ?? getProductBaseUrl();
+        if (!redirectUrl) {
+            console.error("Unable to send withdrawal paid email: product URL is not configured");
+            return { emailSent: false };
+        }
+
+        await ctx.runAction(internal.emails.sendWithdrawalPaidEmail, {
+            email: authUser.email,
+            amount: args.amount,
+            netAmount: args.netAmount,
+            bankName: args.bankName,
+            endingDigits: args.endingDigits,
+            redirectUrl,
+        });
+
+        return { emailSent: true };
     },
 });

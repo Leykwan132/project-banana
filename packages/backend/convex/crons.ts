@@ -386,26 +386,11 @@ export const runDailyScrape = internalAction({
                 }
 
                 if (hasMissingPostDescription) {
-                    const result = await ctx.runMutation(internal.applications.setApplicationStatusFromCron, {
+                    await ctx.runMutation(internal.applications.setApplicationStatusFromCron, {
                         applicationId: app._id,
                         status: ApplicationStatus.ActionRequired,
                         missingPostDescription,
                     });
-
-                    if (result.shouldNotify) {
-                        await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
-                            betterAuthUserId: app.user_id,
-                            title: NotificationCopy.postDescriptionMissing.title,
-                            description: NotificationCopy.postDescriptionMissing.description(
-                                campaign.name,
-                            ),
-                            data: {
-                                type: NotificationType.PostDescriptionMissing,
-                                applicationId: app._id,
-                                missingPostDescription,
-                            },
-                        });
-                    }
 
                     console.log(`Application ${app._id} moved to action_required because the post needs attention`);
                     totalApplicationsProcessed++;
@@ -425,7 +410,7 @@ export const runDailyScrape = internalAction({
                     });
 
                     if (earningTransition.didEnterEarning) {
-                        await ctx.runMutation(internal.notifications.deliverCreatorNotification, {
+                        await ctx.runMutation(internal.notifications.createAndSendNotification, {
                             betterAuthUserId: app.user_id,
                             title: NotificationCopy.postEarning.title,
                             description: NotificationCopy.postEarning.description(campaign.name),
@@ -549,6 +534,58 @@ export const runDailyScrape = internalAction({
     },
 });
 
+export const sendCreatorApplicationUpdateSummary = internalAction({
+    args: {},
+    handler: async (ctx) => {
+        console.log("Starting creator application update summary cron job");
+
+        let continueCursor: string | null = null;
+        let isDone = false;
+        let creatorsChecked = 0;
+        let notificationsSent = 0;
+
+        while (!isDone) {
+            const creatorPageResult = await ctx.runQuery(internal.creators.getCreatorsForApplicationUpdateSummary, {
+                paginationOpts: { cursor: continueCursor, numItems: 100 },
+            });
+            const creatorPage = creatorPageResult as {
+                page: Array<{ user_id: string }>;
+                continueCursor: string;
+                isDone: boolean;
+            };
+
+            continueCursor = creatorPage.continueCursor;
+            isDone = creatorPage.isDone;
+
+            for (const creator of creatorPage.page) {
+                creatorsChecked++;
+
+                const summaryResult = await ctx.runQuery(internal.applications.getApplicationUpdateSummaryForUser, {
+                    userId: creator.user_id,
+                });
+
+                if (summaryResult.count === 0) {
+                    continue;
+                }
+
+                await ctx.runMutation(internal.notifications.sendCreatorChangesSummary, {
+                    betterAuthUserId: creator.user_id,
+                    title: NotificationCopy.applicationUpdatesSummary.title,
+                    description: NotificationCopy.applicationUpdatesSummary.description(summaryResult.count),
+                    data: {
+                        type: NotificationType.ApplicationUpdatesSummary,
+                    },
+                });
+                notificationsSent++;
+            }
+        }
+
+        console.log(
+            `Finished creator application update summary cron job. Creators checked: ${creatorsChecked}, notifications sent: ${notificationsSent}`,
+        );
+    },
+});
+
 export const sendPendingApprovalsReminder = internalAction({
     args: {},
     handler: async (ctx) => {
@@ -625,6 +662,12 @@ crons.cron(
     "daily scrape",
     "15 16 * * *", // 12:15 AM SGT/MYT (16:15 UTC)
     (internal as any).crons.runDailyScrape,
+);
+
+crons.cron(
+    "creator application update summary",
+    "0 23 * * *", // 7:00 AM SGT/MYT (23:00 UTC)
+    (internal as any).crons.sendCreatorApplicationUpdateSummary,
 );
 
 crons.cron(

@@ -1,8 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { ErrorType } from "./errors";
 import { internal } from "./_generated/api";
 import { posthog } from "./posthog";
+import { paginationOptsValidator } from "convex/server";
 
 export const getCreatorById = query({
     args: { creatorId: v.id("creators") },
@@ -40,6 +41,15 @@ export const getCreator = query({
         }
 
         return creator;
+    },
+});
+
+export const getCreatorsForApplicationUpdateSummary = internalQuery({
+    args: {
+        paginationOpts: paginationOptsValidator,
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db.query("creators").paginate(args.paginationOpts);
     },
 });
 

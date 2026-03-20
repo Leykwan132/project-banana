@@ -323,6 +323,28 @@ export const getApplicationsForEarningCheck = internalQuery({
     },
 });
 
+export const getApplicationUpdateSummaryForUser = internalQuery({
+    args: {
+        userId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const applicationsNeedingUpdates = await ctx.db
+            .query("applications")
+            .withIndex("by_user", (q) => q.eq("user_id", args.userId))
+            .filter((q) =>
+                q.or(
+                    q.eq(q.field("status"), ApplicationStatus.ActionRequired),
+                    q.eq(q.field("status"), ApplicationStatus.ChangesRequested),
+                ),
+            )
+            .collect();
+
+        return {
+            count: applicationsNeedingUpdates.length,
+        };
+    },
+});
+
 // ============================================================
 // MUTATIONS
 // ============================================================
