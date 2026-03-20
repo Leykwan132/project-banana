@@ -77,10 +77,6 @@ const creatorFaqs = [
         answer: 'Yes as long as the previous one has been approved then you can submit a new one.',
     },
     {
-        question: 'Is there a fee for the withdrawals?',
-        answer: 'There is no platform fee but there will be a RM1.10 gateway fee charged by the payment provider.',
-    },
-    {
         question: 'What campaign can I join?',
         answer: 'You can join any campaign that is on the platform.',
     },
