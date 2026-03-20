@@ -161,6 +161,25 @@ export function AdminLayout() {
         () => sessionStorage.getItem(SESSION_KEY) === 'true'
     );
     const location = useLocation();
+    const pendingBankApprovalsCount = useQuery(api.admin.getPendingBankAccountsCount) ?? 0;
+    const pendingSubmissionsCount = useQuery(api.admin.getPendingSubmissionsCount) ?? 0;
+    const pendingPayoutsCount = useQuery(api.admin.getPendingWithdrawalsCount) ?? 0;
+
+    const navItemsWithCounts = navItems.map((item) => {
+        if (item.path === '/admin/bank-approvals') {
+            return { ...item, count: pendingBankApprovalsCount };
+        }
+
+        if (item.path === '/admin/submissions') {
+            return { ...item, count: pendingSubmissionsCount };
+        }
+
+        if (item.path === '/admin/payouts') {
+            return { ...item, count: pendingPayoutsCount };
+        }
+
+        return { ...item, count: 0 };
+    });
 
     if (location.pathname === '/admin') {
         return <Navigate to="/admin/bank-approvals" replace />;
@@ -181,7 +200,7 @@ export function AdminLayout() {
                     </div>
                 </div>
                 <nav className="flex-1 p-3 space-y-1">
-                    {navItems.map((item) => {
+                    {navItemsWithCounts.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
                             <Link
@@ -190,7 +209,17 @@ export function AdminLayout() {
                                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                             >
                                 <item.icon className="w-4 h-4" />
-                                {item.label}
+                                <span className="flex-1">{item.label}</span>
+                                {item.count > 0 && (
+                                    <span
+                                        className={`min-w-6 rounded-full px-2 py-0.5 text-center text-xs font-semibold ${isActive
+                                            ? 'bg-white/15 text-white'
+                                            : 'bg-amber-100 text-amber-800'
+                                            }`}
+                                    >
+                                        {item.count}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}

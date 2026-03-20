@@ -50,7 +50,7 @@ export const NotificationCopy = {
             `We couldn't verify your bank account ending in ${endingDigits}. Tap here to add a new one and get paid!`,
     },
     withdrawalPaid: {
-        title: "Your payout has landed",
+        title: "Your payout has landed 💰",
         description: (amount: string, endingDigits: string) =>
             `${amount} has been sent to your bank account ending in ${endingDigits}. Tap to view it.`,
     },

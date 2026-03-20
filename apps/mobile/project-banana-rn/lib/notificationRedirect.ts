@@ -6,6 +6,7 @@ type NotificationPayload = {
     submissionId?: string;
     applicationId?: string;
     bankAccountId?: string;
+    withdrawalId?: string;
     bankAccountType?: string;
     endingDigits?: string;
 };
@@ -24,6 +25,7 @@ const normalizePayload = (value: Record<string, unknown>): NotificationPayload |
             submissionId: getString(value.submissionId),
             applicationId: getString(value.applicationId),
             bankAccountId: getString(value.bankAccountId),
+            withdrawalId: getString(value.withdrawalId),
             bankAccountType: getString(value.bankAccountType),
             endingDigits: getString(value.endingDigits),
         };
@@ -39,6 +41,8 @@ const normalizePayload = (value: Record<string, unknown>): NotificationPayload |
             return redirectId ? { type: NotificationType.SubmissionRejected, submissionId: redirectId } : null;
         case 'bank-account':
             return { type: NotificationType.BankAccountApproved, bankAccountId: redirectId };
+        case 'withdrawal':
+            return redirectId ? { type: NotificationType.WithdrawalPaid, withdrawalId: redirectId } : null;
         default:
             return null;
     }
@@ -82,6 +86,9 @@ export const navigateFromNotification = (router: { push: (href: any) => void }, 
                 });
             }
             return payload;
+        case NotificationType.ApplicationUpdatesSummary:
+            router.push('/notifications');
+            return payload;
         case NotificationType.SubmissionRejected:
             if (payload.submissionId) {
                 router.push({
@@ -93,6 +100,12 @@ export const navigateFromNotification = (router: { push: (href: any) => void }, 
         case NotificationType.BankAccountApproved:
         case NotificationType.BankAccountRejected:
             router.push('/bank-account');
+            return payload;
+        case NotificationType.WithdrawalPaid:
+            router.push({
+                pathname: '/(tabs)/withdraw',
+                params: payload.withdrawalId ? { celebrateWithdrawalId: payload.withdrawalId } : undefined,
+            });
             return payload;
         default:
             return payload;

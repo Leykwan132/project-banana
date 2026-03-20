@@ -4,7 +4,8 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { PayoutStatus, WithdrawalStatus, WithdrawalSourceType, PAYOUT_GATEWAY_FEE, PAYOUT_PLATFORM_FEE_RATE, MIN_WITHDRAWAL_AMOUNT } from "./constants";
 import { ErrorType } from "./errors";
-import { getBillplzBaseUrl } from "./utils";
+import { generateChecksumSHA512, getBillplzBaseUrl } from "./utils";
+import { NotificationCopy, NotificationType } from "./notificationConstants";
 
 // ============================================================
 // PAYOUT QUERIES
@@ -167,35 +168,13 @@ export const getWithdrawal = query({
 // ============================================================
 
 /**
- * Generate HMAC-SHA512 checksum for Billplz V5 API
- * Per Billplz docs: join values in strict order, then HMAC-SHA512 with X-Signature key
- */
-async function generateChecksumSHA512(rawString: string, xSignatureKey: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(xSignatureKey);
-    const messageData = encoder.encode(rawString);
-
-    const cryptoKey = await crypto.subtle.importKey(
-        "raw",
-        keyData,
-        { name: "HMAC", hash: "SHA-512" },
-        false,
-        ["sign"]
-    );
-
-    const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-    const hashArray = Array.from(new Uint8Array(signature));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/**
  * Call Billplz V5 Payment Order API to initiate a bank transfer
  * 
  * Checksum arguments (strict order): [payment_order_collection_id, bank_account_number, total, epoch]
  * 
  * @see https://www.billplz.com/api#v5-payment-order-create-a-payment-order
  */
-async function createBillplzPaymentOrder(args: {
+export async function createBillplzPaymentOrder(args: {
     bankCode: string;
     bankAccountNumber: string;
     name: string;
@@ -509,6 +488,9 @@ export const internalProcessWithdrawal = internalMutation({
         sourceType: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const user = await ctx.auth.getUserIdentity();
+        if (!user) throw new Error("User not found");
+
         const sourceType = args.sourceType ?? WithdrawalSourceType.Creator;
 
         if (sourceType === WithdrawalSourceType.Business) {
@@ -537,8 +519,7 @@ export const internalProcessWithdrawal = internalMutation({
                 amount: args.amount,
                 gateway_fee: args.gatewayFee,
                 source_type: WithdrawalSourceType.Business,
-                status: WithdrawalStatus.Processing,
-                billplz_payment_order_id: args.billplzPaymentOrderId,
+                status: WithdrawalStatus.Pending,
                 created_at: now,
             });
 
@@ -571,8 +552,7 @@ export const internalProcessWithdrawal = internalMutation({
             amount: args.amount,
             gateway_fee: args.gatewayFee,
             source_type: WithdrawalSourceType.Creator,
-            status: WithdrawalStatus.Processing,
-            billplz_payment_order_id: args.billplzPaymentOrderId,
+            status: WithdrawalStatus.Pending,
             created_at: now,
         });
 
@@ -587,8 +567,7 @@ export const internalProcessWithdrawal = internalMutation({
 
 /**
  * Request a withdrawal (Action)
- * Calls Billplz V5 Payment Order API to initiate a bank transfer,
- * then creates the withdrawal record.
+ * Creates a pending withdrawal request and reserves the user's balance.
  */
 export const requestWithdrawal = action({
     args: {
@@ -615,32 +594,13 @@ export const requestWithdrawal = action({
         if (!bankAccount) throw new Error("Bank account not found");
         if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");
 
-        // Get SWIFT code and account holder name
-        const bankCode = bankAccount.bank_code || "";
-        const accountHolderName = bankAccount.account_holder_name || user.name || "User";
-
-        // Amount sent to Billplz = requested amount minus platform fee (includes payment gateway).
-        // e.g. User requests RM 25.00 -> Billplz sends RM 22.50, balance is deducted RM 25.00.
         const platformFee = calculatePlatformFee(args.amount);
-        const amountAfterFee = args.amount - platformFee;
-        const totalCents = Math.round(amountAfterFee * 100);
 
-        // Create Billplz Payment Order to initiate bank transfer
-        const paymentOrder = await createBillplzPaymentOrder({
-            bankCode: bankCode,
-            bankAccountNumber: bankAccount.account_number,
-            name: accountHolderName,
-            description: `Payout for ${user.name || user.subject}`,
-            total: totalCents,
-        });
-
-        // Execute the DB operations as a single transaction via internal mutation
         return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
             userId: user.subject,
             amount: args.amount,
             gatewayFee: platformFee,
             bankAccountId: args.bankAccountId,
-            billplzPaymentOrderId: paymentOrder.id,
             sourceType: WithdrawalSourceType.Creator,
         });
     },
@@ -675,75 +635,19 @@ export const requestBusinessWithdrawal = action({
         if (!bankAccount) throw new Error("Bank account not found");
         if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");
 
-        const bankCode = bankAccount.bank_code || "";
-        const accountHolderName = bankAccount.account_holder_name || business.name || user.name || "Business";
         const platformFee = calculatePlatformFee(args.amount);
-        const amountAfterFee = args.amount - platformFee;
-        const totalCents = Math.round(amountAfterFee * 100);
-
-        const paymentOrder = await createBillplzPaymentOrder({
-            bankCode,
-            bankAccountNumber: bankAccount.account_number,
-            name: accountHolderName,
-            description: `Business withdrawal for ${business.name}`,
-            total: totalCents,
-        });
 
         return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
             userId: user.subject,
             amount: args.amount,
             gatewayFee: platformFee,
             bankAccountId: args.bankAccountId,
-            billplzPaymentOrderId: paymentOrder.id,
             businessId: business._id,
             sourceType: WithdrawalSourceType.Business,
         });
     },
 });
 
-/**
- * Mock function to process payout (for testing purposes)
- */
-export const mockProcessPayout = mutation({
-    args: {
-        withdrawalId: v.id("withdrawals"),
-        status: v.string(), // "completed" | "failed"
-    },
-    handler: async (ctx, args) => {
-        const withdrawal = await ctx.db.get(args.withdrawalId);
-        if (!withdrawal) throw new Error("Withdrawal not found");
-
-        if (withdrawal.status !== WithdrawalStatus.Processing) {
-            throw new Error("Withdrawal is not in processing state");
-        }
-
-        const updates: any = {
-            status: args.status,
-        };
-
-        await ctx.db.patch(args.withdrawalId, updates);
-
-        // If failed, refund the balance
-        if (args.status === "failed") {
-            if (withdrawal.source_type === WithdrawalSourceType.Business && withdrawal.business_id) {
-                const business = await ctx.db.get(withdrawal.business_id);
-                if (business) {
-                    await ctx.db.patch(business._id, {
-                        credit_balance: business.credit_balance + withdrawal.amount,
-                        updated_at: Date.now(),
-                    });
-                }
-            } else {
-                const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: withdrawal.user_id });
-                if (creator) {
-                    await ctx.db.patch(creator._id, {
-                        balance: (creator.balance ?? 0) + withdrawal.amount,
-                    });
-                }
-            }
-        }
-    },
-});
 
 /**
  * Update withdrawal status (admin/system function)
@@ -838,12 +742,39 @@ export const processPaymentOrderCallback = internalMutation({
         }
 
         const now = Date.now();
+        const bankAccount = await ctx.db.get(withdrawal.bank_account_id);
+        const endingDigits = bankAccount?.account_number.slice(-4) ?? "0000";
+        const netAmount = Math.max(withdrawal.amount - (withdrawal.gateway_fee ?? PAYOUT_GATEWAY_FEE), 0);
+        const formattedRequestedAmount = `RM ${withdrawal.amount.toFixed(2)}`;
+        const formattedNetAmount = `RM ${netAmount.toFixed(2)}`;
 
         if (args.status === WithdrawalStatus.Completed) {
             await ctx.db.patch(withdrawal._id, {
                 status: WithdrawalStatus.Completed,
             });
             console.log(`Withdrawal ${withdrawal._id} marked as completed`);
+
+            if (withdrawal.source_type === WithdrawalSourceType.Business) {
+                await ctx.scheduler.runAfter(0, internal.notifications.dispatchBusinessWithdrawalPaidEmail, {
+                    userId: withdrawal.user_id,
+                    amount: formattedRequestedAmount,
+                    netAmount: formattedNetAmount,
+                    bankName: bankAccount?.bank_name ?? "Bank account",
+                    endingDigits,
+                    redirectPath: "/withdrawals",
+                });
+            } else {
+                await ctx.scheduler.runAfter(0, internal.notifications.dispatchCreatorWithdrawalPaid, {
+                    userId: withdrawal.user_id,
+                    title: NotificationCopy.withdrawalPaid.title,
+                    description: NotificationCopy.withdrawalPaid.description(formattedNetAmount, endingDigits),
+                    data: {
+                        type: NotificationType.WithdrawalPaid,
+                        withdrawalId: withdrawal._id,
+                        endingDigits,
+                    },
+                });
+            }
         } else if (args.status === WithdrawalStatus.Refunded) {
             if (withdrawal.source_type === WithdrawalSourceType.Business && withdrawal.business_id) {
                 const business = await ctx.db.get(withdrawal.business_id);

@@ -75,7 +75,6 @@ export default function WithdrawScreen() {
     const [confirmStep, setConfirmStep] = useState<'review' | 'success' | 'failed' | 'insufficient_balance'>('review');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const [withdrawErrorMessage, setWithdrawErrorMessage] = useState('Something went wrong while creating your withdrawal request.');
     const requestWithdrawal = useAction(api.payouts.requestWithdrawal);
 
     const platformFeeRate = useQuery(api.payouts.getPayoutPlatformFeeRate) ?? 0.1;
@@ -210,7 +209,7 @@ export default function WithdrawScreen() {
                     ) : null}
                     <View style={[styles.feeNotice, { backgroundColor: isDark ? '#2D230F' : '#F7F0E2' }]}>
                         <ThemedText style={[styles.feeNoticeText, { color: isDark ? '#FBBF24' : '#F57F17' }]}>
-                            A {(platformFeeRate * 100).toFixed(0)}% withdrawal fee (inc. payment gateway fee) will be imposed.
+                            A {(platformFeeRate * 100).toFixed(0)}% withdrawal fee will be imposed.
                         </ThemedText>
                     </View>
                 </View>
@@ -340,7 +339,7 @@ export default function WithdrawScreen() {
                                 <ThemedText type="defaultSemiBold">RM {amount || '0'}</ThemedText>
                             </View>
                             <View style={styles.reviewRow}>
-                                <ThemedText style={[styles.reviewLabel, { color: mutedTextColor }]}>Platform Fee (incl. payment gateway)</ThemedText>
+                                <ThemedText style={[styles.reviewLabel, { color: mutedTextColor }]}>{(platformFeeRate * 100).toFixed(0)}% Platform Fee</ThemedText>
                                 <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {platformFee.toFixed(2)}</ThemedText>
                             </View>
                             <View style={styles.reviewRow}>
@@ -362,7 +361,7 @@ export default function WithdrawScreen() {
                                 )}
                             </Pressable>
 
-                            <ThemedText style={[styles.disclaimerText, { color: mutedTextColor }]}>Please review as this action cannot be undone.</ThemedText>
+                            <ThemedText style={[styles.disclaimerText, { color: mutedTextColor }]}>Please review the details before confirming.</ThemedText>
                         </View>
                     ) : confirmStep === 'success' ? (
                         <View style={styles.successContainer}>
@@ -372,8 +371,8 @@ export default function WithdrawScreen() {
                                 loop
                                 style={{ width: 150, height: 150 }}
                             />
-                            <ThemedText type="subtitle" style={styles.successTitle}>Withdrawal Processing</ThemedText>
-                            <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Withdrawal request submitted</ThemedText>
+                            <ThemedText type="subtitle" style={styles.successTitle}>Withdrawal Submitted</ThemedText>
+                            <ThemedText style={[styles.successSubtitle, { color: mutedTextColor }]}>Your request will be processed within 3-5 business days.</ThemedText>
 
                             <Pressable
                                 style={[styles.confirmButton, { marginTop: 32, width: '100%', backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}

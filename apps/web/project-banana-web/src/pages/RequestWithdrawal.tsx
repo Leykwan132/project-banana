@@ -125,7 +125,7 @@ export default function RequestWithdrawal() {
             setAmount('');
             addToast({
                 title: 'Withdrawal requested',
-                description: 'Your Billplz payout order has been created.',
+                description: 'Your request will take 3-5 business days to be processed.',
                 color: 'success',
             });
             navigate('/withdrawals');
@@ -289,11 +289,11 @@ export default function RequestWithdrawal() {
                         <ul className="mt-4 space-y-3 text-sm text-gray-600">
                             <li className="flex gap-2">
                                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                                Withdrawal is done via DuitNow transfer.
+                                Withdrawals will be processed within 3-5 business days.
                             </li>
                             <li className="flex gap-2">
                                 <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                                Gateway fee is a one-time fixed fee charged for every withdrawal.
+                                A small gateway fee will be charged for each withdrawal.
                             </li>
                         </ul>
                     </div>
@@ -315,7 +315,7 @@ export default function RequestWithdrawal() {
                             <ModalHeader className="flex flex-col gap-1 px-8 pt-8">
                                 <span className="text-xl font-bold text-gray-900">Withdrawal Summary</span>
                                 <span className="text-sm font-normal text-gray-500">
-                                    Please review your withdrawal request details carefully.
+                                    Please review your withdrawal request details carefully before sending it for admin approval.
                                 </span>
                             </ModalHeader>
                             <ModalBody className="p-8 mb-4">
@@ -385,7 +385,7 @@ export default function RequestWithdrawal() {
                                     onClick={handleSubmitWithdrawal}
                                     className="px-6 py-2.5 bg-black text-white hover:bg-gray-900 rounded-xl"
                                 >
-                                    {isSubmittingWithdrawal ? 'Requesting...' : 'Confirm Withdrawal'}
+                                    {isSubmittingWithdrawal ? 'Requesting...' : 'Confirm Request'}
                                 </Button>
                             </ModalFooter>
                         </>

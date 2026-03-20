@@ -298,6 +298,7 @@ export default defineSchema({
             submissionId: v.optional(v.id("submissions")),
             applicationId: v.optional(v.id("applications")),
             bankAccountId: v.optional(v.id("bank_accounts")),
+            withdrawalId: v.optional(v.id("withdrawals")),
             bankAccountType: v.optional(v.string()),
             endingDigits: v.optional(v.string()),
             missingPostDescription: v.optional(missingPostDescriptionValidator),

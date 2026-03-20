@@ -1,10 +1,12 @@
-import { action, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import type { Id } from "./_generated/dataModel";
 import { generateDownloadUrl } from "./r2";
 import { WithdrawalSourceType } from "./constants";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
+import { createBillplzPaymentOrder } from "./payouts";
 
 // ============================================================
 // ADMIN AUTH HELPER
@@ -161,6 +163,63 @@ export const getSubmissionWithCampaign = query({
             campaign_name: campaign?.name ?? "Unknown Campaign",
             campaign_business_id: campaign?.business_id,
         };
+    },
+});
+
+export const getWithdrawalForApproval = internalQuery({
+    args: {
+        withdrawalId: v.id("withdrawals"),
+    },
+    handler: async (ctx, args) => {
+        const withdrawal = await ctx.db.get(args.withdrawalId);
+        if (!withdrawal) {
+            return null;
+        }
+
+        const sourceType = withdrawal.source_type ?? WithdrawalSourceType.Creator;
+        const bankAccount = await ctx.db.get(withdrawal.bank_account_id);
+        let requesterName = withdrawal.user_id;
+
+        if (sourceType === WithdrawalSourceType.Business && withdrawal.business_id) {
+            const business = await ctx.db.get(withdrawal.business_id);
+            requesterName = business?.name ?? withdrawal.user_id;
+        } else {
+            const creator = await ctx.db
+                .query("creators")
+                .withIndex("by_user", (q) => q.eq("user_id", withdrawal.user_id))
+                .unique();
+            requesterName = creator?.name ?? withdrawal.user_id;
+        }
+
+        return {
+            withdrawal,
+            bankAccount,
+            requesterName,
+        };
+    },
+});
+
+export const markWithdrawalProcessingAfterApproval = internalMutation({
+    args: {
+        withdrawalId: v.id("withdrawals"),
+        billplzPaymentOrderId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const withdrawal = await ctx.db.get(args.withdrawalId);
+        if (!withdrawal) {
+            throw new Error("Withdrawal not found");
+        }
+
+        if (withdrawal.status !== "pending") {
+            throw new Error("Withdrawal is not pending approval");
+        }
+
+        await ctx.db.patch(args.withdrawalId, {
+            status: "processing",
+            billplz_payment_order_id: args.billplzPaymentOrderId,
+        });
+
+        return args.withdrawalId;
     },
 });
 
@@ -324,18 +383,47 @@ export const generateAdminVideoAccessUrl = action({
 // ============================================================
 
 /**
- * Get paginated withdrawals with "processing" status (pending admin approval)
+ * Get paginated withdrawals with "pending" status (pending admin approval)
  */
 export const getPendingWithdrawals = query({
     args: { paginationOpts: paginationOptsValidator },
     handler: async (ctx, args) => {
         await assertAdmin(ctx);
 
-        return await ctx.db
+        const result = await ctx.db
             .query("withdrawals")
-            .withIndex("by_status", (q) => q.eq("status", "processing"))
+            .withIndex("by_status", (q) => q.eq("status", "pending"))
             .order("desc")
             .paginate(args.paginationOpts);
+
+        return {
+            ...result,
+            page: await Promise.all(result.page.map(async (withdrawal) => {
+                const sourceType = withdrawal.source_type ?? WithdrawalSourceType.Creator;
+                const bankAccount = await ctx.db.get(withdrawal.bank_account_id);
+                let requester_label = withdrawal.user_id;
+
+                if (sourceType === WithdrawalSourceType.Business && withdrawal.business_id) {
+                    const business = await ctx.db.get(withdrawal.business_id);
+                    requester_label = business?.name ?? withdrawal.user_id;
+                } else {
+                    const creator = await ctx.db
+                        .query("creators")
+                        .withIndex("by_user", (q) => q.eq("user_id", withdrawal.user_id))
+                        .unique();
+                    requester_label = creator?.name ?? withdrawal.user_id;
+                }
+
+                return {
+                    ...withdrawal,
+                    bank_name: bankAccount?.bank_name ?? null,
+                    account_holder_name: bankAccount?.account_holder_name ?? null,
+                    account_number: bankAccount?.account_number ?? null,
+                    source_type: sourceType,
+                    requester_label,
+                };
+            })),
+        };
     },
 });
 
@@ -348,7 +436,7 @@ export const getPendingWithdrawalsCount = query({
 
         const all = await ctx.db
             .query("withdrawals")
-            .withIndex("by_status", (q) => q.eq("status", "processing"))
+            .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
         return all.length;
     },
@@ -359,21 +447,43 @@ export const getPendingWithdrawalsCount = query({
 // ============================================================
 
 /**
- * Approve a withdrawal (set status to "completed")
+ * Approve a withdrawal and trigger the payout provider.
  */
-export const approveWithdrawal = mutation({
+export const approveWithdrawal = action({
     args: {
         withdrawalId: v.id("withdrawals"),
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<Id<"withdrawals">> => {
         await assertAdmin(ctx);
 
-        const withdrawal = await ctx.db.get(args.withdrawalId);
-        if (!withdrawal) throw new Error("Withdrawal not found");
-        if (withdrawal.status !== "processing") throw new Error("Withdrawal is not in processing state");
+        const approvalData = await ctx.runQuery(internal.admin.getWithdrawalForApproval, {
+            withdrawalId: args.withdrawalId,
+        });
+        if (!approvalData) throw new Error("Withdrawal not found");
 
-        await ctx.db.patch(args.withdrawalId, {
-            status: "completed",
+        const { withdrawal, bankAccount, requesterName } = approvalData;
+        if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending approval");
+        if (!bankAccount) throw new Error("Bank account not found");
+        if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");
+
+        const bankCode = bankAccount.bank_code || "";
+        const accountHolderName = bankAccount.account_holder_name || requesterName;
+        const amountAfterFee = withdrawal.amount - withdrawal.gateway_fee;
+        const totalCents = Math.round(Math.max(amountAfterFee, 0) * 100);
+
+        const paymentOrder = await createBillplzPaymentOrder({
+            bankCode,
+            bankAccountNumber: bankAccount.account_number,
+            name: accountHolderName,
+            description: withdrawal.source_type === WithdrawalSourceType.Business
+                ? `Business withdrawal for ${requesterName}`
+                : `Payout for ${requesterName}`,
+            total: totalCents,
+        });
+
+        return await ctx.runMutation(internal.admin.markWithdrawalProcessingAfterApproval, {
+            withdrawalId: args.withdrawalId,
+            billplzPaymentOrderId: paymentOrder.id,
         });
     },
 });
@@ -390,7 +500,7 @@ export const rejectWithdrawal = mutation({
 
         const withdrawal = await ctx.db.get(args.withdrawalId);
         if (!withdrawal) throw new Error("Withdrawal not found");
-        if (withdrawal.status !== "processing") throw new Error("Withdrawal is not in processing state");
+        if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending approval");
 
         await ctx.db.patch(args.withdrawalId, {
             status: "failed",

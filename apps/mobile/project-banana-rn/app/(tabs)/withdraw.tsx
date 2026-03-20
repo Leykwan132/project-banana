@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import { SegmentedControl } from 'react-native-ui-lib';
 import Animated, {
@@ -20,6 +20,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemedText } from '@/components/themed-text';
 import { PayoutCard } from '@/components/PayoutCard';
 import { PastPayoutListItem } from '@/components/PastPayoutListItem';
+import { PayoutCelebrationModal } from '@/components/PayoutCelebrationModal';
 import { TransactionDetailsSheet, DetailItem } from '@/components/TransactionDetailsSheet';
 import { ApplicationStatus } from '@/components/ApplicationStatusBadge';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -44,6 +45,8 @@ interface Transaction {
 
 const TransactionItemSkeleton = () => {
     const opacity = useSharedValue(0.3);
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
 
     useEffect(() => {
         opacity.value = withRepeat(
@@ -61,12 +64,19 @@ const TransactionItemSkeleton = () => {
     }));
 
     return (
-        <Animated.View style={[styles.skeletonItem, animatedStyle]} />
+        <Animated.View
+            style={[
+                styles.skeletonItem,
+                animatedStyle,
+                { backgroundColor: isDark ? '#1E1E1E' : '#E7DED0', borderColor: isDark ? '#2E2E2E' : '#D7C9B5' },
+            ]}
+        />
     );
 };
 
 export default function WithdrawalsScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams<{ celebrateWithdrawalId?: string }>();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
@@ -75,19 +85,31 @@ export default function WithdrawalsScreen() {
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-    const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(0);
+    const [selectedSegmentedControlIndex, setSelectedSegmentedControlIndex] = useState(0);
+    const [isSegmentSwitchLoading, setIsSegmentSwitchLoading] = useState(false);
+    const [celebrationTransaction, setCelebrationTransaction] = useState<Transaction | null>(null);
+    const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
     const actionSheetRef = useRef<ActionSheetRef>(null);
+    const handledCelebrationId = useRef<string | null>(null);
+    const selectedSegmentedControlType = selectedSegmentedControlIndex === 0 ? 'payouts' : 'withdrawals';
+    const celebrateWithdrawalId = params.celebrateWithdrawalId;
+    const shouldFetchWithdrawals = selectedSegmentedControlType === 'withdrawals' || !!celebrateWithdrawalId;
 
     // Fetch user balance from Convex
     const creatorData = useQuery(api.creators.getCreator);
     const isBalanceLoading = creatorData === undefined;
     const balance = creatorData?.balance ?? 0;
 
-    // Fetch withdrawals
-    const withdrawalsData = useQuery(api.payouts.getUserWithdrawals);
-    const isWithdrawalsLoading = withdrawalsData === undefined;
-    const payoutsData = useQuery(api.payouts.getUserPayouts);
-    const isPayoutsLoading = payoutsData === undefined;
+    const withdrawalsData = useQuery(
+        api.payouts.getUserWithdrawals,
+        shouldFetchWithdrawals ? {} : 'skip'
+    );
+    const isWithdrawalsLoading = selectedSegmentedControlType === 'withdrawals' && withdrawalsData === undefined;
+    const payoutsData = useQuery(
+        api.payouts.getUserPayouts,
+        selectedSegmentedControlType === 'payouts' ? {} : 'skip'
+    );
+    const isPayoutsLoading = selectedSegmentedControlType === 'payouts' && payoutsData === undefined;
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -102,7 +124,11 @@ export default function WithdrawalsScreen() {
         const day = String(date.getDate()).padStart(2, '0');
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = String(date.getFullYear()).slice(-2);
-        return `${day}/${month}/${year}`;
+        const hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const hour12 = hours % 12 || 12;
+        return `${day}/${month}/${year}, ${hour12}:${minutes} ${period}`;
     };
 
     // Format amount helper
@@ -116,6 +142,7 @@ export default function WithdrawalsScreen() {
     };
 
     const formatDetailAmount = (amount: number): string => `RM ${amount.toFixed(2)}`;
+    const formatCurrencyAmount = (amount: number): string => `RM ${amount.toFixed(2)}`;
 
     // Mask account number helper
     const maskAccountNumber = (accountNumber: string): string => {
@@ -157,25 +184,73 @@ export default function WithdrawalsScreen() {
         }));
     }, [payoutsData]);
 
-    const selectedHistoryType = selectedHistoryIndex === 0 ? 'payouts' : 'withdrawals';
+    useEffect(() => {
+        if (!celebrateWithdrawalId || celebrateWithdrawalId === handledCelebrationId.current) {
+            return;
+        }
+
+        const matchingWithdrawal = formattedWithdrawals.find((withdrawal) => withdrawal.id === celebrateWithdrawalId);
+        if (!matchingWithdrawal || matchingWithdrawal.status !== 'Completed') {
+            return;
+        }
+
+        handledCelebrationId.current = celebrateWithdrawalId;
+        setCelebrationTransaction(matchingWithdrawal);
+        setIsCelebrationVisible(true);
+    }, [celebrateWithdrawalId, formattedWithdrawals]);
+
+    // handle the loading effect when segment is updated
+    useEffect(() => {
+        if (!isSegmentSwitchLoading) {
+            return;
+        }
+
+        const selectedDataReady = selectedSegmentedControlType === 'payouts'
+            ? payoutsData !== undefined
+            : withdrawalsData !== undefined;
+
+        if (!selectedDataReady) {
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            setIsSegmentSwitchLoading(false);
+        }, 250);
+
+        return () => clearTimeout(timeout);
+    }, [isSegmentSwitchLoading, payoutsData, selectedSegmentedControlType, withdrawalsData]);
+
+    const handleSegmentedControlChange = (nextIndex: number) => {
+        if (nextIndex === selectedSegmentedControlIndex) {
+            return;
+        }
+
+        setIsSegmentSwitchLoading(true);
+        setSelectedSegmentedControlIndex(nextIndex);
+    };
 
     const handleItemPress = (item: Transaction) => {
         setSelectedTransaction(item);
         actionSheetRef.current?.show();
     };
 
-    const handleCancelWithdrawal = async () => {
-        if (!selectedTransaction) return;
-        return new Promise<void>((resolve) => {
-            setTimeout(() => {
-                // In a real app, call API here
-                resolve();
-            }, 2000);
-        });
+    const handleCelebrationShowDetails = () => {
+        if (!celebrationTransaction) {
+            return;
+        }
+
+        setSelectedSegmentedControlIndex(1);
+        setSelectedTransaction(celebrationTransaction);
+        setIsCelebrationVisible(false);
+        setCelebrationTransaction(null);
+
+        setTimeout(() => {
+            actionSheetRef.current?.show();
+        }, 200);
     };
 
     const renderList = () => {
-        const isLoading = selectedHistoryType === 'payouts' ? isPayoutsLoading : isWithdrawalsLoading;
+        const isLoading = isSegmentSwitchLoading || (selectedSegmentedControlType === 'payouts' ? isPayoutsLoading : isWithdrawalsLoading);
 
         if (isLoading) {
             return (
@@ -187,7 +262,7 @@ export default function WithdrawalsScreen() {
             );
         }
 
-        const data = selectedHistoryType === 'payouts' ? formattedPayouts : formattedWithdrawals;
+        const data = selectedSegmentedControlType === 'payouts' ? formattedPayouts : formattedWithdrawals;
 
         if (data.length === 0) {
             return (
@@ -199,10 +274,10 @@ export default function WithdrawalsScreen() {
                         style={styles.lottie}
                     />
                     <ThemedText style={[styles.emptyStateText, { color: isDark ? '#D4D4D4' : '#4B5563' }]}>
-                        {selectedHistoryType === 'payouts' ? 'No payouts yet' : 'No withdrawals yet'}
+                        {selectedSegmentedControlType === 'payouts' ? 'No payouts yet' : 'No withdrawals yet'}
                     </ThemedText>
                     <ThemedText style={[styles.emptyStateSubtext, { color: isDark ? '#8A8A8A' : '#9CA3AF' }]}>
-                        {selectedHistoryType === 'payouts'
+                        {selectedSegmentedControlType === 'payouts'
                             ? 'Completed payouts will appear here'
                             : 'Request a withdrawal to see it here'}
                     </ThemedText>
@@ -237,7 +312,7 @@ export default function WithdrawalsScreen() {
             <View>
                 {/* Date & Status */}
                 <View style={styles.reviewRow}>
-                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Date</ThemedText>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Requested on</ThemedText>
                     <ThemedText type="defaultSemiBold">{selectedTransaction.date}</ThemedText>
                 </View>
 
@@ -299,7 +374,7 @@ export default function WithdrawalsScreen() {
         return (
             <View>
                 <View style={styles.reviewRow}>
-                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Last updated on</ThemedText>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Paid on</ThemedText>
                     <ThemedText type="defaultSemiBold">{selectedTransaction.date}</ThemedText>
                 </View>
 
@@ -340,7 +415,7 @@ export default function WithdrawalsScreen() {
 
         const details: DetailItem[] = [];
 
-        details.push({ label: 'Last updated on', value: selectedTransaction.date });
+        details.push({ label: 'Paid on', value: selectedTransaction.date });
         details.push({ label: 'Company', value: selectedTransaction.companyName ?? '-' });
         details.push({ label: 'Campaign', value: selectedTransaction.campaignName });
         details.push({
@@ -360,7 +435,9 @@ export default function WithdrawalsScreen() {
         return details;
     }, [selectedTransaction]);
 
-    const showCancelButton = selectedTransaction?.type === 'withdrawal' && selectedTransaction?.status === 'Pending';
+    const celebrationAmount = celebrationTransaction
+        ? formatCurrencyAmount(Math.max((celebrationTransaction.rawAmount ?? 0) - (celebrationTransaction.gatewayFee ?? 0), 0))
+        : 'RM 0.00';
 
     return (
         <View
@@ -394,8 +471,9 @@ export default function WithdrawalsScreen() {
                 <View style={styles.section}>
 
                     <SegmentedControl
-                        initialIndex={selectedHistoryIndex}
-                        onChangeIndex={setSelectedHistoryIndex}
+                        key={`withdraw-history-segment-${selectedSegmentedControlIndex}`}
+                        initialIndex={selectedSegmentedControlIndex}
+                        onChangeIndex={handleSegmentedControlChange}
                         segments={[{ label: 'Payouts' }, { label: 'Withdrawals' }]}
                         backgroundColor={controlBackgroundColor}
                         activeBackgroundColor={theme.text}
@@ -424,7 +502,18 @@ export default function WithdrawalsScreen() {
                 title={selectedTransaction?.type === 'withdrawal' ? "Withdrawal Details" : "Payout Details"}
                 details={sheetDetails}
                 customContent={selectedTransaction?.type === 'withdrawal' ? renderCustomWithdrawalContent() : renderCustomPayoutContent()}
-                onCancel={showCancelButton ? handleCancelWithdrawal : undefined}
+            />
+
+            <PayoutCelebrationModal
+                visible={isCelebrationVisible}
+                amount={celebrationAmount}
+                bankName={celebrationTransaction?.bankName}
+                accountNumber={celebrationTransaction?.accountNumber}
+                onShowDetails={handleCelebrationShowDetails}
+                onDismiss={() => {
+                    setIsCelebrationVisible(false);
+                    setCelebrationTransaction(null);
+                }}
             />
         </View>
     );
@@ -470,10 +559,10 @@ const styles = StyleSheet.create({
         // Banner generic container
     },
     skeletonItem: {
-        backgroundColor: '#F3F4F6',
         borderRadius: 8,
-        height: 80,
-        marginBottom: 8,
+        height: 104,
+        marginBottom: 10,
+        borderWidth: 1,
     },
     emptyStateContainer: {
         alignItems: 'center',

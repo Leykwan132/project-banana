@@ -225,3 +225,26 @@ export const sendPendingApprovalsEmail = internalAction({
         });
     },
 });
+
+export const sendWithdrawalPaidEmail = internalAction({
+    args: {
+        email: v.string(),
+        amount: v.string(),
+        netAmount: v.string(),
+        bankName: v.string(),
+        endingDigits: v.string(),
+        redirectUrl: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await sendTemplateEmail(ctx, {
+            email: args.email,
+            templateId: "withdrawal-paid-business",
+            variables: {
+                amount: args.amount,
+                bankName: args.bankName,
+                endingDigits: args.endingDigits,
+                redirectUrl: args.redirectUrl,
+            },
+        });
+    },
+});

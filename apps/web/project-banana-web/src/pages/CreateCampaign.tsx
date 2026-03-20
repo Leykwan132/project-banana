@@ -1878,7 +1878,7 @@ export default function CreateCampaign() {
                                     <div className="flex gap-4">
                                         <div className="shrink-0 w-8 h-8 rounded-full bg-[#F4F6F8] flex items-center justify-center font-bold text-sm text-gray-900">3</div>
                                         <div>
-                                            <h4 className="font-semibold text-gray-900 text-sm mb-1">Approve & Pay</h4>
+                                            <h4 className="font-semibold text-gray-900 text-sm mb-1">Approve</h4>
                                             <p className="text-sm text-gray-500 leading-relaxed">Credits are only consumed when you approve a video. You pay only for what you like.</p>
                                         </div>
                                     </div>

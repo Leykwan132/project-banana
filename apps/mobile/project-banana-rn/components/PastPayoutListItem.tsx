@@ -35,20 +35,18 @@ export function PastPayoutListItem({
     const cardBackgroundColor = isDark ? '#171717' : '#FBFAF7';
     const cardBorderColor = isDark ? '#303030' : '#E4DED2';
     const cardDividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
-    const logoChipBorderColor = isDark ? '#2A2A2A' : '#E7E2D8';
-    const iconColor = isDark ? '#D4D4D4' : theme.text;
     const TransactionIcon = transactionType === 'withdrawal' ? Landmark : DollarSign;
+    const logoChipBorderColor = isDark
+        ? '#3A3A3A'
+        : '#E7E2D8';
+    const logoChipBackgroundColor = isDark
+        ? '#202020'
+        : '#FFFFFF';
+    const iconColor = isDark
+        ? '#E6E6E6'
+        : theme.text;
     const subtitleText = subtitle ?? accountNumber;
-    const datePrefix =
-        transactionType === 'payout'
-            ? 'Updated on '
-            : status === 'Paid' || status === 'Completed'
-                ? 'Paid on '
-                : ['Pending', 'Processing'].includes(status || '')
-                    ? 'Requested on '
-                    : status
-                        ? 'Withdraw on '
-                        : 'Paid on ';
+    const datePrefix = transactionType === 'payout' ? 'Paid on ' : 'Requested on ';
 
 
     return (
@@ -71,7 +69,9 @@ export function PastPayoutListItem({
                                 style={styles.logo}
                             />
                         ) : (
-                            <TransactionIcon size={20} color={iconColor} />
+                            <View style={[styles.logoPlaceholder, { backgroundColor: logoChipBackgroundColor }]}>
+                                <TransactionIcon size={20} color={iconColor} />
+                            </View>
                         )}
                     </View>
 
@@ -139,7 +139,6 @@ const styles = StyleSheet.create({
         height: 48,
         borderWidth: 1,
         borderRadius: 24,
-        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
@@ -154,7 +153,6 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
     },
