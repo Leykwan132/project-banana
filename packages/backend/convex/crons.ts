@@ -636,6 +636,17 @@ export const sendPendingBankAccountsTelegramSummary = internalAction({
     },
 });
 
+export const settlePendingCancellationCampaigns = internalAction({
+    args: {},
+    handler: async (ctx) => {
+        console.log("Starting pending cancellation campaign settlement cron job");
+
+        const result = await ctx.runMutation(internal.campaigns.settlePendingCancellationCampaigns, {});
+
+        console.log(`Finished pending cancellation campaign settlement cron job. Settled campaigns: ${result.processed}`);
+    },
+});
+
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 export const cleanupResend = internalMutation({
     args: {},
@@ -661,25 +672,31 @@ crons.interval(
 crons.cron(
     "daily scrape",
     "15 16 * * *", // 12:15 AM SGT/MYT (16:15 UTC)
-    (internal as any).crons.runDailyScrape,
+    internal.crons.runDailyScrape,
+);
+
+crons.cron(
+    "settle pending cancellation campaigns",
+    "0 13 * * *", // 9:00 PM SGT/MYT (13:00 UTC)
+    internal.crons.settlePendingCancellationCampaigns,
 );
 
 crons.cron(
     "creator application update summary",
     "0 23 * * *", // 7:00 AM SGT/MYT (23:00 UTC)
-    (internal as any).crons.sendCreatorApplicationUpdateSummary,
+    internal.crons.sendCreatorApplicationUpdateSummary,
 );
 
 crons.cron(
     "pending approvals reminder",
     "30 0 * * *", // 8:30 AM SGT/MYT (00:30 UTC)
-    (internal as any).crons.sendPendingApprovalsReminder,
+    internal.crons.sendPendingApprovalsReminder,
 );
 
 crons.cron(
     "pending bank accounts telegram summary",
     "0 1 * * *", // 9:00 AM SGT/MYT (01:00 UTC)
-    (internal as any).crons.sendPendingBankAccountsTelegramSummary,
+    internal.crons.sendPendingBankAccountsTelegramSummary,
 );
 
 export default crons;

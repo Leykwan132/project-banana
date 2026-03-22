@@ -14,12 +14,14 @@ export default function StatusBadge({ status, className = '' }: StatusBadgeProps
             case 'active':
                 return 'bg-emerald-500';
             case 'failed':
+            case 'cancelled':
             case 'canceled':
             case 'rejected':
                 return 'bg-red-500';
             case 'processing':
                 return 'bg-blue-500';
             case 'pending':
+            case 'pending_cancellation':
             case 'paused':
             default:
                 return 'bg-amber-500';
@@ -28,7 +30,9 @@ export default function StatusBadge({ status, className = '' }: StatusBadgeProps
 
     const dotColorClass = getStatusConfig(status);
 
-    const formattedStatus = status.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+    const formattedStatus = status === 'pending_cancellation'
+        ? 'Cancelling'
+        : status.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 
     return (
         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 ${className}`}>

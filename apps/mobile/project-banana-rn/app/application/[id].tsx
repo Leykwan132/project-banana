@@ -1447,7 +1447,7 @@ export default function ApplicationDetailScreen() {
                                             isCurrentStatus && styles.statusBreakdownCurrentCard,
                                             {
                                                 backgroundColor: isCurrentStatus
-                                                    ? (isDark ? '#1B241D' : '#EEF8F0')
+                                                    ? (isDark ? '#262626' : '#F2F2F2')
                                                     : surfaceColor,
                                                 borderColor: isCurrentStatus ? theme.tint : borderColor,
                                             },

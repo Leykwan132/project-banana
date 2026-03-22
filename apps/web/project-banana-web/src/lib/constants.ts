@@ -3,6 +3,7 @@ export const CampaignStatus = {
     Draft: "draft",
     Active: "active",
     Paused: "paused",
+    PendingCancellation: "pending_cancellation",
     Completed: "completed",
     Cancelled: "cancelled",
 } as const;

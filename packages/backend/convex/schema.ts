@@ -82,7 +82,7 @@ export default defineSchema({
         total_budget: v.number(),
         budget_claimed: v.number(),
         submissions: v.number(),
-        status: v.string(), // "draft" | "active" | "paused" | "completed"
+        status: v.string(), // "draft" | "active" | "paused" | "pending_cancellation" | "completed" | "cancelled"
         asset_links: v.optional(v.string()),
         base_pay: v.optional(v.number()),
         maximum_payout: v.number(),

@@ -4,6 +4,7 @@ import { paginationOptsValidator } from "convex/server";
 import { api, internal } from "./_generated/api";
 import { posthog } from "./posthog";
 import { getBillplzBaseUrl } from "./utils";
+import { CreditType } from "./constants";
 
 // ============================================================
 // QUERIES
@@ -139,8 +140,14 @@ export const getPastCreditSpending = query({
 
         const result = await ctx.db
             .query("credits")
-            .withIndex("by_business_type", (q) =>
-                q.eq("business_id", business._id).eq("type", "campaign_spend")
+            .withIndex("by_business", (q) =>
+                q.eq("business_id", business._id)
+            )
+            .filter((q) =>
+                q.or(
+                    q.eq(q.field("type"), CreditType.CampaignSpend),
+                    q.eq(q.field("type"), CreditType.Refund),
+                )
             )
             .order("desc")
             .paginate(args.paginationOpts);
@@ -185,8 +192,14 @@ export const getSpendingCount = query({
 
         const records = await ctx.db
             .query("credits")
-            .withIndex("by_business_type", (q) =>
-                q.eq("business_id", business._id).eq("type", "campaign_spend")
+            .withIndex("by_business", (q) =>
+                q.eq("business_id", business._id)
+            )
+            .filter((q) =>
+                q.or(
+                    q.eq(q.field("type"), CreditType.CampaignSpend),
+                    q.eq(q.field("type"), CreditType.Refund),
+                )
             )
             .collect();
 

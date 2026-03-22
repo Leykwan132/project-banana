@@ -52,6 +52,14 @@ const formatCampaignMetricValue = (metric: CampaignAnalyticsMetric, value: numbe
 };
 
 const normalizeExternalUrl = (url: string) => /^https?:\/\//i.test(url) ? url : `https://${url}`;
+const formatCancellationTimestamp = (timestamp: number) => new Date(timestamp).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+});
 
 
 const UnsavedChangesModal = ({ isOpen, onClose, onConfirm, changes = [] }: { isOpen: boolean; onClose: () => void; onConfirm: () => void; changes?: { label: string; icon: any }[] }) => {
@@ -249,13 +257,6 @@ export default function CampaignDetails() {
         } as ScriptsData
     });
 
-    // ---------------------------------------------------------------------------
-    // FETCH APPLICATIONS
-    // ---------------------------------------------------------------------------
-    const applications = useQuery(api.applications.getMyApplicationsByCampaignWithStats,
-        campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
-
-    );
     const campaignTotalStats = useQuery(
         api.analytics.getCampaignTotalStats,
         campaignId ? { campaignId: campaignId as Id<"campaigns"> } : "skip"
@@ -272,8 +273,6 @@ export default function CampaignDetails() {
         api.analytics.getCampaignTopCreatorsByViews,
         campaignId ? { campaignId: campaignId as Id<"campaigns">, limit: 5 } : "skip"
     );
-    const hasChangesRequested = applications?.some(app => app.status === 'changes_requested') ?? false;
-
     // Populate state when campaign data is loaded
     useEffect(() => {
         if (campaign) {
@@ -734,14 +733,19 @@ export default function CampaignDetails() {
             <div className="max-w-6xl">
                 {/* Title & Status */}
                 <div className="flex items-start md:items-center justify-between gap-4 mb-8">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-3xl font-bold text-gray-900">{formik.values.name || 'Campaign Details'}</h1>
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-4">
+                            <h1 className="text-3xl font-bold text-gray-900">{formik.values.name || 'Campaign Details'}</h1>
 
-                        <div className="flex items-center gap-3">
                             <StatusBadge status={campaign.status} />
                         </div>
+                        {campaign.status === CampaignStatus.Cancelled && campaign.updated_at ? (
+                            <p className="text-sm font-medium text-gray-500">
+                                Remaining credits were refunded on {formatCancellationTimestamp(campaign.updated_at)}.
+                            </p>
+                        ) : null}
                     </div>
-                    {campaign.status !== 'completed' && (
+                    {(campaign.status === CampaignStatus.Active || campaign.status === CampaignStatus.Paused) && (
                         <div className="flex items-center gap-3">
                             <Button
                                 variant="secondary"
@@ -749,14 +753,14 @@ export default function CampaignDetails() {
                                 disabled={isEndingCampaign}
                                 onClick={async () => {
                                     if (!campaignId) return;
-                                    if (campaign.status === 'active') {
+                                    if (campaign.status === CampaignStatus.Active) {
                                         setIsPauseModalOpen(true);
                                     } else {
                                         setIsResumeModalOpen(true);
                                     }
                                 }}
                             >
-                                {campaign.status === 'paused' ? 'Resume Campaign' : 'Pause Campaign'}
+                                {campaign.status === CampaignStatus.Paused ? 'Resume Campaign' : 'Pause Campaign'}
                             </Button>
                             <Button
                                 variant="danger"
@@ -1568,7 +1572,10 @@ export default function CampaignDetails() {
 
             {/* Action Buttons (Fixed Screen Bottom Right) */}
             {
-                activeTab === 'about' && createPortal(
+                activeTab === 'about'
+                && campaign.status !== CampaignStatus.PendingCancellation
+                && campaign.status !== CampaignStatus.Cancelled
+                && createPortal(
                     <div className="fixed bottom-8 right-8 flex gap-4 z-50">
                         {(formik.dirty || hasMediaChanges) && (
                             <Button
@@ -1810,9 +1817,9 @@ export default function CampaignDetails() {
             >
                 <ModalContent>
                     {(onClose) => {
-                        const isNotPaused = campaign?.status !== 'paused';
+                        const isNotPaused = campaign?.status !== CampaignStatus.Paused;
                         const hasPendingApprovals = (campaign?.pending_approvals ?? 0) > 0;
-                        const isBlocked = isNotPaused || hasPendingApprovals || hasChangesRequested;
+                        const isBlocked = isNotPaused || hasPendingApprovals;
 
                         return (
                             <div className="flex flex-col items-center pt-10 pb-8 px-12 text-center bg-white rounded-xl">
@@ -1832,18 +1839,12 @@ export default function CampaignDetails() {
                                                     There are pending reviews. You must finish reviewing all submissions before you can end the campaign.
                                                 </p>
                                             </div>
-                                        ) : (
-                                            <div className="rounded-xl border border-red-100 bg-red-50 p-6">
-                                                <p className="text-lg text-red-600 font-semibold leading-relaxed">
-                                                    There are applications with requested changes. You must resolve them before you can end the campaign.
-                                                </p>
-                                            </div>
-                                        )}
+                                        ) : null}
                                     </div>
                                 ) : (
                                     <>
                                         <p className="text-gray-500 text-lg leading-relaxed font-medium mb-8 px-2 max-w-[480px]">
-                                            This action will permanently end the campaign. All associated data will be deleted forever.
+                                            This action starts a 7-day pending cancellation window and cannot be reversed.
                                         </p>
 
                                         <div className="w-full bg-[#F4F6F8] rounded-2xl p-8 mb-8 space-y-8 text-left max-h-[50vh] overflow-y-auto hidden-scrollbar">
@@ -1852,16 +1853,16 @@ export default function CampaignDetails() {
                                                 <div className="flex flex-col gap-2">
                                                     <span className="text-lg font-bold text-gray-700 leading-tight">7-Day Processing Window</span>
                                                     <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
-                                                        Remaining credits will be returned to your account after 7 days.
+                                                        Your campaign moves to pending cancellation and creators can keep earning for the next 7 days.
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="flex gap-5">
                                                 <Wallet className="w-6 h-6 text-gray-400 shrink-0 mt-1" />
                                                 <div className="flex flex-col gap-2">
-                                                    <span className="text-lg font-bold text-gray-700 leading-tight">Permanent Data Deletion</span>
+                                                    <span className="text-lg font-bold text-gray-700 leading-tight">Refund Remaining Credits</span>
                                                     <p className="text-[15px] font-semibold text-gray-400 leading-relaxed">
-                                                        All campaign data will be deleted permanently, will not be stored, and cannot be retrieved later.
+                                                        On day 7, any unused campaign budget will be returned to your credits balance automatically.
                                                     </p>
                                                 </div>
                                             </div>
@@ -1878,10 +1879,11 @@ export default function CampaignDetails() {
                                                     setIsEndingCampaign(true);
                                                     await updateCampaignStatus({
                                                         campaignId: campaignId as Id<"campaigns">,
-                                                        status: CampaignStatus.Cancelled
+                                                        status: CampaignStatus.PendingCancellation
                                                     });
                                                     addToast({
-                                                        title: "Campaign ended successfully!",
+                                                        title: "Campaign pending cancellation",
+                                                        description: "Creators can continue earning for 7 days. Remaining credits will be refunded after settlement.",
                                                         color: "success",
                                                     });
                                                     navigate('/campaigns');
@@ -1901,7 +1903,26 @@ export default function CampaignDetails() {
                                             End Campaign
                                         </Button>
                                     )}
-                                    {isNotPaused ? (
+                                    {hasPendingApprovals ? (
+                                        <>
+                                            <Button
+                                                className="w-full bg-[#1C1C1C] hover:bg-[#2C2C2C] border-none text-white h-12 rounded-xl text-sm font-bold shadow-none"
+                                                onClick={() => {
+                                                    onClose();
+                                                    navigate(`/approvals/${campaignId}`);
+                                                }}
+                                            >
+                                                Review Now
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                className="w-full bg-transparent hover:bg-gray-50 text-gray-900 h-10 rounded-xl text-sm font-bold shadow-none"
+                                                onClick={onClose}
+                                            >
+                                                Dismiss
+                                            </Button>
+                                        </>
+                                    ) : isNotPaused ? (
                                         <>
                                             <Button
                                                 className="w-full bg-[#1C1C1C] hover:bg-[#2C2C2C] border-none text-white h-12 rounded-xl text-sm font-bold shadow-none"
@@ -1927,7 +1948,7 @@ export default function CampaignDetails() {
                                             onClick={onClose}
                                             disabled={isEndingCampaign}
                                         >
-                                            {isBlocked ? 'Okay' : 'Cancel'}
+                                            {isBlocked ? 'Dismiss' : 'Cancel'}
                                         </Button>
                                     )}
                                 </div>

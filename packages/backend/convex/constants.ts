@@ -2,6 +2,7 @@ export const CampaignStatus = {
     Draft: "draft",
     Active: "active",
     Paused: "paused",
+    PendingCancellation: "pending_cancellation",
     Completed: "completed",
     Cancelled: "cancelled",
 } as const;
@@ -69,6 +70,12 @@ export const WithdrawalSourceType = {
 } as const;
 
 export type WithdrawalSourceType = (typeof WithdrawalSourceType)[keyof typeof WithdrawalSourceType];
+
+const DEFAULT_CAMPAIGN_CANCELLATION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+const configuredCampaignCancellationGraceMs = process.env.CAMPAIGN_CANCELLATION_GRACE_MS;
+
+export const CAMPAIGN_CANCELLATION_GRACE_MS =
+    Number(configuredCampaignCancellationGraceMs) || DEFAULT_CAMPAIGN_CANCELLATION_GRACE_MS;
 
 /** Payment gateway fee charged per withdrawal */
 export const PAYOUT_GATEWAY_FEE = parseFloat("1.10");

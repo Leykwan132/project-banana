@@ -1,7 +1,12 @@
 import { mutation, query, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { CampaignStatus, ApplicationStatus, UserCampaignStatus } from "./constants";
+import {
+    CAMPAIGN_CANCELLATION_GRACE_MS,
+    CampaignStatus,
+    ApplicationStatus,
+    UserCampaignStatus,
+} from "./constants";
 import { TableAggregate } from "@convex-dev/aggregate";
 import type { DataModel } from "./_generated/dataModel";
 import { components } from "./_generated/api";
@@ -289,15 +294,17 @@ export const getApplicationsForEarningCheck = internalQuery({
 
             if (!campaign) continue;
 
-            const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
             const now = Date.now();
 
-            const isActive = campaign.status === CampaignStatus.Active || campaign.status === CampaignStatus.Paused;
-            const isCancelledWithinGracePeriod = campaign.status === CampaignStatus.Cancelled
+            const isActive =
+                campaign.status === CampaignStatus.Active ||
+                campaign.status === CampaignStatus.Paused;
+            const isPendingCancellationWithinGracePeriod =
+                campaign.status === CampaignStatus.PendingCancellation
                 && campaign.cancelled_at != null
-                && (now - campaign.cancelled_at) <= SEVEN_DAYS_MS;
+                && (now - campaign.cancelled_at) <= CAMPAIGN_CANCELLATION_GRACE_MS;
 
-            if (apps && (isActive || isCancelledWithinGracePeriod)) {
+            if (apps && (isActive || isPendingCancellationWithinGracePeriod)) {
                 for (const app of apps) {
                     if (
                         isVerifyingStatus(app.status) ||
@@ -750,7 +757,10 @@ export const updateApplicationEarning = internalMutationWithTriggers({
         }
 
         const newBudgetClaimed = campaign.budget_claimed + cappedDelta;
-        const campaignPatch: { budget_claimed: number; status?: CampaignStatus } = {
+        const campaignPatch: {
+            budget_claimed: number;
+            status?: CampaignStatus;
+        } = {
             budget_claimed: newBudgetClaimed,
         };
 

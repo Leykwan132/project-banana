@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pagination } from "@heroui/pagination";
 import iconDark from '../assets/icon-dark.svg';
 import StatusBadge from '../components/ui/StatusBadge';
+import { CreditType } from '../lib/constants';
 
 import { useState } from 'react';
 
@@ -238,11 +239,12 @@ export default function Credits() {
                     {/* Past Spending Tab Content */}
                     {activeTab === "spending" && (
                         <>
-                            <div className="bg-[#F4F6F8] w-[70%] rounded-lg mt-2 grid grid-cols-4 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider select-none">
-                                <div className="col-span-1 pl-2">Date</div>
-                                <div className="col-span-1 flex items-center justify-center">Campaign</div>
-                                <div className="col-span-1 flex items-center justify-center">Amount</div>
-                                <div className="col-span-1 flex items-center justify-center">Status</div>
+                            <div className="bg-[#F4F6F8] w-[70%] rounded-lg mt-2 grid grid-cols-12 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider select-none">
+                                <div className="col-span-2 pl-2">Date</div>
+                                <div className="col-span-4 flex items-center justify-center">Campaign</div>
+                                <div className="col-span-2 flex items-center justify-center">Type</div>
+                                <div className="col-span-2 flex items-center justify-center">Amount</div>
+                                <div className="col-span-2 flex items-center justify-center">Status</div>
                             </div>
 
                             {isSpendingLoading ? (
@@ -256,25 +258,48 @@ export default function Credits() {
                             ) : (
                                 <>
                                     <div className="divide-y divide-[#F4F6F8]">
-                                        {paginatedSpending.map((item: any) => (
-                                            <div
-                                                key={item._id}
-                                                className="grid grid-cols-4 p-6 items-center hover:bg-gray-50 transition-colors w-[70%]"
-                                            >
-                                                <div className="col-span-1 font-medium text-gray-900 truncate pl-2">
-                                                    {formatDate(item.created_at)}
+                                        {paginatedSpending.map((item: any) => {
+                                            const isRefund = item.type === CreditType.Refund || (item.amount ?? 0) > 0;
+                                            const formattedAmount = Math.abs(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                                            return (
+                                                <div
+                                                    key={item._id}
+                                                    className="grid grid-cols-12 gap-4 p-6 items-center hover:bg-gray-50 transition-colors w-[70%]"
+                                                >
+                                                    <div className="col-span-2 font-medium text-gray-900 truncate pl-2">
+                                                        {formatDate(item.created_at)}
+                                                    </div>
+                                                    <div className="col-span-4 flex items-center justify-center">
+                                                        {item.campaign_id ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => navigate(`/campaigns/${item.campaign_id}`)}
+                                                                className="max-w-full cursor-pointer truncate font-medium text-gray-700 underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
+                                                                title={item.campaign_name}
+                                                            >
+                                                                {item.campaign_name}
+                                                            </button>
+                                                        ) : (
+                                                            <span className="max-w-full truncate font-medium text-gray-900" title={item.campaign_name}>
+                                                                {item.campaign_name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="col-span-2 flex items-center justify-center">
+                                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isRefund ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                            {isRefund ? 'Refund' : 'Spent'}
+                                                        </span>
+                                                    </div>
+                                                    <div className={`col-span-2 font-medium flex items-center justify-center ${isRefund ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                        {isRefund ? '+ ' : '- '}Rm {formattedAmount}
+                                                    </div>
+                                                    <div className="col-span-2 flex items-center justify-center font-medium">
+                                                        <StatusBadge status={item.status || 'unknown'} />
+                                                    </div>
                                                 </div>
-                                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center truncate">
-                                                    {item.campaign_name}
-                                                </div>
-                                                <div className="col-span-1 text-red-600 font-medium flex items-center justify-center">
-                                                    - Rm {Math.abs(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </div>
-                                                <div className="col-span-1 flex items-center justify-center font-medium">
-                                                    <StatusBadge status={item.status || 'unknown'} />
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
 
                                     {totalSpending > ITEMS_PER_PAGE && (

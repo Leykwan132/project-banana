@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
-import { Layers, Check, Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { Layers, Check, Rocket, ArrowUp, ArrowDown, Plus, Ban } from 'lucide-react';
 
 import { Skeleton } from "@heroui/skeleton";
 import { addToast } from "@heroui/toast";
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
+import { CampaignStatus } from '../lib/constants';
 
 // Empty State Component
 const EmptyState = ({ onCreate, isCreateDisabled = false }: { onCreate: () => void; isCreateDisabled?: boolean }) => (
@@ -35,7 +36,7 @@ const EmptyState = ({ onCreate, isCreateDisabled = false }: { onCreate: () => vo
 interface CampaignData {
     _id: string; // Using string to avoid Id import complexity, will cast if needed or just treat as accessible
     name: string;
-    status: string;
+    status: CampaignStatus;
     total_budget: number;
     budget_claimed: number;
     submissions: number;
@@ -48,7 +49,7 @@ const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
     {
         _id: 'tour-campaign-001',
         name: 'Glow Serum Campaign Pitch',
-        status: 'active',
+        status: CampaignStatus.Active,
         total_budget: 8500,
         budget_claimed: 3200,
         submissions: 41,
@@ -57,7 +58,7 @@ const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
     {
         _id: 'tour-campaign-002',
         name: 'Weekend Bundle Awareness',
-        status: 'paused',
+        status: CampaignStatus.Paused,
         total_budget: 6400,
         budget_claimed: 2580,
         submissions: 28,
@@ -66,7 +67,7 @@ const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
     {
         _id: 'tour-campaign-003',
         name: 'March Creator Sprint',
-        status: 'active',
+        status: CampaignStatus.Active,
         total_budget: 12000,
         budget_claimed: 7450,
         submissions: 67,
@@ -75,7 +76,7 @@ const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
     {
         _id: 'tour-campaign-004',
         name: 'Valentine Promo Recap',
-        status: 'completed',
+        status: CampaignStatus.Completed,
         total_budget: 5300,
         budget_claimed: 5300,
         submissions: 36,
@@ -84,7 +85,7 @@ const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
     {
         _id: 'tour-campaign-005',
         name: 'UGC Trial Batch',
-        status: 'completed',
+        status: CampaignStatus.Completed,
         total_budget: 3000,
         budget_claimed: 2925,
         submissions: 19,
@@ -179,8 +180,6 @@ export default function Campaigns() {
     const hasReachedCampaignLimit = !isTourActive
         && activeCampaignLimit !== null
         && (activeCampaignCount ?? 0) >= activeCampaignLimit;
-    const activeCampaignToManage = campaigns.find((campaign) => campaign.status === 'active');
-
     const handleCreateCampaign = () => {
         if (isCheckingCampaignLimit) {
             return;
@@ -201,7 +200,7 @@ export default function Campaigns() {
 
     // Derived state for filtered lists
     const ongoingCampaigns = campaigns.filter((c) =>
-        ['active', 'paused'].includes(c.status)
+        c.status === CampaignStatus.Active || c.status === CampaignStatus.Paused
     ).map((c) => ({
         id: c._id,
         name: c.name,
@@ -218,21 +217,28 @@ export default function Campaigns() {
     }));
 
     const pastCampaigns = campaigns.filter((c) =>
-        c.status === 'completed'
-    ).map((c) => ({
-        id: c._id,
-        name: c.name,
-        submissions: c.submissions || 0,
-        budget: `Rm ${c.total_budget}`,
-        claimed: `Rm ${c.budget_claimed}`,
-        rawBudget: c.total_budget || 0,
-        rawClaimed: c.budget_claimed || 0,
-        status: c.status,
-        icon: Check, // Default icon for completed
-        iconColor: 'text-green-600',
-        iconBg: 'bg-green-100',
-        createdDate: new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-    }));
+        c.status === CampaignStatus.Completed
+        || c.status === CampaignStatus.PendingCancellation
+        || c.status === CampaignStatus.Cancelled
+    ).map((c) => {
+        const isCompleted = c.status === CampaignStatus.Completed;
+        const isPendingCancellation = c.status === CampaignStatus.PendingCancellation;
+
+        return {
+            id: c._id,
+            name: c.name,
+            submissions: c.submissions || 0,
+            budget: `Rm ${c.total_budget}`,
+            claimed: `Rm ${c.budget_claimed}`,
+            rawBudget: c.total_budget || 0,
+            rawClaimed: c.budget_claimed || 0,
+            status: c.status,
+            icon: isCompleted ? Check : Ban,
+            iconColor: isCompleted ? 'text-green-600' : isPendingCancellation ? 'text-amber-600' : 'text-red-600',
+            iconBg: isCompleted ? 'bg-green-100' : isPendingCancellation ? 'bg-amber-100' : 'bg-red-100',
+            createdDate: new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+        };
+    });
 
     // Sorting State
     const [ongoingSort, setOngoingSort] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);

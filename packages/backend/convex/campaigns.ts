@@ -1,13 +1,53 @@
-import { action, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { ERROR_CODES } from "./errors";
 import { generateDownloadUrl, generateUploadUrl } from "./r2";
-import { CampaignStatus } from "./constants";
+import {
+    ApplicationStatus,
+    CAMPAIGN_CANCELLATION_GRACE_MS,
+    CampaignStatus,
+    CreditStatus,
+    CreditType,
+} from "./constants";
 import { posthog } from "./posthog";
 
 const getBusinessPlanType = (planType?: string | null) => (planType ?? "free").toLowerCase();
+
+type SettlePendingCancellationCampaignArgs = {
+    campaign: Doc<"campaigns">;
+    business: Doc<"businesses">;
+    now: number;
+};
+
+const settlePendingCancellationCampaign = async (ctx: any, args: SettlePendingCancellationCampaignArgs) => {
+    const refundAmount = Math.max(args.campaign.total_budget - args.campaign.budget_claimed, 0);
+
+    if (refundAmount > 0) {
+        await ctx.db.patch(args.business._id, {
+            credit_balance: args.business.credit_balance + refundAmount,
+            updated_at: args.now,
+        });
+
+        await ctx.db.insert("credits", {
+            business_id: args.business._id,
+            amount: refundAmount,
+            status: CreditStatus.Completed,
+            type: CreditType.Refund,
+            campaign_id: args.campaign._id,
+            created_at: args.now,
+            reference: `campaign_cancellation_refund:${args.campaign.name}`,
+        });
+    }
+
+    await ctx.db.patch(args.campaign._id, {
+        status: CampaignStatus.Cancelled,
+        cancelled_at: args.campaign.cancelled_at ?? args.now,
+        updated_at: args.now,
+    });
+};
 
 const getActiveCampaignLimit = (planType?: string | null) => {
     switch (getBusinessPlanType(planType)) {
@@ -121,7 +161,7 @@ export const getCampaign = query({
         const pendingApprovals = (await ctx.db
             .query("applications")
             .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
-            .filter((q) => q.eq(q.field("status"), "reviewing"))
+            .filter((q) => q.eq(q.field("status"), ApplicationStatus.Reviewing))
             .collect()).length;
 
         return {
@@ -157,7 +197,7 @@ export const getActiveCampaignCount = query({
         const campaigns = await ctx.db
             .query("campaigns")
             .withIndex("by_business", (q) => q.eq("business_id", args.businessId))
-            .filter((q) => q.eq(q.field("status"), "active"))
+            .filter((q) => q.eq(q.field("status"), CampaignStatus.Active))
             .collect();
         return campaigns.length;
     },
@@ -168,7 +208,7 @@ export const getActiveCampaigns = query({
     handler: async (ctx, args) => {
         const result = await ctx.db
             .query("campaigns")
-            .withIndex("by_status", (q) => q.eq("status", "active"))
+            .withIndex("by_status", (q) => q.eq("status", CampaignStatus.Active))
             .order("desc")
             .paginate(args.paginationOpts);
 
@@ -272,7 +312,7 @@ export const createCampaign = mutation({
         const now = Date.now();
 
         // Only deduct credits if the campaign is active (not draft)
-        if (args.status === "active") {
+        if (args.status === CampaignStatus.Active) {
             await assertCampaignLimit(ctx, args.businessId, business.subscription_plan_type);
 
             if (business.credit_balance < args.total_budget) {
@@ -295,7 +335,7 @@ export const createCampaign = mutation({
             cover_photo_r2_key: args.cover_photo_r2_key,
             total_budget: args.total_budget,
             budget_claimed: 0, // Starts at 0
-            status: args.status, // "active" or "draft"
+            status: args.status,
             asset_links: args.asset_links,
             base_pay: args.base_pay,
             maximum_payout: args.maximum_payout,
@@ -313,7 +353,7 @@ export const createCampaign = mutation({
         });
 
         // Deduct credits if active
-        if (args.status === "active") {
+        if (args.status === CampaignStatus.Active) {
             await ctx.db.patch(business._id, {
                 credit_balance: business.credit_balance - args.total_budget,
                 updated_at: now,
@@ -322,8 +362,8 @@ export const createCampaign = mutation({
             await ctx.db.insert("credits", {
                 business_id: business._id,
                 amount: -args.total_budget,
-                status: "completed",
-                type: "campaign_spend",
+                status: CreditStatus.Completed,
+                type: CreditType.CampaignSpend,
                 campaign_id: campaignId,
                 created_at: now,
                 reference: `campaign_launch:${args.name}`,
@@ -350,7 +390,7 @@ export const createCampaign = mutation({
 export const updateCampaignStatus = mutation({
     args: {
         campaignId: v.id("campaigns"),
-        status: v.string(), // "paused", "completed", "active"
+        status: v.string(), // "paused" | "pending_cancellation" | "completed" | "active"
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -358,18 +398,69 @@ export const updateCampaignStatus = mutation({
             throw new Error("Unauthenticated call to mutation");
         }
 
+        const allowedStatuses: string[] = [
+            CampaignStatus.Active,
+            CampaignStatus.Paused,
+            CampaignStatus.PendingCancellation,
+            CampaignStatus.Completed,
+        ];
+
+        if (!allowedStatuses.includes(args.status)) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "Invalid campaign status update.",
+            });
+        }
+
         const campaign = await ctx.db.get(args.campaignId);
         if (!campaign) throw new Error("Campaign not found");
 
+        if (campaign.status === args.status) {
+            return;
+        }
+
+        const terminalStatuses: string[] = [
+            CampaignStatus.PendingCancellation,
+            CampaignStatus.Completed,
+            CampaignStatus.Cancelled,
+        ];
+
+        if (terminalStatuses.includes(campaign.status)) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "This campaign can no longer be updated.",
+            });
+        }
+
         const business = await ctx.db.get(campaign.business_id);
         if (!business) throw new Error("Business not found");
+
+        if (
+            args.status === CampaignStatus.PendingCancellation &&
+            campaign.status !== CampaignStatus.Paused
+        ) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "Campaign must be paused before it can be ended.",
+            });
+        }
+
+        if (
+            args.status === CampaignStatus.PendingCancellation &&
+            (campaign.pending_approvals ?? 0) > 0
+        ) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "Finish reviewing all pending submissions before ending the campaign.",
+            });
+        }
 
         if (args.status === CampaignStatus.Active && campaign.status !== CampaignStatus.Active) {
             await assertCampaignLimit(ctx, campaign.business_id, business.subscription_plan_type, campaign._id);
         }
 
         // Logic for activating a draft campaign
-        if (campaign.status === "draft" && args.status === "active") {
+        if (campaign.status === CampaignStatus.Draft && args.status === CampaignStatus.Active) {
             if (business.credit_balance < campaign.total_budget) {
                 throw new ConvexError({
                     code: ERROR_CODES.INSUFFICIENT_CREDITS.code,
@@ -390,8 +481,8 @@ export const updateCampaignStatus = mutation({
             await ctx.db.insert("credits", {
                 business_id: business._id,
                 amount: -campaign.total_budget,
-                status: "completed",
-                type: "campaign_spend",
+                status: CreditStatus.Completed,
+                type: CreditType.CampaignSpend,
                 campaign_id: args.campaignId,
                 created_at: now,
                 reference: `campaign_launch:${campaign.name}`,
@@ -401,10 +492,52 @@ export const updateCampaignStatus = mutation({
         const now = Date.now();
         await ctx.db.patch(args.campaignId, {
             status: args.status,
-            cancelled_at: args.status === CampaignStatus.Cancelled ? now : undefined,
+            cancelled_at:
+                args.status === CampaignStatus.PendingCancellation
+                    ? now
+                    : undefined,
             updated_at: now,
         });
     }
+});
+
+export const settlePendingCancellationCampaigns = internalMutation({
+    args: {},
+    handler: async (ctx) => {
+        const pendingCancellationCampaigns = await ctx.db
+            .query("campaigns")
+            .withIndex("by_status", (q) => q.eq("status", CampaignStatus.PendingCancellation))
+            .collect();
+
+        const now = Date.now();
+        let processed = 0;
+
+        for (const campaign of pendingCancellationCampaigns) {
+            if (campaign.cancelled_at == null) {
+                continue;
+            }
+
+            if ((now - campaign.cancelled_at) < CAMPAIGN_CANCELLATION_GRACE_MS) {
+                continue;
+            }
+
+            const business = await ctx.db.get(campaign.business_id);
+            if (!business) {
+                console.warn(`Business ${campaign.business_id} not found for pending-cancellation campaign ${campaign._id}`);
+                continue;
+            }
+
+            await settlePendingCancellationCampaign(ctx, {
+                campaign,
+                business,
+                now,
+            });
+
+            processed += 1;
+        }
+
+        return { processed };
+    },
 });
 
 export const updateCampaign = mutation({
