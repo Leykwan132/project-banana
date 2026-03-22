@@ -3,6 +3,8 @@ export const NotificationType = {
     SubmissionRejected: "submission_rejected",
     PostDescriptionMissing: "post_description_missing",
     PostEarning: "post_earning",
+    CampaignPausedSubmitSoon: "campaign_paused_submit_soon",
+    CampaignEndingSoon: "campaign_ending_soon",
     ApplicationUpdatesSummary: "application_updates_summary",
     BankAccountApproved: "bank_account_approved",
     BankAccountRejected: "bank_account_rejected",
@@ -31,6 +33,16 @@ export const NotificationCopy = {
         title: "Your post is earning 💰",
         description: (campaignName: string) =>
             `Your post for ${campaignName} is now earning. Track your payout anytime.`,
+    },
+    campaignPausedSubmitSoon: {
+        title: "Submit your video soon! ⏳",
+        description: (campaignName: string) =>
+            `New applications for ${campaignName} are closed, but you're still in! Submit your video soon to start earning.`,
+    },
+    campaignEndingSoon: {
+        title: "Final call to post! ⏳",
+        description: (campaignName: string) =>
+            `${campaignName} is ending soon. Share your post link now to make sure you get paid!`,
     },
     applicationUpdatesSummary: {
         title: "Applications need updates ⚠️",

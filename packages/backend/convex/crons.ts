@@ -149,6 +149,7 @@ const formatPendingBankAccountsSummary = (
         source_type: string;
         created_at?: number;
     }>,
+    pendingSubmissionCount: number,
 ) => {
     const summaryDate = new Intl.DateTimeFormat("en-MY", {
         timeZone: TELEGRAM_SUMMARY_TIMEZONE,
@@ -165,6 +166,7 @@ const formatPendingBankAccountsSummary = (
             "Daily bank account pending review summary",
             `As of ${summaryDate} (${TELEGRAM_SUMMARY_TIMEZONE})`,
             "Pending bank accounts: 0",
+            `New submissions pending review: ${pendingSubmissionCount}`,
             "No bank accounts are pending review right now.",
         ].join("\n");
     }
@@ -190,6 +192,7 @@ const formatPendingBankAccountsSummary = (
         "Daily bank account pending review summary",
         `As of ${summaryDate} (${TELEGRAM_SUMMARY_TIMEZONE})`,
         `Pending bank accounts: ${accounts.length}`,
+        `New submissions pending review: ${pendingSubmissionCount}`,
         ...lines,
         ...(remaining > 0 ? [`...and ${remaining} more pending bank account(s).`] : []),
     ].join("\n");
@@ -624,14 +627,15 @@ export const sendPendingBankAccountsTelegramSummary = internalAction({
         console.log("Starting pending bank accounts Telegram summary cron job");
 
         const accounts = await ctx.runQuery((internal as any).admin.getPendingBankAccountsForCron, {});
-        const text = formatPendingBankAccountsSummary(accounts);
+        const pendingSubmissionCount = await ctx.runQuery((internal as any).admin.getPendingSubmissionsCountForCron, {});
+        const text = formatPendingBankAccountsSummary(accounts, pendingSubmissionCount);
 
         await ctx.runAction((internal as any).telegram.sendBankAccountSubmissionAlert, {
             text,
         });
 
         console.log(
-            `Finished pending bank accounts Telegram summary cron job. Pending accounts: ${accounts.length}`,
+            `Finished pending bank accounts Telegram summary cron job. Pending accounts: ${accounts.length}, pending submissions: ${pendingSubmissionCount}`,
         );
     },
 });

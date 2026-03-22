@@ -146,6 +146,17 @@ export const getPendingSubmissionsCount = query({
     },
 });
 
+export const getPendingSubmissionsCountForCron = internalQuery({
+    args: {},
+    handler: async (ctx) => {
+        const all = await ctx.db
+            .query("submissions")
+            .withIndex("by_status", (q) => q.eq("status", "pending_review"))
+            .collect();
+        return all.length;
+    },
+});
+
 /**
  * Get a single submission with campaign info (for detail view)
  */

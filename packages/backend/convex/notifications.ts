@@ -128,6 +128,8 @@ const getRedirectFields = (data: {
         case NotificationType.SubmissionApproved:
         case NotificationType.PostDescriptionMissing:
         case NotificationType.PostEarning:
+        case NotificationType.CampaignPausedSubmitSoon:
+        case NotificationType.CampaignEndingSoon:
             return {
                 redirectType: "application",
                 redirectId: data.applicationId,

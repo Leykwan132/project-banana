@@ -1,4 +1,5 @@
 import { action, internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError } from "convex/values";
@@ -12,6 +13,7 @@ import {
     CreditStatus,
     CreditType,
 } from "./constants";
+import { NotificationCopy, NotificationType } from "./notificationConstants";
 import { posthog } from "./posthog";
 
 const getBusinessPlanType = (planType?: string | null) => (planType ?? "free").toLowerCase();
@@ -498,6 +500,50 @@ export const updateCampaignStatus = mutation({
                     : undefined,
             updated_at: now,
         });
+
+        if (args.status === CampaignStatus.Paused) {
+            const pendingSubmissionApplications = await ctx.db
+                .query("applications")
+                .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
+                .filter((q) => q.eq(q.field("status"), ApplicationStatus.PendingSubmission))
+                .collect();
+
+            await Promise.all(
+                pendingSubmissionApplications.map((application) =>
+                    ctx.scheduler.runAfter(0, internal.notifications.createAndSendNotification, {
+                        betterAuthUserId: application.user_id,
+                        title: NotificationCopy.campaignPausedSubmitSoon.title,
+                        description: NotificationCopy.campaignPausedSubmitSoon.description(campaign.name),
+                        data: {
+                            type: NotificationType.CampaignPausedSubmitSoon,
+                            applicationId: application._id,
+                        },
+                    })
+                ),
+            );
+        }
+
+        if (args.status === CampaignStatus.PendingCancellation) {
+            const readyToPostApplications = await ctx.db
+                .query("applications")
+                .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
+                .filter((q) => q.eq(q.field("status"), ApplicationStatus.ReadyToPost))
+                .collect();
+
+            await Promise.all(
+                readyToPostApplications.map((application) =>
+                    ctx.scheduler.runAfter(0, internal.notifications.createAndSendNotification, {
+                        betterAuthUserId: application.user_id,
+                        title: NotificationCopy.campaignEndingSoon.title,
+                        description: NotificationCopy.campaignEndingSoon.description(campaign.name),
+                        data: {
+                            type: NotificationType.CampaignEndingSoon,
+                            applicationId: application._id,
+                        },
+                    })
+                ),
+            );
+        }
     }
 });
 
