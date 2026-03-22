@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, RefreshControl, Image, Linking } from 'react-native';
+import { View, StyleSheet, Pressable, RefreshControl, Image, Linking, useWindowDimensions } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ChevronDown, Check, Copy, Building, ExternalLink, Hash, AtSign, AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Check, Copy, Building, ExternalLink, AlertTriangle } from 'lucide-react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { TextInput, Alert } from 'react-native';
 import Animated, {
@@ -24,7 +24,9 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { usePostHog } from 'posthog-react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { getCampaignLifecycleBanner } from '@/constants/campaignLifecycleBanner';
 import { Colors } from '@/constants/theme';
+import { CampaignStatus } from '@/constants/campaignStatus';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import ActionSheet, { ScrollView, FlatList } from "react-native-actions-sheet";
@@ -34,6 +36,15 @@ import { CreatorListItem } from '@/components/CreatorListItem';
 import { SubmissionListItem } from '@/components/SubmissionListItem';
 import { AccordionItem } from '@/components/AccordionItem';
 import { FlippableEarningsCard } from '@/components/FlippableEarningsCard';
+import { BillboardMarqueeBanner } from '@/components/BillboardMarqueeBanner';
+import {
+    defaultSubmissionBlockedMessage,
+    defaultSubmissionBlockedSheetTitle,
+    getErrorMessage,
+    getSubmissionBlockedMessage,
+    getSubmissionBlockedTitle,
+    isSubmissionBlockedError,
+} from '@/lib/submissionBlocked';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 
@@ -96,6 +107,7 @@ export default function ApplicationDetailScreen() {
     const routeCampaignId = campaignId as Id<"campaigns"> | undefined;
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { width: viewportWidth } = useWindowDimensions();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
@@ -138,6 +150,7 @@ export default function ApplicationDetailScreen() {
     const submissionSheetRef = useRef<ActionSheetRef>(null);
     const reviewSheetRef = useRef<ActionSheetRef>(null);
     const statusInfoSheetRef = useRef<ActionSheetRef>(null);
+    const submissionBlockedSheetRef = useRef<ActionSheetRef>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [instagramLink, setInstagramLink] = useState('');
     const [tiktokLink, setTikTokLink] = useState('');
@@ -146,6 +159,8 @@ export default function ApplicationDetailScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isReviewed, setIsReviewed] = useState(false);
+    const [submissionBlockedTitle, setSubmissionBlockedTitle] = useState(defaultSubmissionBlockedSheetTitle);
+    const [submissionBlockedMessage, setSubmissionBlockedMessage] = useState(defaultSubmissionBlockedMessage);
 
     // Campaign logo resolved URL
     const generateAccessUrl = useAction(api.campaigns.generateCampaignImageAccessUrl);
@@ -228,6 +243,14 @@ export default function ApplicationDetailScreen() {
 
     const handleUpload = async () => {
         if (!selectedVideoUri || !application) return;
+        if (isVideoSubmissionBlocked) {
+            showSubmissionBlockedSheet(getSubmissionBlockedMessage({
+                campaignStatus: campaign?.status,
+                applicationStatus,
+                action: 'video',
+            }));
+            return;
+        }
 
         videoPlayer.pause();
         setReviewStep('uploading');
@@ -264,12 +287,24 @@ export default function ApplicationDetailScreen() {
         } catch (uploadError) {
             console.error('Error uploading submission video:', uploadError);
             setReviewStep('preview');
+            if (isSubmissionBlockedError(uploadError)) {
+                showSubmissionBlockedSheet(getErrorMessage(uploadError));
+                return;
+            }
             Alert.alert('Upload failed', 'Unable to upload your video. Please try again.');
         }
     };
 
     const handleSubmit = async () => {
         setError('');
+        if (isPostSubmissionBlocked) {
+            showSubmissionBlockedSheet(getSubmissionBlockedMessage({
+                campaignStatus: campaign?.status,
+                applicationStatus,
+                action: 'post',
+            }));
+            return;
+        }
         const isValidUrl = (string: string) => {
             try {
                 new URL(string);
@@ -369,6 +404,10 @@ export default function ApplicationDetailScreen() {
         } catch (submitError) {
             console.error('Error updating application submission links:', submitError);
             setIsSubmitting(false);
+            if (isSubmissionBlockedError(submitError)) {
+                showSubmissionBlockedSheet(getErrorMessage(submitError));
+                return;
+            }
             setError('Failed to submit links. Please try again.');
         }
     };
@@ -411,6 +450,21 @@ export default function ApplicationDetailScreen() {
     const isReadyToPost = applicationStatus === 'Ready to Post';
     const isVerifying = applicationStatus === 'Verifying';
     const isEarning = applicationStatus === 'Earning';
+    const isVideoSubmissionBlocked =
+        campaign?.status === CampaignStatus.PendingCancellation ||
+        campaign?.status === CampaignStatus.Completed ||
+        campaign?.status === CampaignStatus.Cancelled;
+    const isPostSubmissionBlocked =
+        campaign?.status === CampaignStatus.Completed ||
+        campaign?.status === CampaignStatus.Cancelled ||
+        (campaign?.status === CampaignStatus.PendingCancellation && !isReadyToPost);
+    const isAnyNewSubmissionBlocked = isVideoSubmissionBlocked || isPostSubmissionBlocked;
+    const isFooterSubmissionBlocked = isEarning
+        ? isAnyNewSubmissionBlocked
+        : (isReadyToPost || isActionRequired)
+            ? isPostSubmissionBlocked
+            : isVideoSubmissionBlocked;
+    const campaignLifecycleBanner = getCampaignLifecycleBanner(campaign?.status, 'application');
     const isPayAsYouGoPlan = (campaign?.business_plan_type ?? 'free').toLowerCase() === 'free';
     const isTikTokFeatureEnabled = posthog.isFeatureEnabled('enable-tiktok-feature') ?? false;
     const requiresBothPlatformPosts = campaign?.requires_both_platform_posts ?? false;
@@ -488,6 +542,18 @@ export default function ApplicationDetailScreen() {
         await Clipboard.setStringAsync(value);
         setCopiedField(field);
         setTimeout(() => setCopiedField(null), 1200);
+    };
+
+    const showSubmissionBlockedSheet = (message: string, title = getSubmissionBlockedTitle(campaign?.status)) => {
+        setError('');
+        setSubmissionBlockedTitle(title);
+        setSubmissionBlockedMessage(message);
+        submissionSheetRef.current?.hide();
+        reviewSheetRef.current?.hide();
+
+        setTimeout(() => {
+            submissionBlockedSheetRef.current?.show();
+        }, 150);
     };
 
     const renderPrefixedCopyList = (
@@ -762,6 +828,16 @@ export default function ApplicationDetailScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
+                {campaignLifecycleBanner ? (
+                    <BillboardMarqueeBanner
+                        message={campaignLifecycleBanner.message}
+                        backgroundColor={campaignLifecycleBanner.backgroundColor}
+                        textColor={campaignLifecycleBanner.textColor}
+                        fontFamily={campaignLifecycleBanner.fontFamily}
+                        style={[styles.campaignLifecycleBanner, { width: viewportWidth }]}
+                    />
+                ) : null}
+
                 {/* Campaign Info */}
                 <View style={styles.campaignInfo}>
                     <View style={styles.logoContainer}>
@@ -1489,6 +1565,38 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </ActionSheet>
 
+                <ActionSheet gestureEnabled ref={submissionBlockedSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
+                    <View style={[styles.sheetContent, styles.blockedSubmissionSheetContent, { backgroundColor: screenBackgroundColor, paddingBottom: Math.max(insets.bottom, 24) }]}>
+                        <LottieView
+                            source={require('../../assets/lotties/failed.json')}
+                            autoPlay
+                            loop={false}
+                            style={styles.blockedSubmissionLottie}
+                        />
+
+                        <View style={[styles.sheetHeader, styles.blockedSubmissionHeader]}>
+                            <ThemedText style={[styles.sheetTitle, styles.blockedSubmissionTitle, { color: theme.text }]}>{submissionBlockedTitle}</ThemedText>
+                            <ThemedText style={[styles.sheetSubtitle, styles.blockedSubmissionBody, { color: mutedTextColor }]}>
+                                {submissionBlockedMessage}
+                            </ThemedText>
+                        </View>
+
+                        <Pressable
+                            style={[
+                                styles.dismissButton,
+                                {
+                                    width: '100%',
+                                    backgroundColor: primaryActionButtonBackground,
+                                    borderColor: primaryActionButtonBackground,
+                                }
+                            ]}
+                            onPress={() => submissionBlockedSheetRef.current?.hide()}
+                        >
+                            <ThemedText style={[styles.dismissButtonText, { color: '#FFFFFF' }]}>Got it</ThemedText>
+                        </Pressable>
+                    </View>
+                </ActionSheet>
+
 
             </ScrollView>
 
@@ -1498,21 +1606,48 @@ export default function ApplicationDetailScreen() {
                         styles.actionButton,
                         { backgroundColor: defaultActionButtonBackground },
                         isReadyToPost && { backgroundColor: primaryActionButtonBackground },
+                        isFooterSubmissionBlocked && {
+                            backgroundColor: isDark ? '#3A3A3A' : '#D9D9D9',
+                        },
                         (applicationStatus === 'Under Review' || isVerifying) && { backgroundColor: isDark ? '#262626' : '#E0E0E0', opacity: 1 }
                     ]}
                     disabled={applicationStatus === 'Under Review' || isVerifying}
                     onPress={() => {
                         if (isEarning) {
+                            if (isAnyNewSubmissionBlocked) {
+                                showSubmissionBlockedSheet(getSubmissionBlockedMessage({
+                                    campaignStatus: campaign?.status,
+                                    applicationStatus,
+                                    action: 'general',
+                                }));
+                                return;
+                            }
                             if (resolvedCampaignId) {
                                 router.push(`/campaign/${resolvedCampaignId}`);
                             }
                         } else if (isReadyToPost || isActionRequired) {
+                            if (isPostSubmissionBlocked) {
+                                showSubmissionBlockedSheet(getSubmissionBlockedMessage({
+                                    campaignStatus: campaign?.status,
+                                    applicationStatus,
+                                    action: 'post',
+                                }));
+                                return;
+                            }
                             setShowSuccess(false);
                             setInstagramLink('');
                             setTikTokLink('');
                             setError('');
                             submissionSheetRef.current?.show();
                         } else {
+                            if (isVideoSubmissionBlocked) {
+                                showSubmissionBlockedSheet(getSubmissionBlockedMessage({
+                                    campaignStatus: campaign?.status,
+                                    applicationStatus,
+                                    action: 'video',
+                                }));
+                                return;
+                            }
                             setIsReviewed(false);
                             setReviewStep('requirements');
                             reviewSheetRef.current?.show();
@@ -1523,6 +1658,7 @@ export default function ApplicationDetailScreen() {
                         styles.actionButtonText,
                         { color: defaultActionButtonTextColor },
                         isReadyToPost && { color: '#FFFFFF' },
+                        isFooterSubmissionBlocked && { color: isDark ? '#CFCFCF' : '#6B6B6B' },
                         (applicationStatus === 'Under Review' || isVerifying) && { color: '#666' }
                     ]}>
                         {isEarning
@@ -1586,6 +1722,11 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingHorizontal: 24,
         paddingTop: 16,
+    },
+    campaignLifecycleBanner: {
+        alignSelf: 'center',
+        marginTop: -16,
+        marginBottom: 16,
     },
     campaignInfo: {
         flexDirection: 'row',
@@ -1883,6 +2024,25 @@ const styles = StyleSheet.create({
     sheetHeader: {
         alignItems: 'center',
         marginBottom: 32,
+    },
+    blockedSubmissionSheetContent: {
+        alignItems: 'center',
+    },
+    blockedSubmissionLottie: {
+        width: 120,
+        height: 120,
+        marginBottom: 8,
+    },
+    blockedSubmissionHeader: {
+        marginBottom: 24,
+    },
+    blockedSubmissionTitle: {
+        textAlign: 'center',
+    },
+    blockedSubmissionBody: {
+        marginTop: 8,
+        lineHeight: 22,
+        textAlign: 'center',
     },
     sheetTitle: {
         fontSize: 24,

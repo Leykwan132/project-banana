@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { View, StyleSheet, Image, Pressable, ScrollView, Linking } from 'react-native';
+import { View, StyleSheet, Image, Pressable, ScrollView, Linking, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote } from 'lucide-react-native';
 import { useState, useRef, useEffect } from 'react';
@@ -13,10 +13,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { getCampaignLifecycleBanner } from '@/constants/campaignLifecycleBanner';
+import { CampaignStatus } from '@/constants/campaignStatus';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { CreatorListItem } from '@/components/CreatorListItem';
+import { BillboardMarqueeBanner } from '@/components/BillboardMarqueeBanner';
 import { ActionSheetRef } from "react-native-actions-sheet";
 import ActionSheet from "react-native-actions-sheet";
 import { Timeline, Text, Assets } from 'react-native-ui-lib';
@@ -80,6 +83,7 @@ export default function CampaignDetailsScreen() {
     const campaignId = id as Id<"campaigns">;
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { width: viewportWidth } = useWindowDimensions();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
@@ -188,6 +192,12 @@ export default function CampaignDetailsScreen() {
     }
 
     const progress = campaign && campaign.total_budget > 0 ? campaign.budget_claimed / campaign.total_budget : 0;
+    const shouldHideCampaignFooterButton =
+        campaign?.status === CampaignStatus.Paused ||
+        campaign?.status === CampaignStatus.PendingCancellation ||
+        campaign?.status === CampaignStatus.Completed ||
+        campaign?.status === CampaignStatus.Cancelled;
+    const campaignLifecycleBanner = getCampaignLifecycleBanner(campaign?.status, 'campaign');
 
     // Resolve the category configs for this campaign's categories
     const campaignCategoryConfigs = (campaign?.category || []).map(
@@ -230,6 +240,16 @@ export default function CampaignDetailsScreen() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
+                    {campaignLifecycleBanner ? (
+                        <BillboardMarqueeBanner
+                            message={campaignLifecycleBanner.message}
+                            backgroundColor={campaignLifecycleBanner.backgroundColor}
+                            textColor={campaignLifecycleBanner.textColor}
+                            fontFamily={campaignLifecycleBanner.fontFamily}
+                            style={[styles.campaignLifecycleBanner, { width: viewportWidth }]}
+                        />
+                    ) : null}
+
                     {/* Campaign Info Header */}
                     <View style={styles.campaignHeader}>
                         {!isLoading && campaign ? (
@@ -692,29 +712,31 @@ export default function CampaignDetailsScreen() {
             </View>
 
             {/* Sticky Footer */}
-            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
-                {isLoading ? (
-                    <SkeletonBlock style={styles.joinButtonSkeleton} />
-                ) : (
-                    <Pressable
-                        style={[
-                            styles.joinButton,
-                            isJoining && styles.joinButtonDisabled,
-                            { backgroundColor: hasExistingNonEarningApplication ? '#000000' : joinButtonBackground }
-                        ]}
-                        onPress={handleJoin}
-                        disabled={isJoining}
-                    >
-                        {isJoining ? (
-                            <LoadingIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                            <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>
-                                {hasExistingNonEarningApplication ? "View Application" : "Join"}
-                            </ThemedText>
-                        )}
-                    </Pressable>
-                )}
-            </View>
+            {!shouldHideCampaignFooterButton ? (
+                <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
+                    {isLoading ? (
+                        <SkeletonBlock style={styles.joinButtonSkeleton} />
+                    ) : (
+                        <Pressable
+                            style={[
+                                styles.joinButton,
+                                isJoining && styles.joinButtonDisabled,
+                                { backgroundColor: hasExistingNonEarningApplication ? '#000000' : joinButtonBackground }
+                            ]}
+                            onPress={handleJoin}
+                            disabled={isJoining}
+                        >
+                            {isJoining ? (
+                                <LoadingIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>
+                                    {hasExistingNonEarningApplication ? "View Application" : "Join"}
+                                </ThemedText>
+                            )}
+                        </Pressable>
+                    )}
+                </View>
+            ) : null}
         </View>
     );
 }
@@ -767,6 +789,11 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingTop: 32,
         paddingHorizontal: 24,
+    },
+    campaignLifecycleBanner: {
+        alignSelf: 'center',
+        marginTop: -32,
+        marginBottom: 24,
     },
     campaignHeader: {
         flexDirection: 'row',

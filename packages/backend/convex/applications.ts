@@ -62,6 +62,14 @@ const formatCompactViews = (views: number) => {
 
 const isVerifyingStatus = (status?: string) =>
     status === ApplicationStatus.Verifying;
+
+const getPostSubmissionBlockedMessage = (campaignStatus: string) => {
+    if (campaignStatus === CampaignStatus.PendingCancellation) {
+        return "This campaign is ending. Only approved posts in Ready to Post can still be submitted.";
+    }
+
+    return "This campaign has ended. Post submissions are closed.";
+};
 // ============================================================
 // QUERIES
 // ============================================================
@@ -364,6 +372,20 @@ export const createApplication = mutationWithTriggers({
         const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("Unauthenticated");
 
+        const campaign = await ctx.db.get(args.campaignId);
+        if (!campaign) throw new Error("Campaign not found");
+
+        const acceptingApplicationStatuses = new Set<string>([
+            CampaignStatus.Active,
+        ]);
+
+        if (!acceptingApplicationStatuses.has(campaign.status)) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: "This campaign is no longer accepting new submissions.",
+            });
+        }
+
         const now = Date.now();
         // Generate a random 6-character string for the tracking tag
         const randomTag = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -413,6 +435,21 @@ export const updateApplicationStatus = mutationWithTriggers({
         const campaign = await ctx.db.get(application.campaign_id);
         if (!campaign) {
             throw new Error("Campaign not found");
+        }
+
+        const postSubmissionBlocked =
+            campaign.status === CampaignStatus.Completed ||
+            campaign.status === CampaignStatus.Cancelled ||
+            (
+                campaign.status === CampaignStatus.PendingCancellation &&
+                application.status !== ApplicationStatus.ReadyToPost
+            );
+
+        if (postSubmissionBlocked) {
+            throw new ConvexError({
+                code: ERROR_CODES.INVALID_INPUT.code,
+                message: getPostSubmissionBlockedMessage(campaign.status),
+            });
         }
 
         const business = await ctx.db.get(campaign.business_id);

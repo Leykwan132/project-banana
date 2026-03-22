@@ -90,6 +90,8 @@ const sendPushNotification = async (
         description: string;
         data: NotificationData;
         notificationId?: Id<"notifications">;
+        redirectType?: string;
+        redirectId?: string;
     },
 ) => {
     const status = await pushNotifications.getStatusForUser(ctx, {
@@ -101,9 +103,12 @@ const sendPushNotification = async (
         return { pushSent };
     }
 
-    const pushData = args.notificationId
-        ? { ...args.data, notificationId: args.notificationId }
-        : args.data;
+    const pushData = {
+        ...args.data,
+        ...(args.notificationId ? { notificationId: args.notificationId } : {}),
+        ...(args.redirectType ? { redirect_type: args.redirectType } : {}),
+        ...(args.redirectId ? { redirect_id: args.redirectId } : {}),
+    };
 
     await pushNotifications.sendPushNotification(ctx, {
         userId: args.notificationUserId,
@@ -456,6 +461,8 @@ export const createAndSendNotification = internalMutation({
             description: args.description,
             data: args.data,
             notificationId,
+            redirectType,
+            redirectId,
         });
 
         return {

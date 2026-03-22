@@ -5,6 +5,21 @@ import { generateUploadUrl, generateDownloadUrl } from "./r2";
 import type { Doc, Id } from "./_generated/dataModel";
 import { posthog } from "./posthog";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
+import { CampaignStatus } from "./constants";
+
+const submissionBlockedCampaignStatuses = new Set<string>([
+    CampaignStatus.PendingCancellation,
+    CampaignStatus.Completed,
+    CampaignStatus.Cancelled,
+]);
+
+const getVideoSubmissionBlockedMessage = (campaignStatus: string) => {
+    if (campaignStatus === CampaignStatus.PendingCancellation) {
+        return "This campaign is ending. New video submissions are no longer allowed.";
+    }
+
+    return "This campaign has ended. Video submissions are closed.";
+};
 
 const getAdminEmails = () => {
     try {
@@ -195,6 +210,12 @@ export const createSubmission = mutation({
         if (!application) throw new Error("Application not found");
         if (application.user_id !== user.subject) throw new Error("Unauthorized");
 
+        const campaign = await ctx.db.get(application.campaign_id);
+        if (!campaign) throw new Error("Campaign not found");
+        if (submissionBlockedCampaignStatuses.has(campaign.status)) {
+            throw new Error(getVideoSubmissionBlockedMessage(campaign.status));
+        }
+
         const now = Date.now();
 
         // Calculate attempt number
@@ -226,20 +247,17 @@ export const createSubmission = mutation({
         });
 
         // Increment campaign submissions and pending approvals
-        const campaign = await ctx.db.get(application.campaign_id);
-        if (campaign) {
-            await ctx.db.patch(application.campaign_id, {
-                submissions: (campaign.submissions || 0) + 1,
-                pending_approvals: (campaign.pending_approvals || 0) + 1,
-            });
+        await ctx.db.patch(application.campaign_id, {
+            submissions: (campaign.submissions || 0) + 1,
+            pending_approvals: (campaign.pending_approvals || 0) + 1,
+        });
 
-            // Increment business pending approvals
-            const business = await ctx.db.get(campaign.business_id);
-            if (business) {
-                await ctx.db.patch(campaign.business_id, {
-                    pending_approvals: (business.pending_approvals || 0) + 1,
-                });
-            }
+        // Increment business pending approvals
+        const business = await ctx.db.get(campaign.business_id);
+        if (business) {
+            await ctx.db.patch(campaign.business_id, {
+                pending_approvals: (business.pending_approvals || 0) + 1,
+            });
         }
 
         await posthog.capture(ctx, {

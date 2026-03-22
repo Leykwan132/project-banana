@@ -79,6 +79,8 @@ export const navigateFromNotification = (router: { push: (href: any) => void }, 
         case NotificationType.SubmissionApproved:
         case NotificationType.PostDescriptionMissing:
         case NotificationType.PostEarning:
+        case NotificationType.CampaignPausedSubmitSoon:
+        case NotificationType.CampaignEndingSoon:
             if (payload.applicationId) {
                 router.push({
                     pathname: '/application/[id]',
