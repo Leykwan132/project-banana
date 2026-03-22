@@ -12,7 +12,7 @@ const PLANS = [
         annualPrice: 0,
         features: [
             { text: '1 active campaign at a time', crossed: false },
-            { text: 'Limit to 50 creator submissions', crossed: false },
+            { text: 'Unlimited creator submissions', crossed: false },
             { text: 'Pay RM 100 per campaign', crossed: false },
             { text: 'Instagram support', crossed: false },
             { text: 'Hashtag and mention capability', crossed: true },
