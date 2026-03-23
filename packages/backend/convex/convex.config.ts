@@ -6,8 +6,10 @@ import r2 from "@convex-dev/r2/convex.config.js";
 import pushNotifications from "@convex-dev/expo-push-notifications/convex.config.js";
 import posthog from "@posthog/convex/convex.config.js";
 import resend from "@convex-dev/resend/convex.config.js";
+import migrations from "@convex-dev/migrations/convex.config.js";
 
 const app = defineApp();
+app.use(migrations);
 app.use(betterAuth);
 app.use(stripe);
 app.use(r2);
