@@ -11,7 +11,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 
-import { PayoutThresholdModal, RequirementsModal, ScriptsModal, parseViews } from '../CreateCampaign';
+import { PayoutThresholdModal, RequirementsModal, ScriptsModal, hasRequirements, normalizeRequirements, parseViews } from '../CreateCampaign';
 import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign';
 import Button from '../../components/ui/Button';
 import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
@@ -184,10 +184,10 @@ const validationSchema = Yup.object({
         'Please add at least one payout threshold',
         (value) => value ? value.some(t => t.views && t.amount) : false
     ),
-    reqData: Yup.object().test(
+    requirements: Yup.array().test(
         'at-least-one-requirement',
         'Please set campaign requirements',
-        (value: any) => value.noAi || value.followScript || value.language || value.location || value.custom.length > 0
+        (value: any) => hasRequirements(value as RequirementsData | undefined)
     )
 });
 
@@ -242,13 +242,7 @@ export default function CampaignDetails() {
         basePay: '',
         maxPayout: '',
         thresholdData: [] as Threshold[],
-        reqData: {
-            noAi: false,
-            followScript: false,
-            language: '',
-            location: '',
-            custom: []
-        } as RequirementsData,
+        requirements: [] as RequirementsData,
         scriptsData: {
             hook: '',
             product: '',
@@ -283,24 +277,7 @@ export default function CampaignDetails() {
             })) : [];
 
             // Parse Requirements
-            const newReqData: RequirementsData = {
-                noAi: false,
-                followScript: false,
-                language: '',
-                location: '',
-                custom: []
-            };
-
-            if (campaign.requirements) {
-                campaign.requirements.forEach((req: string) => {
-                    if (req === "No AI Content") newReqData.noAi = true;
-                    else if (req === "Follow Script 1:1") newReqData.followScript = true;
-                    else if (req.startsWith("Speak ")) newReqData.language = req.replace("Speak ", "");
-                    else if (req === "Any location") newReqData.location = "Any";
-                    else if (req.startsWith("Creator from ")) newReqData.location = req.replace("Creator from ", "");
-                    else newReqData.custom.push(req);
-                });
-            }
+            const newRequirements = normalizeRequirements(campaign.requirements ?? []);
 
             // Parse Scripts
             const newScriptsData: ScriptsData = {
@@ -327,7 +304,7 @@ export default function CampaignDetails() {
                 basePay: campaign.base_pay?.toString() || "",
                 maxPayout: campaign.maximum_payout?.toString() || "",
                 thresholdData: thresholds,
-                reqData: newReqData,
+                requirements: newRequirements,
                 scriptsData: newScriptsData
             });
 
@@ -486,13 +463,7 @@ export default function CampaignDetails() {
                         views: parseViews(t.views),
                         payout: parseFloat(t.amount) || 0
                     })),
-                requirements: [
-                    ...(values.reqData.noAi ? ["No AI Content"] : []),
-                    ...(values.reqData.followScript ? ["Follow Script 1:1"] : []),
-                    ...(values.reqData.language ? [`Speak ${values.reqData.language}`] : []),
-                    ...(values.reqData.location ? [values.reqData.location.toLowerCase() === 'any' ? "Any location" : `Creator from ${values.reqData.location}`] : []),
-                    ...values.reqData.custom
-                ],
+                requirements: normalizeRequirements(values.requirements),
                 scripts: [
                     ...(values.scriptsData.hook ? [{ type: "Hook", description: values.scriptsData.hook }] : []),
                     ...(values.scriptsData.product ? [{ type: "Product", description: values.scriptsData.product }] : []),
@@ -655,7 +626,7 @@ export default function CampaignDetails() {
         if (formik.values.maxPayout.toString() !== initialValues.maxPayout.toString()) changes.push({ label: 'Max Payout', icon: DollarSign });
 
         if (JSON.stringify(formik.values.thresholdData) !== JSON.stringify(initialValues.thresholdData)) changes.push({ label: 'Payout Thresholds', icon: DollarSign });
-        if (JSON.stringify(formik.values.reqData) !== JSON.stringify(initialValues.reqData)) changes.push({ label: 'Requirements', icon: CheckSquare });
+        if (JSON.stringify(formik.values.requirements) !== JSON.stringify(initialValues.requirements)) changes.push({ label: 'Requirements', icon: CheckSquare });
         if (JSON.stringify(formik.values.scriptsData) !== JSON.stringify(initialValues.scriptsData)) changes.push({ label: 'Scripts', icon: FileText });
 
         if (logoFile) changes.push({ label: 'Campaign Logo', icon: ImageIcon });
@@ -1005,40 +976,14 @@ export default function CampaignDetails() {
                                         <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
                                     </label>
                                     <p className="text-sm text-gray-500 mb-4">Specify what creators must do or qualifications.</p>
-                                    {formik.touched.reqData && formik.errors.reqData && typeof formik.errors.reqData === 'string' && (
-                                        <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.reqData}</p>
+                                    {formik.touched.requirements && formik.errors.requirements && typeof formik.errors.requirements === 'string' && (
+                                        <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.requirements}</p>
                                     )}
-                                    {formik.values.reqData.noAi || formik.values.reqData.followScript || formik.values.reqData.language || formik.values.reqData.location || formik.values.reqData.custom.length > 0 ? (
+                                    {hasRequirements(formik.values.requirements) ? (
                                         <div className="bg-[#F8F9FA] rounded-3xl p-6">
                                             <h3 className="font-bold text-sm mb-4 text-gray-900">Current Requirements</h3>
                                             <div className="space-y-3 mb-6">
-                                                {formik.values.reqData.noAi && (
-                                                    <div className="flex items-start gap-3">
-                                                        <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                        <span className="text-sm text-gray-600">No AI generated</span>
-                                                    </div>
-                                                )}
-                                                {formik.values.reqData.followScript && (
-                                                    <div className="flex items-start gap-3">
-                                                        <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                        <span className="text-sm text-gray-600">Follow Script</span>
-                                                    </div>
-                                                )}
-                                                {formik.values.reqData.language && (
-                                                    <div className="flex items-start gap-3">
-                                                        <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                        <span className="text-sm text-gray-600">Speak {formik.values.reqData.language}</span>
-                                                    </div>
-                                                )}
-                                                {formik.values.reqData.location && (
-                                                    <div className="flex items-start gap-3">
-                                                        <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                        <span className="text-sm text-gray-600">
-                                                            {formik.values.reqData.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${formik.values.reqData.location}`}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {formik.values.reqData.custom.map((req, i) => (
+                                                {normalizeRequirements(formik.values.requirements).map((req, i) => (
                                                     <div key={i} className="flex items-start gap-3">
                                                         <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
                                                         <span className="text-sm text-gray-600">{req}</span>
@@ -1159,9 +1104,11 @@ export default function CampaignDetails() {
                             {/* Row 4: Campaign Logo & Cover */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-1">
-                                    <label className="font-semibold text-gray-900 block">Campaign logo</label>
-                                    <div className="flex justify-between mb-4 ">
-                                        <p className="text-sm text-gray-500">Campaign icon at front page.</p>
+                                    <div className="flex items-end justify-between gap-4 mb-4">
+                                        <div className="space-y-1">
+                                            <label className="font-semibold text-gray-900 block">Campaign logo</label>
+                                            <p className="text-sm text-gray-500">Campaign icon at front page.</p>
+                                        </div>
                                         {hasCompanyLogo && (
                                             <button
                                                 type="button"
@@ -1537,10 +1484,10 @@ export default function CampaignDetails() {
             {
                 showRequirementsModal && (
                     <RequirementsModal
-                        initialData={formik.values.reqData}
+                        initialData={formik.values.requirements}
                         onClose={() => setShowRequirementsModal(false)}
                         onSave={(data) => {
-                            formik.setFieldValue('reqData', data);
+                            formik.setFieldValue('requirements', data);
                             setShowRequirementsModal(false);
                         }}
                     />

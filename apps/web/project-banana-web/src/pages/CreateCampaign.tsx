@@ -58,15 +58,16 @@ export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxP
     };
 
     const handleRecommend = () => {
-        setBasePay('10');
+        setBasePay('20');           // RM20 base – small guaranteed amount to encourage submissions
         setThresholds([
-            { views: '10k', amount: '15' },
-            { views: '50k', amount: '35' },
-            { views: '100k', amount: '75' },
-            { views: '250k', amount: '150' },
-            { views: '500k', amount: '300' },
+            { views: '1k', amount: '10' },   // Quick small win
+            { views: '5k', amount: '30' },   // Realistic early bonus
+            { views: '10k', amount: '70' },   // Decent mid-tier push
+            { views: '25k', amount: '150' },  // Strong incentive for viral potential
+            { views: '50k', amount: '300' },  // High but achievable for good content
+            { views: '100k', amount: '500' } // Stretch goal – replaces your old 500k tier
         ]);
-        setMaxPayout('1500');
+        setMaxPayout('800');        // RM800 cap – high enough to feel exciting, low enough to protect platform
     };
 
     return createPortal(
@@ -208,37 +209,38 @@ export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxP
     );
 };
 
-export interface RequirementsData {
-    noAi: boolean;
-    followScript: boolean;
-    language: string;
-    location: string;
-    custom: string[];
-}
+export type RequirementsData = string[];
+
+export const normalizeRequirements = (requirements?: RequirementsData): RequirementsData =>
+    (requirements ?? [])
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+export const hasRequirements = (requirements?: RequirementsData) => normalizeRequirements(requirements).length > 0;
 
 export const RequirementsModal = ({ onClose, onSave, initialData }: {
     onClose: () => void,
     onSave: (data: RequirementsData) => void,
     initialData: RequirementsData
 }) => {
-    const [data, setData] = useState<RequirementsData>(initialData);
-    const [newCustom, setNewCustom] = useState('');
+    const [requirements, setRequirements] = useState<string[]>(() => normalizeRequirements(initialData));
+    const [newRequirement, setNewRequirement] = useState('');
 
     const handleRecommend = () => {
-        setData({
-            noAi: true,
-            followScript: true,
-            language: 'English',
-            location: 'Malaysia',
-            custom: ['Show product in video']
-        });
+        setRequirements([
+            'Authentic content',
+            'Show the product clearly',
+            'Speak English or BM or Chinese',
+            'Based in Malaysia',
+        ]);
     };
 
-    const addCustom = () => {
-        if (newCustom.trim()) {
-            setData({ ...data, custom: [...data.custom, newCustom] });
-            setNewCustom('');
-        }
+    const addRequirement = () => {
+        const value = newRequirement.trim();
+        if (!value) return;
+
+        setRequirements((current) => [...current, value]);
+        setNewRequirement('');
     };
 
     return createPortal(
@@ -255,70 +257,21 @@ export const RequirementsModal = ({ onClose, onSave, initialData }: {
                 {/* Left Side - Inputs */}
                 <div className="flex-1">
                     <h2 className="text-2xl font-bold mb-2">Requirements</h2>
-                    <p className="text-gray-500 mb-8">Please select the requirements for your video submissions.</p>
+                    <p className="text-gray-500 mb-8">Add each requirement one by one so creators can clearly follow them.</p>
 
                     <div className="space-y-8">
-                        {/* Content Section */}
                         <div className="space-y-4">
-                            <h3 className="font-bold text-gray-900">Content</h3>
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setData({ ...data, noAi: !data.noAi })}
-                                    className={`flex-1 flex flex-col items-start p-4 rounded-2xl border-2 transition-all ${data.noAi ? 'border-black bg-gray-50' : 'border-gray-100 bg-white hover:border-gray-200'}`}
-                                >
-                                    <span className="text-xs text-gray-500 font-medium mb-1">content</span>
-                                    <span className="text-lg font-bold text-gray-900">No AI Content</span>
-                                </button>
-                                <button
-                                    onClick={() => setData({ ...data, followScript: !data.followScript })}
-                                    className={`flex-1 flex flex-col items-start p-4 rounded-2xl border-2 transition-all ${data.followScript ? 'border-black bg-gray-50' : 'border-gray-100 bg-white hover:border-gray-200'}`}
-                                >
-                                    <span className="text-xs text-gray-500 font-medium mb-1">content</span>
-                                    <span className="text-lg font-bold text-gray-900">Follow Script 1:1</span>
-                                </button>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Requirement list</h3>
+                                <p className="text-sm text-gray-500 mt-1">Examples: No AI content, Speak English, Creator from Malaysia, Show product in video.</p>
                             </div>
-                        </div>
-
-                        {/* Language & Location */}
-                        <div className="flex gap-4">
-                            <div className="flex-1 space-y-4">
-                                <h3 className="font-bold text-gray-900">Language</h3>
-                                <div className="p-4 rounded-2xl border-2 border-gray-100 bg-white">
-                                    <span className="text-xs text-gray-500 font-medium mb-1 block">language</span>
-                                    <input
-                                        type="text"
-                                        value={data.language}
-                                        onChange={(e) => setData({ ...data, language: e.target.value })}
-                                        className="text-lg font-bold text-gray-900 w-full outline-none placeholder:text-gray-300"
-                                        placeholder="Enter language"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex-1 space-y-4">
-                                <h3 className="font-bold text-gray-900">Location</h3>
-                                <div className="p-4 rounded-2xl border-2 border-gray-100 bg-white">
-                                    <span className="text-xs text-gray-500 font-medium mb-1 block">location</span>
-                                    <input
-                                        type="text"
-                                        value={data.location}
-                                        onChange={(e) => setData({ ...data, location: e.target.value })}
-                                        className="text-lg font-bold text-gray-900 w-full outline-none placeholder:text-gray-300"
-                                        placeholder="Any"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Custom */}
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-gray-900">Custom</h3>
                             <div className="space-y-3">
-                                {data.custom.map((req, i) => (
+                                {requirements.map((requirement, i) => (
                                     <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors">
                                         <div className="w-2 h-2 rounded-full bg-black"></div>
-                                        <span className="flex-1 font-medium">{req}</span>
+                                        <span className="flex-1 font-medium text-gray-900">{requirement}</span>
                                         <button
-                                            onClick={() => setData({ ...data, custom: data.custom.filter((_, idx) => idx !== i) })}
+                                            onClick={() => setRequirements((current) => current.filter((_, idx) => idx !== i))}
                                             className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
                                         >
                                             <X className="w-4 h-4" />
@@ -328,19 +281,27 @@ export const RequirementsModal = ({ onClose, onSave, initialData }: {
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
-                                        value={newCustom}
-                                        onChange={(e) => setNewCustom(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && addCustom()}
-                                        placeholder="+ Add your own"
+                                        value={newRequirement}
+                                        onChange={(e) => setNewRequirement(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                addRequirement();
+                                            }
+                                        }}
+                                        placeholder="Enter a requirement"
                                         className="flex-1 bg-gray-50 p-4 rounded-xl outline-none focus:ring-2 focus:ring-gray-200 transition-all font-medium"
                                     />
                                     <button
-                                        onClick={addCustom}
+                                        onClick={addRequirement}
                                         className="bg-black text-white px-6 rounded-xl font-medium hover:bg-gray-800 transition-colors"
                                     >
                                         Add
                                     </button>
                                 </div>
+                                {requirements.length === 0 ? (
+                                    <p className="text-sm text-gray-400">No requirements added yet.</p>
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -356,38 +317,15 @@ export const RequirementsModal = ({ onClose, onSave, initialData }: {
                         <p className="text-xs text-gray-500 mb-8">How does my post get approved?</p>
 
                         <div className="bg-[#F9FAFB] rounded-xl p-4 text-left space-y-3">
-                            {data.noAi && (
-                                <div className="flex items-start gap-3">
-                                    <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                    <span className="text-xs font-semibold text-gray-900">No AI generated</span>
-                                </div>
-                            )}
-                            {data.followScript && (
-                                <div className="flex items-start gap-3">
-                                    <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                    <span className="text-xs font-semibold text-gray-900">Follow Script</span>
-                                </div>
-                            )}
-                            {data.language && (
-                                <div className="flex items-start gap-3">
-                                    <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                    <span className="text-xs font-semibold text-gray-900">Speak {data.language}</span>
-                                </div>
-                            )}
-                            {data.location && (
-                                <div className="flex items-start gap-3">
-                                    <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                    <span className="text-xs font-semibold text-gray-900">
-                                        {data.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${data.location}`}
-                                    </span>
-                                </div>
-                            )}
-                            {data.custom.map((req, i) => (
+                            {requirements.map((requirement, i) => (
                                 <div key={i} className="flex items-start gap-3">
                                     <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                    <span className="text-xs font-semibold text-gray-900">{req}</span>
+                                    <span className="text-xs font-semibold text-gray-900">{requirement}</span>
                                 </div>
                             ))}
+                            {requirements.length === 0 ? (
+                                <p className="text-xs text-center text-gray-300 italic">No requirements configured yet</p>
+                            ) : null}
                         </div>
                     </div>
 
@@ -399,7 +337,9 @@ export const RequirementsModal = ({ onClose, onSave, initialData }: {
                             Try Recommended
                         </button>
                         <button
-                            onClick={() => onSave(data)}
+                            onClick={() =>
+                                onSave(normalizeRequirements(requirements))
+                            }
                             className="bg-black text-white px-8 py-3 rounded-xl font-medium text-sm hover:bg-gray-900 transition-colors"
                         >
                             Save
@@ -651,8 +591,8 @@ const HandleListField = ({
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm">
-                            <Icon className="w-4 h-4 text-gray-900" />
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0">
+                            <Icon className="w-4 h-4 text-gray-500" />
                         </div>
                         <div>
                             <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -753,13 +693,10 @@ export default function CreateCampaign() {
         hashtags: Yup.array().max(3, 'You can add up to 3 hashtags'),
         mentions: Yup.array().max(2, 'You can add up to 2 mentions'),
         requiresBothPlatformPosts: Yup.boolean(),
-        reqData: Yup.object().test(
+        requirements: Yup.array().test(
             'at-least-one-requirement',
             'Please set campaign requirements',
-            (value) => {
-                const reqValue = value as RequirementsData | undefined;
-                return !!reqValue && (reqValue.noAi || reqValue.followScript || !!reqValue.language || !!reqValue.location || (reqValue.custom && reqValue.custom.length > 0));
-            }
+            (value) => hasRequirements(value as RequirementsData | undefined)
         )
     }), []);
 
@@ -875,13 +812,7 @@ export default function CreateCampaign() {
             basePay: '',
             maxPayout: '',
             thresholdData: [] as Threshold[],
-            reqData: {
-                noAi: false,
-                followScript: false,
-                language: '',
-                location: '',
-                custom: []
-            } as RequirementsData,
+            requirements: [] as RequirementsData,
             scriptsData: {
                 hook: '',
                 product: '',
@@ -929,13 +860,7 @@ export default function CreateCampaign() {
                             payout: parseFloat(t.amount) || 0
                         })),
                     category: values.category,
-                    requirements: [
-                        ...(values.reqData.noAi ? ["No AI Content"] : []),
-                        ...(values.reqData.followScript ? ["Follow Script 1:1"] : []),
-                        ...(values.reqData.language ? [`Speak ${values.reqData.language}`] : []),
-                        ...(values.reqData.location ? [values.reqData.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${values.reqData.location}`] : []),
-                        ...values.reqData.custom
-                    ],
+                    requirements: normalizeRequirements(values.requirements),
                     scripts: [
                         ...(values.scriptsData.hook ? [{ type: "Hook", description: values.scriptsData.hook }] : []),
                         ...(values.scriptsData.product ? [{ type: "Product", description: values.scriptsData.product }] : []),
@@ -993,7 +918,7 @@ export default function CreateCampaign() {
     };
 
     const handleSaveReq = (data: RequirementsData) => {
-        formik.setFieldValue('reqData', data);
+        formik.setFieldValue('requirements', data);
         setIsReqModalOpen(false);
     };
 
@@ -1029,7 +954,7 @@ export default function CreateCampaign() {
             formik.setFieldTouched('basePay', true, false),
             formik.setFieldTouched('maxPayout', true, false),
             formik.setFieldTouched('thresholdData', true, false),
-            formik.setFieldTouched('reqData', true, false),
+            formik.setFieldTouched('requirements', true, false),
         ]);
 
         const errors = await formik.validateForm();
@@ -1093,7 +1018,7 @@ export default function CreateCampaign() {
                 <RequirementsModal
                     onClose={() => setIsReqModalOpen(false)}
                     onSave={handleSaveReq}
-                    initialData={formik.values.reqData}
+                    initialData={formik.values.requirements}
                 />
             )}
 
@@ -1338,40 +1263,14 @@ export default function CreateCampaign() {
                                 <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
                             </label>
                             <p className="text-sm text-gray-500 mb-4">Specify what creators must do or qualifications.</p>
-                            {formik.touched.reqData && formik.errors.reqData && typeof formik.errors.reqData === 'string' && (
-                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.reqData}</p>
+                            {formik.touched.requirements && formik.errors.requirements && typeof formik.errors.requirements === 'string' && (
+                                <p className="text-red-500 text-sm mb-2 font-medium">{formik.errors.requirements}</p>
                             )}
-                            {formik.values.reqData.noAi || formik.values.reqData.followScript || formik.values.reqData.language || formik.values.reqData.location || formik.values.reqData.custom.length > 0 ? (
+                            {hasRequirements(formik.values.requirements) ? (
                                 <div className="bg-[#F8F9FA] rounded-3xl p-6">
                                     <h3 className="font-bold text-sm mb-4 text-gray-900">Current Requirements</h3>
                                     <div className="space-y-3 mb-6">
-                                        {formik.values.reqData.noAi && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">No AI generated</span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.followScript && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">Follow Script</span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.language && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">Speak {formik.values.reqData.language}</span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.location && (
-                                            <div className="flex items-start gap-3">
-                                                <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
-                                                <span className="text-sm text-gray-600">
-                                                    {formik.values.reqData.location.toLowerCase() === 'any' ? 'Any location' : `Creator from ${formik.values.reqData.location}`}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {formik.values.reqData.custom.map((req, i) => (
+                                        {normalizeRequirements(formik.values.requirements).map((req, i) => (
                                             <div key={i} className="flex items-start gap-3">
                                                 <Check className="w-4 h-4 mt-0.5 text-black shrink-0" />
                                                 <span className="text-sm text-gray-600">{req}</span>
@@ -1402,12 +1301,14 @@ export default function CreateCampaign() {
                     {/* Row 4: Campaign Logo & Cover */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-1">
-                            <label className="font-semibold text-gray-900 block w-fit relative">
-                                Campaign logo
-                                <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
-                            </label>
-                            <div className="flex justify-between mb-4 ">
-                                <p className="text-sm text-gray-500">Upload a campaign icon.</p>
+                            <div className="flex items-end justify-between gap-4 mb-4">
+                                <div className="space-y-1">
+                                    <label className="font-semibold text-gray-900 block w-fit relative">
+                                        Campaign logo
+                                        <span className="text-red-500 absolute -top-1 -right-3 text-lg leading-none">*</span>
+                                    </label>
+                                    <p className="text-sm text-gray-500">Upload a campaign icon.</p>
+                                </div>
                                 {hasCompanyLogo && (
                                     <button
                                         type="button"
