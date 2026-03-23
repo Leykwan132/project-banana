@@ -1,14 +1,46 @@
 import { mutation, query, internalMutation, internalAction } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { TableAggregate } from "@convex-dev/aggregate";
 import type { DataModel, Id } from "./_generated/dataModel.js";
-import { components } from "./_generated/api.js";
+import { api, components } from "./_generated/api.js";
 import { posthog } from "./posthog";
 import { Triggers } from "convex-helpers/server/triggers";
 import {
     customCtx,
     customMutation,
 } from "convex-helpers/server/customFunctions";
+
+type BusinessTopOverviewCampaign = {
+    campaignId: Id<"campaigns">;
+    campaignName: string;
+    views: number;
+};
+
+type BusinessTopOverviewApplication = {
+    applicationId: Id<"applications">;
+    campaignId: Id<"campaigns">;
+    campaignName: string;
+    creatorUsername: string;
+    postUrl: string;
+    views: number;
+};
+
+type BusinessTopOverviewListsResult = {
+    campaigns: BusinessTopOverviewCampaign[];
+    applications: BusinessTopOverviewApplication[];
+};
+
+type CampaignTopPostResult = {
+    applicationId: Id<"applications">;
+    campaignId: Id<"campaigns">;
+    campaignName: string;
+    creatorName: string;
+    creatorUsername: string;
+    views: number;
+    postUrl: string;
+};
+
 // ============================================================
 // QUERIES
 // ============================================================
@@ -24,19 +56,21 @@ const aggregateCampaignAnalytics = new TableAggregate<{
         doc.campaign_id,
         doc.date,
     ],
+    sumValue: (doc) => doc.views,
 });
 
-const aggregateCampaignByBusiness = new TableAggregate<{
-    Key: [string, number, string, string];
+export const aggregateCampaignByBusiness = new TableAggregate<{
+    Key: [string, string, string, number];
     DataModel: DataModel;
     TableName: "campaign_analytics_daily";
 }>((components as any).aggregateCampaignByBusiness, {
     sortKey: (doc) => [
         doc.business_id,
-        -doc.views,
         doc.campaign_id,
         doc.date,
+        -doc.views,
     ],
+    sumValue: (doc) => doc.views,
 });
 
 const aggregateBusinessAnalytics = new TableAggregate<{
@@ -65,7 +99,7 @@ const aggregateApplicationAnalytics = new TableAggregate<{
     ],
 });
 
-const aggregateApplicationByBusiness = new TableAggregate<{
+export const aggregateApplicationByBusiness = new TableAggregate<{
     Key: [string, number, string, string];
     DataModel: DataModel;
     TableName: "app_analytics_daily";
@@ -115,7 +149,7 @@ const aggregateCreatorAnalytics = new TableAggregate<{
 
 const triggers = new Triggers<DataModel>();
 triggers.register("campaign_analytics_daily", aggregateCampaignAnalytics.trigger());
-triggers.register("campaign_analytics_daily", aggregateCampaignByBusiness.trigger());
+triggers.register("campaign_analytics_daily", aggregateCampaignByBusiness.idempotentTrigger());
 triggers.register("business_analytics_daily", aggregateBusinessAnalytics.trigger());
 triggers.register("app_analytics_daily", aggregateApplicationAnalytics.trigger());
 triggers.register("app_analytics_daily", aggregateApplicationByBusiness.trigger());
@@ -168,6 +202,107 @@ const getLast30DayWindow = () => {
         startDate: formatDateKey(start),
         endDate: formatDateKey(end),
     };
+};
+
+const getCampaignTopPostsForBusinessOwner = async (
+    ctx: QueryCtx,
+    {
+        campaignId,
+        limit,
+    }: {
+        campaignId: Id<"campaigns">;
+        limit: number;
+    },
+): Promise<CampaignTopPostResult[]> => {
+    const campaign = await ctx.db.get(campaignId);
+    if (!campaign) return [];
+
+    const posts: Array<{
+        applicationId: Id<"applications">;
+        campaignId: Id<"campaigns">;
+        campaignName: string;
+        creatorName: string;
+        creatorUsername: string;
+        views: number;
+        postUrl: string;
+    }> = [];
+
+    let cursor: string | undefined = undefined;
+    let isDone = false;
+
+    while (!isDone && posts.length < limit) {
+        const topApplicationPage = await aggregateApplicationByCampaign.paginate(ctx, {
+            bounds: {
+                prefix: [campaignId] as [Id<"campaigns">],
+            },
+            cursor,
+            pageSize: Math.max(limit * 3, 15),
+        });
+
+        const applicationRows = (await Promise.all(
+            topApplicationPage.page.map((entry) => ctx.db.get(entry.id)),
+        )).filter((row): row is NonNullable<typeof row> => row !== null);
+
+        for (const application of applicationRows) {
+            const postUrl = application.tiktok_post_url ?? application.ig_post_url;
+            if (!postUrl) continue;
+
+            const [creator, userRecord] = await Promise.all([
+                ctx.db
+                    .query("creators")
+                    .withIndex("by_user", (q: any) => q.eq("user_id", application.user_id))
+                    .unique(),
+                ctx.db
+                    .query("users")
+                    .withIndex("by_better_auth_user_id", (q: any) => q.eq("better_auth_user_id", application.user_id))
+                    .unique(),
+            ]);
+
+            const creatorUsername = creator?.username ?? "Unknown Creator";
+
+            posts.push({
+                applicationId: application._id,
+                campaignId: campaign._id,
+                campaignName: campaign.name,
+                creatorName: creator?.name ?? "Unknown Creator",
+                creatorUsername,
+                views: application.views ?? 0,
+                postUrl,
+            });
+
+            if (posts.length >= limit) break;
+        }
+
+        cursor = topApplicationPage.cursor;
+        isDone = topApplicationPage.isDone;
+    }
+
+    if (posts.length > 0) {
+        return posts;
+    }
+
+    const applications = await ctx.db
+        .query("applications")
+        .withIndex("by_campaign", (q: any) => q.eq("campaign_id", campaignId))
+        .collect();
+
+    return applications
+        .flatMap((application: any) => {
+            const postUrl = application.tiktok_post_url ?? application.ig_post_url;
+            if (!postUrl) return [];
+
+            return [{
+                applicationId: application._id,
+                campaignId: campaign._id,
+                campaignName: campaign.name,
+                creatorName: "Unknown Creator",
+                creatorUsername: "Unknown Creator",
+                views: application.views ?? 0,
+                postUrl,
+            }];
+        })
+        .sort((a: CampaignTopPostResult, b: CampaignTopPostResult) => b.views - a.views)
+        .slice(0, limit);
 };
 
 export const getAppTotalStats = query({
@@ -509,7 +644,7 @@ export const getBusinessTopOverviewLists = query({
         businessId: v.id("businesses"),
         limit: v.optional(v.number()),
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<BusinessTopOverviewListsResult> => {
         const user = await ctx.auth.getUserIdentity();
         if (!user) return { campaigns: [], applications: [] };
 
@@ -519,64 +654,56 @@ export const getBusinessTopOverviewLists = query({
         }
 
         const limit = Math.min(10, Math.max(1, Math.floor(args.limit ?? 5)));
-        const topCampaignPage = await aggregateCampaignByBusiness.paginate(ctx, {
-            bounds: {
-                prefix: [args.businessId] as [Id<"businesses">],
-            },
-            pageSize: limit,
-        });
+        const businessCampaigns = await ctx.db
+            .query("campaigns")
+            .withIndex("by_business", (q) => q.eq("business_id", args.businessId))
+            .collect();
 
-        const topCampaignRows = (await Promise.all(
-            topCampaignPage.page.map((entry) => ctx.db.get(entry.id)),
-        )).filter((row): row is NonNullable<typeof row> => row !== null);
 
-        const campaigns = (
+        const campaignViewTotals = businessCampaigns.length === 0
+            ? []
+            : await aggregateCampaignByBusiness.sumBatch(
+                ctx,
+                businessCampaigns.map((campaign) => ({
+                    bounds: {
+                        prefix: [args.businessId, campaign._id] as [
+                            Id<"businesses">,
+                            Id<"campaigns">,
+                        ],
+                    },
+                })),
+            );
+
+        const campaigns: BusinessTopOverviewCampaign[] = businessCampaigns
+            .map((campaign, index) => ({
+                campaignId: campaign._id,
+                campaignName: campaign.name,
+                views: campaignViewTotals[index] ?? 0,
+            }))
+            .sort((a, b) => b.views - a.views || a.campaignName.localeCompare(b.campaignName))
+            .slice(0, limit);
+        const topApplicationsRaw: BusinessTopOverviewApplication[] = (
             await Promise.all(
-                topCampaignRows.map(async (row) => {
-                    const campaign = await ctx.db.get(row.campaign_id);
-                    if (!campaign) return null;
-                    return {
+                businessCampaigns.map(async (campaign): Promise<CampaignTopPostResult | null> => {
+                    const topPostsResult: { posts: CampaignTopPostResult[] } = await ctx.runQuery(api.analytics.getCampaignTopPostsByViews, {
                         campaignId: campaign._id,
-                        campaignName: campaign.name,
-                        views: row.views,
-                    };
+                        limit: 1,
+                    });
+                    return topPostsResult.posts[0] ?? null;
                 }),
             )
-        ).filter((campaign): campaign is NonNullable<typeof campaign> => campaign !== null);
-
-        const topApplicationPage = await aggregateApplicationByBusiness.paginate(ctx, {
-            bounds: {
-                prefix: [args.businessId] as [Id<"businesses">],
-            },
-            pageSize: limit,
-        });
-
-        const topApplicationRows = (await Promise.all(
-            topApplicationPage.page.map((entry) => ctx.db.get(entry.id)),
-        )).filter((row): row is NonNullable<typeof row> => row !== null);
-
-        const topApplicationsRaw = (
-            await Promise.all(
-                topApplicationRows.map(async (row) => {
-                    const application = await ctx.db.get(row.application_id);
-                    if (!application) return null;
-
-                    const campaign = await ctx.db.get(row.campaign_id);
-                    if (!campaign) return null;
-
-                    const postUrl = application.tiktok_post_url ?? application.ig_post_url;
-                    if (!postUrl) return null;
-
-                    return {
-                        applicationId: application._id,
-                        campaignId: campaign._id,
-                        campaignName: campaign.name,
-                        postUrl,
-                        views: row.views,
-                    };
-                }),
-            )
-        ).filter((application): application is NonNullable<typeof application> => application !== null);
+        )
+            .filter((application): application is NonNullable<typeof application> => application !== null)
+            .sort((a, b) => b.views - a.views || a.campaignName.localeCompare(b.campaignName))
+            .slice(0, Math.min(limit, 3))
+            .map((application) => ({
+                applicationId: application.applicationId,
+                campaignId: application.campaignId,
+                campaignName: application.campaignName,
+                creatorUsername: application.creatorUsername,
+                postUrl: application.postUrl,
+                views: application.views,
+            }));
 
         return {
             campaigns,
@@ -602,75 +729,12 @@ export const getCampaignTopPostsByViews = query({
             return { posts: [], creators: [] };
         }
 
-        const limit = 5;
-
-        const posts: Array<{
-            applicationId: Id<"applications">;
-            views: number;
-            postUrl: string;
-            platform: "TikTok" | "Instagram";
-        }> = [];
-
-        let cursor: string | undefined = undefined;
-        let isDone = false;
-
-        while (!isDone && posts.length < limit) {
-            const topApplicationPage = await aggregateApplicationByCampaign.paginate(ctx, {
-                bounds: {
-                    prefix: [args.campaignId] as [Id<"campaigns">],
-                },
-                cursor,
-                pageSize: Math.max(limit * 3, 15),
-            });
-
-            const applicationRows = (await Promise.all(
-                topApplicationPage.page.map((entry) => ctx.db.get(entry.id)),
-            )).filter((row): row is NonNullable<typeof row> => row !== null);
-
-            for (const application of applicationRows) {
-                const postUrl = application.tiktok_post_url ?? application.ig_post_url;
-                if (!postUrl) continue;
-
-                posts.push({
-                    applicationId: application._id,
-                    views: application.views ?? 0,
-                    postUrl,
-                    platform: application.tiktok_post_url ? "TikTok" : "Instagram",
-                });
-
-                if (posts.length >= limit) break;
-            }
-
-            cursor = topApplicationPage.cursor;
-            isDone = topApplicationPage.isDone;
-        }
-
-        // Fallback for environments where the aggregate is not backfilled yet.
-        if (posts.length === 0) {
-            const applications = await ctx.db
-                .query("applications")
-                .withIndex("by_campaign", (q) => q.eq("campaign_id", args.campaignId))
-                .collect();
-
-            const topPosts = applications
-                .flatMap((application) => {
-                    const postUrl = application.tiktok_post_url ?? application.ig_post_url;
-                    if (!postUrl) return [];
-
-                    return [{
-                        applicationId: application._id,
-                        views: application.views ?? 0,
-                        postUrl,
-                        platform: application.tiktok_post_url ? "TikTok" as const : "Instagram" as const,
-                    }];
-                })
-                .sort((a, b) => b.views - a.views)
-                .slice(0, limit);
-
-            return { posts: topPosts, creators: [] };
-        }
-
-        return { posts, creators: [] };
+        const limit = Math.min(10, Math.max(1, Math.floor(args.limit ?? 5)));
+        const posts = await getCampaignTopPostsForBusinessOwner(ctx, {
+            campaignId: args.campaignId,
+            limit,
+        });
+        return { posts };
     },
 });
 
@@ -690,42 +754,46 @@ export const getCampaignTopCreatorsByViews = query({
         if (!business || business.user_id !== user.subject) return [];
 
         const limit = Math.min(10, Math.max(1, Math.floor(args.limit ?? 5)));
+        const campaignStatuses = await ctx.db
+            .query("user_campaign_status")
+            .withIndex("by_campaign_earnings", (q) => q.eq("campaign_id", args.campaignId))
+            .order("desc")
+            .take(limit);
 
-        const topCreatorPage = await aggregateUserCampaignStatusByCampaign.paginate(ctx, {
-            bounds: {
-                prefix: [args.campaignId] as [Id<"campaigns">],
-            },
-            pageSize: limit,
-        });
+        return Promise.all(
+            campaignStatuses.map(async (status) => {
+                const [creator, userRecord, creatorApplications] = await Promise.all([
+                    ctx.db
+                        .query("creators")
+                        .withIndex("by_user", (q) => q.eq("user_id", status.user_id))
+                        .unique(),
+                    ctx.db
+                        .query("users")
+                        .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", status.user_id))
+                        .unique(),
+                    ctx.db
+                        .query("applications")
+                        .withIndex("by_user_campaign", (q) =>
+                            q.eq("user_id", status.user_id).eq("campaign_id", args.campaignId)
+                        )
+                        .collect(),
+                ]);
 
-        const topCreatorRows = (await Promise.all(
-            topCreatorPage.page.map((entry) => ctx.db.get(entry.id)),
-        )).filter((row): row is NonNullable<typeof row> => row !== null);
+                const creatorUsername = creator?.username ?? "Unknown Creator";
+                const creatorName = creator?.name ?? "Unknown Creator";
+                const topApplication = creatorApplications
+                    .filter((application) => application.ig_post_url || application.tiktok_post_url)
+                    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))[0];
 
-        let creators = topCreatorRows.map((status) => ({
-            userId: status.user_id,
-            creatorName: `Creator ${status.user_id.slice(-6)}`,
-            views: status.views ?? 0,
-        }));
-
-        // Fallback for environments where the new aggregate is not backfilled yet.
-        if (creators.length === 0) {
-            const campaignStatuses = await ctx.db
-                .query("user_campaign_status")
-                .withIndex("by_campaign_earnings", (q) => q.eq("campaign_id", args.campaignId))
-                .collect();
-
-            creators = campaignStatuses
-                .map((status) => ({
+                return {
                     userId: status.user_id,
-                    creatorName: `Creator ${status.user_id.slice(-6)}`,
-                    views: status.views ?? 0,
-                }))
-                .sort((a, b) => b.views - a.views)
-                .slice(0, limit);
-        }
-
-        return creators;
+                    creatorName,
+                    creatorUsername,
+                    earnings: status.total_earnings ?? 0,
+                    topPostUrl: topApplication?.tiktok_post_url ?? topApplication?.ig_post_url ?? null,
+                };
+            }),
+        );
     },
 });
 
