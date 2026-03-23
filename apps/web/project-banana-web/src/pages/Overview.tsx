@@ -4,6 +4,7 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Skeleton } from '@heroui/react';
 import { useNavigate } from 'react-router-dom';
 import { usePostHog } from '@posthog/react';
+import { AnalyticsTopPostCard, AnalyticsTopPostCardSkeleton } from '../components/analytics/TopPostCard';
 import {
     LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -32,6 +33,7 @@ type TopCampaignItem = {
 type TopApplicationItem = {
     applicationId: string;
     campaignName: string;
+    creatorUsername?: string | null;
     views: number;
     postUrl?: string | null;
 };
@@ -61,12 +63,13 @@ const TOUR_MOCK_TOP_CAMPAIGNS: TopCampaignItem[] = [
     { campaignId: 'tour-campaign-5', campaignName: 'Creator Test Batch', views: 39960 },
 ];
 const TOUR_MOCK_TOP_APPLICATIONS: TopApplicationItem[] = [
-    { applicationId: 'tour-post-1', campaignName: 'Glow Serum Launch', views: 52840, postUrl: 'https://www.tiktok.com' },
-    { applicationId: 'tour-post-2', campaignName: 'Weekend Bundle Push', views: 43810, postUrl: 'https://www.instagram.com' },
-    { applicationId: 'tour-post-3', campaignName: 'March UGC Sprint', views: 39120, postUrl: 'https://www.tiktok.com' },
-    { applicationId: 'tour-post-4', campaignName: 'Ramadan Flash Promo', views: 32890, postUrl: 'https://www.instagram.com' },
-    { applicationId: 'tour-post-5', campaignName: 'Creator Test Batch', views: 27310, postUrl: 'https://www.tiktok.com' },
+    { applicationId: 'tour-post-1', campaignName: 'Glow Serum Launch', creatorUsername: 'elias', views: 52840, postUrl: 'https://www.tiktok.com/@epicgardening/video/7055411162212633903' },
+    { applicationId: 'tour-post-2', campaignName: 'Weekend Bundle Push', creatorUsername: 'sabrina', views: 43810, postUrl: 'https://www.instagram.com/p/CUbHfhpswxt/' },
+    { applicationId: 'tour-post-3', campaignName: 'March UGC Sprint', creatorUsername: 'natefilms', views: 39120, postUrl: 'https://www.tiktok.com/@epicgardening/video/7055411162212633903' },
+    { applicationId: 'tour-post-4', campaignName: 'Ramadan Flash Promo', creatorUsername: 'hana', views: 32890, postUrl: 'https://www.instagram.com/p/CUbHfhpswxt/' },
+    { applicationId: 'tour-post-5', campaignName: 'Creator Test Batch', creatorUsername: 'jules', views: 27310, postUrl: 'https://www.tiktok.com/@epicgardening/video/7055411162212633903' },
 ];
+const TOP_POST_EMBED_COUNT = 3;
 
 const formatDateLabel = (dateKey: string) => {
     const [year, month, day] = dateKey.split('-').map(Number);
@@ -119,11 +122,6 @@ const getMetricValueFromRow = (
     return row.amount_spent ?? row.earnings ?? 0;
 };
 
-const normalizeExternalUrl = (url: string) => {
-    if (/^https?:\/\//i.test(url)) return url;
-    return `https://${url}`;
-};
-
 export default function Overview() {
     const navigate = useNavigate();
     const posthog = usePostHog();
@@ -170,6 +168,7 @@ export default function Overview() {
     const topApplications: TopApplicationItem[] = isTourActive
         ? TOUR_MOCK_TOP_APPLICATIONS
         : (topOverviewLists?.applications ?? []) as TopApplicationItem[];
+    const topPostEmbeds = topApplications.slice(0, TOP_POST_EMBED_COUNT);
 
     const totalViews = isTourActive ? TOUR_MOCK_METRIC_TOTALS.Views : (businessTotalStats?.views ?? business?.total_views ?? 0);
     const totalAmountSpend = isTourActive ? TOUR_MOCK_METRIC_TOTALS['Amount Spend'] : (businessTotalStats?.amount_spent ?? 0);
@@ -406,33 +405,20 @@ export default function Overview() {
                         <div className="mb-6">
                             <h3 className="font-bold text-gray-900">Top Posts by Views</h3>
                         </div>
-                        <div className="divide-y divide-gray-200">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                             {isTopListsLoading ? (
-                                Array.from({ length: 5 }).map((_, index) => (
-                                    <div key={index} className="py-4">
-                                        <Skeleton className="h-5 w-full rounded-lg" />
-                                    </div>
+                                Array.from({ length: TOP_POST_EMBED_COUNT }).map((_, index) => (
+                                    <AnalyticsTopPostCardSkeleton key={index} />
                                 ))
-                            ) : topApplications.length > 0 ? (
-                                topApplications.map((application) => (
-                                    <a
+                            ) : topPostEmbeds.length > 0 ? (
+                                topPostEmbeds.map((application) => (
+                                    <AnalyticsTopPostCard
                                         key={application.applicationId}
-                                        href={application.postUrl ? normalizeExternalUrl(application.postUrl) : "#"}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default hover:bg-gray-200/50 transition-colors"
-                                    >
-                                        <span className="text-sm font-semibold text-gray-900 truncate pr-3">
-                                            {application.campaignName}
-                                        </span>
-                                        <span className="flex items-center gap-4 shrink-0">
-                                            <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                                                <Eye size={14} className="text-gray-400" />
-                                                {application.views.toLocaleString()}
-                                            </span>
-                                            <ArrowUpRight size={16} className="text-gray-400" />
-                                        </span>
-                                    </a>
+                                        title={application.campaignName}
+                                        creatorUsername={application.creatorUsername}
+                                        views={application.views}
+                                        postUrl={application.postUrl}
+                                    />
                                 ))
                             ) : (
                                 <p className="py-4 text-sm text-gray-500">No application links available yet.</p>

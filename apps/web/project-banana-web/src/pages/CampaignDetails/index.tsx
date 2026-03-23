@@ -5,6 +5,7 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { Skeleton } from "@heroui/skeleton";
+import { AnalyticsTopPostCard, AnalyticsTopPostCardSkeleton } from '../../components/analytics/TopPostCard';
 import { ArrowUpRight, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, Star, MessageSquare, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Hash, AtSign } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
@@ -1393,33 +1394,20 @@ export default function CampaignDetails() {
                                 <div className="mb-6">
                                     <h3 className="font-bold text-gray-900">Top Posts by Views</h3>
                                 </div>
-                                <div className="divide-y divide-gray-200">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     {isCampaignTopPostsLoading ? (
                                         Array.from({ length: 5 }).map((_, index) => (
-                                            <div key={index} className="py-4">
-                                                <Skeleton className="h-5 w-full rounded-lg" />
-                                            </div>
+                                            <AnalyticsTopPostCardSkeleton key={index} />
                                         ))
                                     ) : topCampaignPosts.length > 0 ? (
                                         topCampaignPosts.map((post) => (
-                                            <a
+                                            <AnalyticsTopPostCard
                                                 key={post.applicationId}
-                                                href={normalizeExternalUrl(post.postUrl)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default hover:bg-gray-200/50 transition-colors"
-                                            >
-                                                <span className="text-sm font-semibold text-gray-900 truncate pr-3">
-                                                    {post.platform} post
-                                                </span>
-                                                <span className="flex items-center gap-4 shrink-0">
-                                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                                                        <Eye size={14} className="text-gray-400" />
-                                                        {post.views.toLocaleString()}
-                                                    </span>
-                                                    <ArrowUpRight size={16} className="text-gray-400" />
-                                                </span>
-                                            </a>
+                                                title={post.creatorUsername}
+                                                creatorUsername={post.creatorUsername}
+                                                views={post.views}
+                                                postUrl={post.postUrl}
+                                            />
                                         ))
                                     ) : (
                                         <p className="py-4 text-sm text-gray-500">No posted applications yet.</p>
@@ -1429,7 +1417,7 @@ export default function CampaignDetails() {
 
                             <div className="bg-[#F9FAFB] p-8 rounded-3xl">
                                 <div className="mb-6">
-                                    <h3 className="font-bold text-gray-900">Top Performing Creators</h3>
+                                    <h3 className="font-bold text-gray-900">Top Earning Creators</h3>
                                 </div>
                                 <div className="divide-y divide-gray-200">
                                     {isCampaignTopCreatorsLoading ? (
@@ -1439,20 +1427,51 @@ export default function CampaignDetails() {
                                             </div>
                                         ))
                                     ) : topCampaignCreators.length > 0 ? (
-                                        topCampaignCreators.map((creator) => (
-                                            <div key={creator.userId} className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default hover:bg-gray-200/50 transition-colors">
-                                                <span className="text-sm font-semibold text-gray-900 truncate pr-3">
-                                                    {creator.creatorName}
-                                                </span>
-                                                <span className="flex items-center gap-4 shrink-0">
-                                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                                                        <Eye size={14} className="text-gray-400" />
-                                                        {creator.views.toLocaleString()}
+                                        topCampaignCreators.map((creator) => {
+                                            const content = (
+                                                <>
+                                                    <span className="min-w-0 pr-3">
+                                                        <span className="block truncate text-sm font-semibold text-gray-900">
+                                                            {creator.creatorName}
+                                                        </span>
+                                                        {creator.creatorUsername && creator.creatorUsername.toLowerCase() !== creator.creatorName.toLowerCase() ? (
+                                                            <span className="mt-1 block truncate text-xs text-gray-500">
+                                                                @{creator.creatorUsername.replace(/^@/, '')}
+                                                            </span>
+                                                        ) : null}
                                                     </span>
-                                                    <ArrowUpRight size={16} className="text-gray-400" />
-                                                </span>
-                                            </div>
-                                        ))
+                                                    <span className="flex items-center gap-4 shrink-0">
+                                                        <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                                                            {`RM ${currencyFormatter.format(creator.earnings)}`}
+                                                        </span>
+                                                        <ArrowUpRight size={16} className="text-gray-400" />
+                                                    </span>
+                                                </>
+                                            );
+
+                                            if (!creator.topPostUrl) {
+                                                return (
+                                                    <div
+                                                        key={creator.userId}
+                                                        className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-default"
+                                                    >
+                                                        {content}
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <a
+                                                    key={creator.userId}
+                                                    href={normalizeExternalUrl(creator.topPostUrl)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="w-full py-4 px-3 -mx-3 rounded-xl flex items-center justify-between text-left cursor-pointer transition-colors hover:bg-gray-200/50"
+                                                >
+                                                    {content}
+                                                </a>
+                                            );
+                                        })
                                     ) : (
                                         <p className="py-4 text-sm text-gray-500">No creator analytics yet.</p>
                                     )}
