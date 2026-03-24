@@ -813,7 +813,7 @@ export default function ApplicationDetailScreen() {
                 {resolvedCampaignId && (
                     <Pressable
                         style={[styles.viewCampaignButton, { borderColor, backgroundColor: elevatedSurfaceColor }]}
-                        onPress={() => router.push(`/campaign/${resolvedCampaignId}`)}
+                        onPress={() => router.push(`/campaign-modal/${resolvedCampaignId}`)}
                     >
                         <ThemedText style={[styles.viewCampaignText, { color: theme.text }]}>View Campaign</ThemedText>
                         <ExternalLink size={14} color={theme.text} />
@@ -1613,17 +1613,17 @@ export default function ApplicationDetailScreen() {
                     ]}
                     disabled={applicationStatus === 'Under Review' || isVerifying}
                     onPress={() => {
-                        if (isEarning) {
-                            if (isAnyNewSubmissionBlocked) {
-                                showSubmissionBlockedSheet(getSubmissionBlockedMessage({
-                                    campaignStatus: campaign?.status,
-                                    applicationStatus,
+                            if (isEarning) {
+                                if (isAnyNewSubmissionBlocked) {
+                                    showSubmissionBlockedSheet(getSubmissionBlockedMessage({
+                                        campaignStatus: campaign?.status,
+                                        applicationStatus,
                                     action: 'general',
                                 }));
                                 return;
                             }
                             if (resolvedCampaignId) {
-                                router.push(`/campaign/${resolvedCampaignId}`);
+                                router.push(`/campaign-modal/${resolvedCampaignId}`);
                             }
                         } else if (isReadyToPost || isActionRequired) {
                             if (isPostSubmissionBlocked) {

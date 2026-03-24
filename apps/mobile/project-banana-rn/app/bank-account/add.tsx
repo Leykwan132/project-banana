@@ -21,6 +21,7 @@ import { BankAccountSourceType } from '@/constants/sourceType';
 import { prepareBankProofUpload } from '@/utils/bankProofUpload';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
+const bankStatementSampleImage = require('@/assets/images/bank-sample.png');
 
 export default function AddBankAccountScreen() {
     const router = useRouter();
@@ -454,7 +455,7 @@ export default function AddBankAccountScreen() {
                 <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
                     <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Example Bank Statement</ThemedText>
                     <Image
-                        source={{ uri: 'https://placehold.co/600x800/F5F5F5/666?text=Bank+Statement+Example' }}
+                        source={bankStatementSampleImage}
                         style={styles.exampleImage}
                         contentFit="contain"
                     />

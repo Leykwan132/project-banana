@@ -1,9 +1,8 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import {
-    Dimensions,
     Pressable,
     StyleSheet,
-    View, Image,
+    View, Image, useWindowDimensions,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { Image as ExpoImage } from 'expo-image';
@@ -24,11 +23,6 @@ import { api } from '../../../../packages/backend/convex/_generated/api';
 import { ErrorType } from '../../../../packages/backend/convex/errors';
 import { ConvexError } from "convex/values";
 
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const IS_SMALL_DEVICE = SCREEN_HEIGHT < 750; // Threshold for smaller/shorter devices
-
-
 const CARD_IMAGES = [
     require('@/assets/images/ob-earns.png'),
     require('@/assets/images/ob-brands.png'),
@@ -39,36 +33,29 @@ const CARD_IMAGES = [
 interface SlideData {
     id: string;
     title: string;
-    subtitle: string;
     cardImage: any;
 }
 
 const slides: SlideData[] = [
     {
-        id: '1',
-        title: 'Turn content into income',
-        subtitle: "If you can make videos, you're in.",
-        cardImage: CARD_IMAGES[0],
+        id: '2',
+        title: 'Discover campaigns & create',
+        cardImage: CARD_IMAGES[1],
     },
 
     {
-        id: '2',
-        title: 'Work with brands directly.',
-        subtitle: 'Choose campaigns you love.',
-        cardImage: CARD_IMAGES[1],
+        id: '1',
+        title: 'Get approved by brands',
+        cardImage: CARD_IMAGES[0],
     },
     {
         id: '3',
-        title: 'Performance-based pay',
-        subtitle: 'Earn based on views, not followers.',
+        title: 'Track your live earnings',
         cardImage: CARD_IMAGES[2],
     },
-
-
     {
         id: '4',
-        title: 'Fast payouts guaranteed.',
-        subtitle: 'Money credited within 3-5 days.',
+        title: 'Earn & withdraw with ease',
         cardImage: CARD_IMAGES[3],
     },
 ];
@@ -78,32 +65,33 @@ interface SlideProps {
 }
 
 function Slide({ item }: SlideProps) {
+    const { width: screenWidth, height: screenHeight } = useWindowDimensions();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const imageBorderColor = isDark ? '#2F2F2F' : '#E4DED2';
+    const imageSource = Image.resolveAssetSource(item.cardImage);
+    const imageAspectRatio = imageSource.width / imageSource.height;
+    const maxImageWidth = screenWidth;
+    const maxImageHeight = screenHeight * (screenHeight < 750 ? 0.54 : 0.62);
+    const heightAtMaxWidth = maxImageWidth / imageAspectRatio;
+    const imageHeight = Math.min(heightAtMaxWidth, maxImageHeight);
+    const imageWidth = imageHeight * imageAspectRatio;
 
     return (
         <View style={styles.slide}>
-            {/* Card + Title Section - positioned to overlap */}
             <View style={styles.overlayContainer}>
-
                 <Image
                     source={item.cardImage}
                     style={[
                         styles.cardImage,
                         {
-                            backgroundColor: '#FFFFFF',
-                            borderColor: imageBorderColor,
-                        }
+                            width: imageWidth,
+                            height: imageHeight,
+                        },
                     ]}
-                    // width={200}
-                    // height={200}
-                    borderRadius={24}
                     resizeMode="contain"
                 />
 
                 <ThemedText style={[styles.cardTitle, { color: isDark ? '#ECEDEE' : '#000000' }]} numberOfLines={1} ellipsizeMode="tail">{item.title}</ThemedText>
-                <ThemedText style={[styles.cardSubtitle, { color: isDark ? '#A3A3A3' : '#666666' }]}>{item.subtitle}</ThemedText>
 
             </View>
         </View>
@@ -116,6 +104,7 @@ export default function WelcomeScreen() {
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
+    const primaryOrange = '#FC4C02';
 
     const loginActionSheetRef = useRef<ActionSheetRef>(null);
     const [isCheckingSession, setIsCheckingSession] = useState(false);
@@ -165,11 +154,11 @@ export default function WelcomeScreen() {
                 autoplay
                 initialPage={0}
                 containerStyle={styles.carouselContainer}
-                pageControlPosition={PageControlPosition.UNDER}
+                pageControlPosition={PageControlPosition.OVER}
                 pageControlProps={{
                     size: 8,
                     spacing: 8,
-                    color: '#FC4C02',
+                    color: primaryOrange,
                     inactiveColor: isDark ? '#3A3A3A' : '#D8D0C4',
                 }}
                 autoplayInterval={4000}
@@ -184,8 +173,8 @@ export default function WelcomeScreen() {
                     style={[
                         styles.primaryButton,
                         {
-                            backgroundColor: '#000000',
-                            borderColor: isDark ? '#383838' : '#000000',
+                            backgroundColor: primaryOrange,
+                            borderColor: primaryOrange,
                         }
                     ]}
                     onPress={handleLogin}
@@ -236,8 +225,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     slide: {
-        width: SCREEN_WIDTH,
-        height: SCREEN_HEIGHT * 0.8,
+        width: '100%',
+        height: '100%',
     },
     brandingContainer: {
         flexDirection: 'row',
@@ -261,73 +250,19 @@ const styles = StyleSheet.create({
         fontFamily: 'GoogleSans_700Bold',
     },
     overlayContainer: {
-        position: 'absolute',
-        top: 30,
-        left: 0,
-        right: 0,
-        alignItems: 'center',
-        paddingHorizontal: 40,
-    },
-    screenshotCard: {
-        width: '90%',
-        aspectRatio: 9 / 16,
-        maxHeight: SCREEN_HEIGHT * 0.5,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 24,
-        elevation: 10,
-        overflow: 'hidden',
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
-    },
-    cardHeaderDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#E0E0E0',
-    },
-    cardHeaderTitle: {
         flex: 1,
-        textAlign: 'center',
-        fontSize: 12,
-        fontFamily: 'GoogleSans_500Medium',
-        color: '#333333',
-    },
-    cardHeaderIcon: {
-        width: 6,
-        height: 6,
-    },
-    cardContent: {
-        flex: 1,
-        backgroundColor: '#F8F8F8',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 0,
     },
     cardImage: {
-        borderRadius: 24,
-        width: SCREEN_WIDTH * 0.65,
-        maxWidth: SCREEN_WIDTH * 0.62,
-        aspectRatio: 8 / 16,
-        maxHeight: SCREEN_HEIGHT * (IS_SMALL_DEVICE ? 0.5 : 0.6),
-        backgroundColor: 'white',
-        borderColor: '#E0E0E0',
-        borderWidth: 1,
     },
     cardTitle: {
-        marginTop: 24,
         fontSize: 22,
         fontFamily: 'GoogleSans_700Bold',
         color: '#000000',
         textAlign: 'center',
-        lineHeight: 28,
-
+        marginTop: 18,
     },
     footer: {
         backgroundColor: '#FFFFFF',
@@ -335,33 +270,9 @@ const styles = StyleSheet.create({
         // paddingTop: 24,
         alignItems: 'center',
     },
-    slideTitle: {
-        fontSize: 24,
-        fontFamily: 'GoogleSans_700Bold',
-        color: '#000000',
-        textAlign: 'center',
-        lineHeight: 30,
-        marginBottom: 16,
-    },
-    pagination: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        marginBottom: 24,
-    },
-    paginationDot: {
-        height: 8,
-        width: 8,
-        borderRadius: 4,
-        backgroundColor: '#D9D9D9',
-    },
-    paginationDotActive: {
-        backgroundColor: '#FC4C02',
-    },
     primaryButton: {
         width: '100%',
-        backgroundColor: '#000000',
+        backgroundColor: '#FC4C02',
         borderRadius: 30,
         borderWidth: 1,
         paddingVertical: 18,
@@ -375,20 +286,4 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
     },
-    secondaryButton: {
-        width: '100%',
-        paddingVertical: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    secondaryButtonText: {
-        color: '#FC4C02',
-        fontSize: 16,
-        fontFamily: 'GoogleSans_600SemiBold',
-    },
-    cardSubtitle: {
-        fontFamily: 'GoogleSans_400Regular',
-        textAlign: 'center',
-        marginTop: 8,
-    }
 });

@@ -138,6 +138,14 @@ function RootLayoutContent() {
                 <Stack.Screen name="welcome" options={{ headerShown: false }} />
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="campaign-modal/[id]"
+                  options={{
+                    headerShown: false,
+                    presentation: 'modal',
+                    animation: 'slide_from_bottom',
+                  }}
+                />
               </Stack>
               <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
             </GlobalErrorBoundary>

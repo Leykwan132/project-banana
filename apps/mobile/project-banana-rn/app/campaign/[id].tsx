@@ -1,7 +1,7 @@
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack, useSegments } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView, Linking, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote } from 'lucide-react-native';
+import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote, X } from 'lucide-react-native';
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import Animated, {
@@ -80,6 +80,7 @@ export default function CampaignDetailsScreen() {
     const [selectedCategoryDesc, setSelectedCategoryDesc] = useState<{ label: string; desc: string; icon: any; examples: { label: string; url: string }[] } | null>(null);
 
     const { id } = useLocalSearchParams();
+    const segments = useSegments();
     const campaignId = id as Id<"campaigns">;
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -98,6 +99,7 @@ export default function CampaignDetailsScreen() {
     const dismissButtonBorderColor = isDark ? '#333333' : '#E1DBCF';
     const dismissButtonTextColor = isDark ? '#ECEDEE' : '#111111';
     const joinButtonBackground = theme.primaryButton;
+    const isModalPresentation = segments[0] === 'campaign-modal';
 
     const campaign = useQuery(api.campaigns.getCampaign, { campaignId });
     const topApps = useQuery(api.applications.getTopApplicationsByCampaign, { campaignId });
@@ -227,11 +229,13 @@ export default function CampaignDetailsScreen() {
                 })()}
 
                 {/* Header Buttons */}
-                <View style={[styles.header, { top: insets.top + 10 }]}>
-                    <Pressable style={[styles.iconButton, { backgroundColor: controlBackgroundColor, borderColor }]} onPress={() => router.back()}>
-                        <ArrowLeft size={20} color={theme.text} />
-                    </Pressable>
-                </View>
+                {!isModalPresentation && (
+                    <View style={[styles.header, { top: insets.top + 10 }]}>
+                        <Pressable style={[styles.iconButton, { backgroundColor: controlBackgroundColor, borderColor }]} onPress={() => router.back()}>
+                            <ArrowLeft size={20} color={theme.text} />
+                        </Pressable>
+                    </View>
+                )}
             </View>
 
             {/* Content Sheet */}
@@ -782,8 +786,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
         marginTop: -80,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
         overflow: 'hidden',
     },
     scrollContent: {
