@@ -1,9 +1,8 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import { View, StyleSheet, Image as RNImage, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Bell, User as UserIcon } from 'lucide-react-native';
-import { ActionSheetRef } from "react-native-actions-sheet";
 import { useQuery } from 'convex/react';
 
 import { ThemedText } from '@/components/themed-text';
@@ -20,7 +19,7 @@ interface HeaderProps {
 export function Header({ title }: HeaderProps) {
     const colorScheme = useColorScheme();
     const router = useRouter();
-    const actionSheetRef = useRef<ActionSheetRef>(null);
+    const [isProfileSheetOpen, setIsProfileSheetOpen] = useState(false);
     const isDark = colorScheme === 'dark';
     const headerBackgroundColor = isDark ? Colors[colorScheme ?? 'light'].screenBackground : '#F4F3EE';
     const controlBackgroundColor = isDark ? '#1A1A1A' : '#F7F4ED';
@@ -67,7 +66,7 @@ export function Header({ title }: HeaderProps) {
                         )}
                     </View>
                 </Pressable>
-                <Pressable onPress={() => actionSheetRef.current?.show()}>
+                <Pressable onPress={() => setIsProfileSheetOpen(true)}>
                     {user?.image ? (
                         <RNImage
                             source={{ uri: user.image }}
@@ -88,7 +87,7 @@ export function Header({ title }: HeaderProps) {
                 </Pressable>
             </View>
 
-            <ProfileActionSheet actionSheetRef={actionSheetRef} />
+            <ProfileActionSheet open={isProfileSheetOpen} onClose={() => setIsProfileSheetOpen(false)} />
         </View>
     );
 }

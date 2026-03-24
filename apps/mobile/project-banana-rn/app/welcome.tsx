@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Pressable,
     StyleSheet,
@@ -11,9 +11,7 @@ import { router } from 'expo-router';
 import {
     Carousel, PageControlPosition,
 } from 'react-native-ui-lib';
-import { ActionSheetRef } from 'react-native-actions-sheet';
 import { ThemedText } from '@/components/themed-text';
-import { LoginActionSheet } from '@/components/LoginActionSheet';
 import { TypingText } from '@/components/ui/TypingText';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -106,7 +104,6 @@ export default function WelcomeScreen() {
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const primaryOrange = '#FC4C02';
 
-    const loginActionSheetRef = useRef<ActionSheetRef>(null);
     const [isCheckingSession, setIsCheckingSession] = useState(false);
 
     const convex = useConvex();
@@ -137,7 +134,7 @@ export default function WelcomeScreen() {
     }, [convex]);
 
     const handleLogin = useCallback(() => {
-        loginActionSheetRef.current?.show();
+        router.push('/login');
     }, []);
 
     return (
@@ -182,10 +179,6 @@ export default function WelcomeScreen() {
                     <ThemedText style={styles.primaryButtonText}>Login or Sign up</ThemedText>
                 </Pressable>
             </View>
-            <LoginActionSheet
-                actionSheetRef={loginActionSheetRef}
-            />
-
             {/* Loading overlay shown while verifying session against the server */}
             {isCheckingSession && (
                 <View style={[StyleSheet.absoluteFill, styles.loadingOverlay, { backgroundColor: screenBackgroundColor }]}>

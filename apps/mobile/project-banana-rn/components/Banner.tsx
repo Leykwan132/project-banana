@@ -1,8 +1,7 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { usePostHog } from 'posthog-react-native';
 import { ArrowRight } from 'lucide-react-native';
-import { ActionSheetRef } from 'react-native-actions-sheet';
 
 import { CreatorCommunitySheet } from '@/components/CreatorCommunitySheet';
 import { HowItWorksModal } from '@/components/HowItWorksModal';
@@ -79,7 +78,7 @@ const defaultConfigs: Record<BannerType, { title: string, description: string, b
 };
 
 export function Banner({ type, title, description }: BannerProps) {
-    const creatorCommunitySheetRef = useRef<ActionSheetRef>(null);
+    const [isCreatorCommunityOpen, setIsCreatorCommunityOpen] = useState(false);
     const [showHowItWorks, setShowHowItWorks] = useState(false);
     const [showNewAccount, setShowNewAccount] = useState(false);
     const [showCreatorCampaign, setShowCreatorCampaign] = useState(false);
@@ -112,7 +111,7 @@ export function Banner({ type, title, description }: BannerProps) {
                 setShowCreatorCampaign(true);
                 break;
             case BannerType.LUMINA_CIRCLE:
-                creatorCommunitySheetRef.current?.show();
+                setIsCreatorCommunityOpen(true);
                 break;
         }
     };
@@ -156,7 +155,7 @@ export function Banner({ type, title, description }: BannerProps) {
                 onDismiss={() => setShowCreatorCampaign(false)}
             />
 
-            <CreatorCommunitySheet actionSheetRef={creatorCommunitySheetRef} />
+            <CreatorCommunitySheet open={isCreatorCommunityOpen} onClose={() => setIsCreatorCommunityOpen(false)} />
         </>
     );
 }

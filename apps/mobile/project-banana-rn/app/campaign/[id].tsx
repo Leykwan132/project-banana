@@ -1,8 +1,8 @@
 import { useLocalSearchParams, useRouter, Stack, useSegments } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView, Linking, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Heart, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote, X } from 'lucide-react-native';
-import { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import Animated, {
     useSharedValue,
@@ -20,11 +20,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { CreatorListItem } from '@/components/CreatorListItem';
 import { BillboardMarqueeBanner } from '@/components/BillboardMarqueeBanner';
-import { ActionSheetRef } from "react-native-actions-sheet";
-import ActionSheet from "react-native-actions-sheet";
 import { Timeline, Text, Assets } from 'react-native-ui-lib';
 import LottieView from 'lottie-react-native';
 import { CAMPAIGN_CATEGORIES } from '@/constants/campaignCategories';
+import { AppBottomSheet, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
@@ -71,12 +70,7 @@ const SkeletonBlock = ({ style }: { style: any }) => {
 
 
 export default function CampaignDetailsScreen() {
-    const requirementsSheetRef = useRef<ActionSheetRef>(null);
-    const payoutsSheetRef = useRef<ActionSheetRef>(null);
-    const successSheetRef = useRef<ActionSheetRef>(null);
-    const categorySheetRef = useRef<ActionSheetRef>(null);
-    const maxPaySheetRef = useRef<ActionSheetRef>(null);
-
+    const [activeSheet, setActiveSheet] = useState<'requirements' | 'payouts' | 'success' | 'category' | 'maxPay' | null>(null);
     const [selectedCategoryDesc, setSelectedCategoryDesc] = useState<{ label: string; desc: string; icon: any; examples: { label: string; url: string }[] } | null>(null);
 
     const { id } = useLocalSearchParams();
@@ -184,7 +178,7 @@ export default function CampaignDetailsScreen() {
         try {
             const applicationId = await createApplication({ campaignId });
             setCreatedApplicationId(applicationId);
-            successSheetRef.current?.show();
+            setActiveSheet('success');
         } catch (error) {
             console.error("Error joining campaign", error);
         } finally {
@@ -314,7 +308,7 @@ export default function CampaignDetailsScreen() {
                                         style={[styles.categoryChip, { backgroundColor: chipBackgroundColor, borderColor }]}
                                         onPress={() => {
                                             setSelectedCategoryDesc(cat);
-                                            categorySheetRef.current?.show();
+                                            setActiveSheet('category');
                                         }}
                                     >
                                         <Icon size={14} color={isDark ? '#ECEDEE' : '#374151'} />
@@ -330,7 +324,7 @@ export default function CampaignDetailsScreen() {
                                         ? { backgroundColor: '#3D2A00', borderColor: '#734A00' }
                                         : { backgroundColor: '#F6EEDD', borderColor: '#E8D7B7' }
                                 ]}
-                                onPress={() => maxPaySheetRef.current?.show()}
+                                onPress={() => setActiveSheet('maxPay')}
                             >
                                 <Sparkles size={14} color={colorScheme === 'dark' ? '#FBBF24' : '#D97706'} />
                                 <ThemedText style={[styles.categoryChipText, styles.maxPayChipText, colorScheme === 'dark' && { color: '#FBBF24' }]}>Earn up to {formatCurrency(campaign.maximum_payout)}</ThemedText>
@@ -369,7 +363,7 @@ export default function CampaignDetailsScreen() {
                     <View style={styles.cardsGrid}>
                         {!isLoading && campaign ? (
                             <>
-                                <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => requirementsSheetRef.current?.show()}>
+                                <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => setActiveSheet('requirements')}>
                                     <View style={[styles.infoIconContainer, { backgroundColor: iconChipBackgroundColor, borderColor }]}>
                                         <ClipboardList size={20} color="#D32F2F" />
                                     </View>
@@ -379,7 +373,7 @@ export default function CampaignDetailsScreen() {
                                     </View>
                                 </Pressable>
 
-                                <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => payoutsSheetRef.current?.show()}>
+                                <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => setActiveSheet('payouts')}>
                                     <View style={[styles.infoIconContainer, { backgroundColor: iconChipBackgroundColor, borderColor }]}>
                                         <Banknote size={20} color="#D32F2F" />
                                     </View>
@@ -449,12 +443,8 @@ export default function CampaignDetailsScreen() {
                     </View>
 
                     {/* Requirements action sheets */}
-                    <ActionSheet
-                        gestureEnabled
-                        ref={requirementsSheetRef}
-                        containerStyle={{ backgroundColor: screenBackgroundColor }}
-                    >
-                        <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                    <AppBottomSheet open={activeSheet === 'requirements'} onClose={() => setActiveSheet(null)} backgroundColor={screenBackgroundColor}>
+                        <BottomSheetView style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                             {/* Header */}
                             <View style={styles.sheetHeader}>
                                 <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Requirements</ThemedText>
@@ -481,20 +471,16 @@ export default function CampaignDetailsScreen() {
                                         borderColor: dismissButtonBorderColor,
                                     }
                                 ]}
-                                onPress={() => requirementsSheetRef.current?.hide()}
+                                onPress={() => setActiveSheet(null)}
                             >
                                 <ThemedText style={[styles.dismissButtonText, { color: dismissButtonTextColor }]}>Dismiss</ThemedText>
                             </Pressable>
-                        </View>
-                    </ActionSheet>
+                        </BottomSheetView>
+                    </AppBottomSheet>
 
                     {/* Payouts action sheets */}
-                    <ActionSheet
-                        gestureEnabled
-                        ref={payoutsSheetRef}
-                        containerStyle={{ backgroundColor: screenBackgroundColor }}
-                    >
-                        <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                    <AppBottomSheet open={activeSheet === 'payouts'} onClose={() => setActiveSheet(null)} backgroundColor={screenBackgroundColor}>
+                        <BottomSheetView style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                             {/* Header */}
                             <View style={styles.sheetHeader}>
                                 <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Payouts</ThemedText>
@@ -532,20 +518,16 @@ export default function CampaignDetailsScreen() {
                                         borderColor: dismissButtonBorderColor,
                                     }
                                 ]}
-                                onPress={() => payoutsSheetRef.current?.hide()}
+                                onPress={() => setActiveSheet(null)}
                             >
                                 <ThemedText style={[styles.dismissButtonText, { color: dismissButtonTextColor }]}>Dismiss</ThemedText>
                             </Pressable>
-                        </View>
-                    </ActionSheet>
+                        </BottomSheetView>
+                    </AppBottomSheet>
 
                     {/* Category Description Sheet */}
-                    <ActionSheet
-                        gestureEnabled
-                        ref={categorySheetRef}
-                        containerStyle={{ backgroundColor: screenBackgroundColor }}
-                    >
-                        <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                    <AppBottomSheet open={activeSheet === 'category'} onClose={() => setActiveSheet(null)} backgroundColor={screenBackgroundColor}>
+                        <BottomSheetView style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                             <View style={styles.sheetHeader}>
                                 <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>{selectedCategoryDesc?.label}</ThemedText>
                                 <ThemedText style={[styles.sheetSubtitle, { textAlign: 'center' }, colorScheme === 'dark' && { color: '#A3A3A3' }]}>{selectedCategoryDesc?.desc}</ThemedText>
@@ -577,20 +559,16 @@ export default function CampaignDetailsScreen() {
                                         borderColor: dismissButtonBorderColor,
                                     }
                                 ]}
-                                onPress={() => categorySheetRef.current?.hide()}
+                                onPress={() => setActiveSheet(null)}
                             >
                                 <ThemedText style={[styles.dismissButtonText, { color: dismissButtonTextColor }]}>Dismiss</ThemedText>
                             </Pressable>
-                        </View>
-                    </ActionSheet>
+                        </BottomSheetView>
+                    </AppBottomSheet>
 
                     {/* Max Pay Description Sheet */}
-                    <ActionSheet
-                        gestureEnabled
-                        ref={maxPaySheetRef}
-                        containerStyle={{ backgroundColor: screenBackgroundColor }}
-                    >
-                        <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                    <AppBottomSheet open={activeSheet === 'maxPay'} onClose={() => setActiveSheet(null)} backgroundColor={screenBackgroundColor}>
+                        <BottomSheetView style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                             <View style={styles.sheetHeader}>
                                 <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>Earn up to {campaign && formatCurrency(campaign.maximum_payout)}</ThemedText>
                                 <ThemedText style={[styles.sheetSubtitle, { textAlign: 'center' }, colorScheme === 'dark' && { color: '#A3A3A3' }]}> See how much you can earn.</ThemedText>
@@ -620,26 +598,22 @@ export default function CampaignDetailsScreen() {
                                         borderColor: dismissButtonBorderColor,
                                     }
                                 ]}
-                                onPress={() => maxPaySheetRef.current?.hide()}
+                                onPress={() => setActiveSheet(null)}
                             >
                                 <ThemedText style={[styles.dismissButtonText, { color: dismissButtonTextColor }]}>Got it</ThemedText>
                             </Pressable>
-                        </View>
-                    </ActionSheet>
+                        </BottomSheetView>
+                    </AppBottomSheet>
 
                     {/* Success Sheet */}
-                    <ActionSheet ref={successSheetRef}
-                        disableElevation={true}
-                        gestureEnabled
-                        indicatorStyle={{
-                            display: 'none',
-                        }}
-                        containerStyle={{
-                            backgroundColor: screenBackgroundColor,
-                            paddingBottom: 30,
-                        }}
+                    <AppBottomSheet
+                        open={activeSheet === 'success'}
+                        onClose={() => setActiveSheet(null)}
+                        backgroundColor={screenBackgroundColor}
+                        hideHandle
+                        backgroundStyle={{ paddingBottom: 30 }}
                     >
-                        <View style={[styles.sheetContent, { backgroundColor: 'transparent' }]}>
+                        <BottomSheetView style={[styles.sheetContent, { backgroundColor: 'transparent' }]}>
                             <View style={styles.sheetHeader}>
                                 <ThemedText style={[styles.sheetTitle, colorScheme === 'dark' && { color: '#ECEDEE' }]}>You&apos;re in!</ThemedText>
                                 <ThemedText style={[styles.sheetSubtitle, colorScheme === 'dark' && { color: '#A3A3A3' }]}>Read the requirements and start filming!</ThemedText>
@@ -705,7 +679,7 @@ export default function CampaignDetailsScreen() {
                                 ]}
                                 onPress={() => {
                                     const targetApplicationId = createdApplicationId ?? nonEarningExistingApplication?._id;
-                                    successSheetRef.current?.hide();
+                                    setActiveSheet(null);
                                     if (targetApplicationId) {
                                         router.replace(`/application/${targetApplicationId}`);
                                     }
@@ -726,12 +700,12 @@ export default function CampaignDetailsScreen() {
                                         borderColor: dismissButtonBorderColor,
                                     }
                                 ]}
-                                onPress={() => successSheetRef.current?.hide()}
+                                onPress={() => setActiveSheet(null)}
                             >
                                 <ThemedText style={[styles.dismissButtonText, { color: dismissButtonTextColor }]}>Dismiss</ThemedText>
                             </Pressable>
-                        </View>
-                    </ActionSheet>
+                        </BottomSheetView>
+                    </AppBottomSheet>
 
                     {/* Bottom Padding for Footer */}
                     <View style={{ height: 100 }} />

@@ -1,6 +1,5 @@
 import { View, StyleSheet, Pressable } from 'react-native';
-import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
     Landmark,
@@ -18,15 +17,19 @@ import { authClient } from "@/lib/auth-client";
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePostHog } from 'posthog-react-native';
+import { AppBottomSheet, BottomSheetView } from '@/components/ui/AppBottomSheet';
+
+const ACTION_ICON_SIZE = 20;
 
 interface ProfileActionSheetProps {
-    actionSheetRef: React.RefObject<ActionSheetRef | null>;
+    open: boolean;
+    onClose: () => void;
 }
 
 export function ProfileActionSheet({
-    actionSheetRef,
+    open,
+    onClose,
 }: ProfileActionSheetProps) {
-    const communitySheetRef = useRef<ActionSheetRef>(null);
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
@@ -42,6 +45,7 @@ export function ProfileActionSheet({
 
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [isCommunityOpen, setIsCommunityOpen] = useState(false);
     const posthog = usePostHog();
     const shouldShowCommunityButton = posthog.isFeatureEnabled('display-community-button');
     // Dynamic Data
@@ -65,16 +69,16 @@ export function ProfileActionSheet({
     };
 
     const handleOptionPress = (route: string) => {
-        actionSheetRef.current?.hide();
+        onClose();
         setTimeout(() => {
             router.push(route as any);
         }, 300);
     };
 
     const handleCommunityPress = () => {
-        actionSheetRef.current?.hide();
+        onClose();
         setTimeout(() => {
-            communitySheetRef.current?.show();
+            setIsCommunityOpen(true);
         }, 250);
     };
 
@@ -103,13 +107,13 @@ export function ProfileActionSheet({
 
     return (
         <>
-            <ActionSheet
-                ref={actionSheetRef}
-                gestureEnabled
-                containerStyle={{ backgroundColor: screenBackgroundColor }}
-                indicatorStyle={{ backgroundColor: cardDividerColor }}
+            <AppBottomSheet
+                open={open}
+                onClose={onClose}
+                backgroundColor={screenBackgroundColor}
+                indicatorColor={cardDividerColor}
             >
-                <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                     {/* Profile Header */}
                     <View style={styles.profileHeader}>
                         <View style={[styles.avatarContainer, { backgroundColor: cardBackgroundColor, borderColor: cardBorderColor }]}>
@@ -165,7 +169,7 @@ export function ProfileActionSheet({
                             onPress={() => handleOptionPress('/bank-account')} // Placeholder route
                         >
                             <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
-                                <Landmark size={24} color={iconColor} />
+                                <Landmark size={ACTION_ICON_SIZE} color={iconColor} />
                             </View>
                             <ThemedText style={styles.optionLabel}>Bank Account</ThemedText>
                         </Pressable>
@@ -176,7 +180,7 @@ export function ProfileActionSheet({
                             onPress={() => handleOptionPress('/settings')} // Placeholder route
                         >
                             <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
-                                <Settings size={24} color={iconColor} />
+                                <Settings size={ACTION_ICON_SIZE} color={iconColor} />
                             </View>
                             <ThemedText style={styles.optionLabel}>Settings</ThemedText>
                         </Pressable>
@@ -188,7 +192,7 @@ export function ProfileActionSheet({
                             disabled={isLoggingOut}
                         >
                             <View style={[styles.iconContainer, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor, borderWidth: 1 }]}>
-                                <LogOut size={24} color="#D32F2F" />
+                                <LogOut size={ACTION_ICON_SIZE} color="#D32F2F" />
                             </View>
                             <ThemedText style={[styles.optionLabel, { color: '#D32F2F' }]}>Logout</ThemedText>
                             {isLoggingOut && (
@@ -196,10 +200,10 @@ export function ProfileActionSheet({
                             )}
                         </Pressable>
                     </View>
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
 
-            <CreatorCommunitySheet actionSheetRef={communitySheetRef} />
+            <CreatorCommunitySheet open={isCommunityOpen} onClose={() => setIsCommunityOpen(false)} />
         </>
     );
 }
@@ -278,8 +282,8 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     communityIcon: {
-        width: 24,
-        height: 24,
+        width: 20,
+        height: 20,
         borderRadius: 6,
     },
     optionLabel: {

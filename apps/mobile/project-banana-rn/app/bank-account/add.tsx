@@ -1,9 +1,8 @@
-import { useState, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TextInput, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, ChevronDown, Upload, Eye, Check, Search, Camera, FileText, Image as ImageIcon, Pencil } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +19,7 @@ import { BANK_OPTIONS } from '@/constants/banks';
 import { BankAccountSourceType } from '@/constants/sourceType';
 import { prepareBankProofUpload } from '@/utils/bankProofUpload';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
+import { AppBottomSheet, BottomSheetScrollView, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 const bankStatementSampleImage = require('@/assets/images/bank-sample.png');
 
@@ -61,17 +61,12 @@ export default function AddBankAccountScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [submitStep, setSubmitStep] = useState<'pending' | null>(null);
+    const [activeSheet, setActiveSheet] = useState<'bankSelect' | 'example' | 'uploadOptions' | 'submitStatus' | 'preview' | null>(null);
     const createBankAccount = useMutation(api.bankAccounts.createBankAccount);
     const generateProofUploadUrl = useAction(api.bankAccounts.generateProofUploadUrl);
-
-    const bankSelectSheetRef = useRef<ActionSheetRef>(null);
-    const exampleSheetRef = useRef<ActionSheetRef>(null);
-    const uploadOptionsSheetRef = useRef<ActionSheetRef>(null);
-    const submitStatusSheetRef = useRef<ActionSheetRef>(null);
-    const previewSheetRef = useRef<ActionSheetRef>(null);
     const bankScrollViewRef = useRef<ScrollView>(null);
 
-    const scrollToSelectedBank = () => {
+    const scrollToSelectedBank = useCallback(() => {
         if (bankName) {
             const index = BANK_OPTIONS.findIndex(b => b.name === bankName);
             if (index !== -1) {
@@ -82,17 +77,17 @@ export default function AddBankAccountScreen() {
                 });
             }
         }
-    };
+    }, [bankName]);
 
     const handleSelectBank = (bank: string) => {
         setBankName(bank);
-        bankSelectSheetRef.current?.hide();
+        setActiveSheet(null);
     };
 
     const handleReupload = () => {
-        previewSheetRef.current?.hide();
+        setActiveSheet(null);
         setTimeout(() => {
-            uploadOptionsSheetRef.current?.show();
+            setActiveSheet('uploadOptions');
         }, 300);
     };
 
@@ -109,7 +104,7 @@ export default function AddBankAccountScreen() {
             quality: 0.8,
         });
 
-        uploadOptionsSheetRef.current?.hide();
+        setActiveSheet(null);
 
         if (!result.canceled && result.assets.length > 0) {
             const asset = result.assets[0];
@@ -136,7 +131,7 @@ export default function AddBankAccountScreen() {
             // quality: 0.8,
         });
 
-        uploadOptionsSheetRef.current?.hide();
+        setActiveSheet(null);
 
         if (!result.canceled && result.assets.length > 0) {
             const asset = result.assets[0];
@@ -157,7 +152,7 @@ export default function AddBankAccountScreen() {
                 copyToCacheDirectory: true,
             });
 
-            uploadOptionsSheetRef.current?.hide();
+            setActiveSheet(null);
 
             if (!result.canceled && result.assets.length > 0) {
                 const asset = result.assets[0];
@@ -211,7 +206,7 @@ export default function AddBankAccountScreen() {
             });
             setIsLoading(false);
             setSubmitStep('pending');
-            submitStatusSheetRef.current?.show();
+            setActiveSheet('submitStatus');
         } catch {
             setIsLoading(false);
             Alert.alert('Submission failed', 'Unable to submit bank account. Please try again.');
@@ -219,12 +214,22 @@ export default function AddBankAccountScreen() {
     };
 
     const handleCloseSubmitSheet = () => {
-        submitStatusSheetRef.current?.hide();
+        setActiveSheet(null);
         setTimeout(() => {
             setSubmitStep(null);
             router.back();
         }, 300);
     };
+
+    useEffect(() => {
+        if (activeSheet === 'bankSelect') {
+            const timeout = setTimeout(scrollToSelectedBank, 100);
+            return () => clearTimeout(timeout);
+        }
+
+        setSearchQuery('');
+        return undefined;
+    }, [activeSheet, scrollToSelectedBank]);
 
     const isFormValid = bankName && accountHolderName && accountNumber && proofUploaded;
 
@@ -257,7 +262,7 @@ export default function AddBankAccountScreen() {
                     <ThemedText type="defaultSemiBold" style={styles.label}>Bank Name</ThemedText>
                     <Pressable
                         style={[styles.selectButton, { backgroundColor: elevatedBackgroundColor, borderColor }]}
-                        onPress={() => bankSelectSheetRef.current?.show()}
+                        onPress={() => setActiveSheet('bankSelect')}
                     >
                         <ThemedText style={[styles.selectText, { color: bankName ? theme.text : mutedTextColor }]}>
                             {bankName || 'Select your bank'}
@@ -300,7 +305,7 @@ export default function AddBankAccountScreen() {
 
                     <Pressable
                         style={styles.viewExampleButton}
-                        onPress={() => exampleSheetRef.current?.show()}
+                        onPress={() => setActiveSheet('example')}
                     >
                         <Eye size={18} color={theme.text} />
                         <ThemedText style={[styles.viewExampleText, { color: mutedTextColor }]}>View Example</ThemedText>
@@ -337,7 +342,7 @@ export default function AddBankAccountScreen() {
 
                                 <Pressable
                                     style={styles.editButtonOverlay}
-                                    onPress={() => uploadOptionsSheetRef.current?.show()}
+                                    onPress={() => setActiveSheet('uploadOptions')}
                                 >
                                     <LinearGradient
                                         colors={['transparent', 'rgba(0,0,0,0.6)']}
@@ -353,7 +358,7 @@ export default function AddBankAccountScreen() {
                         ) : (
                             <Pressable
                                 style={styles.emptyUploadContainer}
-                                onPress={() => uploadOptionsSheetRef.current?.show()}
+                                onPress={() => setActiveSheet('uploadOptions')}
                             >
                                 <Upload size={40} color={mutedTextColor} />
                                 <ThemedText style={[styles.uploadText, { color: mutedTextColor }]}>Upload a proof</ThemedText>
@@ -385,16 +390,8 @@ export default function AddBankAccountScreen() {
             </View>
 
             {/* Bank Selection Sheet */}
-            <ActionSheet
-                // snapPoints={[30, 90, 100]}
-                // initialSnapIndex={1}
-                ref={bankSelectSheetRef}
-                gestureEnabled
-                onOpen={scrollToSelectedBank}
-                onClose={() => setSearchQuery('')}
-                containerStyle={{ backgroundColor: sheetSurfaceColor }}
-            >
-                <View style={[styles.sheetContent, { paddingBottom: 60, backgroundColor: sheetSurfaceColor }]}>
+            <AppBottomSheet open={activeSheet === 'bankSelect'} onClose={() => setActiveSheet(null)} backgroundColor={sheetSurfaceColor}>
+                <BottomSheetView style={[styles.sheetContent, { paddingBottom: 60, backgroundColor: sheetSurfaceColor }]}>
                     <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Select Bank</ThemedText>
 
                     {/* Search Input */}
@@ -414,7 +411,7 @@ export default function AddBankAccountScreen() {
                         )}
                     </View>
 
-                    <ScrollView
+                    <BottomSheetScrollView
                         ref={bankScrollViewRef}
                         contentContainerStyle={{ paddingBottom: 80 }}
                         showsVerticalScrollIndicator={false}
@@ -446,13 +443,13 @@ export default function AddBankAccountScreen() {
                                 <ThemedText style={[styles.noResultText, { color: mutedTextColor }]}>No banks found</ThemedText>
                             </View>
                         )}
-                    </ScrollView>
-                </View>
-            </ActionSheet>
+                    </BottomSheetScrollView>
+                </BottomSheetView>
+            </AppBottomSheet>
 
             {/* Example Sheet */}
-            <ActionSheet ref={exampleSheetRef} gestureEnabled containerStyle={{ backgroundColor: sheetSurfaceColor }}>
-                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
+            <AppBottomSheet open={activeSheet === 'example'} onClose={() => setActiveSheet(null)} backgroundColor={sheetSurfaceColor}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
                     <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Example Bank Statement</ThemedText>
                     <Image
                         source={bankStatementSampleImage}
@@ -464,16 +461,16 @@ export default function AddBankAccountScreen() {
                     </ThemedText>
                     <Pressable
                         style={[styles.gotItButton, { backgroundColor: subtleButtonBackgroundColor, borderColor }]}
-                        onPress={() => exampleSheetRef.current?.hide()}
+                        onPress={() => setActiveSheet(null)}
                     >
                         <ThemedText style={[styles.gotItButtonText, { color: theme.text }]}>Got it</ThemedText>
                     </Pressable>
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
 
             {/* Preview Sheet */}
-            <ActionSheet ref={previewSheetRef} gestureEnabled containerStyle={{ backgroundColor: sheetSurfaceColor }}>
-                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
+            <AppBottomSheet open={activeSheet === 'preview'} onClose={() => setActiveSheet(null)} backgroundColor={sheetSurfaceColor}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
                     <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Edit</ThemedText>
 
                     {uploadedFile?.type === 'image' ? (
@@ -508,12 +505,12 @@ export default function AddBankAccountScreen() {
                         <Upload size={18} color={theme.text} />
                         <ThemedText style={[styles.reuploadButtonText, { color: theme.text }]}>Re-upload</ThemedText>
                     </Pressable>
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
 
             {/* Upload Options Sheet */}
-            <ActionSheet ref={uploadOptionsSheetRef} gestureEnabled containerStyle={{ backgroundColor: sheetSurfaceColor }}>
-                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
+            <AppBottomSheet open={activeSheet === 'uploadOptions'} onClose={() => setActiveSheet(null)} backgroundColor={sheetSurfaceColor}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
                     <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Upload Proof</ThemedText>
 
                     <Pressable
@@ -549,17 +546,12 @@ export default function AddBankAccountScreen() {
                         </View>
                         <ThemedText style={[styles.uploadOptionText, { color: theme.text }]}>Upload PDF</ThemedText>
                     </Pressable>
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
 
             {/* Submit Status Sheet */}
-            <ActionSheet
-                ref={submitStatusSheetRef}
-                gestureEnabled={true}
-                closeOnTouchBackdrop={true}
-                containerStyle={{ backgroundColor: sheetSurfaceColor }}
-            >
-                <View style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
+            <AppBottomSheet open={activeSheet === 'submitStatus'} onClose={() => setActiveSheet(null)} backgroundColor={sheetSurfaceColor}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: sheetSurfaceColor }]}>
                     {submitStep === 'pending' && (
                         <View style={styles.statusContainer}>
                             <LottieView
@@ -585,8 +577,8 @@ export default function AddBankAccountScreen() {
                             </Pressable>
                         </View>
                     )}
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
         </SafeAreaView>
     );
 }

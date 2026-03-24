@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { View, StyleSheet, Pressable, StyleProp, TextStyle } from 'react-native';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
-import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import LottieView from 'lottie-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AppBottomSheet, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 export interface DetailItem {
     label: string;
@@ -16,7 +16,8 @@ export interface DetailItem {
 }
 
 interface TransactionDetailsSheetProps {
-    actionSheetRef: React.RefObject<ActionSheetRef | null>;
+    open: boolean;
+    onClose: () => void;
     title?: string;
     details: DetailItem[];
     onCancel?: () => Promise<void> | void;
@@ -26,7 +27,8 @@ interface TransactionDetailsSheetProps {
 }
 
 export function TransactionDetailsSheet({
-    actionSheetRef,
+    open,
+    onClose,
     title = "Transaction Details",
     details,
     onCancel,
@@ -57,7 +59,7 @@ export function TransactionDetailsSheet({
     };
 
     const handleDismiss = () => {
-        actionSheetRef.current?.hide();
+        onClose();
         setTimeout(() => {
             setView('details');
             setIsLoading(false);
@@ -65,13 +67,12 @@ export function TransactionDetailsSheet({
     };
 
     return (
-        <ActionSheet
-            ref={actionSheetRef}
-            gestureEnabled
-            onClose={() => setView('details')}
-            containerStyle={{ backgroundColor: theme.screenBackground }}
+        <AppBottomSheet
+            open={open}
+            onClose={handleDismiss}
+            backgroundColor={theme.screenBackground}
         >
-            <View style={[styles.sheetContent, { backgroundColor: theme.screenBackground }]}>
+            <BottomSheetView style={[styles.sheetContent, { backgroundColor: theme.screenBackground }]}>
                 {view === 'details' && (
                     <>
                         <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>{title}</ThemedText>
@@ -174,8 +175,8 @@ export function TransactionDetailsSheet({
                         </Pressable>
                     </View>
                 )}
-            </View>
-        </ActionSheet>
+            </BottomSheetView>
+        </AppBottomSheet>
     );
 }
 

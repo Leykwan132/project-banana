@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import Animated, {
     useAnimatedStyle,
@@ -9,7 +9,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Filter, ArrowUpDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { ActionSheetRef } from 'react-native-actions-sheet';
 import LottieView from 'lottie-react-native';
 import { usePaginatedQuery } from 'convex/react';
 
@@ -61,11 +60,13 @@ export function CampaignList() {
     const isDark = colorScheme === 'dark';
     const filterBackgroundColor = isDark ? '#141414' : '#F7F4ED';
     const filterBorderColor = isDark ? '#303030' : '#E4DED2';
+    const selectedBadgeBackgroundColor = isDark ? '#D84300' : '#E24A10';
+    const selectedBadgeBorderColor = isDark ? '#D84300' : '#E24A10';
+    const selectedBadgeTextColor = '#FFFFFF';
     const router = useRouter();
 
-    const categorySheetRef = useRef<ActionSheetRef>(null);
-    const sortSheetRef = useRef<ActionSheetRef>(null);
-
+    const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+    const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedSort, setSelectedSort] = useState<string | null>(null);
 
@@ -191,27 +192,27 @@ export function CampaignList() {
                         style={[
                             styles.filterButton,
                             { backgroundColor: filterBackgroundColor, borderColor: filterBorderColor },
-                            selectedCategory && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
+                            selectedCategory && { backgroundColor: selectedBadgeBackgroundColor, borderColor: selectedBadgeBorderColor }
                         ]}
-                        onPress={() => categorySheetRef.current?.show()}
+                        onPress={() => setIsCategorySheetOpen(true)}
                     >
                         {selectedCategory && selectedCategoryOption ? (
                             <>
                                 <View style={styles.filterButtonLeading}>
                                     <selectedCategoryOption.icon
                                         size={14}
-                                        color={Colors[colorScheme ?? 'light'].background}
+                                        color={selectedBadgeTextColor}
                                     />
                                     <ThemedText style={[
                                         styles.filterButtonText,
-                                        { color: Colors[colorScheme ?? 'light'].background }
+                                        { color: selectedBadgeTextColor }
                                     ]}>
                                         {selectedCategoryOption.shortLabel}
                                     </ThemedText>
                                 </View>
                                 <ThemedText style={[
                                     styles.filterButtonCount,
-                                    { color: Colors[colorScheme ?? 'light'].background }
+                                    { color: selectedBadgeTextColor }
                                 ]}>
                                     {selectedCategoryOption.count}
                                 </ThemedText>
@@ -229,17 +230,17 @@ export function CampaignList() {
                         style={[
                             styles.filterButton,
                             { backgroundColor: filterBackgroundColor, borderColor: filterBorderColor },
-                            selectedSort && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
+                            selectedSort && { backgroundColor: selectedBadgeBackgroundColor, borderColor: selectedBadgeBorderColor }
                         ]}
-                        onPress={() => sortSheetRef.current?.show()}
+                        onPress={() => setIsSortSheetOpen(true)}
                     >
                         <ThemedText style={[
                             styles.filterButtonText,
-                            selectedSort && { color: Colors[colorScheme ?? 'light'].background }
+                            selectedSort && { color: selectedBadgeTextColor }
                         ]}>
                             {selectedSort ? SORT_OPTIONS.find(s => s.value === selectedSort)?.label : 'Sort By'}
                         </ThemedText>
-                        <ArrowUpDown size={14} color={selectedSort ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text} />
+                        <ArrowUpDown size={14} color={selectedSort ? selectedBadgeTextColor : Colors[colorScheme ?? 'light'].text} />
                     </Pressable>
                 </View>
             </View>
@@ -286,7 +287,8 @@ export function CampaignList() {
             </View>
 
             <SelectionSheet
-                actionSheetRef={categorySheetRef}
+                open={isCategorySheetOpen}
+                onClose={() => setIsCategorySheetOpen(false)}
                 title="Select Category"
                 options={categoryOptionsWithCounts}
                 selectedOption={selectedCategory}
@@ -296,7 +298,8 @@ export function CampaignList() {
             />
 
             <SelectionSheet
-                actionSheetRef={sortSheetRef}
+                open={isSortSheetOpen}
+                onClose={() => setIsSortSheetOpen(false)}
                 title="Sort By"
                 options={SORT_OPTIONS}
                 selectedOption={selectedSort}
@@ -344,11 +347,11 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     filterButtonText: {
-        fontSize: 12,
+        fontSize: 14,
         fontFamily: 'GoogleSans_500Medium',
     },
     filterButtonCount: {
-        fontSize: 12,
+        fontSize: 14,
         fontFamily: 'GoogleSans_700Bold',
         marginLeft: 4,
     },

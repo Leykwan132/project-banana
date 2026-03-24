@@ -12,7 +12,7 @@ import { storage } from '@/lib/storage';
 
 const THEME_PREFERENCE_KEY = 'themePreference';
 
-type AppColorScheme = Exclude<ColorSchemeName, null>;
+type AppColorScheme = Exclude<ColorSchemeName, null | undefined>;
 
 interface ThemePreferenceContextValue {
     colorScheme: AppColorScheme;

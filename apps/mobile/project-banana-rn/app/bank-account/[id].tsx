@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter, Stack, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Upload, AlertCircle, FileText, Camera, ImageIcon, Pencil } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import { Image } from 'expo-image';
 import LottieView from 'lottie-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -21,6 +20,7 @@ import { BankAccountSourceType } from '@/constants/sourceType';
 import { prepareBankProofUpload } from '@/utils/bankProofUpload';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
+import { AppBottomSheet, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 export default function BankAccountDetailsScreen() {
     const router = useRouter();
@@ -67,9 +67,7 @@ export default function BankAccountDetailsScreen() {
 
     const [isLoading, setIsLoading] = useState(false);
     const [submitStep, setSubmitStep] = useState<'pending' | null>(null);
-
-    const uploadOptionsSheetRef = useRef<ActionSheetRef>(null);
-    const submitStatusSheetRef = useRef<ActionSheetRef>(null);
+    const [activeSheet, setActiveSheet] = useState<'uploadOptions' | 'submitStatus' | null>(null);
 
     const mappedStatus: ApplicationStatus =
         bankAccount?.status === 'verified' ? 'Active' :
@@ -150,7 +148,7 @@ export default function BankAccountDetailsScreen() {
                 mimeType: result.assets[0].mimeType ?? 'image/jpeg',
             });
         }
-        uploadOptionsSheetRef.current?.hide();
+        setActiveSheet(null);
     };
 
     const handleChooseFromGallery = async () => {
@@ -166,7 +164,7 @@ export default function BankAccountDetailsScreen() {
                 mimeType: result.assets[0].mimeType ?? 'image/jpeg',
             });
         }
-        uploadOptionsSheetRef.current?.hide();
+        setActiveSheet(null);
 
     };
 
@@ -183,7 +181,7 @@ export default function BankAccountDetailsScreen() {
                 mimeType: result.assets[0].mimeType ?? 'application/pdf',
             });
         }
-        uploadOptionsSheetRef.current?.hide();
+        setActiveSheet(null);
 
     };
 
@@ -233,7 +231,7 @@ export default function BankAccountDetailsScreen() {
 
             setIsLoading(false);
             setSubmitStep('pending');
-            submitStatusSheetRef.current?.show();
+            setActiveSheet('submitStatus');
         } catch (error) {
             console.error('Error resubmitting bank proof:', error);
             setIsLoading(false);
@@ -242,7 +240,7 @@ export default function BankAccountDetailsScreen() {
     };
 
     const handleCloseSubmitSheet = () => {
-        submitStatusSheetRef.current?.hide();
+        setActiveSheet(null);
         setTimeout(() => {
             setSubmitStep(null);
             router.back();
@@ -386,7 +384,7 @@ export default function BankAccountDetailsScreen() {
                                     {isRejected && (
                                         <Pressable
                                             style={styles.editButtonOverlay}
-                                            onPress={() => uploadOptionsSheetRef.current?.show()}
+                                            onPress={() => setActiveSheet('uploadOptions')}
                                         >
                                             <LinearGradient
                                                 colors={['transparent', 'rgba(0,0,0,0.6)']}
@@ -403,7 +401,7 @@ export default function BankAccountDetailsScreen() {
                             ) : (
                                 <Pressable
                                     style={styles.emptyUploadContainer}
-                                    onPress={() => uploadOptionsSheetRef.current?.show()}
+                                    onPress={() => setActiveSheet('uploadOptions')}
                                     disabled={!isRejected}
                                 >
                                     <Upload size={40} color={mutedTextColor} />
@@ -434,7 +432,7 @@ export default function BankAccountDetailsScreen() {
                             /* Upload Button - Visible when no new file uploaded */
                             <Pressable
                                 style={[styles.mainButton, styles.uploadButton, { backgroundColor: primaryButtonBackgroundColor }]}
-                                onPress={() => uploadOptionsSheetRef.current?.show()}
+                                onPress={() => setActiveSheet('uploadOptions')}
                             >
                                 <Upload size={20} color={primaryButtonTextColor} />
                                 <ThemedText style={[styles.mainButtonText, { color: primaryButtonTextColor }]}>Upload New Proof</ThemedText>
@@ -444,8 +442,8 @@ export default function BankAccountDetailsScreen() {
                 )}
             </View>
             {/* Upload Options Sheet */}
-            <ActionSheet ref={uploadOptionsSheetRef} gestureEnabled containerStyle={{ backgroundColor: sheetBackgroundColor }}>
-                <View style={[styles.sheetContent, { backgroundColor: sheetBackgroundColor }]}>
+            <AppBottomSheet open={activeSheet === 'uploadOptions'} onClose={() => setActiveSheet(null)} backgroundColor={sheetBackgroundColor}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: sheetBackgroundColor }]}>
                     <ThemedText type="subtitle" style={[styles.sheetTitle, { color: theme.text }]}>Upload Proof</ThemedText>
 
                     <Pressable style={styles.uploadOption} onPress={handleTakePhoto}>
@@ -472,17 +470,12 @@ export default function BankAccountDetailsScreen() {
                         </View>
                         <ThemedText style={[styles.uploadOptionText, { color: theme.text }]}>Upload PDF</ThemedText>
                     </Pressable>
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
 
             {/* Submit Status Sheet */}
-            <ActionSheet
-                ref={submitStatusSheetRef}
-                gestureEnabled={true}
-                closeOnTouchBackdrop={true}
-                containerStyle={{ backgroundColor: sheetBackgroundColor }}
-            >
-                <View style={[styles.sheetContent, { backgroundColor: sheetBackgroundColor }]}>
+            <AppBottomSheet open={activeSheet === 'submitStatus'} onClose={() => setActiveSheet(null)} backgroundColor={sheetBackgroundColor}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: sheetBackgroundColor }]}>
                     {submitStep === 'pending' && (
                         <View style={styles.statusContainer}>
                             <LottieView
@@ -505,8 +498,8 @@ export default function BankAccountDetailsScreen() {
                             </Pressable>
                         </View>
                     )}
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
         </SafeAreaView>
     );
 }

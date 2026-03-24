@@ -10,6 +10,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/google-sans';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -129,27 +130,30 @@ function RootLayoutContent() {
       autocapture
     >
       <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-        <GestureHandlerRootView>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <GlobalErrorBoundary>
-              <NotificationResponseHandler />
-              <Stack initialRouteName="welcome">
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="welcome" options={{ headerShown: false }} />
-                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="campaign-modal/[id]"
-                  options={{
-                    headerShown: false,
-                    presentation: 'modal',
-                    animation: 'slide_from_bottom',
-                  }}
-                />
-              </Stack>
-              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-            </GlobalErrorBoundary>
-          </ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <BottomSheetModalProvider>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <GlobalErrorBoundary>
+                <NotificationResponseHandler />
+                <Stack initialRouteName="welcome">
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen name="welcome" options={{ headerShown: false }} />
+                  <Stack.Screen name="login" options={{ headerShown: false }} />
+                  <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="campaign-modal/[id]"
+                    options={{
+                      headerShown: false,
+                      presentation: 'modal',
+                      animation: 'slide_from_bottom',
+                    }}
+                  />
+                </Stack>
+                <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+              </GlobalErrorBoundary>
+            </ThemeProvider>
+          </BottomSheetModalProvider>
           <Toast />
         </GestureHandlerRootView>
       </ConvexBetterAuthProvider>

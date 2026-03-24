@@ -16,6 +16,8 @@ import { authClient } from '@/lib/auth-client';
 import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
+const SETTINGS_ICON_SIZE = 20;
+
 interface SettingsOption {
     id: string;
     title: string;
@@ -150,31 +152,31 @@ export default function SettingsScreen() {
         {
             id: 'report-issue',
             title: 'Report an issue',
-            icon: <Bug size={24} color={theme.text} />,
+            icon: <Bug size={SETTINGS_ICON_SIZE} color={theme.text} />,
             onPress: handleReportIssuePress,
         },
         {
             id: 'chat-with-us',
             title: 'Chat Support',
-            icon: <MessageCircle size={24} color={theme.text} />,
+            icon: <MessageCircle size={SETTINGS_ICON_SIZE} color={theme.text} />,
             onPress: handleChatWithUsPress,
         },
         {
             id: 'email-us',
             title: 'Email Us',
-            icon: <Mail size={24} color={theme.text} />,
+            icon: <Mail size={SETTINGS_ICON_SIZE} color={theme.text} />,
             onPress: handleEmailUsPress,
         },
         {
             id: 'privacy',
             title: 'Privacy',
-            icon: <Shield size={24} color={theme.text} />,
+            icon: <Shield size={SETTINGS_ICON_SIZE} color={theme.text} />,
             onPress: handlePrivacyPress,
         },
         {
             id: 'terms',
             title: 'Terms and Conditions',
-            icon: <FileText size={24} color={theme.text} />,
+            icon: <FileText size={SETTINGS_ICON_SIZE} color={theme.text} />,
             onPress: handleTermsPress,
         },
     ];
@@ -203,7 +205,7 @@ export default function SettingsScreen() {
                     <View style={[styles.sectionCard, { backgroundColor: surfaceColor, borderColor }]}>
                         <View style={styles.optionRow}>
                             <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                                <Moon size={24} color={theme.text} />
+                                <Moon size={SETTINGS_ICON_SIZE} color={theme.text} />
                             </View>
                             <ThemedText style={styles.optionLabel}>Dark mode</ThemedText>
                             <UISwitch
@@ -218,7 +220,7 @@ export default function SettingsScreen() {
                         <View style={[styles.divider, { backgroundColor: dividerColor }]} />
                         <View style={styles.optionRow}>
                             <View style={[styles.iconContainer, { backgroundColor: controlBackgroundColor, borderColor }]}>
-                                <Bell size={24} color={theme.text} />
+                                <Bell size={SETTINGS_ICON_SIZE} color={theme.text} />
                             </View>
                             <ThemedText style={styles.optionLabel}>Allow notifications</ThemedText>
                             <UISwitch
@@ -271,7 +273,7 @@ export default function SettingsScreen() {
                         <LoadingIndicator size="small" color="#D32F2F" />
                     ) : (
                         <>
-                            <LogOut size={20} color="#D32F2F" />
+                            <LogOut size={18} color="#D32F2F" />
                             <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
                         </>
                     )}

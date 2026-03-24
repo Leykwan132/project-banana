@@ -1,5 +1,4 @@
 import { View, StyleSheet, Pressable, Linking, Alert, ScrollView } from 'react-native';
-import ActionSheet, { ActionSheetRef } from 'react-native-actions-sheet';
 import { ArrowRight } from 'lucide-react-native';
 import { Image as ExpoImage } from 'expo-image';
 
@@ -7,9 +6,11 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { CREATOR_COMMUNITY_URL } from '@/constants/support';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AppBottomSheet, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 interface CreatorCommunitySheetProps {
-    actionSheetRef: React.RefObject<ActionSheetRef | null>;
+    open: boolean;
+    onClose: () => void;
 }
 
 const communityBenefits = [
@@ -47,7 +48,7 @@ const communityBenefits = [
     },
 ];
 
-export function CreatorCommunitySheet({ actionSheetRef }: CreatorCommunitySheetProps) {
+export function CreatorCommunitySheet({ open, onClose }: CreatorCommunitySheetProps) {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
@@ -59,7 +60,7 @@ export function CreatorCommunitySheet({ actionSheetRef }: CreatorCommunitySheetP
     const accentColor = '#FC4C02';
 
     const handleJoinCommunityPress = () => {
-        actionSheetRef.current?.hide();
+        onClose();
         setTimeout(() => {
             Linking.openURL(CREATOR_COMMUNITY_URL).catch(() => {
                 Alert.alert('Unable to open link', 'Please try again in a moment.');
@@ -114,13 +115,13 @@ export function CreatorCommunitySheet({ actionSheetRef }: CreatorCommunitySheetP
     };
 
     return (
-        <ActionSheet
-            ref={actionSheetRef}
-            gestureEnabled
-            containerStyle={{ backgroundColor: screenBackgroundColor }}
-            indicatorStyle={{ backgroundColor: cardDividerColor }}
+        <AppBottomSheet
+            open={open}
+            onClose={onClose}
+            backgroundColor={screenBackgroundColor}
+            indicatorColor={cardDividerColor}
         >
-            <View style={[styles.communitySheetContent, { backgroundColor: screenBackgroundColor }]}>
+            <BottomSheetView style={[styles.communitySheetContent, { backgroundColor: screenBackgroundColor }]}>
                 <View style={styles.communityHeader}>
                     <View style={[styles.communityBadge, { backgroundColor: badgeBackgroundColor, borderColor: cardBorderColor }]}>
                         <ExpoImage
@@ -174,8 +175,8 @@ export function CreatorCommunitySheet({ actionSheetRef }: CreatorCommunitySheetP
                         <ArrowRight size={18} color="#FFFFFF" />
                     </Pressable>
                 </View>
-            </View>
-        </ActionSheet>
+            </BottomSheetView>
+        </AppBottomSheet>
     );
 }
 

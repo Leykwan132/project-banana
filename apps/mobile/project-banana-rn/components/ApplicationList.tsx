@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import Animated, {
     useAnimatedStyle,
@@ -9,7 +9,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ChevronDown, Filter } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { ActionSheetRef } from 'react-native-actions-sheet';
 import LottieView from 'lottie-react-native';
 import { usePaginatedQuery } from 'convex/react';
 
@@ -62,7 +61,10 @@ export function ApplicationList() {
     const isDark = colorScheme === 'dark';
     const filterBackgroundColor = isDark ? '#141414' : '#F7F4ED';
     const filterBorderColor = isDark ? '#303030' : '#E4DED2';
-    const filterSheetRef = useRef<ActionSheetRef>(null);
+    const selectedFilterBackgroundColor = isDark ? '#D84300' : '#E24A10';
+    const selectedFilterBorderColor = isDark ? '#D84300' : '#E24A10';
+    const selectedFilterTextColor = '#FFFFFF';
+    const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
     // Fetch applications from Convex
@@ -132,18 +134,18 @@ export function ApplicationList() {
                     style={[
                         styles.filterButton,
                         { backgroundColor: filterBackgroundColor, borderColor: filterBorderColor },
-                        selectedStatus && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
+                        selectedStatus && { backgroundColor: selectedFilterBackgroundColor, borderColor: selectedFilterBorderColor }
                     ]}
-                    onPress={() => filterSheetRef.current?.show()}
+                    onPress={() => setIsFilterSheetOpen(true)}
                 >
                     <ThemedText style={[
                         styles.filterButtonText,
-                        selectedStatus && { color: Colors[colorScheme ?? 'light'].background }
+                        selectedStatus && { color: selectedFilterTextColor }
                     ]}>
                         {FILTER_OPTIONS.find(o => o.value === selectedStatus)?.label || 'Filter'}
                     </ThemedText>
                     {selectedStatus ? (
-                        <Filter size={14} color={Colors[colorScheme ?? 'light'].background} />
+                        <Filter size={14} color={selectedFilterTextColor} />
                     ) : (
                         <ChevronDown size={16} color={Colors[colorScheme ?? 'light'].text} />
                     )}
@@ -193,7 +195,8 @@ export function ApplicationList() {
             </View>
 
             <SelectionSheet
-                actionSheetRef={filterSheetRef}
+                open={isFilterSheetOpen}
+                onClose={() => setIsFilterSheetOpen(false)}
                 title="Status"
                 options={FILTER_OPTIONS}
                 selectedOption={selectedStatus}

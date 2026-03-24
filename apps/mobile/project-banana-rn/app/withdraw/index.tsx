@@ -1,9 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { View, StyleSheet, TextInput, Pressable, ScrollView, Alert, Linking } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
-import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import LottieView from 'lottie-react-native';
 import { useQuery, useAction } from 'convex/react';
 import Animated, {
@@ -23,6 +22,7 @@ import { PayoutCard } from '@/components/PayoutCard';
 import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AppBottomSheet, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 
 const BankAccountSkeleton = () => {
@@ -71,7 +71,7 @@ export default function WithdrawScreen() {
     const mutedTextColor = isDark ? '#A3A3A3' : '#666666';
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
-    const actionSheetRef = useRef<ActionSheetRef>(null);
+    const [isReviewSheetOpen, setIsReviewSheetOpen] = useState(false);
     const [confirmStep, setConfirmStep] = useState<'review' | 'success' | 'failed' | 'insufficient_balance'>('review');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -308,15 +308,15 @@ export default function WithdrawScreen() {
                             return;
                         }
                         setConfirmStep('review');
-                        actionSheetRef.current?.show();
+                        setIsReviewSheetOpen(true);
                     }}
                 >
                     <ThemedText style={styles.confirmButtonText}>Review & Confirm</ThemedText>
                 </Pressable>
             </View>
 
-            <ActionSheet ref={actionSheetRef} gestureEnabled containerStyle={{ backgroundColor: screenBackgroundColor }}>
-                <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+            <AppBottomSheet open={isReviewSheetOpen} onClose={() => setIsReviewSheetOpen(false)} backgroundColor={screenBackgroundColor}>
+                <BottomSheetView style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                     {confirmStep === 'review' ? (
                         <View>
                             <ThemedText type="subtitle" style={styles.sheetTitle}>Review Withdrawal</ThemedText>
@@ -377,7 +377,7 @@ export default function WithdrawScreen() {
                             <Pressable
                                 style={[styles.confirmButton, { marginTop: 32, width: '100%', backgroundColor: Colors[colorScheme ?? 'light'].primaryButton }]}
                                 onPress={() => {
-                                    actionSheetRef.current?.hide();
+                                    setIsReviewSheetOpen(false);
                                     router.back();
                                 }}
                             >
@@ -440,8 +440,8 @@ export default function WithdrawScreen() {
                             </Pressable>
                         </View>
                     )}
-                </View>
-            </ActionSheet>
+                </BottomSheetView>
+            </AppBottomSheet>
         </View>
     );
 }

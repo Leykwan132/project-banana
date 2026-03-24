@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActionSheetRef } from "react-native-actions-sheet";
 import { SegmentedControl } from 'react-native-ui-lib';
 import Animated, {
     useAnimatedStyle,
@@ -89,7 +88,7 @@ export default function WithdrawalsScreen() {
     const [isSegmentSwitchLoading, setIsSegmentSwitchLoading] = useState(false);
     const [celebrationTransaction, setCelebrationTransaction] = useState<Transaction | null>(null);
     const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
-    const actionSheetRef = useRef<ActionSheetRef>(null);
+    const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
     const handledCelebrationId = useRef<string | null>(null);
     const selectedSegmentedControlType = selectedSegmentedControlIndex === 0 ? 'payouts' : 'withdrawals';
     const celebrateWithdrawalId = params.celebrateWithdrawalId;
@@ -231,7 +230,7 @@ export default function WithdrawalsScreen() {
 
     const handleItemPress = (item: Transaction) => {
         setSelectedTransaction(item);
-        actionSheetRef.current?.show();
+        setIsDetailsSheetOpen(true);
     };
 
     const handleCelebrationShowDetails = () => {
@@ -245,7 +244,7 @@ export default function WithdrawalsScreen() {
         setCelebrationTransaction(null);
 
         setTimeout(() => {
-            actionSheetRef.current?.show();
+            setIsDetailsSheetOpen(true);
         }, 200);
     };
 
@@ -498,7 +497,8 @@ export default function WithdrawalsScreen() {
             </ScrollView>
 
             <TransactionDetailsSheet
-                actionSheetRef={actionSheetRef}
+                open={isDetailsSheetOpen}
+                onClose={() => setIsDetailsSheetOpen(false)}
                 title={selectedTransaction?.type === 'withdrawal' ? "Withdrawal Details" : "Payout Details"}
                 details={sheetDetails}
                 customContent={selectedTransaction?.type === 'withdrawal' ? renderCustomWithdrawalContent() : renderCustomPayoutContent()}

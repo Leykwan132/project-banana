@@ -1,10 +1,9 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ScrollView, StyleSheet, View, RefreshControl, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Wallet, ArrowDownWideNarrow, Eye, ThumbsUp, MessageCircle, Share2 } from 'lucide-react-native';
 import { LineChart } from 'react-native-wagmi-charts';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { ActionSheetRef } from 'react-native-actions-sheet';
 import { useQuery } from 'convex/react';
 
 import { Header } from '@/components/Header';
@@ -35,11 +34,14 @@ export default function AnalyticsScreen() {
     const panelBorderColor = isDark ? '#303030' : '#E4DED2';
     const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
     const filterBackgroundColor = isDark ? '#141414' : '#F7F4ED';
+    const selectedFilterBackgroundColor = isDark ? '#D84300' : '#E24A10';
+    const selectedFilterBorderColor = isDark ? '#D84300' : '#E24A10';
+    const selectedFilterTextColor = '#FFFFFF';
 
     const [refreshing, setRefreshing] = useState(false);
     const [sortBy, setSortBy] = useState<string>('earnings');
     const [activeGraphIndex, setActiveGraphIndex] = useState(-1);
-    const sortSheetRef = useRef<ActionSheetRef>(null);
+    const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
 
     const sortOptions = [
         { label: 'Views', value: 'views' },
@@ -286,17 +288,17 @@ export default function AnalyticsScreen() {
                                 style={[
                                     styles.filterButton,
                                     { backgroundColor: filterBackgroundColor, borderColor: panelBorderColor },
-                                    sortBy && { backgroundColor: Colors[colorScheme ?? 'light'].text, borderColor: Colors[colorScheme ?? 'light'].text }
+                                    sortBy && { backgroundColor: selectedFilterBackgroundColor, borderColor: selectedFilterBorderColor }
                                 ]}
-                                onPress={() => sortSheetRef.current?.show()}
+                                onPress={() => setIsSortSheetOpen(true)}
                             >
                                 <ThemedText style={[
                                     styles.filterButtonText,
-                                    sortBy && { color: Colors[colorScheme ?? 'light'].background }
+                                    sortBy && { color: selectedFilterTextColor }
                                 ]}>
                                     {sortOptions.find((opt) => opt.value === sortBy)?.label}
                                 </ThemedText>
-                                <ArrowDownWideNarrow size={16} color={sortBy ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text} />
+                                <ArrowDownWideNarrow size={16} color={sortBy ? selectedFilterTextColor : Colors[colorScheme ?? 'light'].text} />
                             </Pressable>
                         </View>
 
@@ -307,7 +309,8 @@ export default function AnalyticsScreen() {
                 </ScrollView>
 
                 <SelectionSheet
-                    actionSheetRef={sortSheetRef}
+                    open={isSortSheetOpen}
+                    onClose={() => setIsSortSheetOpen(false)}
                     title="Sort by"
                     options={sortOptions}
                     selectedOption={sortBy}

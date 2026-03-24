@@ -111,7 +111,7 @@ export function PayoutCelebrationModal({
                     <ThemedText style={[styles.eyebrow, { color: isDark ? '#F6D879' : '#8A6112' }]}>
                         Payout Completed
                     </ThemedText>
-                    <ThemedText style={[styles.title, { color: theme.text }]}>You've received</ThemedText>
+                    <ThemedText style={[styles.title, { color: theme.text }]}>You&apos;ve received</ThemedText>
                     <ThemedText style={[styles.amount, { color: isDark ? '#FFF7D6' : '#111827' }]}>{amount}</ThemedText>
 
                     <View style={[styles.bankPanel, { backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF', borderColor: isDark ? '#343434' : '#E9DDC0' }]}>

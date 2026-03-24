@@ -1,11 +1,11 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, RefreshControl, Image, Linking, useWindowDimensions } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, Pressable, RefreshControl, Image, Linking, useWindowDimensions, ScrollView, TextInput, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { BottomSheetFooter, type BottomSheetFooterProps } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ChevronDown, Check, Copy, Building, ExternalLink, AlertTriangle } from 'lucide-react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { TextInput, Alert } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -28,8 +28,6 @@ import { getCampaignLifecycleBanner } from '@/constants/campaignLifecycleBanner'
 import { Colors } from '@/constants/theme';
 import { CampaignStatus } from '@/constants/campaignStatus';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { ActionSheetRef } from "react-native-actions-sheet";
-import ActionSheet, { ScrollView, FlatList } from "react-native-actions-sheet";
 import { Timeline, Text, Assets, Checkbox } from 'react-native-ui-lib';
 import { ApplicationStatus, ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 import { CreatorListItem } from '@/components/CreatorListItem';
@@ -47,6 +45,7 @@ import {
 } from '@/lib/submissionBlocked';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
+import { AppBottomSheet, BottomSheetScrollView, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 const formatCurrency = (amount: number) => `RM ${amount.toLocaleString()}`;
 
@@ -124,6 +123,7 @@ export default function ApplicationDetailScreen() {
     const defaultActionButtonTextColor = isDark ? '#111111' : '#FFFFFF';
     const dismissButtonBackground = isDark ? '#1F1F1F' : '#F4F1E8';
     const dismissButtonBorderColor = isDark ? '#333333' : '#E3DDD1';
+    const statusSheetFooterPaddingBottom = Math.max(insets.bottom, 24);
 
     const application = useQuery(api.applications.getApplication, { applicationId });
 
@@ -147,10 +147,7 @@ export default function ApplicationDetailScreen() {
     const generateVideoUploadUrl = useAction(api.submissions.generateVideoUploadUrl);
     const posthog = usePostHog();
 
-    const submissionSheetRef = useRef<ActionSheetRef>(null);
-    const reviewSheetRef = useRef<ActionSheetRef>(null);
-    const statusInfoSheetRef = useRef<ActionSheetRef>(null);
-    const submissionBlockedSheetRef = useRef<ActionSheetRef>(null);
+    const [activeSheet, setActiveSheet] = useState<'submission' | 'review' | 'statusInfo' | 'submissionBlocked' | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [instagramLink, setInstagramLink] = useState('');
     const [tiktokLink, setTikTokLink] = useState('');
@@ -548,13 +545,61 @@ export default function ApplicationDetailScreen() {
         setError('');
         setSubmissionBlockedTitle(title);
         setSubmissionBlockedMessage(message);
-        submissionSheetRef.current?.hide();
-        reviewSheetRef.current?.hide();
+        setActiveSheet(null);
 
         setTimeout(() => {
-            submissionBlockedSheetRef.current?.show();
+            setActiveSheet('submissionBlocked');
         }, 150);
     };
+
+    const closeReviewSheet = () => {
+        setActiveSheet(null);
+        setTimeout(() => {
+            setSelectedVideoUri(null);
+            setSelectedVideoMimeType(null);
+            setReviewStep('requirements');
+            setIsReviewed(false);
+        }, 300);
+    };
+
+    const renderStatusInfoFooter = useCallback(
+        (props: BottomSheetFooterProps) => (
+            <BottomSheetFooter {...props} bottomInset={0} >
+                <View
+                    style={[
+                        styles.sheetFooter,
+                        {
+                            backgroundColor: screenBackgroundColor,
+                            borderTopColor: dividerColor,
+                            paddingBottom: statusSheetFooterPaddingBottom + 24,
+                        },
+                    ]}
+                >
+                    <Pressable
+                        style={[
+                            styles.dismissButton,
+                            {
+                                width: '100%',
+                                backgroundColor: dismissButtonBackground,
+                                borderColor: dismissButtonBorderColor,
+                            },
+                        ]}
+                        onPress={() => setActiveSheet(null)}
+                    >
+                        <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Got it</ThemedText>
+                    </Pressable>
+                </View>
+            </BottomSheetFooter>
+        ),
+        [
+            dismissButtonBackground,
+            dismissButtonBorderColor,
+            dividerColor,
+            screenBackgroundColor,
+            statusSheetFooterPaddingBottom,
+            theme.text,
+        ],
+    );
 
     const renderPrefixedCopyList = (
         field: 'hashtags' | 'mentions',
@@ -900,7 +945,7 @@ export default function ApplicationDetailScreen() {
                         <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Application Status</ThemedText>
                         <ApplicationStatusBadge
                             status={applicationStatus}
-                            onPress={() => statusInfoSheetRef.current?.show()}
+                            onPress={() => setActiveSheet('statusInfo')}
                         />
                     </View>
 
@@ -1189,9 +1234,9 @@ export default function ApplicationDetailScreen() {
                     </View>
                 </View>
                 {/* Submission Sheet */}
-                <ActionSheet gestureEnabled ref={submissionSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
-                    <View style={[styles.sheetScrollableContainer, { backgroundColor: screenBackgroundColor }]}>
-                        <ScrollView
+                <AppBottomSheet open={activeSheet === 'submission'} onClose={() => setActiveSheet(null)} backgroundColor={screenBackgroundColor}>
+                    <BottomSheetView style={[styles.sheetScrollableContainer, { backgroundColor: screenBackgroundColor }]}>
+                        <BottomSheetScrollView
                             style={styles.sheetScrollView}
                             contentContainerStyle={styles.sheetScrollContent}
                             showsVerticalScrollIndicator={false}
@@ -1346,14 +1391,14 @@ export default function ApplicationDetailScreen() {
                                                     borderColor: dismissButtonBorderColor,
                                                 }
                                             ]}
-                                            onPress={() => submissionSheetRef.current?.hide()}
+                                            onPress={() => setActiveSheet(null)}
                                         >
                                             <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Done</ThemedText>
                                         </Pressable>
                                     </Animated.View>
                                 )}
                             </View>
-                        </ScrollView>
+                        </BottomSheetScrollView>
 
                         {!isSubmitting && !showSuccess && canResubmitLinks ? (
                             <View
@@ -1373,12 +1418,12 @@ export default function ApplicationDetailScreen() {
                                 </Pressable>
                             </View>
                         ) : null}
-                    </View>
-                </ActionSheet>
+                    </BottomSheetView>
+                </AppBottomSheet>
 
                 {/* Review & Upload Sheet */}
-                <ActionSheet gestureEnabled ref={reviewSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
-                    <View style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
+                <AppBottomSheet open={activeSheet === 'review'} onClose={closeReviewSheet} backgroundColor={screenBackgroundColor}>
+                    <BottomSheetView style={[styles.sheetContent, { backgroundColor: screenBackgroundColor }]}>
                         {/* Requirements Step */}
                         {reviewStep === 'requirements' && (
                             <Animated.View exiting={SlideOutLeft}>
@@ -1487,31 +1532,36 @@ export default function ApplicationDetailScreen() {
                                         }
                                     ]}
                                     onPress={() => {
-                                        reviewSheetRef.current?.hide();
-                                        setSelectedVideoUri(null);
-                                        setSelectedVideoMimeType(null);
-                                        setReviewStep('requirements');
-                                        setIsReviewed(false);
+                                        closeReviewSheet();
                                     }}
                                 >
                                     <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Done</ThemedText>
                                 </Pressable>
                             </Animated.View>
                         )}
-                    </View>
-                </ActionSheet>
+                    </BottomSheetView>
+                </AppBottomSheet>
 
-                <ActionSheet gestureEnabled ref={statusInfoSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
-                    <View style={[styles.statusSheetContainer, { backgroundColor: screenBackgroundColor }]}>
-                        <View style={styles.sheetHeader}>
-                            <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>Status</ThemedText>
-                        </View>
+                <AppBottomSheet
+                    open={activeSheet === 'statusInfo'}
+                    onClose={() => setActiveSheet(null)}
+                    backgroundColor={screenBackgroundColor}
+                    footerComponent={renderStatusInfoFooter}
+                    snapPoints={[800]}
+                >
+                    <BottomSheetScrollView
+                        style={styles.statusSheetScrollView}
+                        contentContainerStyle={[
+                            styles.statusSheetScrollContent,
+                            { paddingBottom: statusSheetFooterPaddingBottom + 24 },
+                        ]}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={[styles.statusSheetContainer, { backgroundColor: screenBackgroundColor }]}>
+                            <View style={styles.sheetHeader}>
+                                <ThemedText style={[styles.sheetTitle, { color: theme.text }]}>Status</ThemedText>
+                            </View>
 
-                        <ScrollView
-                            style={styles.statusSheetScrollView}
-                            contentContainerStyle={styles.statusSheetScrollContent}
-                            showsVerticalScrollIndicator={false}
-                        >
                             {statusBreakdown.map(({ status, action }) => {
                                 const isCurrentStatus = status === applicationStatus;
 
@@ -1536,37 +1586,12 @@ export default function ApplicationDetailScreen() {
                                     </View>
                                 );
                             })}
-                        </ScrollView>
-
-                        <View
-                            style={[
-                                styles.sheetFooter,
-                                {
-                                    backgroundColor: screenBackgroundColor,
-                                    borderTopColor: dividerColor,
-                                    paddingBottom: Math.max(insets.bottom, 24),
-                                }
-                            ]}
-                        >
-                            <Pressable
-                                style={[
-                                    styles.dismissButton,
-                                    {
-                                        width: '100%',
-                                        backgroundColor: dismissButtonBackground,
-                                        borderColor: dismissButtonBorderColor,
-                                    }
-                                ]}
-                                onPress={() => statusInfoSheetRef.current?.hide()}
-                            >
-                                <ThemedText style={[styles.dismissButtonText, { color: theme.text }]}>Got it</ThemedText>
-                            </Pressable>
                         </View>
-                    </View>
-                </ActionSheet>
+                    </BottomSheetScrollView>
+                </AppBottomSheet>
 
-                <ActionSheet gestureEnabled ref={submissionBlockedSheetRef} containerStyle={{ backgroundColor: screenBackgroundColor }}>
-                    <View style={[styles.sheetContent, styles.blockedSubmissionSheetContent, { backgroundColor: screenBackgroundColor, paddingBottom: Math.max(insets.bottom, 24) }]}>
+                <AppBottomSheet open={activeSheet === 'submissionBlocked'} onClose={() => setActiveSheet(null)} backgroundColor={screenBackgroundColor}>
+                    <BottomSheetView style={[styles.sheetContent, styles.blockedSubmissionSheetContent, { backgroundColor: screenBackgroundColor, paddingBottom: Math.max(insets.bottom, 24) }]}>
                         <LottieView
                             source={require('../../assets/lotties/failed.json')}
                             autoPlay
@@ -1590,12 +1615,12 @@ export default function ApplicationDetailScreen() {
                                     borderColor: primaryActionButtonBackground,
                                 }
                             ]}
-                            onPress={() => submissionBlockedSheetRef.current?.hide()}
+                            onPress={() => setActiveSheet(null)}
                         >
                             <ThemedText style={[styles.dismissButtonText, { color: '#FFFFFF' }]}>Got it</ThemedText>
                         </Pressable>
-                    </View>
-                </ActionSheet>
+                    </BottomSheetView>
+                </AppBottomSheet>
 
 
             </ScrollView>
@@ -1613,11 +1638,11 @@ export default function ApplicationDetailScreen() {
                     ]}
                     disabled={applicationStatus === 'Under Review' || isVerifying}
                     onPress={() => {
-                            if (isEarning) {
-                                if (isAnyNewSubmissionBlocked) {
-                                    showSubmissionBlockedSheet(getSubmissionBlockedMessage({
-                                        campaignStatus: campaign?.status,
-                                        applicationStatus,
+                        if (isEarning) {
+                            if (isAnyNewSubmissionBlocked) {
+                                showSubmissionBlockedSheet(getSubmissionBlockedMessage({
+                                    campaignStatus: campaign?.status,
+                                    applicationStatus,
                                     action: 'general',
                                 }));
                                 return;
@@ -1638,7 +1663,7 @@ export default function ApplicationDetailScreen() {
                             setInstagramLink('');
                             setTikTokLink('');
                             setError('');
-                            submissionSheetRef.current?.show();
+                            setActiveSheet('submission');
                         } else {
                             if (isVideoSubmissionBlocked) {
                                 showSubmissionBlockedSheet(getSubmissionBlockedMessage({
@@ -1650,7 +1675,7 @@ export default function ApplicationDetailScreen() {
                             }
                             setIsReviewed(false);
                             setReviewStep('requirements');
-                            reviewSheetRef.current?.show();
+                            setActiveSheet('review');
                         }
                     }}
                 >
@@ -1994,7 +2019,6 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 24,
     },
     statusSheetContainer: {
-        height: '100%',
         paddingTop: 24,
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 24,
@@ -2017,6 +2041,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
     },
     sheetFooter: {
+        paddingBottom: 48,
         paddingHorizontal: 24,
         paddingTop: 12,
         borderTopWidth: StyleSheet.hairlineWidth,
