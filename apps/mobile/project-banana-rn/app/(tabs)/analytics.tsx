@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
-import { ScrollView, StyleSheet, View, RefreshControl, Dimensions, TextInput, Pressable } from 'react-native';
+import { ScrollView, StyleSheet, View, RefreshControl, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Wallet, ArrowDownWideNarrow, Eye, ThumbsUp, MessageCircle, Share2 } from 'lucide-react-native';
-import { LineChart, useLineChart } from 'react-native-wagmi-charts';
-import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanimated';
+import { LineChart } from 'react-native-wagmi-charts';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActionSheetRef } from 'react-native-actions-sheet';
 import { useQuery } from 'convex/react';
@@ -16,10 +15,6 @@ import { CampaignsAnalyticList } from '@/components/CampaignsAnalyticList';
 import { SelectionSheet } from '@/components/SelectionSheet';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-
-
-
 interface GraphDataPoint {
     timestamp: number;
     value: number;
@@ -28,14 +23,13 @@ interface GraphDataPoint {
 }
 
 const GRAPH_HEIGHT = 120;
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const GRAPH_WIDTH = SCREEN_WIDTH - 64; // (16 * 2 wrapper) + (16 * 2 container) = 64
 
 export default function AnalyticsScreen() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const theme = Colors[colorScheme ?? 'light'];
     const insets = useSafeAreaInsets();
+    const { width: viewportWidth } = useWindowDimensions();
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const panelBackgroundColor = isDark ? '#171717' : '#FBFAF7';
     const panelBorderColor = isDark ? '#303030' : '#E4DED2';
@@ -44,6 +38,7 @@ export default function AnalyticsScreen() {
 
     const [refreshing, setRefreshing] = useState(false);
     const [sortBy, setSortBy] = useState<string>('earnings');
+    const [activeGraphIndex, setActiveGraphIndex] = useState(-1);
     const sortSheetRef = useRef<ActionSheetRef>(null);
 
     const sortOptions = [
@@ -103,6 +98,7 @@ export default function AnalyticsScreen() {
     const graphColor = activeMetric.color;
     const selectedMetricLabel = sortOptions.find((opt) => opt.value === sortBy)?.label ?? 'Earnings';
     const graphHeaderLabel = `Total ${selectedMetricLabel}`;
+    const graphWidth = Math.max(viewportWidth - 64, 0);
 
     const graphData = useMemo<GraphDataPoint[]>(() => {
         const mappedGraphData = (dailyStats ?? []).map((point) => ({
@@ -119,7 +115,41 @@ export default function AnalyticsScreen() {
                 label: '',
             }];
     }, [dailyStats, sortBy]);
+    const graphYRange = useMemo(() => {
+        if (Platform.OS !== 'android') {
+            return undefined;
+        }
+
+        const maxValue = graphData.reduce((highest, point) => Math.max(highest, Number(point.value) || 0), 0);
+        return {
+            min: 0,
+            max: maxValue > 0 ? maxValue * 1.5 : 1,
+        };
+    }, [graphData]);
     const totalLabel = activeMetric.getTotal();
+    const activeGraphValueLabel = useMemo(() => {
+        if (activeGraphIndex < 0 || activeGraphIndex >= graphData.length) {
+            return totalLabel;
+        }
+
+        const currentValue = Math.round(Number(graphData[activeGraphIndex]?.value ?? 0));
+        return activeMetric.showCurrency ? `RM ${currentValue}` : `${currentValue}`;
+    }, [activeGraphIndex, activeMetric.showCurrency, graphData, totalLabel]);
+    const activeGraphDateLabel = useMemo(() => {
+        if (activeGraphIndex < 0 || activeGraphIndex >= graphData.length) {
+            return 'Last 30 Days';
+        }
+
+        const item = graphData[activeGraphIndex];
+        if (!item) {
+            return 'Last 30 Days';
+        }
+
+        const date = new Date(item.timestamp);
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${dayNames[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
+    }, [activeGraphIndex, graphData]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -174,24 +204,37 @@ export default function AnalyticsScreen() {
                     {/* Graph Section */}
                     <View style={styles.graphWrapper}>
                         <View style={[styles.graphContainer, { backgroundColor: panelBackgroundColor, borderColor: panelBorderColor }]}>
-                            <LineChart.Provider data={graphData}>
+                            <LineChart.Provider
+                                data={graphData}
+                                yRange={graphYRange}
+                                onCurrentIndexChange={setActiveGraphIndex}
+                            >
                                 <View >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                         {activeMetric.icon}
-                                        <ThemedText style={{ fontSize: 14, color: isDark ? '#A3A3A3' : '#666', fontFamily: 'GoogleSans_500Medium' }}>
+                                        <ThemedText type='defaultSemiBold' style={{ fontSize: 14, color: isDark ? '#A3A3A3' : '#666', fontFamily: 'GoogleSans_500Medium' }}>
                                             {graphHeaderLabel}
                                         </ThemedText>
                                     </View>
-                                    <InteractiveGraphValue
-                                        key={sortBy}
-                                        totalValue={totalLabel}
-                                        showCurrency={activeMetric.showCurrency}
-                                        color={theme.text}
-                                    />
-                                    <InteractiveGraphDate defaultText="Last 30 Days" color={isDark ? '#A3A3A3' : '#666'} />
+                                    <View>
+                                        <ThemedText
+                                            style={{
+                                                fontSize: 32,
+                                                lineHeight: 40,
+                                                fontFamily: 'GoogleSans_700Bold',
+                                                color: theme.text,
+                                                includeFontPadding: Platform.OS === 'android',
+                                            }}
+                                        >
+                                            {activeGraphValueLabel}
+                                        </ThemedText>
+                                        <ThemedText style={{ fontSize: 14, color: isDark ? '#A3A3A3' : '#666', fontFamily: 'GoogleSans_400Regular', marginTop: 6 }}>
+                                            {activeGraphDateLabel}
+                                        </ThemedText>
+                                    </View>
                                 </View>
 
-                                <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>
+                                <LineChart height={GRAPH_HEIGHT} width={graphWidth}>
                                     <LineChart.Path color={graphColor} width={1} >
                                         <LineChart.Gradient color={graphColor} />
                                     </LineChart.Path>
@@ -273,84 +316,6 @@ export default function AnalyticsScreen() {
                 />
             </View>
         </GestureHandlerRootView>
-    );
-}
-
-// Interactive Components
-function InteractiveGraphValue({ totalValue, showCurrency = false, color }: { totalValue: string, showCurrency?: boolean, color: string }) {
-    const { currentIndex, isActive, data } = useLineChart();
-    const svTotal = useSharedValue(totalValue);
-    React.useEffect(() => {
-        svTotal.value = totalValue;
-    }, [svTotal, totalValue]);
-
-    const animatedProps = useAnimatedProps(() => {
-        if (!isActive.value || currentIndex.value === -1) {
-            return {
-                text: svTotal.value
-            };
-        }
-        if (!data || data.length === 0 || currentIndex.value >= data.length) {
-            return { text: svTotal.value };
-        }
-
-        const item = data[currentIndex.value];
-        if (item && item.value != null) {
-            const val = Math.round(Number(item.value));
-            return {
-                text: showCurrency ? `RM ${val}` : `${val}`
-            };
-        }
-        return { text: svTotal.value };
-    });
-
-    return (
-        <AnimatedTextInput
-            editable={false}
-            underlineColorAndroid="transparent"
-            style={{ fontSize: 32, fontFamily: 'GoogleSans_700Bold', color }}
-            // @ts-ignore
-            animatedProps={animatedProps}
-            defaultValue={totalValue}
-        />
-    );
-}
-
-function InteractiveGraphDate({ defaultText, color }: { defaultText: string, color: string }) {
-    const { currentIndex, isActive, data } = useLineChart();
-
-    const animatedProps = useAnimatedProps(() => {
-        if (!isActive.value || currentIndex.value === -1) {
-            return {
-                text: defaultText
-            };
-        }
-        if (!data || data.length === 0 || currentIndex.value >= data.length) {
-            return { text: defaultText };
-        }
-
-        const item = data[currentIndex.value];
-        if (!item) return { text: defaultText };
-
-        const date = new Date(item.timestamp);
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const dateStr = `${dayNames[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
-
-        return {
-            text: dateStr
-        };
-    });
-
-    return (
-        <AnimatedTextInput
-            editable={false}
-            underlineColorAndroid="transparent"
-            style={{ fontSize: 14, color, fontFamily: 'GoogleSans_400Regular', marginTop: 4 }}
-            // @ts-ignore
-            animatedProps={animatedProps}
-            defaultValue={defaultText}
-        />
     );
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { View, StyleSheet, Image, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Image, Pressable, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ExternalLink } from 'lucide-react-native';
 import { useQuery, useAction } from 'convex/react';
@@ -47,6 +47,10 @@ const formatDate = (timestamp: number) =>
         month: '2-digit',
         year: 'numeric',
     });
+
+const androidLargeTextStyle = Platform.OS === 'android'
+    ? { lineHeight: 30, includeFontPadding: true }
+    : null;
 
 const SkeletonBlock = ({ style }: { style: any }) => {
     const opacity = useSharedValue(0.3);
@@ -203,29 +207,29 @@ export default function CampaignAnalyticsScreen() {
                             style={{ marginBottom: 24 }}
                             frontContent={
                                 totalEarnings > 0 ? (
-                                    <ThemedText style={{ fontSize: 22, color: '#FFFFFF' }}>
+                                    <ThemedText style={[{ fontSize: 22, color: '#FFFFFF' }, androidLargeTextStyle]}>
                                         Your post is earning{' '}
-                                        <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>
+                                        <ThemedText style={[{ color: '#4CAF50', fontSize: 22 }, androidLargeTextStyle]}>
                                             {formatCurrency(totalEarnings)}
                                         </ThemedText>
                                     </ThemedText>
                                 ) : (
-                                    <ThemedText style={{ fontSize: 22, color: '#FFFFFF' }}>
-                                        Your post is <ThemedText style={{ color: '#4CAF50', fontSize: 22 }}>earning</ThemedText> now!
+                                    <ThemedText style={[{ fontSize: 22, color: '#FFFFFF' }, androidLargeTextStyle]}>
+                                        Your post is <ThemedText style={[{ color: '#4CAF50', fontSize: 22 }, androidLargeTextStyle]}>earning</ThemedText> now!
                                     </ThemedText>
                                 )
                             }
                             backContent={
                                 isMaxedOut ? (
-                                    <ThemedText style={{ color: '#FFFFFF', fontSize: 20 }}>
-                                        You have <ThemedText style={{ color: '#FFD700', fontSize: 20 }}>maxed out</ThemedText> this campaign payout.
+                                    <ThemedText style={[{ color: '#FFFFFF', fontSize: 20 }, Platform.OS === 'android' ? { lineHeight: 28, includeFontPadding: true } : null]}>
+                                        You have <ThemedText style={[{ color: '#FFD700', fontSize: 20 }, Platform.OS === 'android' ? { lineHeight: 28, includeFontPadding: true } : null]}>maxed out</ThemedText> this campaign payout.
                                     </ThemedText>
                                 ) : totalEarnings === 0 ? (
-                                    <ThemedText style={{ color: '#FFFFFF', fontSize: 20 }}>
+                                    <ThemedText style={[{ color: '#FFFFFF', fontSize: 20 }, Platform.OS === 'android' ? { lineHeight: 28, includeFontPadding: true } : null]}>
                                         Keep posting consistently, your first payout is coming.
                                     </ThemedText>
                                 ) : (
-                                    <ThemedText style={{ color: '#FFFFFF', fontSize: 20 }}>
+                                    <ThemedText style={[{ color: '#FFFFFF', fontSize: 20 }, Platform.OS === 'android' ? { lineHeight: 28, includeFontPadding: true } : null]}>
                                         {remainingPayout > 0
                                             ? `${formatCurrency(remainingPayout)} left to max payout.`
                                             : 'Great momentum, keep scaling your post performance.'}

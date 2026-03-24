@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import Animated, { useAnimatedProps, useSharedValue } from 'react-native-reanimated';
-import { View, StyleSheet, ScrollView, Pressable, Dimensions, TextInput, Image, Alert, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Image, Alert, Linking, Platform, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Share, MessageCircle, Heart, Eye, Wallet, Calendar, Video } from 'lucide-react-native';
-import { LineChart, useLineChart } from 'react-native-wagmi-charts';
+import { LineChart } from 'react-native-wagmi-charts';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useQuery } from 'convex/react';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -14,8 +13,6 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
-
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 type MetricType = 'views' | 'shares' | 'likes' | 'comments' | 'earnings';
 
@@ -46,8 +43,6 @@ const ICON_MAPPING = {
 };
 
 const GRAPH_HEIGHT = 120;
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const GRAPH_WIDTH = SCREEN_WIDTH - 72;
 
 const formatNumber = (value: number) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
@@ -90,6 +85,7 @@ export default function ApplicationAnalyticsScreen() {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const isDark = colorScheme === 'dark';
+    const { width: viewportWidth } = useWindowDimensions();
     const screenBackgroundColor = isDark ? theme.screenBackground : '#F4F3EE';
     const surfaceColor = isDark ? '#171717' : '#FBFAF7';
     const controlBackgroundColor = isDark ? '#141414' : '#F7F4ED';
@@ -98,6 +94,7 @@ export default function ApplicationAnalyticsScreen() {
     const skeletonColor = isDark ? '#1F1F1F' : '#ECE8DF';
 
     const [selectedMetric, setSelectedMetric] = useState<MetricType>('earnings');
+    const [activeGraphIndex, setActiveGraphIndex] = useState(-1);
     const analyticsEndDate = useMemo(() => getYesterdayDateKeyUtc(), []);
 
     const applicationId = (id as Id<'applications'>) || undefined;
@@ -136,6 +133,40 @@ export default function ApplicationAnalyticsScreen() {
             value: point[selectedMetric],
         }));
     }, [dailyStats, selectedMetric]);
+    const graphWidth = Math.max(viewportWidth - 72, 0);
+    const graphYRange = useMemo(() => {
+        if (Platform.OS !== 'android') {
+            return undefined;
+        }
+
+        const maxValue = graphData.reduce((highest, point) => Math.max(highest, Number(point.value) || 0), 0);
+        return {
+            min: 0,
+            max: maxValue > 0 ? maxValue * 1.5 : 1,
+        };
+    }, [graphData]);
+    const activeGraphValueLabel = useMemo(() => {
+        if (activeGraphIndex < 0 || activeGraphIndex >= graphData.length) {
+            return formatMetricValue(selectedMetric, highLevelMetrics[selectedMetric]);
+        }
+
+        return formatMetricValue(selectedMetric, Number(graphData[activeGraphIndex]?.value ?? 0));
+    }, [activeGraphIndex, graphData, highLevelMetrics, selectedMetric]);
+    const activeGraphDateLabel = useMemo(() => {
+        if (activeGraphIndex < 0 || activeGraphIndex >= graphData.length) {
+            return asOfDateText;
+        }
+
+        const item = graphData[activeGraphIndex];
+        if (!item) {
+            return asOfDateText;
+        }
+
+        const date = new Date(item.timestamp);
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${dayNames[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`;
+    }, [activeGraphIndex, asOfDateText, graphData]);
 
     const xLabels = useMemo(() => {
         if (!graphData.length) return [];
@@ -281,7 +312,11 @@ export default function ApplicationAnalyticsScreen() {
                             </View>
 
                             <View style={[styles.graphContainer, { backgroundColor: surfaceColor, borderColor }]}>
-                                <LineChart.Provider data={graphData}>
+                                <LineChart.Provider
+                                    data={graphData}
+                                    yRange={graphYRange}
+                                    onCurrentIndexChange={setActiveGraphIndex}
+                                >
                                     <View style={{ marginBottom: 20 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                             {(() => {
@@ -292,16 +327,32 @@ export default function ApplicationAnalyticsScreen() {
                                                 {TERMS_MAPPING[selectedMetric]}
                                             </ThemedText>
                                         </View>
-                                        <InteractiveGraphValue
-                                            key={selectedMetric}
-                                            totalValue={formatMetricValue(selectedMetric, highLevelMetrics[selectedMetric])}
-                                            showCurrency={selectedMetric === 'earnings'}
-                                            color={theme.text}
-                                        />
-                                        <InteractiveGraphDate defaultText={asOfDateText} color={isDark ? '#A3A3A3' : '#666'} />
+                                        <View>
+                                            <ThemedText
+                                                style={{
+                                                    fontSize: 32,
+                                                    lineHeight: 40,
+                                                    fontFamily: 'GoogleSans_700Bold',
+                                                    color: theme.text,
+                                                    includeFontPadding: Platform.OS === 'android',
+                                                }}
+                                            >
+                                                {activeGraphValueLabel}
+                                            </ThemedText>
+                                            <ThemedText
+                                                style={{
+                                                    fontSize: 14,
+                                                    color: isDark ? '#A3A3A3' : '#666',
+                                                    fontFamily: 'GoogleSans_400Regular',
+                                                    marginTop: 6,
+                                                }}
+                                            >
+                                                {activeGraphDateLabel}
+                                            </ThemedText>
+                                        </View>
                                     </View>
 
-                                    <LineChart height={GRAPH_HEIGHT} width={GRAPH_WIDTH}>
+                                    <LineChart height={GRAPH_HEIGHT} width={graphWidth}>
                                         <LineChart.Path color="#FF4500" width={1}>
                                             <LineChart.Gradient color="#FF4500" />
                                         </LineChart.Path>
@@ -350,81 +401,6 @@ export default function ApplicationAnalyticsScreen() {
                 </ScrollView>
             </View>
         </GestureHandlerRootView>
-    );
-}
-
-function InteractiveGraphValue({ totalValue, showCurrency = false, color }: { totalValue: string; showCurrency?: boolean; color: string }) {
-    const { currentIndex, isActive, data } = useLineChart();
-    const fallback = useSharedValue(totalValue);
-
-    React.useEffect(() => {
-        fallback.value = totalValue;
-    }, [fallback, totalValue]);
-
-    const animatedProps = useAnimatedProps(() => {
-        if (!isActive.value || currentIndex.value === -1) {
-            return { text: fallback.value };
-        }
-
-        if (!data || data.length === 0 || currentIndex.value >= data.length) {
-            return { text: fallback.value };
-        }
-
-        const item = data[currentIndex.value];
-        if (!item || item.value == null) {
-            return { text: fallback.value };
-        }
-
-        const value = Math.round(Number(item.value));
-        return { text: showCurrency ? `RM ${value}` : `${value}` };
-    });
-
-    return (
-        <AnimatedTextInput
-            editable={false}
-            underlineColorAndroid="transparent"
-            style={[styles.graphValue, { color }]}
-            // @ts-ignore
-            animatedProps={animatedProps}
-            defaultValue={totalValue}
-        />
-    );
-}
-
-function InteractiveGraphDate({ defaultText, color }: { defaultText: string; color: string }) {
-    const { currentIndex, isActive, data } = useLineChart();
-
-    const animatedProps = useAnimatedProps(() => {
-        if (!isActive.value || currentIndex.value === -1) {
-            return { text: defaultText };
-        }
-
-        if (!data || data.length === 0 || currentIndex.value >= data.length) {
-            return { text: defaultText };
-        }
-
-        const item = data[currentIndex.value];
-        if (!item) {
-            return { text: defaultText };
-        }
-
-        const date = new Date(item.timestamp);
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return {
-            text: `${dayNames[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]}`,
-        };
-    });
-
-    return (
-        <AnimatedTextInput
-            editable={false}
-            underlineColorAndroid="transparent"
-            style={[styles.graphDate, { color }]}
-            // @ts-ignore
-            animatedProps={animatedProps}
-            defaultValue={defaultText}
-        />
     );
 }
 
@@ -524,17 +500,6 @@ const styles = StyleSheet.create({
         borderColor: '#E4DED2',
         padding: 16,
         paddingBottom: 0,
-    },
-    graphValue: {
-        fontSize: 32,
-        fontFamily: 'GoogleSans_700Bold',
-        color: '#000',
-    },
-    graphDate: {
-        fontSize: 14,
-        color: '#666',
-        fontFamily: 'GoogleSans_400Regular',
-        marginTop: 4,
     },
     xAxisContainer: {
         width: '100%',

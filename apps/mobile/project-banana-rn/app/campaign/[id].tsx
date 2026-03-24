@@ -99,6 +99,9 @@ export default function CampaignDetailsScreen() {
     const dismissButtonBorderColor = isDark ? '#333333' : '#E1DBCF';
     const dismissButtonTextColor = isDark ? '#ECEDEE' : '#111111';
     const joinButtonBackground = theme.primaryButton;
+    const viewApplicationButtonBackground = isDark ? '#F3F1EA' : '#000000';
+    const viewApplicationButtonTextColor = isDark ? '#111111' : '#FFFFFF';
+    const viewApplicationButtonBorderColor = isDark ? '#F3F1EA' : '#000000';
     const isModalPresentation = segments[0] === 'campaign-modal';
 
     const campaign = useQuery(api.campaigns.getCampaign, { campaignId });
@@ -111,8 +114,18 @@ export default function CampaignDetailsScreen() {
 
     const [isJoining, setIsJoining] = useState(false);
     const [createdApplicationId, setCreatedApplicationId] = useState<Id<"applications"> | null>(null);
-    const [isFavorite, setIsFavorite] = useState(false);
+    // const [isFavorite, setIsFavorite] = useState(false);
     const hasExistingNonEarningApplication = !!nonEarningExistingApplication && nonEarningExistingApplication.status !== "earning";
+    const footerButtonStyle = hasExistingNonEarningApplication
+        ? [
+            styles.viewApplicationButton,
+            {
+                backgroundColor: viewApplicationButtonBackground,
+                borderColor: viewApplicationButtonBorderColor,
+            }
+        ]
+        : { backgroundColor: joinButtonBackground };
+    const footerButtonTextColor = hasExistingNonEarningApplication ? viewApplicationButtonTextColor : '#FFFFFF';
 
     // Resolve cover photo
     const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -682,7 +695,14 @@ export default function CampaignDetailsScreen() {
                             </View>
 
                             <Pressable
-                                style={[styles.joinButton, { backgroundColor: '#000000' }]}
+                                style={[
+                                    styles.joinButton,
+                                    styles.viewApplicationButton,
+                                    {
+                                        backgroundColor: viewApplicationButtonBackground,
+                                        borderColor: viewApplicationButtonBorderColor,
+                                    }
+                                ]}
                                 onPress={() => {
                                     const targetApplicationId = createdApplicationId ?? nonEarningExistingApplication?._id;
                                     successSheetRef.current?.hide();
@@ -691,7 +711,10 @@ export default function CampaignDetailsScreen() {
                                     }
                                 }}
                             >
-                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>View Application</ThemedText>
+                                <View style={styles.joinButtonContent}>
+                                    <ThemedText style={[styles.joinButtonText, { color: viewApplicationButtonTextColor }]}>View Application</ThemedText>
+                                    <ArrowUpRight size={18} color={viewApplicationButtonTextColor} />
+                                </View>
                             </Pressable>
 
                             <Pressable
@@ -725,17 +748,24 @@ export default function CampaignDetailsScreen() {
                             style={[
                                 styles.joinButton,
                                 isJoining && styles.joinButtonDisabled,
-                                { backgroundColor: hasExistingNonEarningApplication ? '#000000' : joinButtonBackground }
+                                footerButtonStyle
                             ]}
                             onPress={handleJoin}
                             disabled={isJoining}
                         >
                             {isJoining ? (
-                                <LoadingIndicator size="small" color="#FFFFFF" />
+                                <LoadingIndicator size="small" color={footerButtonTextColor} />
                             ) : (
-                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>
-                                    {hasExistingNonEarningApplication ? "View Application" : "Join"}
-                                </ThemedText>
+                                hasExistingNonEarningApplication ? (
+                                    <View style={styles.joinButtonContent}>
+                                        <ThemedText style={[styles.joinButtonText, { color: viewApplicationButtonTextColor }]}>
+                                            View Application
+                                        </ThemedText>
+                                        <ArrowUpRight size={18} color={viewApplicationButtonTextColor} />
+                                    </View>
+                                ) : (
+                                    <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>Join</ThemedText>
+                                )
                             )}
                         </Pressable>
                     )}
@@ -1002,12 +1032,14 @@ const styles = StyleSheet.create({
         borderTopColor: '#F0F0F0',
     },
     joinButton: {
-        backgroundColor: '#000000',
         borderRadius: 30,
         paddingVertical: 16,
         paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    viewApplicationButton: {
+        borderWidth: 1,
     },
     joinButtonDisabled: {
         opacity: 0.7,
@@ -1018,9 +1050,14 @@ const styles = StyleSheet.create({
         borderRadius: 30,
     },
     joinButtonText: {
-        color: '#FFFFFF',
         fontSize: 16,
         fontFamily: 'GoogleSans_700Bold',
+    },
+    joinButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
     },
     dismissButton: {
         borderRadius: 30,

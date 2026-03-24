@@ -53,8 +53,12 @@ export function CreatorListItem({
                 </View>
             </View>
 
-            <View style={[styles.arrowContainer, { backgroundColor: isDark ? '#2D230F' : '#FFFBE6', borderColor: isDark ? '#5A4615' : '#FEF3C7' }]}>
-                <ArrowUpRight size={20} color={isDark ? '#FBBF24' : '#000'} />
+            <View style={[styles.arrowContainer, { 
+                backgroundColor: isDark ? '#262626' : '#F5F5F5', 
+                borderColor: isDark ? '#333333' : '#E5E5E5',
+                borderWidth: 1
+            }]}>
+                <ArrowUpRight size={20} color={theme.text} />
             </View>
         </Pressable>
     );
@@ -121,11 +125,8 @@ const styles = StyleSheet.create({
     arrowContainer: {
         width: 40,
         height: 40,
-        backgroundColor: '#FFFBE6', // Light yellow bg from screenshot? Or just white/light gray
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#FEF3C7',
     },
 });

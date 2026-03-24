@@ -182,6 +182,7 @@ export function TransactionDetailsSheet({
 const styles = StyleSheet.create({
     sheetContent: {
         padding: 24,
+        paddingBottom: 12
     },
     sheetTitle: {
         marginBottom: 8,

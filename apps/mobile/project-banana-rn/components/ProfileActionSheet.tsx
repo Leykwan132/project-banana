@@ -230,7 +230,6 @@ const styles = StyleSheet.create({
     },
     name: {
         fontSize: 20,
-        marginBottom: 4,
     },
     email: {
         fontSize: 14,

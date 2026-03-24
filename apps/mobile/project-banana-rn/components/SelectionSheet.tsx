@@ -149,7 +149,6 @@ export function SelectionSheet({
 const styles = StyleSheet.create({
     sheetContent: {
         padding: 24,
-        paddingBottom: 40,
     },
     title: {
         marginBottom: 24,

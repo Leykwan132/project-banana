@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontFamily: 'GoogleSans_700Bold',
     fontSize: 20,
+    lineHeight: 24,
   },
   link: {
     fontFamily: 'GoogleSans_400Regular',
