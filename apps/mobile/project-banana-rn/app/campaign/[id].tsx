@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter, Stack, useSegments } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView, Linking, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote, Tag } from 'lucide-react-native';
+import { ArrowLeft, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote, Tag, ChevronRight } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import Animated, {
@@ -117,12 +117,12 @@ export default function CampaignDetailsScreen() {
         ? [
             styles.viewApplicationButton,
             {
-                backgroundColor: viewApplicationButtonBackground,
-                borderColor: viewApplicationButtonBorderColor,
+                backgroundColor: isDark ? '#262626' : '#F3F4F6',
+                borderColor: isDark ? '#333333' : '#E5E7EB',
             }
         ]
         : { backgroundColor: joinButtonBackground };
-    const footerButtonTextColor = hasExistingNonEarningApplication ? viewApplicationButtonTextColor : '#FFFFFF';
+    const footerButtonTextColor = hasExistingNonEarningApplication ? (isDark ? '#A3A3A3' : '#6B7280') : '#FFFFFF';
 
     // Resolve cover photo
     const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -170,6 +170,32 @@ export default function CampaignDetailsScreen() {
         if (logoUrl !== null) logoOpacity.value = withTiming(1, { duration: 400 });
     }, [logoUrl]);
 
+    // Pulse animation for active application dot
+    const dotPulseScale = useSharedValue(1);
+    const dotPulseOpacity = useSharedValue(0.7);
+    const dotPulseStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: dotPulseScale.value }],
+        opacity: dotPulseOpacity.value,
+    }));
+    useEffect(() => {
+        dotPulseScale.value = withRepeat(
+            withSequence(
+                withTiming(2.5, { duration: 1200 }),
+                withTiming(1, { duration: 0 }),
+            ),
+            -1,
+            false,
+        );
+        dotPulseOpacity.value = withRepeat(
+            withSequence(
+                withTiming(0, { duration: 1200 }),
+                withTiming(0.7, { duration: 0 }),
+            ),
+            -1,
+            false,
+        );
+    }, []);
+
     // Logic for join flow
     const handleJoin = async () => {
         if (hasExistingNonEarningApplication && nonEarningExistingApplication) {
@@ -205,6 +231,7 @@ export default function CampaignDetailsScreen() {
 
     const progress = campaign && campaign.total_budget > 0 ? campaign.budget_claimed / campaign.total_budget : 0;
     const shouldHideCampaignFooterButton =
+        isModalPresentation ||
         campaign?.status === CampaignStatus.Paused ||
         campaign?.status === CampaignStatus.PendingCancellation ||
         campaign?.status === CampaignStatus.Completed ||
@@ -740,29 +767,57 @@ export default function CampaignDetailsScreen() {
                 <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20), backgroundColor: screenBackgroundColor, borderTopColor: dividerColor }]}>
                     {isLoading ? (
                         <SkeletonBlock style={styles.joinButtonSkeleton} />
+                    ) : hasExistingNonEarningApplication ? (
+                        <View
+                            style={[
+                                styles.activeAppBanner,
+                                { backgroundColor: panelBackgroundColor, borderColor, flexDirection: 'column', alignItems: 'stretch' }
+                            ]}
+                        >
+                            <Pressable
+                                style={styles.activeAppBannerRow}
+                                onPress={() => {
+                                    if (nonEarningExistingApplication) {
+                                        router.push(`/application/${nonEarningExistingApplication._id}`);
+                                    }
+                                }}
+                            >
+                                <View style={styles.activeAppBannerLeft}>
+                                    <View style={styles.activeAppDotContainer}>
+                                        <Animated.View style={[styles.activeAppDotPulse, dotPulseStyle]} />
+                                        <View style={styles.activeAppDot} />
+                                    </View>
+                                    <ThemedText style={[styles.activeAppText, { color: isDark ? '#ECEDEE' : '#111111' }]}>
+                                        1 active application
+                                    </ThemedText>
+                                </View>
+                                <ChevronRight size={18} color={isDark ? '#9CA3AF' : '#6B7280'} />
+                            </Pressable>
+                            <Pressable
+                                style={[styles.joinButton, styles.joinButtonDisabled, footerButtonStyle, {
+                                    transform: [{ translateY: 0 }]
+                                }]}
+                                disabled
+                            >
+                                <ThemedText style={[styles.joinButtonText, { color: footerButtonTextColor }]}>
+                                    Joined
+                                </ThemedText>
+                            </Pressable>
+                        </View>
                     ) : (
                         <Pressable
                             style={[
                                 styles.joinButton,
                                 isJoining && styles.joinButtonDisabled,
-                                footerButtonStyle
+                                { backgroundColor: joinButtonBackground }
                             ]}
                             onPress={handleJoin}
                             disabled={isJoining}
                         >
                             {isJoining ? (
-                                <LoadingIndicator size="small" color={footerButtonTextColor} />
+                                <LoadingIndicator size="small" color="#FFFFFF" />
                             ) : (
-                                hasExistingNonEarningApplication ? (
-                                    <View style={styles.joinButtonContent}>
-                                        <ThemedText style={[styles.joinButtonText, { color: viewApplicationButtonTextColor }]}>
-                                            View Application
-                                        </ThemedText>
-                                        <ArrowUpRight size={18} color={viewApplicationButtonTextColor} />
-                                    </View>
-                                ) : (
-                                    <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>Join</ThemedText>
-                                )
+                                <ThemedText style={[styles.joinButtonText, { color: '#FFFFFF' }]}>Join</ThemedText>
                             )}
                         </Pressable>
                     )}
@@ -1048,6 +1103,51 @@ const styles = StyleSheet.create({
     },
     joinButtonDisabled: {
         opacity: 0.7,
+    },
+    activeAppBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderRadius: 30,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        marginBottom: 12,
+        borderWidth: 1,
+    },
+    activeAppBannerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+    },
+    activeAppBannerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    activeAppDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#10B981',
+    },
+    activeAppDotContainer: {
+        width: 8,
+        height: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeAppDotPulse: {
+        position: 'absolute',
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#10B981',
+    },
+    activeAppText: {
+        fontSize: 14,
+        fontFamily: 'GoogleSans_500Medium',
     },
     joinButtonSkeleton: {
         width: '100%',

@@ -16,7 +16,7 @@ interface AppBottomSheetProps extends Omit<BottomSheetModalProps, 'children' | '
     open: boolean;
     onClose: () => void;
     children: ReactNode;
-    snapPoints?: number[];
+    snapPoints?: number[] | string[];
     backgroundColor?: string;
     indicatorColor?: string;
     hideHandle?: boolean;
