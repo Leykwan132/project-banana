@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter, Stack, useSegments } from 'expo-router';
 import { View, StyleSheet, Image, Pressable, ScrollView, Linking, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote } from 'lucide-react-native';
+import { ArrowLeft, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote, Tag } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import Animated, {
@@ -22,7 +22,6 @@ import { CreatorListItem } from '@/components/CreatorListItem';
 import { BillboardMarqueeBanner } from '@/components/BillboardMarqueeBanner';
 import { Timeline, Text, Assets } from 'react-native-ui-lib';
 import LottieView from 'lottie-react-native';
-import { CAMPAIGN_CATEGORIES } from '@/constants/campaignCategories';
 import { AppBottomSheet, BottomSheetView } from '@/components/ui/AppBottomSheet';
 
 import { api } from '../../../../../packages/backend/convex/_generated/api';
@@ -71,7 +70,7 @@ const SkeletonBlock = ({ style }: { style: any }) => {
 
 export default function CampaignDetailsScreen() {
     const [activeSheet, setActiveSheet] = useState<'requirements' | 'payouts' | 'success' | 'category' | 'maxPay' | null>(null);
-    const [selectedCategoryDesc, setSelectedCategoryDesc] = useState<{ label: string; desc: string; icon: any; examples: { label: string; url: string }[] } | null>(null);
+    const [selectedCategoryLabel, setSelectedCategoryLabel] = useState<string | null>(null);
 
     const { id } = useLocalSearchParams();
     const segments = useSegments();
@@ -89,6 +88,9 @@ export default function CampaignDetailsScreen() {
     const dividerColor = isDark ? '#2A2A2A' : '#E7E2D8';
     const chipBackgroundColor = isDark ? '#1A1A1A' : '#F7F4ED';
     const iconChipBackgroundColor = isDark ? '#262626' : '#FFFFFF';
+    const requirementIconBackgroundColor = isDark ? '#202020' : '#F3EEE3';
+    const requirementIconBorderColor = isDark ? '#343434' : '#DDD6C7';
+    const requirementIconColor = isDark ? '#34D399' : '#111111';
     const dismissButtonBackground = isDark ? '#1F1F1F' : '#F1ECE1';
     const dismissButtonBorderColor = isDark ? '#333333' : '#E1DBCF';
     const dismissButtonTextColor = isDark ? '#ECEDEE' : '#111111';
@@ -99,6 +101,7 @@ export default function CampaignDetailsScreen() {
     const isModalPresentation = segments[0] === 'campaign-modal';
 
     const campaign = useQuery(api.campaigns.getCampaign, { campaignId });
+    const campaignCategories = useQuery(api.campaigns.getCampaignCategories);
     const topApps = useQuery(api.applications.getTopApplicationsByCampaign, { campaignId });
     const nonEarningExistingApplication = useQuery(api.applications.getNonEarningApplicationByCampaignId, { campaignId });
     const createApplication = useMutation(api.applications.createApplication);
@@ -207,11 +210,15 @@ export default function CampaignDetailsScreen() {
         campaign?.status === CampaignStatus.Completed ||
         campaign?.status === CampaignStatus.Cancelled;
     const campaignLifecycleBanner = getCampaignLifecycleBanner(campaign?.status, 'campaign');
+    const resolvedCampaignCategories = campaignCategories ?? [];
+    const selectedCategoryDesc = selectedCategoryLabel
+        ? resolvedCampaignCategories.find((category) => category.label === selectedCategoryLabel) ?? null
+        : null;
 
     // Resolve the category configs for this campaign's categories
     const campaignCategoryConfigs = (campaign?.category || []).map(
-        label => CAMPAIGN_CATEGORIES.find(c => c.label === label)
-    ).filter(Boolean) as typeof CAMPAIGN_CATEGORIES;
+        (label) => resolvedCampaignCategories.find((category) => category.label === label)
+    ).filter((category): category is NonNullable<typeof category> => Boolean(category));
 
     return (
         <View style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
@@ -301,17 +308,16 @@ export default function CampaignDetailsScreen() {
                     {campaign && (
                         <View style={styles.categoryRow}>
                             {campaignCategoryConfigs.map((cat) => {
-                                const Icon = cat.icon;
                                 return (
                                     <Pressable
                                         key={cat.id}
                                         style={[styles.categoryChip, { backgroundColor: chipBackgroundColor, borderColor }]}
                                         onPress={() => {
-                                            setSelectedCategoryDesc(cat);
+                                            setSelectedCategoryLabel(cat.label);
                                             setActiveSheet('category');
                                         }}
                                     >
-                                        <Icon size={14} color={isDark ? '#ECEDEE' : '#374151'} />
+                                        <Tag size={14} color={isDark ? '#ECEDEE' : '#374151'} />
                                         <ThemedText style={[styles.categoryChipText, isDark && { color: '#ECEDEE' }]}>{cat.label}</ThemedText>
                                     </Pressable>
                                 );
@@ -455,8 +461,18 @@ export default function CampaignDetailsScreen() {
                             <View style={[styles.requirementsList, { backgroundColor: panelBackgroundColor, borderColor }]}>
                                 {campaign && campaign.requirements.map((req, index) => (
                                     <View key={index} style={styles.requirementItem}>
-                                        <Check size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#000'} strokeWidth={3} />
-                                        <ThemedText style={styles.requirementText}>{req}</ThemedText>
+                                        <View
+                                            style={[
+                                                styles.requirementIconBadge,
+                                                {
+                                                    backgroundColor: requirementIconBackgroundColor,
+                                                    borderColor: requirementIconBorderColor,
+                                                },
+                                            ]}
+                                        >
+                                            <Check size={16} color={requirementIconColor} strokeWidth={3} />
+                                        </View>
+                                        <ThemedText style={[styles.requirementText, colorScheme === 'dark' && { color: '#ECEDEE' }]}>{req}</ThemedText>
                                     </View>
                                 ))}
                             </View>
@@ -534,16 +550,23 @@ export default function CampaignDetailsScreen() {
                             </View>
 
                             {/* Example Videos */}
+                            {selectedCategoryLabel && campaignCategories === undefined && (
+                                <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                    <LoadingIndicator />
+                                    <ThemedText style={{ color: isDark ? '#A3A3A3' : '#6B7280' }}>Loading sample videos...</ThemedText>
+                                </View>
+                            )}
+
                             {(selectedCategoryDesc?.examples?.length ?? 0) > 0 && (
                                 <View style={[styles.requirementsList, { backgroundColor: panelBackgroundColor, borderColor }]}>
-                                    {selectedCategoryDesc!.examples.map((ex, i) => (
+                                    {selectedCategoryDesc!.examples.map((ex, i: number) => (
                                         <Pressable
                                             key={i}
                                             style={styles.requirementItem}
-                                            onPress={() => Linking.openURL(ex.url)}
+                                            onPress={() => Linking.openURL(ex.link)}
                                         >
                                             <Video size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#000'} strokeWidth={2} />
-                                            <ThemedText style={[styles.requirementText, { flex: 1 }]} numberOfLines={1}>{ex.label}</ThemedText>
+                                            <ThemedText style={[styles.requirementText, { flex: 1 }]} numberOfLines={1}>{ex.title}</ThemedText>
                                             <ArrowUpRight size={20} color="#9CA3AF" />
                                         </Pressable>
                                     ))}
@@ -975,6 +998,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 16,
+    },
+    requirementIconBadge: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     requirementText: {
         fontSize: 16,

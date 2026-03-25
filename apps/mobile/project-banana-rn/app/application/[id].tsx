@@ -1445,8 +1445,9 @@ export default function ApplicationDetailScreen() {
                                     <Checkbox
                                         value={isReviewed}
                                         onValueChange={setIsReviewed}
-                                        color={Colors[colorScheme ?? 'light'].tint}
-                                        label="I have reviewed the requirements and am ready to submit for review."
+                                        color={defaultActionButtonBackground}
+                                        iconColor={defaultActionButtonTextColor}
+                                        label="I have reviewed the requirements and ready to submit for review."
                                         labelStyle={[styles.checkboxLabel, { color: theme.text }]}
                                     />
                                 </View>

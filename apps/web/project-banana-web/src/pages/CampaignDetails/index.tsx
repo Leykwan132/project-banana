@@ -15,9 +15,9 @@ import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton, Modal, M
 import { PayoutThresholdModal, RequirementsModal, ScriptsModal, hasRequirements, normalizeRequirements, parseViews } from '../CreateCampaign';
 import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign';
 import Button from '../../components/ui/Button';
-import { CAMPAIGN_CATEGORIES } from '../../lib/campaignCategories';
 import { addToast } from "@heroui/toast";
 import { CampaignStatus } from '../../lib/constants';
+import { getCampaignCategoryVisual } from '../../lib/campaignCategoryVisuals';
 import StatusBadge from '../../components/ui/StatusBadge';
 
 type CampaignAnalyticsMetric = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Amount Spend';
@@ -202,6 +202,7 @@ export default function CampaignDetails() {
 
     const campaign = useQuery(api.campaigns.getCampaign, { campaignId: campaignId as Id<"campaigns"> });
     const business = useQuery(api.businesses.getMyBusiness);
+    const campaignCategories = useQuery(api.campaigns.getCampaignCategories) ?? [];
     const updateCampaign = useMutation(api.campaigns.updateCampaign);
     const updateCampaignStatus = useMutation(api.campaigns.updateCampaignStatus);
     const generateCampaignImageUploadUrl = useAction(api.campaigns.generateCampaignImageUploadUrl);
@@ -839,9 +840,9 @@ export default function CampaignDetails() {
                                     <p className="text-sm text-gray-500 mb-4">Select the content categories for your campaign.</p>
                                 </div>
                                 <div className="flex flex-wrap gap-4">
-                                    {CAMPAIGN_CATEGORIES.map((cat) => {
-                                        const Icon = cat.icon;
+                                    {campaignCategories.map((cat) => {
                                         const isSelected = formik.values.category.includes(cat.label);
+                                        const { icon: CategoryIcon, iconBgClass, iconColorClass } = getCampaignCategoryVisual(cat);
                                         return (
                                             <div
                                                 role="button"
@@ -883,8 +884,8 @@ export default function CampaignDetails() {
                                                     </Popover>
                                                 </div>
 
-                                                <div className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors ${isSelected ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'}`}>
-                                                    <Icon className="w-5 h-5" strokeWidth={2.5} />
+                                                <div className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors ${isSelected ? 'bg-black text-white' : `${iconBgClass} ${iconColorClass}`}`}>
+                                                    <CategoryIcon className="w-5 h-5" strokeWidth={2.5} />
                                                 </div>
                                                 <div className="flex flex-col items-center gap-1">
                                                     <span className={`text-xs font-bold text-center leading-tight ${isSelected ? 'text-black' : 'text-gray-900'}`}>{cat.label}</span>

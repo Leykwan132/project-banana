@@ -10,7 +10,7 @@ import Animated, {
 import { Filter, ArrowUpDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
-import { usePaginatedQuery } from 'convex/react';
+import { usePaginatedQuery, useQuery } from 'convex/react';
 
 import { CampaignListItem } from '@/components/CampaignListItem';
 import { SelectionSheet } from '@/components/SelectionSheet';
@@ -19,8 +19,6 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import { usePostHog } from 'posthog-react-native';
-
-import { CAMPAIGN_CATEGORIES } from '@/constants/campaignCategories';
 
 
 
@@ -76,6 +74,7 @@ export function CampaignList() {
         {},
         { initialNumItems: 20 }
     );
+    const campaignCategories = useQuery(api.campaigns.getCampaignCategories) ?? [];
 
     const isLoading = status === 'LoadingFirstPage';
 
@@ -124,7 +123,7 @@ export function CampaignList() {
         return processedCampaigns.filter(campaign => {
             if (!selectedCategory) return true;
 
-            const categoryLabel = CAMPAIGN_CATEGORIES.find(c => c.id === selectedCategory)?.label;
+            const categoryLabel = campaignCategories.find((category) => category.id === selectedCategory)?.label;
 
             const categories = campaign.category;
             if (Array.isArray(categories)) {
@@ -153,10 +152,10 @@ export function CampaignList() {
 
     const categoryOptionsWithCounts = useMemo(() => {
         const counts = processedCampaigns.reduce((acc, campaign) => {
-            const categoryMatch = CAMPAIGN_CATEGORIES.find(c =>
+            const categoryMatch = campaignCategories.find((category) =>
                 Array.isArray(campaign.category)
-                    ? (campaign.category.includes(c.label) || campaign.category.includes(c.id))
-                    : (campaign.category === c.label || campaign.category === c.id)
+                    ? (campaign.category.includes(category.label) || campaign.category.includes(category.id))
+                    : (campaign.category === category.label || campaign.category === category.id)
             );
 
             if (categoryMatch) {
@@ -165,14 +164,13 @@ export function CampaignList() {
             return acc;
         }, {} as Record<string, number>);
 
-        return CAMPAIGN_CATEGORIES.map(c => ({
-            label: `${c.label} (${counts[c.id] || 0})`,
-            shortLabel: c.label,
-            count: counts[c.id] || 0,
-            value: c.id,
-            icon: c.icon
+        return campaignCategories.map((category) => ({
+            label: `${category.label} (${counts[category.id] || 0})`,
+            shortLabel: category.label,
+            count: counts[category.id] || 0,
+            value: category.id,
         }));
-    }, [processedCampaigns]);
+    }, [campaignCategories, processedCampaigns]);
 
     const selectedCategoryOption = useMemo(
         () => categoryOptionsWithCounts.find((category) => category.value === selectedCategory),
@@ -199,10 +197,6 @@ export function CampaignList() {
                         {selectedCategory && selectedCategoryOption ? (
                             <>
                                 <View style={styles.filterButtonLeading}>
-                                    <selectedCategoryOption.icon
-                                        size={14}
-                                        color={selectedBadgeTextColor}
-                                    />
                                     <ThemedText style={[
                                         styles.filterButtonText,
                                         { color: selectedBadgeTextColor }

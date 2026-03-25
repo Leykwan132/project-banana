@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
-import { Layers, Check, Rocket, ArrowUp, ArrowDown, Plus, Ban } from 'lucide-react';
+import { Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
 import { Skeleton } from "@heroui/skeleton";
 import { addToast } from "@heroui/toast";
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
 import { CampaignStatus } from '../lib/constants';
+import { getCampaignCategoryVisual } from '../lib/campaignCategoryVisuals';
 
 // Empty State Component
 const EmptyState = ({ onCreate, isCreateDisabled = false }: { onCreate: () => void; isCreateDisabled?: boolean }) => (
@@ -202,6 +203,7 @@ export default function Campaigns() {
     const ongoingCampaigns = campaigns.filter((c) =>
         c.status === CampaignStatus.Active || c.status === CampaignStatus.Paused
     ).map((c) => ({
+        ...getCampaignCategoryVisual(Array.isArray(c.category) ? c.category[0] : c.category),
         id: c._id,
         name: c.name,
         submissions: c.submissions || 0,
@@ -210,9 +212,6 @@ export default function Campaigns() {
         rawBudget: c.total_budget || 0,
         rawClaimed: c.budget_claimed || 0,
         status: c.status,
-        icon: Layers, // Default icon for now
-        iconColor: 'text-gray-600',
-        iconBg: 'bg-gray-100',
         createdDate: new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
     }));
 
@@ -221,10 +220,8 @@ export default function Campaigns() {
         || c.status === CampaignStatus.PendingCancellation
         || c.status === CampaignStatus.Cancelled
     ).map((c) => {
-        const isCompleted = c.status === CampaignStatus.Completed;
-        const isPendingCancellation = c.status === CampaignStatus.PendingCancellation;
-
         return {
+            ...getCampaignCategoryVisual(Array.isArray(c.category) ? c.category[0] : c.category),
             id: c._id,
             name: c.name,
             submissions: c.submissions || 0,
@@ -233,9 +230,6 @@ export default function Campaigns() {
             rawBudget: c.total_budget || 0,
             rawClaimed: c.budget_claimed || 0,
             status: c.status,
-            icon: isCompleted ? Check : Ban,
-            iconColor: isCompleted ? 'text-green-600' : isPendingCancellation ? 'text-amber-600' : 'text-red-600',
-            iconBg: isCompleted ? 'bg-green-100' : isPendingCancellation ? 'bg-amber-100' : 'bg-red-100',
             createdDate: new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
         };
     });
@@ -380,7 +374,7 @@ export default function Campaigns() {
                                     className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors cursor-pointer"
                                 >
                                     <div className="col-span-5 flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${campaign.iconBg} ${campaign.iconColor}`}>
+                                        <div className={`p-2 rounded-lg ${campaign.iconBgClass} ${campaign.iconColorClass}`}>
                                             <campaign.icon className="w-5 h-5" />
                                         </div>
                                         <span className="font-semibold text-gray-900">{campaign.name}</span>
@@ -449,7 +443,7 @@ export default function Campaigns() {
                                     className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors cursor-pointer"
                                 >
                                     <div className="col-span-5 flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${campaign.iconBg} ${campaign.iconColor}`}>
+                                        <div className={`p-2 rounded-lg ${campaign.iconBgClass} ${campaign.iconColorClass}`}>
                                             <campaign.icon className="w-5 h-5" />
                                         </div>
                                         <span className="font-semibold text-gray-900">{campaign.name}</span>

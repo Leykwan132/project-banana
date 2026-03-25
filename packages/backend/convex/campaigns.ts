@@ -8,6 +8,7 @@ import { ERROR_CODES } from "./errors";
 import { generateDownloadUrl, generateUploadUrl } from "./r2";
 import {
     ApplicationStatus,
+    CAMPAIGN_CATEGORIES,
     CAMPAIGN_CANCELLATION_GRACE_MS,
     CampaignStatus,
     CreditStatus,
@@ -119,6 +120,32 @@ const assertBothPlatformsAllowed = (planType?: string | null, requiresBothPlatfo
     }
 };
 
+const allowedCampaignCategoryLabelSet = new Set<string>(CAMPAIGN_CATEGORIES.map((category) => category.label));
+
+const sanitizeCampaignCategories = (categories: string[] = []) => {
+    const sanitizedCategories = categories
+        .map((category) => category.trim())
+        .filter(Boolean);
+
+    if (sanitizedCategories.length === 0) {
+        throw new ConvexError({
+            code: ERROR_CODES.INVALID_INPUT.code,
+            message: "Please select at least one category.",
+        });
+    }
+
+    const invalidCategories = sanitizedCategories.filter((category) => !allowedCampaignCategoryLabelSet.has(category));
+
+    if (invalidCategories.length > 0) {
+        throw new ConvexError({
+            code: ERROR_CODES.INVALID_INPUT.code,
+            message: `Invalid campaign category: ${invalidCategories.join(", ")}.`,
+        });
+    }
+
+    return sanitizedCategories;
+};
+
 const assertCampaignLimit = async (
     ctx: any,
     businessId: any,
@@ -177,6 +204,26 @@ export const getCampaign = query({
             pendingApprovals,
         };
     },
+});
+
+export const getCategorySampleContent = query({
+    args: { category: v.string() },
+    handler: async (_ctx, args) => {
+        const category = CAMPAIGN_CATEGORIES.find((campaignCategory) => campaignCategory.label === args.category);
+        if (!category) {
+            return null;
+        }
+
+        return {
+            category: category.label,
+            examples: category.examples,
+        };
+    },
+});
+
+export const getCampaignCategories = query({
+    args: {},
+    handler: async () => CAMPAIGN_CATEGORIES,
 });
 
 export const getCampaignsByBusiness = query({
@@ -308,6 +355,7 @@ export const createCampaign = mutation({
 
         const hashtags = sanitizeCampaignValues(args.hashtags, "hashtags", 3, "#");
         const mentions = sanitizeCampaignValues(args.mentions, "mentions", 2, "@");
+        const category = sanitizeCampaignCategories(args.category);
         assertMentionsAndHashtagsAllowed(business.subscription_plan_type, hashtags, mentions);
         assertBothPlatformsAllowed(business.subscription_plan_type, args.requires_both_platform_posts);
 
@@ -351,7 +399,7 @@ export const createCampaign = mutation({
             created_at: now,
             updated_at: now,
             business_name: args.business_name,
-            category: args.category,
+            category,
         });
 
         // Deduct credits if active
@@ -379,7 +427,7 @@ export const createCampaign = mutation({
                 campaignId: campaignId,
                 name: args.name,
                 total_budget: args.total_budget,
-                category: args.category,
+                category,
                 base_pay: args.base_pay,
                 maximum_payout: args.maximum_payout,
             }
@@ -631,6 +679,7 @@ export const updateCampaign = mutation({
 
         const hashtags = campaign.hashtags ?? [];
         const mentions = campaign.mentions ?? [];
+        const category = sanitizeCampaignCategories(args.category);
         const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
 
         if (args.hashtags !== undefined) {
@@ -712,7 +761,7 @@ export const updateCampaign = mutation({
             cover_photo_url: args.cover_photo_url,
             cover_photo_r2_key: args.cover_photo_r2_key,
             total_budget: args.total_budget,
-            category: args.category,
+            category,
             asset_links: args.asset_links,
             base_pay: args.base_pay,
             maximum_payout: args.maximum_payout,
