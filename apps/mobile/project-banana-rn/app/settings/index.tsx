@@ -13,7 +13,10 @@ import { Colors } from '@/constants/theme';
 import { REPORT_ISSUE_FORM_URL } from '@/constants/support';
 import { useColorScheme, useThemePreference } from '@/hooks/use-color-scheme';
 import { authClient } from '@/lib/auth-client';
-import { registerForPushNotificationsAsync } from '@/utils/registerForPushNotificationsAsync';
+import {
+    arePushNotificationsEnabledOnDevice,
+    registerForPushNotificationsAsync,
+} from '@/utils/registerForPushNotificationsAsync';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
 const SETTINGS_ICON_SIZE = 20;
@@ -49,10 +52,28 @@ export default function SettingsScreen() {
     const pushNotificationPreference = useQuery(api.notifications.getPushNotificationPreference, user ? {} : 'skip');
 
     useEffect(() => {
-        if (pushNotificationPreference) {
-            setNotificationsEnabled(pushNotificationPreference.enabled);
-        }
-    }, [pushNotificationPreference]);
+        let isCancelled = false;
+
+        const syncNotificationsEnabled = async () => {
+            if (!pushNotificationPreference?.enabled) {
+                if (!isCancelled) {
+                    setNotificationsEnabled(false);
+                }
+                return;
+            }
+
+            const isEnabledOnDevice = await arePushNotificationsEnabledOnDevice();
+            if (!isCancelled) {
+                setNotificationsEnabled(isEnabledOnDevice);
+            }
+        };
+
+        void syncNotificationsEnabled();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [pushNotificationPreference?.enabled]);
 
     const handlePrivacyPress = () => {
         router.push('/privacy-policy');
@@ -80,12 +101,6 @@ export default function SettingsScreen() {
         setIsUpdatingNotifications(true);
         try {
             if (nextValue) {
-                if (pushNotificationPreference?.hasToken) {
-                    await unpausePushNotifications({});
-                    setNotificationsEnabled(true);
-                    return;
-                }
-
                 const token = await registerForPushNotificationsAsync({
                     requestPermissions: true,
                 });
@@ -98,8 +113,8 @@ export default function SettingsScreen() {
                     );
                     return;
                 }
-
                 await recordPushNotificationToken({ token });
+                await unpausePushNotifications({});
                 setNotificationsEnabled(true);
                 return;
             }
@@ -114,7 +129,6 @@ export default function SettingsScreen() {
     }, [
         isUpdatingNotifications,
         pausePushNotifications,
-        pushNotificationPreference?.hasToken,
         recordPushNotificationToken,
         unpausePushNotifications,
     ]);

@@ -49,3 +49,12 @@ export async function registerForPushNotificationsAsync(options?: {
         throw new Error("Must use physical device for push notifications");
     }
 }
+
+export async function arePushNotificationsEnabledOnDevice() {
+    if (!Device.isDevice) {
+        return false;
+    }
+
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === "granted";
+}
