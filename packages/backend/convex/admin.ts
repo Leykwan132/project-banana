@@ -123,11 +123,48 @@ export const getPendingSubmissions = query({
     handler: async (ctx, args) => {
         await assertAdmin(ctx);
 
-        return await ctx.db
+        const submissionPage = await ctx.db
             .query("submissions")
             .withIndex("by_status", (q) => q.eq("status", "pending_review"))
             .order("desc")
             .paginate(args.paginationOpts);
+
+        const enrichedPage = await Promise.all(
+            submissionPage.page.map(async (submission) => {
+                const [campaign, creator, user] = await Promise.all([
+                    ctx.db.get(submission.campaign_id),
+                    ctx.db
+                        .query("creators")
+                        .withIndex("by_user", (q) => q.eq("user_id", submission.user_id))
+                        .unique(),
+                    ctx.db
+                        .query("users")
+                        .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", submission.user_id))
+                        .unique(),
+                ]);
+
+                const business = campaign ? await ctx.db.get(campaign.business_id) : null;
+                const creatorLabel =
+                    creator?.username ??
+                    user?.display_username ??
+                    user?.username ??
+                    creator?.name ??
+                    user?.name ??
+                    submission.user_id;
+
+                return {
+                    ...submission,
+                    creator_name: creatorLabel,
+                    business_name: campaign?.business_name ?? business?.name ?? "Unknown Business",
+                    campaign_name: campaign?.name ?? "Unknown Campaign",
+                };
+            })
+        );
+
+        return {
+            ...submissionPage,
+            page: enrichedPage,
+        };
     },
 });
 
@@ -168,11 +205,32 @@ export const getSubmissionWithCampaign = query({
         const sub = await ctx.db.get(args.submissionId);
         if (!sub) return null;
 
-        const campaign = await ctx.db.get(sub.campaign_id);
+        const [campaign, creator, user] = await Promise.all([
+            ctx.db.get(sub.campaign_id),
+            ctx.db
+                .query("creators")
+                .withIndex("by_user", (q) => q.eq("user_id", sub.user_id))
+                .unique(),
+            ctx.db
+                .query("users")
+                .withIndex("by_better_auth_user_id", (q) => q.eq("better_auth_user_id", sub.user_id))
+                .unique(),
+        ]);
+        const business = campaign ? await ctx.db.get(campaign.business_id) : null;
+
         return {
             ...sub,
             campaign_name: campaign?.name ?? "Unknown Campaign",
             campaign_business_id: campaign?.business_id,
+            campaign_business_name: campaign?.business_name ?? business?.name ?? "Unknown Business",
+            campaign_requirements: campaign?.requirements ?? [],
+            creator_name:
+                creator?.username ??
+                user?.display_username ??
+                user?.username ??
+                creator?.name ??
+                user?.name ??
+                sub.user_id,
         };
     },
 });
