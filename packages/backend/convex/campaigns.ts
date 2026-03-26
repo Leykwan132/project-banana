@@ -17,7 +17,8 @@ import {
 import { NotificationCopy, NotificationType } from "./notificationConstants";
 import { posthog } from "./posthog";
 
-const getBusinessPlanType = (planType?: string | null) => (planType ?? "free").toLowerCase();
+const getBusinessPlanType = (planType?: string | null) => (planType ?? "payasyougo").toLowerCase();
+const isPayAsYouGoPlan = (planType?: string | null) => getBusinessPlanType(planType) === "payasyougo";
 
 type SettlePendingCancellationCampaignArgs = {
     campaign: Doc<"campaigns">;
@@ -59,7 +60,7 @@ const getActiveCampaignLimit = (planType?: string | null) => {
         case "unlimited":
             return null;
         case "starter":
-        case "free":
+        case "payasyougo":
         default:
             return 1;
     }
@@ -93,7 +94,7 @@ const areStringArraysEqual = (left: string[] = [], right: string[] = []) =>
     left.length === right.length && left.every((value, index) => value === right[index]);
 
 const assertMentionsAndHashtagsAllowed = (planType?: string | null, hashtags: string[] = [], mentions: string[] = []) => {
-    if (getBusinessPlanType(planType) !== "free") {
+    if (!isPayAsYouGoPlan(planType)) {
         return;
     }
 
@@ -112,7 +113,7 @@ const assertBothPlatformsAllowed = (planType?: string | null, requiresBothPlatfo
         return;
     }
 
-    if (getBusinessPlanType(planType) === "free") {
+    if (isPayAsYouGoPlan(planType)) {
         throw new ConvexError({
             code: ERROR_CODES.PLAN_RESTRICTED_FEATURE.code,
             message: "Upgrade to Starter, Growth, or Unlimited to require both Instagram and TikTok posts.",
@@ -200,7 +201,7 @@ export const getCampaign = query({
             hashtags: campaign.hashtags ?? [],
             mentions: campaign.mentions ?? [],
             requires_both_platform_posts: campaign.requires_both_platform_posts ?? false,
-            business_plan_type: business?.subscription_plan_type ?? "free",
+            business_plan_type: business?.subscription_plan_type ?? "payasyougo",
             pendingApprovals,
         };
     },

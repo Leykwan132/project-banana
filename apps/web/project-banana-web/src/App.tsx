@@ -32,7 +32,7 @@ const pricingFaqs: PricingFaq[] = [
     },
     {
         question: 'Does it cost money to create a campaign?',
-        answer: 'Yes it depends on which plans you are on. The free plan would require a one-time RM100 payment and for each campaign.',
+        answer: 'Yes it depends on which plans you are on. The Pay As You Go plan requires a one-time RM100 payment for each campaign.',
     },
     {
         question: 'Can we change plans later?',

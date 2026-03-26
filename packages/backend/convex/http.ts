@@ -5,18 +5,80 @@ import { registerRoutes } from "@convex-dev/stripe";
 import type Stripe from "stripe";
 import { authComponent, createAuth } from "./auth";
 import { generateWebhookSignature, generateChecksumSHA512 } from "./utils";
+import { PLAN_TYPE_LABELS, type PlanType } from "./constants";
 
 
-const priceIdToPlan: Record<string, string> = {};
+type StripePlanDetails = {
+    dbValue: PlanType;
+};
 
-if (process.env.STRIPE_PRICE_STARTER_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_STARTER_MONTHLY] = "starter";
-if (process.env.STRIPE_PRICE_STARTER_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_STARTER_ANNUAL] = "starter";
-if (process.env.STRIPE_PRICE_GROWTH_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_GROWTH_MONTHLY] = "growth";
-if (process.env.STRIPE_PRICE_GROWTH_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_GROWTH_ANNUAL] = "growth";
-if (process.env.STRIPE_PRICE_PAYG_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_PAYG_MONTHLY] = "free";
-if (process.env.STRIPE_PRICE_PAYG_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_PAYG_ANNUAL] = "free";
-if (process.env.STRIPE_PRICE_UNLIMITED_MONTHLY) priceIdToPlan[process.env.STRIPE_PRICE_UNLIMITED_MONTHLY] = "unlimited";
-if (process.env.STRIPE_PRICE_UNLIMITED_ANNUAL) priceIdToPlan[process.env.STRIPE_PRICE_UNLIMITED_ANNUAL] = "unlimited";
+const priceIdToPlan: Record<string, StripePlanDetails> = {};
+
+const registerPricePlan = (priceId: string | undefined, plan: StripePlanDetails) => {
+    if (!priceId) return;
+    priceIdToPlan[priceId] = plan;
+};
+
+registerPricePlan(process.env.STRIPE_PRICE_STARTER_MONTHLY, { dbValue: "starter" });
+registerPricePlan(process.env.STRIPE_PRICE_STARTER_ANNUAL, { dbValue: "starter" });
+registerPricePlan(process.env.STRIPE_PRICE_GROWTH_MONTHLY, { dbValue: "growth" });
+registerPricePlan(process.env.STRIPE_PRICE_GROWTH_ANNUAL, { dbValue: "growth" });
+registerPricePlan(process.env.STRIPE_PRICE_PAYG_MONTHLY, { dbValue: "payasyougo" });
+registerPricePlan(process.env.STRIPE_PRICE_PAYG_ANNUAL, { dbValue: "payasyougo" });
+registerPricePlan(process.env.STRIPE_PRICE_UNLIMITED_MONTHLY, { dbValue: "unlimited" });
+registerPricePlan(process.env.STRIPE_PRICE_UNLIMITED_ANNUAL, { dbValue: "unlimited" });
+
+const SUBSCRIPTION_REDIRECT_URL = process.env.SITE_URL ? `${process.env.SITE_URL}/subscription` : null;
+
+const shouldSendSubscriptionUpdateEmail = (
+    currentPlanType: string | undefined,
+    nextPlan?: StripePlanDetails,
+) => {
+    if (!nextPlan) {
+        return false;
+    }
+
+    return currentPlanType !== nextPlan.dbValue;
+};
+
+const sendSubscriptionUpdateEmail = async (
+    ctx: any,
+    args: {
+        businessId: string;
+        plan?: StripePlanDetails;
+    },
+) => {
+    if (!args.plan) {
+        console.error(`Unable to send subscription update email for business ${args.businessId}: unknown plan`);
+        return;
+    }
+
+    if (!SUBSCRIPTION_REDIRECT_URL) {
+        console.error(`Unable to send subscription update email for business ${args.businessId}: SITE_URL is not configured`);
+        return;
+    }
+
+    const business = await ctx.runQuery(api.businesses.getBusiness, {
+        businessId: args.businessId as any,
+    });
+
+    if (!business) {
+        console.error(`Unable to send subscription update email: business ${args.businessId} not found`);
+        return;
+    }
+
+    const authUser = await authComponent.getAnyUserById(ctx, business.user_id);
+    if (!authUser?.email) {
+        console.error(`Unable to send subscription update email for business ${args.businessId}: email is not configured`);
+        return;
+    }
+
+    await ctx.runAction((internal as any).emails.sendSubscriptionUpdatesEmail, {
+        email: authUser.email,
+        planType: PLAN_TYPE_LABELS[args.plan.dbValue],
+        redirectUrl: SUBSCRIPTION_REDIRECT_URL,
+    });
+};
 
 const http = httpRouter();
 
@@ -51,7 +113,6 @@ registerRoutes(http, components.stripe, {
                 const amount = amountInCents / 100;
 
                 // Add credits to the business
-                console.log("Adding credits to business:", business._id, amount);
                 await ctx.runMutation(internal.businesses.addCredits, {
                     businessId: business._id,
                     amount,
@@ -78,10 +139,14 @@ registerRoutes(http, components.stripe, {
                 return;
             }
 
+            const existingBusiness = await ctx.runQuery(api.businesses.getBusiness, {
+                businessId: businessId as any,
+            });
+
             await ctx.runMutation(api.stripe.updateStripeSubscriptionStatus, {
                 businessId: businessId,
                 status: status,
-                planType: plan,
+                planType: plan?.dbValue,
                 billingCycle: billingCycle,
                 amount: unitAmount,
             });
@@ -93,7 +158,16 @@ registerRoutes(http, components.stripe, {
             });
             console.log(`Business onboarded: ${businessId}`);
 
-            console.log(`Subscription created: ${subscriptionId}, status: ${status}, plan: ${plan}, cycle: ${billingCycle}`);
+            if (shouldSendSubscriptionUpdateEmail(existingBusiness?.subscription_plan_type, plan)) {
+                await sendSubscriptionUpdateEmail(ctx, {
+                    businessId,
+                    plan,
+                });
+            } else {
+                console.log(`Skipping subscription created email for ${businessId}: plan unchanged (${existingBusiness?.subscription_plan_type ?? "none"} -> ${plan?.dbValue ?? "unknown"})`);
+            }
+
+            console.log(`Subscription created: ${subscriptionId}, status: ${status}, plan: ${plan ? PLAN_TYPE_LABELS[plan.dbValue] : "Unknown"}, dbValue: ${plan?.dbValue ?? "unknown"}, cycle: ${billingCycle}`);
         },
 
         "customer.subscription.updated": async (ctx, event: Stripe.CustomerSubscriptionUpdatedEvent) => {
@@ -106,14 +180,34 @@ registerRoutes(http, components.stripe, {
             const unitAmount = event.data.object.items.data[0].price.unit_amount ? event.data.object.items.data[0].price.unit_amount / 100 : 0;
             const businessId = event.data.object.metadata?.businessId;
 
+            const existingBusiness = businessId
+                ? await ctx.runQuery(api.businesses.getBusiness, {
+                    businessId: businessId as any,
+                })
+                : null;
+
             await ctx.runMutation(api.stripe.updateStripeSubscriptionStatus, {
                 businessId: businessId,
                 status: status,
-                planType: plan,
+                planType: plan?.dbValue,
                 billingCycle: billingCycle,
                 amount: unitAmount,
             });
-            console.log(`Subscription updated: ${businessId}, status: ${status}, plan: ${plan}, cycle: ${billingCycle}`);
+
+            if (businessId) {
+                if (shouldSendSubscriptionUpdateEmail(existingBusiness?.subscription_plan_type, plan)) {
+                    await sendSubscriptionUpdateEmail(ctx, {
+                        businessId,
+                        plan,
+                    });
+                } else {
+                    console.log(`Skipping subscription updated email for ${businessId}: plan unchanged (${existingBusiness?.subscription_plan_type ?? "none"} -> ${plan?.dbValue ?? "unknown"})`);
+                }
+            } else {
+                console.error(`Subscription updated without businessId metadata: ${subscription.id}`);
+            }
+
+            console.log(`Subscription updated: ${businessId}, status: ${status}, plan: ${plan ? PLAN_TYPE_LABELS[plan.dbValue] : "Unknown"}, dbValue: ${plan?.dbValue ?? "unknown"}, cycle: ${billingCycle}`);
         },
 
         "customer.subscription.deleted": async (ctx, event: Stripe.CustomerSubscriptionDeletedEvent) => {

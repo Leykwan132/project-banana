@@ -71,6 +71,15 @@ export const WithdrawalSourceType = {
 
 export type WithdrawalSourceType = (typeof WithdrawalSourceType)[keyof typeof WithdrawalSourceType];
 
+export type PlanType = "payasyougo" | "starter" | "growth" | "unlimited";
+
+export const PLAN_TYPE_LABELS: Record<PlanType, string> = {
+    payasyougo: "Pay As You Go",
+    starter: "Starter",
+    growth: "Growth",
+    unlimited: "Unlimited",
+};
+
 export type CategorySampleExample = {
     title: string;
     link: string;

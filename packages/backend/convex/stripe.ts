@@ -3,32 +3,31 @@ import { components, api } from "./_generated/api";
 import { StripeSubscriptions, } from "@convex-dev/stripe";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
+import { PLAN_TYPE_LABELS, type PlanType } from "./constants";
 
 const stripeClient = new StripeSubscriptions(components.stripe, {});
 
 const SITE_URL = process.env.SITE_URL;
-
-// ============================================================
-// TYPES
-// ============================================================
-
-type PlanType = "starter" | "growth" | "unlimited";
 
 // Plan configuration mapping
 const PLAN_CONFIG: Record<PlanType, {
     name: string;
     campaignLimit: number;
 }> = {
+    payasyougo: {
+        name: PLAN_TYPE_LABELS.payasyougo,
+        campaignLimit: 1,
+    },
     starter: {
-        name: "Starter",
+        name: PLAN_TYPE_LABELS.starter,
         campaignLimit: 1,
     },
     growth: {
-        name: "Growth",
+        name: PLAN_TYPE_LABELS.growth,
         campaignLimit: 5,
     },
     unlimited: {
-        name: "Unlimited",
+        name: PLAN_TYPE_LABELS.unlimited,
         campaignLimit: -1,
     },
 };
@@ -112,7 +111,7 @@ export const updateStripeSubscriptionStatus = mutation({
     args: {
         businessId: v.string(),
         status: v.string(),
-        planType: v.optional(v.string()), // 'starter' | 'growth'
+        planType: v.optional(v.string()), // 'payasyougo' | 'starter' | 'growth' | 'unlimited'
         billingCycle: v.optional(v.string()), // 'month' | 'year'
         amount: v.optional(v.number()),
     },
@@ -128,7 +127,7 @@ export const updateStripeSubscriptionStatus = mutation({
 
         if (args.planType) updates.subscription_plan_type = args.planType;
         if (args.billingCycle) updates.subscription_billing_cycle = args.billingCycle === 'year' ? 'annual' : 'monthly';
-        if (args.amount) updates.subscription_amount = args.amount;
+        if (args.amount !== undefined) updates.subscription_amount = args.amount;
 
         await ctx.db.patch(business._id, updates);
 

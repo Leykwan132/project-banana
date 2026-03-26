@@ -1,7 +1,7 @@
 export type BillingCycle = 'monthly' | 'annual';
 
 export const STRIPE_PRICES = {
-    free: {
+    payasyougo: {
         monthly: import.meta.env.VITE_STRIPE_PRICE_PAYG_MONTHLY ?? '',
         annual: import.meta.env.VITE_STRIPE_PRICE_PAYG_ANNUAL ?? '',
     },

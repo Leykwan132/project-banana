@@ -59,7 +59,7 @@ export default defineSchema({
         stripe_customer_id: v.optional(v.string()),
         stripe_subscription_id: v.optional(v.string()),
         subscription_status: v.optional(v.string()), // "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "incomplete" | "incomplete_expired" | "paused"
-        subscription_plan_type: v.optional(v.string()), // "starter" | "growth"
+        subscription_plan_type: v.optional(v.string()), // "payasyougo" | "starter" | "growth" | "unlimited"
         subscription_billing_cycle: v.optional(v.string()), // "monthly" | "annual"
         subscription_amount: v.optional(v.number()),
         is_onboarded: v.optional(v.boolean()),

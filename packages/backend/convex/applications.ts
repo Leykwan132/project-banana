@@ -453,7 +453,8 @@ export const updateApplicationStatus = mutationWithTriggers({
         }
 
         const business = await ctx.db.get(campaign.business_id);
-        const businessPlanType = (business?.subscription_plan_type ?? "free").toLowerCase();
+        const businessPlanType = (business?.subscription_plan_type ?? "payasyougo").toLowerCase();
+        const isPayAsYouGoPlan = businessPlanType === "payasyougo";
         const requiresBothPlatformPosts = campaign.requires_both_platform_posts ?? false;
         const missingPostDescription = application.missing_post_description as
             | {
@@ -469,12 +470,12 @@ export const updateApplicationStatus = mutationWithTriggers({
             );
         const requiresInstagramLink = isTargetedRelink
             ? missingPostDescription?.instagram?.reuploadRequired === true
-            : (requiresBothPlatformPosts || businessPlanType === "free");
+            : (requiresBothPlatformPosts || isPayAsYouGoPlan);
         const requiresTikTokLink = isTargetedRelink
             ? missingPostDescription?.tiktok?.reuploadRequired === true
             : requiresBothPlatformPosts;
 
-        if (businessPlanType === "free" && args.tiktok_post_url) {
+        if (isPayAsYouGoPlan && args.tiktok_post_url) {
             throw new ConvexError({
                 code: ERROR_CODES.PLAN_RESTRICTED_FEATURE.code,
                 message: "TikTok URL submission is only available on Starter, Growth, or Unlimited plans.",
@@ -498,7 +499,7 @@ export const updateApplicationStatus = mutationWithTriggers({
         if (!requiresInstagramLink && !requiresTikTokLink && !args.ig_post_url && !args.tiktok_post_url) {
             throw new ConvexError({
                 code: ERROR_CODES.INVALID_INPUT.code,
-                message: businessPlanType === "free"
+                message: isPayAsYouGoPlan
                     ? "Please provide your Instagram post URL."
                     : "Please provide at least one post URL (Instagram or TikTok).",
             });

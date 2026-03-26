@@ -929,11 +929,11 @@ export default function CreateCampaign() {
 
     const hasCompanyLogo = !!(business?.logo_url || business?.logo_r2_key || companyLogoPreview);
     const displayedLogoPreview = useCompanyLogo ? (companyLogoPreview ?? logoPreview) : logoPreview;
-    const businessPlanType = (business?.subscription_plan_type ?? 'free').toLowerCase();
-    const isFreePlan = businessPlanType === 'free';
-    const isSocialCopyUnlocked = !isFreePlan;
+    const businessPlanType = (business?.subscription_plan_type ?? 'payasyougo').toLowerCase();
+    const isPayAsYouGoPlan = businessPlanType === 'payasyougo';
+    const isSocialCopyUnlocked = !isPayAsYouGoPlan;
     const campaignBudget = parseFloat(formik.values.totalPayouts) || 0;
-    const launchFee = isFreePlan ? LAUNCH_FEE_AMOUNT : 0;
+    const launchFee = isPayAsYouGoPlan ? LAUNCH_FEE_AMOUNT : 0;
     const totalCharge = campaignBudget + launchFee;
     const estimatedRemainingCredits = (business?.credit_balance ?? 0) - totalCharge;
 
@@ -1696,12 +1696,12 @@ export default function CreateCampaign() {
                                                                 </PopoverTrigger>
                                                                 <PopoverContent className="px-3 py-2 bg-gray-900 border-none shadow-xl rounded-xl max-w-[200px]">
                                                                     <p className="text-xs font-medium text-white text-center">
-                                                                        A 1-time fee charged for every campaign created. It will only be charged for the free plan.
+                                                                        A 1-time fee charged for every campaign created. It will only be charged for the Pay As You Go plan.
                                                                     </p>
                                                                 </PopoverContent>
                                                             </Popover>
                                                         </div>
-                                                        <span className="font-semibold text-gray-900">{isFreePlan ? `RM ${launchFee}` : 'N/A'}</span>
+                                                        <span className="font-semibold text-gray-900">{isPayAsYouGoPlan ? `RM ${launchFee}` : 'N/A'}</span>
                                                     </div>
                                                 </div>
 

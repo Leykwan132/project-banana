@@ -117,9 +117,7 @@ export default function Onboarding() {
             const priceId = getStripePriceId(planType, billingCycle);
 
             if (!priceId) {
-                // If there's no price ID (like the Free plan), we just bypass Stripe checkout for now
-                // and skip to the main dashboard. The backend will treat users without
-                // a Stripe subscription as Free by default.
+                // If there's no price ID, we bypass Stripe checkout and go to the dashboard.
                 window.location.href = '/';
                 return;
             }

@@ -95,13 +95,13 @@ const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
 ];
 
 const getActiveCampaignLimit = (planType?: string | null) => {
-    switch ((planType ?? 'free').toLowerCase()) {
+    switch ((planType ?? 'payasyougo').toLowerCase()) {
         case 'growth':
             return 5;
         case 'unlimited':
             return null;
         case 'starter':
-        case 'free':
+        case 'payasyougo':
         default:
             return 1;
     }

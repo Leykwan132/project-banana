@@ -5,6 +5,7 @@ import { authClient } from '../lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import iconDark from '../assets/icon-dark.svg';
+import { PLAN_TYPE_LABELS } from '../lib/constants';
 
 const navigation = [
     { name: 'Overview', href: '/overview', icon: LayoutDashboard },
@@ -25,11 +26,11 @@ const account = [
 
 const getPlanDisplay = (planType?: string) => {
     switch (planType?.toLowerCase()) {
-        case "starter": return { name: "Starter", limit: 1 };
-        case "growth": return { name: "Growth", limit: 5 };
-        case "unlimited": return { name: "Unlimited", limit: "Unlimited" };
-        case "free":
-        default: return { name: "Pay As You Go", limit: 1 };
+        case "starter": return { name: PLAN_TYPE_LABELS.starter, limit: 1 };
+        case "growth": return { name: PLAN_TYPE_LABELS.growth, limit: 5 };
+        case "unlimited": return { name: PLAN_TYPE_LABELS.unlimited, limit: "Unlimited" };
+        case "payasyougo":
+        default: return { name: PLAN_TYPE_LABELS.payasyougo, limit: 1 };
     }
 };
 

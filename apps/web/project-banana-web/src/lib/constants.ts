@@ -61,5 +61,14 @@ export const BankAccountSourceType = {
 } as const;
 export type BankAccountSourceType = (typeof BankAccountSourceType)[keyof typeof BankAccountSourceType];
 
+export type PlanType = "payasyougo" | "starter" | "growth" | "unlimited";
+
+export const PLAN_TYPE_LABELS: Record<PlanType, string> = {
+    payasyougo: "Pay As You Go",
+    starter: "Starter",
+    growth: "Growth",
+    unlimited: "Unlimited",
+};
+
 export const BUSINESS_INFO_KEY = 'business_info';
 export const CAMPAIGNS_LIST_KEY = 'campaigns_data';

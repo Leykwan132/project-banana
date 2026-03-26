@@ -261,9 +261,10 @@ export const runDailyScrape = internalAction({
                 let hasMissingPostDescription = false;
                 const requiredHashtags = campaign.hashtags ?? [];
                 const requiredMentions = campaign.mentions ?? [];
-                const businessPlanType = (campaign.business_plan_type ?? "free").toLowerCase();
-                const descriptionRequiredHashtags = businessPlanType !== "free" ? requiredHashtags : [];
-                const descriptionRequiredMentions = businessPlanType !== "free" ? requiredMentions : [];
+                const businessPlanType = (campaign.business_plan_type ?? "payasyougo").toLowerCase();
+                const isPayAsYouGoPlan = businessPlanType === "payasyougo";
+                const descriptionRequiredHashtags = !isPayAsYouGoPlan ? requiredHashtags : [];
+                const descriptionRequiredMentions = !isPayAsYouGoPlan ? requiredMentions : [];
 
                 // Scrape IG
                 if (app.ig_post_url) {

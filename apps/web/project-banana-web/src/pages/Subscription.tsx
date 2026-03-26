@@ -4,7 +4,23 @@ import { useAction, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import { addToast, Skeleton } from "@heroui/react";
-import PlanSelector from '../components/PlanSelector';
+import PlanSelector, { type PlanType } from '../components/PlanSelector';
+import { PLAN_TYPE_LABELS } from '../lib/constants';
+
+const getPlanLabel = (planType?: string) => {
+    switch (planType?.toLowerCase()) {
+        case 'payasyougo':
+            return PLAN_TYPE_LABELS.payasyougo;
+        case 'starter':
+            return PLAN_TYPE_LABELS.starter;
+        case 'growth':
+            return PLAN_TYPE_LABELS.growth;
+        case 'unlimited':
+            return PLAN_TYPE_LABELS.unlimited;
+        default:
+            return '';
+    }
+};
 
 export default function Subscription() {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
@@ -42,7 +58,7 @@ export default function Subscription() {
     const hasActiveSubscription = liveSubscriptionStatus?.status === 'active' || liveSubscriptionStatus?.status === 'trialing';
 
     // Helper to get plan details from LOCAL CACHE (Stable)
-    const currentPlanType = subscriptionCache?.planType as 'free' | 'starter' | 'growth' | 'unlimited' | undefined;
+    const currentPlanType = subscriptionCache?.planType as PlanType | undefined;
     const currentBillingCycle = subscriptionCache?.billingCycle as 'monthly' | 'annual' | undefined;
     useEffect(() => {
         if (hasActiveSubscription && currentBillingCycle) {
@@ -117,7 +133,7 @@ export default function Subscription() {
                             <div>
                                 <div className="flex items-center gap-3 mb-6">
                                     <h2 className="text-2xl font-bold">
-                                        {currentPlanType ? currentPlanType.charAt(0).toUpperCase() + currentPlanType.slice(1) : ''} Plan
+                                        {getPlanLabel(currentPlanType)} Plan
                                     </h2>
                                     <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${liveSubscriptionStatus.status === 'active'
                                         ? 'bg-green-500/20 text-green-300'
@@ -189,7 +205,7 @@ export default function Subscription() {
                     billingCycle={billingCycle}
                     onBillingCycleChange={setBillingCycle}
                     hasActiveSubscription={hasActiveSubscription}
-                    currentPlanType={currentPlanType}
+                    currentPlanType={currentPlanType ?? null}
                     currentBillingCycle={currentBillingCycle}
                 />
             </div>

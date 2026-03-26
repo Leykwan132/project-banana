@@ -248,3 +248,21 @@ export const sendWithdrawalPaidEmail = internalAction({
         });
     },
 });
+
+export const sendSubscriptionUpdatesEmail = internalAction({
+    args: {
+        email: v.string(),
+        planType: v.string(),
+        redirectUrl: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await sendTemplateEmail(ctx, {
+            email: args.email,
+            templateId: "subscription-updates",
+            variables: {
+                planType: args.planType,
+                redirectUrl: args.redirectUrl,
+            },
+        });
+    },
+});

@@ -6,7 +6,7 @@ import { getStripePriceId } from '../lib/stripe-prices';
 
 const PLANS = [
     {
-        type: 'free' as const,
+        type: 'payasyougo' as const,
         name: 'Pay As You Go',
         monthlyPrice: 0,
         annualPrice: 0,
@@ -101,7 +101,7 @@ export default function PlanSelector({
         try {
             const priceId = getStripePriceId(planType, billingCycle);
             if (!priceId) {
-                if (planType === 'free') {
+                if (planType === 'payasyougo') {
                     window.location.assign('/');
                 }
                 return;
@@ -197,7 +197,7 @@ export default function PlanSelector({
                                     <span className="text-[40px] leading-none font-bold tracking-tight text-[#1A1F36]">RM {price.toLocaleString()}</span>
                                 </div>
                                 <p className="text-[13px] font-medium text-gray-500/80 leading-snug min-h-[34px]">
-                                    {plan.type === 'free'
+                                    {plan.type === 'payasyougo'
                                         ? 'per campaign'
                                         : billingCycle === 'annual'
                                             ? `per month, RM ${plan.annualPrice.toLocaleString()} billed annually`
