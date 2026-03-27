@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, Stack, useSegments } from 'expo-router';
-import { View, StyleSheet, Image, Pressable, ScrollView, Linking, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Image, Pressable, ScrollView, Linking, useWindowDimensions, type NativeSyntheticEvent, type TextLayoutEventData } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Check, Building, ArrowUpRight, Video, Sparkles, TrendingUp, ClipboardList, Banknote, Tag, ChevronRight } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
@@ -71,6 +71,8 @@ const SkeletonBlock = ({ style }: { style: any }) => {
 export default function CampaignDetailsScreen() {
     const [activeSheet, setActiveSheet] = useState<'requirements' | 'payouts' | 'success' | 'category' | 'maxPay' | null>(null);
     const [selectedCategoryLabel, setSelectedCategoryLabel] = useState<string | null>(null);
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+    const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false);
 
     const { id } = useLocalSearchParams();
     const segments = useSegments();
@@ -170,6 +172,11 @@ export default function CampaignDetailsScreen() {
         if (logoUrl !== null) logoOpacity.value = withTiming(1, { duration: 400 });
     }, [logoUrl]);
 
+    useEffect(() => {
+        setIsDescriptionExpanded(false);
+        setIsDescriptionTruncated(false);
+    }, [campaign?.description, campaignId]);
+
     // Pulse animation for active application dot
     const dotPulseScale = useSharedValue(1);
     const dotPulseOpacity = useSharedValue(0.7);
@@ -230,6 +237,7 @@ export default function CampaignDetailsScreen() {
     }
 
     const progress = campaign && campaign.total_budget > 0 ? campaign.budget_claimed / campaign.total_budget : 0;
+    const campaignDescription = campaign?.description?.trim() ?? '';
     const shouldHideCampaignFooterButton =
         isModalPresentation ||
         campaign?.status === CampaignStatus.Paused ||
@@ -246,6 +254,11 @@ export default function CampaignDetailsScreen() {
     const campaignCategoryConfigs = (campaign?.category || []).map(
         (label) => resolvedCampaignCategories.find((category) => category.label === label)
     ).filter((category): category is NonNullable<typeof category> => Boolean(category));
+
+    const handleDescriptionTextLayout = (event: NativeSyntheticEvent<TextLayoutEventData>) => {
+        const exceedsPreview = event.nativeEvent.lines.length > 3;
+        setIsDescriptionTruncated((current) => current === exceedsPreview ? current : exceedsPreview);
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: screenBackgroundColor }]}>
@@ -392,45 +405,93 @@ export default function CampaignDetailsScreen() {
                         )}
                     </View>
 
-                    {/* Info Cards Grid */}
-                    <View style={styles.cardsGrid}>
-                        {!isLoading && campaign ? (
+                    <View style={styles.section}>
+                        {!isLoading ? (
                             <>
-                                <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => setActiveSheet('requirements')}>
-                                    <View style={[styles.infoIconContainer, { backgroundColor: iconChipBackgroundColor, borderColor }]}>
-                                        <ClipboardList size={20} color="#D32F2F" />
-                                    </View>
-                                    <View>
-                                        <ThemedText style={[styles.infoTitle, isDark && { color: '#ECEDEE' }]}>Requirements</ThemedText>
-                                        <ThemedText style={[styles.infoSubtitle, isDark && { color: '#A3A3A3' }]}>How do i participate?</ThemedText>
-                                    </View>
-                                </Pressable>
+                                <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Campaign Details</ThemedText>
+                                <View style={styles.campaignDetailsSectionContent}>
+                                    {campaignDescription && <Pressable
+                                        style={styles.campaignDetailsContent}
+                                        onPress={() => {
+                                            if (isDescriptionTruncated) {
+                                                setIsDescriptionExpanded((current) => !current);
+                                            }
+                                        }}
+                                        disabled={!campaignDescription || !isDescriptionTruncated}
+                                    >
 
-                                <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => setActiveSheet('payouts')}>
-                                    <View style={[styles.infoIconContainer, { backgroundColor: iconChipBackgroundColor, borderColor }]}>
-                                        <Banknote size={20} color="#D32F2F" />
+                                        <View style={styles.campaignDetailsMeasure}>
+                                            <ThemedText
+                                                style={[styles.campaignDetailsText, isDark && { color: '#ECEDEE' }]}
+                                                onTextLayout={handleDescriptionTextLayout}
+                                            >
+                                                {campaignDescription}
+                                            </ThemedText>
+                                        </View>
+                                        <ThemedText
+                                            style={[
+                                                styles.campaignDetailsText,
+                                                isDark && { color: '#ECEDEE' },
+                                            ]}
+                                            numberOfLines={isDescriptionExpanded ? undefined : 3}
+                                        >
+                                            {campaignDescription}
+                                        </ThemedText>
+                                        {isDescriptionTruncated ? (
+                                            <View style={styles.campaignDetailsToggleRow} pointerEvents="none">
+                                                <View style={[styles.campaignDetailsToggleLine, { backgroundColor: dividerColor }]} />
+                                                <ThemedText style={[styles.campaignDetailsToggleText, { color: isDark ? '#ECEDEE' : '#111111' }]}>
+                                                    {isDescriptionExpanded ? 'Show less' : 'Show all'}
+                                                </ThemedText>
+                                                <View style={[styles.campaignDetailsToggleLine, { backgroundColor: dividerColor }]} />
+                                            </View>
+                                        ) : null}
+                                    </Pressable>}
+
+                                    <View style={styles.cardsGrid}>
+                                        <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => setActiveSheet('requirements')}>
+                                            <View style={[styles.infoIconContainer, { backgroundColor: iconChipBackgroundColor, borderColor }]}>
+                                                <ClipboardList size={20} color="#D32F2F" />
+                                            </View>
+                                            <View>
+                                                <ThemedText style={[styles.infoTitle, isDark && { color: '#ECEDEE' }]}>Requirements</ThemedText>
+                                                <ThemedText style={[styles.infoSubtitle, isDark && { color: '#A3A3A3' }]}>How do i participate?</ThemedText>
+                                            </View>
+                                        </Pressable>
+
+                                        <Pressable style={[styles.infoCard, { backgroundColor: panelBackgroundColor, borderColor }]} onPress={() => setActiveSheet('payouts')}>
+                                            <View style={[styles.infoIconContainer, { backgroundColor: iconChipBackgroundColor, borderColor }]}>
+                                                <Banknote size={20} color="#D32F2F" />
+                                            </View>
+                                            <View>
+                                                <ThemedText style={[styles.infoTitle, isDark && { color: '#ECEDEE' }]}>Payout Rates</ThemedText>
+                                                <ThemedText style={[styles.infoSubtitle, isDark && { color: '#A3A3A3' }]}>How much do i get paid?</ThemedText>
+                                            </View>
+                                        </Pressable>
                                     </View>
-                                    <View>
-                                        <ThemedText style={[styles.infoTitle, isDark && { color: '#ECEDEE' }]}>Payout Rates</ThemedText>
-                                        <ThemedText style={[styles.infoSubtitle, isDark && { color: '#A3A3A3' }]}>How much do i get paid?</ThemedText>
-                                    </View>
-                                </Pressable>
+                                </View>
                             </>
                         ) : (
                             <>
-                                <View style={[styles.infoCard, { gap: 16 }]}>
-                                    <SkeletonBlock style={{ width: 32, height: 32, borderRadius: 16 }} />
-                                    <View style={{ gap: 8 }}>
-                                        <SkeletonBlock style={{ width: 100, height: 20, borderRadius: 4 }} />
-                                        <SkeletonBlock style={{ width: '80%', height: 16, borderRadius: 4 }} />
+                                <SkeletonBlock style={{ width: 150, height: 20, marginBottom: 12, borderRadius: 4 }} />
+                                <SkeletonBlock style={{ width: '100%', height: 16, marginBottom: 8, borderRadius: 4 }} />
+                                <SkeletonBlock style={{ width: '92%', height: 16, marginBottom: 8, borderRadius: 4 }} />
+                                <SkeletonBlock style={{ width: '78%', height: 16, borderRadius: 4 }} />
+                                <View style={styles.cardsGrid}>
+                                    <View style={[styles.infoCard, { gap: 16 }]}>
+                                        <SkeletonBlock style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                        <View style={{ gap: 8 }}>
+                                            <SkeletonBlock style={{ width: 100, height: 20, borderRadius: 4 }} />
+                                            <SkeletonBlock style={{ width: '80%', height: 16, borderRadius: 4 }} />
+                                        </View>
                                     </View>
-                                </View>
 
-                                <View style={[styles.infoCard, { gap: 16 }]}>
-                                    <SkeletonBlock style={{ width: 32, height: 32, borderRadius: 16 }} />
-                                    <View style={{ gap: 8 }}>
-                                        <SkeletonBlock style={{ width: 100, height: 20, borderRadius: 4 }} />
-                                        <SkeletonBlock style={{ width: '80%', height: 16, borderRadius: 4 }} />
+                                    <View style={[styles.infoCard, { gap: 16 }]}>
+                                        <SkeletonBlock style={{ width: 32, height: 32, borderRadius: 16 }} />
+                                        <View style={{ gap: 8 }}>
+                                            <SkeletonBlock style={{ width: 100, height: 20, borderRadius: 4 }} />
+                                            <SkeletonBlock style={{ width: '80%', height: 16, borderRadius: 4 }} />
+                                        </View>
                                     </View>
                                 </View>
                             </>
@@ -758,7 +819,7 @@ export default function CampaignDetailsScreen() {
                     </AppBottomSheet>
 
                     {/* Bottom Padding for Footer */}
-                    <View style={{ height: 100 }} />
+                    <View style={{ height: 400 }} />
                 </ScrollView>
             </View>
 
@@ -978,10 +1039,42 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: 'GoogleSans_400Regular',
     },
+    campaignDetailsContent: {
+        position: 'relative',
+        gap: 8,
+        marginBottom: 12,
+    },
+    campaignDetailsSectionContent: {
+    },
+    campaignDetailsMeasure: {
+        position: 'absolute',
+        opacity: 0,
+        left: 0,
+        right: 0,
+        pointerEvents: 'none',
+    },
+    campaignDetailsText: {
+        fontSize: 15,
+        lineHeight: 24,
+        color: '#111111',
+    },
+    campaignDetailsToggleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    campaignDetailsToggleLine: {
+        width: 44,
+        height: 1,
+    },
+    campaignDetailsToggleText: {
+        fontSize: 14,
+        fontFamily: 'GoogleSans_600SemiBold',
+    },
     cardsGrid: {
         flexDirection: 'row',
         gap: 12,
-        marginBottom: 24,
     },
     infoCard: {
         flex: 1,

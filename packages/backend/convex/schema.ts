@@ -74,6 +74,7 @@ export default defineSchema({
     campaigns: defineTable({
         business_id: v.id("businesses"),
         name: v.string(),
+        description: v.optional(v.string()),
         logo_url: v.optional(v.string()),
         logo_r2_key: v.optional(v.string()),
         use_company_logo: v.optional(v.boolean()),

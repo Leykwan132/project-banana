@@ -12,7 +12,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 
-import { PayoutThresholdModal, RequirementsModal, ScriptsModal, hasRequirements, normalizeRequirements, parseViews } from '../CreateCampaign';
+import { PayoutThresholdModal, RequirementsModal, ScriptsModal, hasRequirements, normalizeCampaignDescription, normalizeRequirements, parseViews } from '../CreateCampaign';
 import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign';
 import Button from '../../components/ui/Button';
 import { addToast } from "@heroui/toast";
@@ -238,6 +238,7 @@ export default function CampaignDetails() {
     // Initial Values State for Formik Reinitialization
     const [initialValues, setInitialValues] = useState({
         name: '',
+        description: '',
         category: [] as string[],
         totalPayouts: '',
         assets: '',
@@ -300,6 +301,7 @@ export default function CampaignDetails() {
 
             setInitialValues({
                 name: campaign.name,
+                description: campaign.description || '',
                 category: campaign.category || [],
                 totalPayouts: campaign.total_budget.toString(),
                 assets: campaign.asset_links || "",
@@ -449,6 +451,7 @@ export default function CampaignDetails() {
             await updateCampaign({
                 campaignId: campaignId as Id<"campaigns">,
                 name: values.name,
+                description: normalizeCampaignDescription(values.description),
                 logo_url: nextLogoUrl,
                 logo_r2_key: nextLogoR2Key,
                 use_company_logo: nextUseCompanyLogo,
@@ -619,6 +622,7 @@ export default function CampaignDetails() {
     const unsavedChangesList = useMemo(() => {
         const changes: { label: string; icon: any }[] = [];
         if (formik.values.name !== initialValues.name) changes.push({ label: 'Campaign Name', icon: Type });
+        if (formik.values.description !== initialValues.description) changes.push({ label: 'Campaign Description', icon: FileText });
         if (JSON.stringify(formik.values.category) !== JSON.stringify(initialValues.category)) changes.push({ label: 'Category', icon: Tag });
 
         // Use loose equality or string casting to avoid number/string mismatch issues
@@ -897,6 +901,20 @@ export default function CampaignDetails() {
                                 {formik.touched.category && formik.errors.category && typeof formik.errors.category === 'string' && (
                                     <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.category}</p>
                                 )}
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="font-semibold text-gray-900 block">Campaign Description</label>
+                                <p className="text-sm text-gray-500 mb-4">Add an optional overview or distribution note for creators.</p>
+                                <textarea
+                                    name="description"
+                                    value={formik.values.description}
+                                    onChange={formik.handleChange}
+                                    onBlur={formik.handleBlur}
+                                    placeholder="Tell creators what this campaign is about..."
+                                    rows={5}
+                                    className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all resize-y min-h-[132px] placeholder:text-gray-400"
+                                />
                             </div>
 
 

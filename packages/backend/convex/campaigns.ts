@@ -319,6 +319,7 @@ export const createCampaign = mutation({
         businessId: v.id("businesses"),
         status: v.string(),
         name: v.string(),
+        description: v.optional(v.string()),
         logo_url: v.optional(v.string()),
         logo_r2_key: v.optional(v.string()),
         cover_photo_url: v.optional(v.string()),
@@ -380,6 +381,7 @@ export const createCampaign = mutation({
         const campaignId = await ctx.db.insert("campaigns", {
             business_id: args.businessId,
             name: args.name,
+            description: args.description,
             logo_url: args.logo_url,
             logo_r2_key: args.logo_r2_key,
             cover_photo_url: args.cover_photo_url,
@@ -639,6 +641,7 @@ export const updateCampaign = mutation({
     args: {
         campaignId: v.id("campaigns"),
         name: v.string(),
+        description: v.optional(v.string()),
         logo_url: v.optional(v.string()),
         logo_r2_key: v.optional(v.string()),
         use_company_logo: v.optional(v.boolean()),
@@ -756,6 +759,7 @@ export const updateCampaign = mutation({
 
         await ctx.db.patch(args.campaignId, {
             name: args.name,
+            description: args.description,
             logo_url: args.logo_url,
             logo_r2_key: args.logo_r2_key,
             use_company_logo: args.use_company_logo,

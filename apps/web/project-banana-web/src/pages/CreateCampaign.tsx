@@ -217,6 +217,7 @@ export const normalizeRequirements = (requirements?: RequirementsData): Requirem
         .filter(Boolean);
 
 export const hasRequirements = (requirements?: RequirementsData) => normalizeRequirements(requirements).length > 0;
+export const normalizeCampaignDescription = (description?: string) => description?.trim() || undefined;
 
 export const RequirementsModal = ({ onClose, onSave, initialData }: {
     onClose: () => void,
@@ -806,6 +807,7 @@ export default function CreateCampaign() {
     const formik = useFormik({
         initialValues: {
             name: '',
+            description: '',
             category: [] as string[],
             totalPayouts: '',
             assets: '',
@@ -846,6 +848,7 @@ export default function CreateCampaign() {
                     business_name: business.name,
                     status: "active",
                     name: values.name,
+                    description: normalizeCampaignDescription(values.description),
                     logo_url: shouldUseCompanyLogo ? business.logo_url : undefined,
                     logo_r2_key: shouldUseCompanyLogo ? business.logo_r2_key : uploadedLogoR2Key,
                     cover_photo_r2_key: uploadedCoverR2Key,
@@ -1182,6 +1185,20 @@ export default function CreateCampaign() {
                         {formik.touched.category && formik.errors.category && typeof formik.errors.category === 'string' && (
                             <p className="text-red-500 text-sm mt-1 font-medium">{formik.errors.category}</p>
                         )}
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="font-semibold text-gray-900 block">Campaign Description</label>
+                        <p className="text-sm text-gray-500 mb-4">Add an optional overview or distribution note for creators.</p>
+                        <textarea
+                            name="description"
+                            placeholder="Tell creators what this campaign is about..."
+                            value={formik.values.description}
+                            onChange={formik.handleChange}
+                            onBlur={formik.handleBlur}
+                            rows={5}
+                            className="w-full bg-[#F4F6F8] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-gray-200 transition-all resize-y min-h-[132px] placeholder:text-gray-400"
+                        />
                     </div>
 
 
