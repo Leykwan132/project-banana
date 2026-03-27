@@ -7,6 +7,7 @@ import { ToastProvider } from "@heroui/toast";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "./lib/auth-client";
 import { PostHogProvider } from '@posthog/react'
+
 import App from './App'
 import Login from './pages/Login'
 import AuthRedirect from './pages/AuthRedirect'
