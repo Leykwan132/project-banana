@@ -4,7 +4,8 @@ import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { toast } from '../../components/ui/Toast';
 import { Building2, Check, ChevronRight, Loader2, MessageSquare, Play, Search, User, X } from 'lucide-react';
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Pagination } from '@heroui/react';
+import { Pagination } from '@heroui/react';
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '../../components/ui/Modal';
 import ReactPlayer from 'react-player';
 
 const ITEMS_PER_PAGE = 20;

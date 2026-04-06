@@ -3,7 +3,8 @@ import { useQuery, usePaginatedQuery, useMutation, useAction } from 'convex/reac
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { ArrowDown, ArrowUp, Check, ChevronRight, Loader2, Search, X } from 'lucide-react';
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Pagination } from '@heroui/react';
+import { Pagination } from '@heroui/react';
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '../../components/ui/Modal';
 import { toast } from '../../components/ui/Toast';
 
 const ITEMS_PER_PAGE = 20;
@@ -338,18 +339,11 @@ export default function AdminBankApprovals() {
                 scrollBehavior="inside"
                 isDismissable={!isSelectedAccountActioning}
                 hideCloseButton={isSelectedAccountActioning}
-                classNames={{
-                    wrapper: 'items-stretch',
-                    base: 'm-0 h-[100dvh] max-w-none rounded-none',
-                    body: 'p-0',
-                    header: 'border-b border-gray-100 px-6 py-5 md:px-8',
-                    footer: 'border-t border-gray-100 px-6 py-4 md:px-8',
-                }}
             >
                 <ModalContent>
                     {(onClose) => (
                         <>
-                            <ModalHeader className="flex items-start justify-between gap-6">
+                            <ModalHeader className="flex items-start justify-between gap-6 border-b border-gray-100 px-6 py-5 md:px-8">
                                 <div>
                                     <p className="text-2xl font-bold text-gray-900">Bank account review</p>
                                     <p className="mt-1 text-sm text-gray-500">
@@ -360,7 +354,7 @@ export default function AdminBankApprovals() {
                                     Pending
                                 </span>
                             </ModalHeader>
-                            <ModalBody>
+                            <ModalBody className="p-0">
                                 <div className="grid min-h-[calc(100dvh-149px)] grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_420px]">
                                     <div className="bg-gray-100 p-6 md:p-8">
                                         <div className="flex h-full min-h-[50vh] items-center justify-center rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -428,7 +422,7 @@ export default function AdminBankApprovals() {
                                     </div>
                                 </div>
                             </ModalBody>
-                            <ModalFooter className="flex items-center justify-end gap-3">
+                            <ModalFooter className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4 md:px-8">
                                 <button
                                     type="button"
                                     onClick={onClose}

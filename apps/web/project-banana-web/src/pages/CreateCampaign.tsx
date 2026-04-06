@@ -8,14 +8,8 @@ import { ChevronLeft, Plus, X, Check, Eye, DollarSign, Wallet, ArrowRight, Info,
 import { ERROR_CODES } from '../../../../../packages/backend/convex/errors';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import {
-    Button as HeroButton,
-    Modal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter
-} from "@heroui/react";
+import { Button as HeroButton } from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal';
 import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
 import { toast } from "../components/ui/Toast";
 import Button from '../components/ui/Button';
@@ -178,7 +172,7 @@ export const PayoutThresholdModal = ({ onClose, onSave, initialData, initialMaxP
                                 t.views && t.amount ? (
                                     <div key={i} className="flex justify-between text-xs text-gray-600">
                                         <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-full bg-gray-300"></div>
+                                            <Eye className="w-3.5 h-3.5 text-gray-400" />
                                             <span>Every {t.views} views</span>
                                         </div>
                                         <span className="font-medium text-gray-900">RM {t.amount}</span>

@@ -10,7 +10,8 @@ import { ArrowUpRight, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, Star, 
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton } from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '../../components/ui/Modal';
 
 import { PayoutThresholdModal, RequirementsModal, ScriptsModal, hasRequirements, normalizeCampaignDescription, normalizeRequirements, parseViews } from '../CreateCampaign';
 import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign';
@@ -1220,7 +1221,7 @@ export default function CampaignDetails() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
                                 <div className="space-y-1">
                                     <label className="font-semibold text-gray-900 block">Hashtags & Mentions</label>
                                     <p className="text-sm text-gray-500 mb-4">Required social copy for creator posts.</p>
@@ -1709,12 +1710,8 @@ export default function CampaignDetails() {
             <Modal
                 isOpen={isPauseModalOpen}
                 onOpenChange={setIsPauseModalOpen}
-                placement="center"
                 hideCloseButton
-                classNames={{
-                    base: "m-0 rounded-3xl max-w-xl w-[90vw] md:w-full",
-                    body: "p-0",
-                }}
+                size="xl"
             >
                 <ModalContent>
                     {(onClose) => (
@@ -1793,12 +1790,8 @@ export default function CampaignDetails() {
             <Modal
                 isOpen={isEndModalOpen}
                 onOpenChange={setIsEndModalOpen}
-                placement="center"
                 hideCloseButton
-                classNames={{
-                    base: "m-0 rounded-3xl max-w-xl w-[90vw] md:w-full",
-                    body: "p-0",
-                }}
+                size="xl"
             >
                 <ModalContent>
                     {(onClose) => {
@@ -1947,12 +1940,8 @@ export default function CampaignDetails() {
             <Modal
                 isOpen={isResumeModalOpen}
                 onOpenChange={setIsResumeModalOpen}
-                placement="center"
                 hideCloseButton
-                classNames={{
-                    base: "m-0 rounded-3xl max-w-xl w-[90vw] md:w-full",
-                    body: "p-0",
-                }}
+                size="xl"
             >
                 <ModalContent>
                     {(onClose) => (

@@ -4,7 +4,8 @@ import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { toast } from '../../components/ui/Toast';
 import { ArrowDown, ArrowUp, Banknote, Building2, Check, Loader2, Search, User, X } from 'lucide-react';
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Pagination } from '@heroui/react';
+import { Pagination } from '@heroui/react';
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '../../components/ui/Modal';
 
 const ITEMS_PER_PAGE = 20;
 type SortKey = 'requester' | 'type' | 'requestedAmount' | 'netAmount' | 'bank' | 'requested';

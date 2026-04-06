@@ -2,13 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAction, useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../components/ui/Toast';
-import {
-    Modal,
-    ModalContent,
-    ModalHeader,
-    ModalBody,
-    ModalFooter
-} from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal';
 import { Banknote, Building2, ChevronLeft, Landmark, Loader2, ShieldCheck, Wallet } from 'lucide-react';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
