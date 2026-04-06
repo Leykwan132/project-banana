@@ -18,6 +18,7 @@ export default function RequestWithdrawal() {
     const business = useQuery(api.businesses.getMyBusiness);
     const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Business });
     const gatewayFee = useQuery(api.payouts.getPayoutGatewayFee) ?? 0;
+    const minWithdrawalAmount = useQuery(api.payouts.getMinWithdrawalAmount) ?? 0;
 
     const requestBusinessWithdrawal = useAction(api.payouts.requestBusinessWithdrawal);
 
@@ -86,6 +87,11 @@ export default function RequestWithdrawal() {
 
         if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
             setWithdrawalError('Enter a valid withdrawal amount.');
+            return;
+        }
+
+        if (minWithdrawalAmount > 0 && parsedAmount < minWithdrawalAmount) {
+            setWithdrawalError(`Minimum withdrawal amount is ${formatCurrency(minWithdrawalAmount)}.`);
             return;
         }
 
@@ -159,13 +165,9 @@ export default function RequestWithdrawal() {
                         <div>
                             <div className="mb-2 flex items-center justify-between">
                                 <label className="block text-sm font-semibold text-gray-900">Amount</label>
-                                <button
-                                    type="button"
-                                    onClick={handleMax}
-                                    className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 transition hover:bg-gray-200"
-                                >
-                                    Max
-                                </button>
+                                <span className="text-xs font-semibold text-gray-500">
+                                    Available: {formatCurrency(availableCredits)}
+                                </span>
                             </div>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">RM</span>
@@ -180,20 +182,36 @@ export default function RequestWithdrawal() {
                                     }}
                                     placeholder="0.00"
                                     disabled={isSubmittingWithdrawal}
-                                    className="w-full bg-[#F9FAFB] border-none rounded-xl pl-12 pr-4 py-4 outline-none focus:ring-2 focus:ring-gray-200 transition-all text-gray-900 font-bold text-xl placeholder:text-gray-300 disabled:opacity-50"
+                                    className="w-full bg-[#F9FAFB] border-none rounded-xl pl-12 pr-16 py-4 outline-none focus:ring-2 focus:ring-gray-200 transition-all text-gray-900 font-bold text-xl placeholder:text-gray-300 disabled:opacity-50"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={handleMax}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 transition hover:bg-gray-300"
+                                >
+                                    Max
+                                </button>
                             </div>
-                            <p className="mt-2 text-xs font-semibold text-gray-500">
-                                Available balance: {formatCurrency(availableCredits)}
-                            </p>
+                            {minWithdrawalAmount > 0 && (
+                                <p className="mt-2 text-xs text-gray-400">
+                                    Min. withdrawal: {formatCurrency(minWithdrawalAmount)}
+                                </p>
+                            )}
                         </div>
 
                         <div>
-                            <label className="mb-3 block text-sm font-semibold text-gray-900">Deposit bank</label>
+                            <div className="mb-3 flex items-center justify-between">
+                                <label className="text-sm font-semibold text-gray-900">Bank account</label>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/bank-accounts')}
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors"
+                                >
+                                    <span className="text-base leading-none">+</span> Add bank account
+                                </button>
+                            </div>
                             {verifiedBankAccounts.length === 0 ? (
-                                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-600">
-                                    No verified bank accounts yet. Submit a bank account in Bank Accounts page and wait for review before requesting a withdrawal.
-                                </div>
+                                <p className="text-sm text-gray-400">No verified bank accounts yet.</p>
                             ) : (
                                 <div className="space-y-3">
                                     {verifiedBankAccounts.map((account) => {
