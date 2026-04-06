@@ -101,8 +101,7 @@ export const getUserWithdrawals = query({
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
             .collect()).filter((withdrawal) => {
-                const sourceType = withdrawal.source_type ?? WithdrawalSourceType.Creator;
-                return sourceType === WithdrawalSourceType.Creator;
+                return withdrawal.source_type !== WithdrawalSourceType.Business;
             });
 
         // Join with bank_accounts to get bank name and account number for display
@@ -111,7 +110,8 @@ export const getUserWithdrawals = query({
                 const bankAccount = await ctx.db.get(w.bank_account_id);
                 return {
                     ...w,
-                    gateway_fee: w.gateway_fee ?? PAYOUT_GATEWAY_FEE,
+                    gateway_fee: w.gateway_fee ?? 0,
+                    platform_fee: w.platform_fee ?? 0,
                     bank_name: bankAccount?.bank_name ?? null,
                     account_number: bankAccount?.account_number ?? null,
                     account_holder_name: bankAccount?.account_holder_name ?? null,
@@ -140,17 +140,17 @@ export const getBusinessWithdrawals = query({
             .query("withdrawals")
             .withIndex("by_user", (q) => q.eq("user_id", user.subject))
             .order("desc")
-            .collect()).filter((withdrawal) => (
-                withdrawal.source_type === WithdrawalSourceType.Business &&
-                withdrawal.business_id === business._id
-            ));
+            .collect()).filter((withdrawal) => {
+                return withdrawal.source_type === WithdrawalSourceType.Business && withdrawal.business_id === business._id;
+            });
 
         return await Promise.all(
             withdrawals.map(async (w) => {
                 const bankAccount = await ctx.db.get(w.bank_account_id);
                 return {
                     ...w,
-                    gateway_fee: w.gateway_fee ?? PAYOUT_GATEWAY_FEE,
+                    gateway_fee: w.gateway_fee ?? 0,
+                    platform_fee: w.platform_fee ?? 0,
                     bank_name: bankAccount?.bank_name ?? null,
                     account_number: bankAccount?.account_number ?? null,
                     account_holder_name: bankAccount?.account_holder_name ?? null,
@@ -248,6 +248,10 @@ function validateWithdrawalAmount(amount: number) {
 
 function calculatePlatformFee(amount: number) {
     return Math.round(amount * PAYOUT_PLATFORM_FEE_RATE * 100) / 100;
+}
+
+function calculateGatewayFee() {
+    return PAYOUT_GATEWAY_FEE;
 }
 
 /**
@@ -489,18 +493,17 @@ export const internalProcessWithdrawal = internalMutation({
         userId: v.string(),
         amount: v.number(),
         gatewayFee: v.number(),
+        platformFee: v.number(),
         bankAccountId: v.id("bank_accounts"),
         billplzPaymentOrderId: v.optional(v.string()),
         businessId: v.optional(v.id("businesses")),
-        sourceType: v.optional(v.string()),
+        sourceType: v.string(),
     },
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
-        const sourceType = args.sourceType ?? WithdrawalSourceType.Creator;
-
-        if (sourceType === WithdrawalSourceType.Business) {
+        if (args.sourceType === WithdrawalSourceType.Business) {
             if (!args.businessId) {
                 throw new Error("Business withdrawal requires a businessId");
             }
@@ -525,6 +528,7 @@ export const internalProcessWithdrawal = internalMutation({
                 bank_account_id: args.bankAccountId,
                 amount: args.amount,
                 gateway_fee: args.gatewayFee,
+                platform_fee: args.platformFee,
                 source_type: WithdrawalSourceType.Business,
                 status: WithdrawalStatus.Pending,
                 created_at: now,
@@ -558,6 +562,7 @@ export const internalProcessWithdrawal = internalMutation({
             bank_account_id: args.bankAccountId,
             amount: args.amount,
             gateway_fee: args.gatewayFee,
+            platform_fee: args.platformFee,
             source_type: WithdrawalSourceType.Creator,
             status: WithdrawalStatus.Pending,
             created_at: now,
@@ -580,12 +585,43 @@ export const requestWithdrawal = action({
     args: {
         amount: v.number(),
         bankAccountId: v.id("bank_accounts"),
+        isBusiness: v.optional(v.boolean()),
     },
     handler: async (ctx, args): Promise<Id<"withdrawals">> => {
         const user = await ctx.auth.getUserIdentity();
         if (!user) throw new Error("User not found");
 
         validateWithdrawalAmount(args.amount);
+
+        if (args.isBusiness) {
+            const business = await ctx.runQuery(api.businesses.getMyBusiness, {});
+            if (!business) {
+                throw new Error("Business not found");
+            }
+
+            await ctx.runQuery(internal.payouts.internalCheckSufficientBusinessBalance, {
+                businessId: business._id,
+                userId: user.subject,
+                amount: args.amount,
+            });
+
+            const bankAccount = await ctx.runQuery(api.bankAccounts.getBankAccount, {
+                bankAccountId: args.bankAccountId,
+                sourceType: WithdrawalSourceType.Business,
+            });
+            if (!bankAccount) throw new Error("Bank account not found");
+            if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");
+
+            return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
+                userId: user.subject,
+                amount: args.amount,
+                gatewayFee: calculateGatewayFee(),
+                platformFee: 0,
+                bankAccountId: args.bankAccountId,
+                businessId: business._id,
+                sourceType: WithdrawalSourceType.Business,
+            });
+        }
 
         // Check balance first
         await ctx.runQuery(internal.payouts.internalCheckSufficientBalance, {
@@ -606,7 +642,8 @@ export const requestWithdrawal = action({
         return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
             userId: user.subject,
             amount: args.amount,
-            gatewayFee: platformFee,
+            gatewayFee: 0,
+            platformFee,
             bankAccountId: args.bankAccountId,
             sourceType: WithdrawalSourceType.Creator,
         });
@@ -619,38 +656,9 @@ export const requestBusinessWithdrawal = action({
         bankAccountId: v.id("bank_accounts"),
     },
     handler: async (ctx, args): Promise<Id<"withdrawals">> => {
-        const user = await ctx.auth.getUserIdentity();
-        if (!user) throw new Error("User not found");
-
-        validateWithdrawalAmount(args.amount);
-
-        const business = await ctx.runQuery(api.businesses.getMyBusiness, {});
-        if (!business) {
-            throw new Error("Business not found");
-        }
-
-        await ctx.runQuery(internal.payouts.internalCheckSufficientBusinessBalance, {
-            businessId: business._id,
-            userId: user.subject,
-            amount: args.amount,
-        });
-
-        const bankAccount = await ctx.runQuery(api.bankAccounts.getBankAccount, {
-            bankAccountId: args.bankAccountId,
-            sourceType: WithdrawalSourceType.Business,
-        });
-        if (!bankAccount) throw new Error("Bank account not found");
-        if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");
-
-        const platformFee = calculatePlatformFee(args.amount);
-
-        return await ctx.runMutation(internal.payouts.internalProcessWithdrawal, {
-            userId: user.subject,
-            amount: args.amount,
-            gatewayFee: platformFee,
-            bankAccountId: args.bankAccountId,
-            businessId: business._id,
-            sourceType: WithdrawalSourceType.Business,
+        return await ctx.runAction(api.payouts.requestWithdrawal, {
+            ...args,
+            isBusiness: true,
         });
     },
 });
@@ -751,7 +759,11 @@ export const processPaymentOrderCallback = internalMutation({
         const now = Date.now();
         const bankAccount = await ctx.db.get(withdrawal.bank_account_id);
         const endingDigits = bankAccount?.account_number.slice(-4) ?? "0000";
-        const netAmount = Math.max(withdrawal.amount - (withdrawal.gateway_fee ?? PAYOUT_GATEWAY_FEE), 0);
+        const sourceType = withdrawal.source_type;
+        const netAmount = Math.max(
+            withdrawal.amount - (withdrawal.gateway_fee ?? 0) - (withdrawal.platform_fee ?? 0),
+            0,
+        );
         const formattedRequestedAmount = `RM ${withdrawal.amount.toFixed(2)}`;
         const formattedNetAmount = `RM ${netAmount.toFixed(2)}`;
 
@@ -761,7 +773,7 @@ export const processPaymentOrderCallback = internalMutation({
             });
             console.log(`Withdrawal ${withdrawal._id} marked as completed`);
 
-            if (withdrawal.source_type === WithdrawalSourceType.Business) {
+            if (sourceType === WithdrawalSourceType.Business) {
                 await notificationPool.enqueueAction(ctx, internal.notifications.dispatchBusinessWithdrawalPaidEmail, {
                     userId: withdrawal.user_id,
                     amount: formattedRequestedAmount,
@@ -783,7 +795,7 @@ export const processPaymentOrderCallback = internalMutation({
                 }, { retry: false });
             }
         } else if (args.status === WithdrawalStatus.Refunded) {
-            if (withdrawal.source_type === WithdrawalSourceType.Business && withdrawal.business_id) {
+            if (sourceType === WithdrawalSourceType.Business && withdrawal.business_id) {
                 const business = await ctx.db.get(withdrawal.business_id);
                 if (business) {
                     await ctx.db.patch(business._id, {

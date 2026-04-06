@@ -24,22 +24,33 @@ import { TransactionDetailsSheet, DetailItem } from '@/components/TransactionDet
 import { ApplicationStatus } from '@/components/ApplicationStatusBadge';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 
-interface Transaction {
+interface BaseTransaction {
     id: string;
     type: 'payout' | 'withdrawal';
     campaignName: string;
-    companyName?: string;
     date: string;
-    amount: string;
-    totalPayoutAmount?: number;
-    basePayAmount?: number;
-    performanceBreakdownAmount?: number;
-    rawAmount?: number;      // original requested withdrawal amount (for fee breakdown)
-    gatewayFee?: number;     // total fee stored on the withdrawal record
+    displayAmount: string;
     status?: ApplicationStatus;
+}
+
+interface WithdrawalTransaction extends BaseTransaction {
+    type: 'withdrawal';
+    requestedAmount: number;
+    feeAmount: number;
+    receivedAmount: number;
     bankName?: string;
     accountNumber?: string;
 }
+
+interface PayoutTransaction extends BaseTransaction {
+    type: 'payout';
+    companyName?: string;
+    payoutAmount: number;
+    basePayAmount: number;
+    performanceBreakdownAmount: number;
+}
+
+type Transaction = WithdrawalTransaction | PayoutTransaction;
 
 
 const TransactionItemSkeleton = () => {
@@ -86,7 +97,7 @@ export default function WithdrawalsScreen() {
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [selectedSegmentedControlIndex, setSelectedSegmentedControlIndex] = useState(0);
     const [isSegmentSwitchLoading, setIsSegmentSwitchLoading] = useState(false);
-    const [celebrationTransaction, setCelebrationTransaction] = useState<Transaction | null>(null);
+    const [celebrationTransaction, setCelebrationTransaction] = useState<WithdrawalTransaction | null>(null);
     const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
     const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
     const handledCelebrationId = useRef<string | null>(null);
@@ -151,23 +162,24 @@ export default function WithdrawalsScreen() {
         return `${masked}${lastFour}`;
     };
     // Format withdrawals for display
-    const formattedWithdrawals: Transaction[] = useMemo(() => {
+    const formattedWithdrawals: WithdrawalTransaction[] = useMemo(() => {
         if (!withdrawalsData) return [];
         return withdrawalsData.map((withdrawal) => ({
             id: withdrawal._id,
             type: 'withdrawal' as const,
             campaignName: withdrawal.bank_name ?? 'Withdrawal',
             date: formatDate(withdrawal.created_at),
-            amount: formatAmount(withdrawal.amount, false),
-            rawAmount: withdrawal.amount,
-            gatewayFee: withdrawal.gateway_fee,
+            displayAmount: formatAmount(withdrawal.amount, false),
+            requestedAmount: withdrawal.amount,
+            feeAmount: (withdrawal.platform_fee ?? 0) + (withdrawal.gateway_fee ?? 0),
+            receivedAmount: Math.max(withdrawal.amount - (withdrawal.platform_fee ?? 0) - (withdrawal.gateway_fee ?? 0), 0),
             status: (withdrawal.status.charAt(0).toUpperCase() + withdrawal.status.slice(1)) as ApplicationStatus,
             bankName: withdrawal.bank_name ?? undefined,
             accountNumber: withdrawal.account_number ?? undefined,
         }));
     }, [withdrawalsData]);
 
-    const formattedPayouts: Transaction[] = useMemo(() => {
+    const formattedPayouts: PayoutTransaction[] = useMemo(() => {
         if (!payoutsData) return [];
         return payoutsData.map((payout) => ({
             id: payout._id,
@@ -175,8 +187,8 @@ export default function WithdrawalsScreen() {
             campaignName: payout.campaign_name ?? 'Payout',
             companyName: payout.company_name ?? undefined,
             date: formatDate(payout.updated_at ?? payout.created_at),
-            amount: formatAmount(payout.amount, true),
-            totalPayoutAmount: payout.amount,
+            displayAmount: formatAmount(payout.amount, true),
+            payoutAmount: payout.amount,
             basePayAmount: payout.base_pay_amount ?? 0,
             performanceBreakdownAmount: payout.performance_breakdown_amount ?? 0,
             status: 'Paid' as ApplicationStatus,
@@ -290,9 +302,9 @@ export default function WithdrawalsScreen() {
                 transactionType={item.type}
                 campaignName={item.campaignName}
                 subtitle={item.type === 'payout' ? item.companyName : item.accountNumber}
-                accountNumber={item.accountNumber}
+                accountNumber={item.type === 'withdrawal' ? item.accountNumber : undefined}
                 date={item.date}
-                amount={item.amount}
+                amount={item.displayAmount}
                 status={item.status}
                 onPress={() => handleItemPress(item)}
             />
@@ -302,9 +314,9 @@ export default function WithdrawalsScreen() {
     const renderCustomWithdrawalContent = () => {
         if (!selectedTransaction || selectedTransaction.type !== 'withdrawal') return null;
 
-        const requested = selectedTransaction.rawAmount ?? 0;
-        const actualFee = selectedTransaction.gatewayFee ?? 0;
-        const received = Math.max(0, requested - actualFee);
+        const requested = selectedTransaction.requestedAmount;
+        const feeAmount = selectedTransaction.feeAmount;
+        const received = selectedTransaction.receivedAmount;
         const isPendingOrProcessing = ['Pending', 'Processing'].includes(selectedTransaction.status || '');
 
         return (
@@ -354,8 +366,8 @@ export default function WithdrawalsScreen() {
                     <ThemedText type="defaultSemiBold">RM {requested.toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.reviewRow}>
-                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Platform Fee (incl. payment gateway)</ThemedText>
-                    <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {actualFee.toFixed(2)}</ThemedText>
+                    <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Platform Fee</ThemedText>
+                    <ThemedText type="defaultSemiBold" style={{ color: '#D32F2F' }}>- RM {feeAmount.toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.reviewRow}>
                     <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Amount Sent</ThemedText>
@@ -391,18 +403,18 @@ export default function WithdrawalsScreen() {
 
                 <View style={styles.reviewRow}>
                     <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Base pay</ThemedText>
-                    <ThemedText type="defaultSemiBold">{formatDetailAmount(selectedTransaction.basePayAmount ?? 0)}</ThemedText>
+                    <ThemedText type="defaultSemiBold">{formatDetailAmount(selectedTransaction.basePayAmount)}</ThemedText>
                 </View>
 
                 <View style={styles.reviewRow}>
                     <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Performance breakdown</ThemedText>
-                    <ThemedText type="defaultSemiBold">{formatDetailAmount(selectedTransaction.performanceBreakdownAmount ?? 0)}</ThemedText>
+                    <ThemedText type="defaultSemiBold">{formatDetailAmount(selectedTransaction.performanceBreakdownAmount)}</ThemedText>
                 </View>
 
                 <View style={styles.reviewRow}>
                     <ThemedText style={[styles.reviewLabel, { color: isDark ? '#A3A3A3' : '#666666' }]}>Total payout</ThemedText>
                     <ThemedText type="defaultSemiBold" style={{ color: '#22C55E', fontSize: 18 }}>
-                        {formatDetailAmount(selectedTransaction.totalPayoutAmount ?? 0)}
+                        {formatDetailAmount(selectedTransaction.payoutAmount)}
                     </ThemedText>
                 </View>
             </View>
@@ -419,15 +431,15 @@ export default function WithdrawalsScreen() {
         details.push({ label: 'Campaign', value: selectedTransaction.campaignName });
         details.push({
             label: 'Base pay',
-            value: formatDetailAmount(selectedTransaction.basePayAmount ?? 0),
+            value: formatDetailAmount(selectedTransaction.basePayAmount),
         });
         details.push({
             label: 'Performance breakdown',
-            value: formatDetailAmount(selectedTransaction.performanceBreakdownAmount ?? 0),
+            value: formatDetailAmount(selectedTransaction.performanceBreakdownAmount),
         });
         details.push({
             label: 'Total payout',
-            value: formatDetailAmount(selectedTransaction.totalPayoutAmount ?? 0),
+            value: formatDetailAmount(selectedTransaction.payoutAmount),
             valueStyle: { color: '#22C55E' },
         });
 
@@ -435,7 +447,7 @@ export default function WithdrawalsScreen() {
     }, [selectedTransaction]);
 
     const celebrationAmount = celebrationTransaction
-        ? formatCurrencyAmount(Math.max((celebrationTransaction.rawAmount ?? 0) - (celebrationTransaction.gatewayFee ?? 0), 0))
+        ? formatCurrencyAmount(celebrationTransaction.receivedAmount)
         : 'RM 0.00';
 
     return (

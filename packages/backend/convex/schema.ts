@@ -259,7 +259,8 @@ export default defineSchema({
         bank_account_id: v.id("bank_accounts"), // optional for backwards compat with legacy records
         amount: v.number(),
         gateway_fee: v.number(), // Recorded at the time of withdrawal
-        source_type: v.optional(v.string()), // "creator" | "business"
+        platform_fee: v.optional(v.number()), // Recorded at the time of withdrawal
+        source_type: v.string(), // "creator" | "business"
         status: v.string(), // "pending" | "processing" | "completed" | "failed"
         billplz_payment_order_id: v.optional(v.string()),
         created_at: v.number(),

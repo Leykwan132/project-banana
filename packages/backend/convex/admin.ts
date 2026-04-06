@@ -246,7 +246,7 @@ export const getWithdrawalForApproval = internalQuery({
             return null;
         }
 
-        const sourceType = withdrawal.source_type ?? WithdrawalSourceType.Creator;
+        const sourceType = withdrawal.source_type;
         const bankAccount = await ctx.db.get(withdrawal.bank_account_id);
         let requesterName = withdrawal.user_id;
 
@@ -469,7 +469,7 @@ export const getPendingWithdrawals = query({
         return {
             ...result,
             page: await Promise.all(result.page.map(async (withdrawal) => {
-                const sourceType = withdrawal.source_type ?? WithdrawalSourceType.Creator;
+                const sourceType = withdrawal.source_type;
                 const bankAccount = await ctx.db.get(withdrawal.bank_account_id);
                 let requester_label = withdrawal.user_id;
 
@@ -489,6 +489,8 @@ export const getPendingWithdrawals = query({
                     bank_name: bankAccount?.bank_name ?? null,
                     account_holder_name: bankAccount?.account_holder_name ?? null,
                     account_number: bankAccount?.account_number ?? null,
+                    gateway_fee: withdrawal.gateway_fee ?? 0,
+                    platform_fee: withdrawal.platform_fee ?? 0,
                     source_type: sourceType,
                     requester_label,
                 };
@@ -538,14 +540,18 @@ export const approveWithdrawal = action({
 
         const bankCode = bankAccount.bank_code || "";
         const accountHolderName = bankAccount.account_holder_name || requesterName;
-        const amountAfterFee = withdrawal.amount - withdrawal.gateway_fee;
+        const sourceType = withdrawal.source_type;
+        const amountAfterFee = Math.max(
+            withdrawal.amount - (withdrawal.gateway_fee ?? 0) - (withdrawal.platform_fee ?? 0),
+            0,
+        );
         const totalCents = Math.round(Math.max(amountAfterFee, 0) * 100);
 
         const paymentOrder = await createBillplzPaymentOrder({
             bankCode,
             bankAccountNumber: bankAccount.account_number,
             name: accountHolderName,
-            description: withdrawal.source_type === WithdrawalSourceType.Business
+            description: sourceType === WithdrawalSourceType.Business
                 ? `Business withdrawal for ${requesterName}`
                 : `Payout for ${requesterName}`,
             total: totalCents,

@@ -209,7 +209,7 @@ export default function WithdrawScreen() {
                     ) : null}
                     <View style={[styles.feeNotice, { backgroundColor: isDark ? '#2D230F' : '#F7F0E2' }]}>
                         <ThemedText style={[styles.feeNoticeText, { color: isDark ? '#FBBF24' : '#F57F17' }]}>
-                            A {(platformFeeRate * 100).toFixed(0)}% withdrawal fee will be imposed.
+                            A {(platformFeeRate * 100).toFixed(0)}% platform fee will be imposed.
                         </ThemedText>
                     </View>
                 </View>

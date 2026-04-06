@@ -1,9 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { api } from "./_generated/api";
 import { ErrorType } from "./errors";
-import { PAYOUT_GATEWAY_FEE } from "./constants";
 
 // ============================================================
 // QUERIES
@@ -67,50 +66,4 @@ export const getBalance = query({
         const totalEarnings = creator?.total_earnings ?? 0;
         return totalEarnings - totalWithdrawn;
     }
-});
-
-// ============================================================
-// MUTATIONS
-// ============================================================
-
-export const createWithdrawal = mutation({
-    args: {
-        amount: v.number(),
-        bankAccountId: v.id("bank_accounts"),
-    },
-    handler: async (ctx, args) => {
-        const user = await ctx.auth.getUserIdentity();
-
-        if (!user) throw new Error("User not found");
-
-        // Check balance
-        const withdrawals = await ctx.db
-            .query("withdrawals")
-            .withIndex("by_user", (q) => q.eq("user_id", user.subject))
-            .collect();
-
-        const totalWithdrawn = withdrawals.reduce((sum, w) => {
-            if (w.status !== "failed" && w.status !== "rejected") {
-                return sum + w.amount;
-            }
-            return sum;
-        }, 0);
-
-        const creator: any = await ctx.runQuery(api.creators.getCreatorByUserId, { userId: user.subject });
-        const currentBalance = (creator?.total_earnings ?? 0) - totalWithdrawn;
-
-        if (args.amount > currentBalance) {
-            throw new Error("Insufficient balance");
-        }
-
-        const now = Date.now();
-        await ctx.db.insert("withdrawals", {
-            user_id: user.subject,
-            bank_account_id: args.bankAccountId,
-            amount: args.amount,
-            gateway_fee: PAYOUT_GATEWAY_FEE,
-            status: "processing",
-            created_at: now,
-        });
-    },
 });

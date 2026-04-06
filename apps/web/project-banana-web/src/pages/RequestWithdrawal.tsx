@@ -283,11 +283,11 @@ export default function RequestWithdrawal() {
                                 <span className="font-semibold">{formatCurrency(normalizedAmount)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-white/60">Gateway fee charged</span>
+                                <span className="text-white/60">Gateway fee</span>
                                 <span className="font-semibold">{formatCurrency(gatewayFee)}</span>
                             </div>
                             <div className="pt-4 border-t border-white/10 flex items-center justify-between text-base">
-                                <span className="text-white/80 font-medium">Estimated deposit</span>
+                                <span className="text-white/80 font-medium">Actual amount</span>
                                 <span className="font-bold">{formatCurrency(estimatedDeposit)}</span>
                             </div>
                         </div>
@@ -305,7 +305,7 @@ export default function RequestWithdrawal() {
                             </li>
                             <li className="flex gap-2">
                                 <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                                A small gateway fee will be charged for each withdrawal.
+                                Business withdrawals only include the gateway fee.
                             </li>
                         </ul>
                     </div>
@@ -357,14 +357,14 @@ export default function RequestWithdrawal() {
                                                         <span className="font-semibold text-gray-900">{formatCurrency(normalizedAmount)}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between text-base">
-                                                        <span className="text-gray-500">Gateway fee charged</span>
+                                                        <span className="text-gray-500">Gateway fee</span>
                                                         <span className="font-semibold text-gray-900">{formatCurrency(gatewayFee)}</span>
                                                     </div>
                                                 </div>
 
                                                 <div className="pt-6 border-t border-gray-100">
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-lg font-bold text-gray-900">Estimated deposit</span>
+                                                        <span className="text-lg font-bold text-gray-900">Actual amount</span>
                                                         <span className="text-2xl font-bold text-gray-900">{formatCurrency(estimatedDeposit)}</span>
                                                     </div>
                                                 </div>

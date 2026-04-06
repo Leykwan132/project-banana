@@ -24,7 +24,8 @@ const formatRequestedAt = (timestamp: number) =>
 const formatCurrency = (amount: number) =>
     `RM ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const getNetAmount = (amount: number, gatewayFee?: number) => Math.max(amount - (gatewayFee ?? 0), 0);
+const getNetAmount = (amount: number, gatewayFee?: number, platformFee?: number) =>
+    Math.max(amount - (gatewayFee ?? 0) - (platformFee ?? 0), 0);
 
 export default function AdminPayouts() {
     const {
@@ -65,7 +66,7 @@ export default function AdminPayouts() {
             }
 
             if (sortKey === 'netAmount') {
-                return (getNetAmount(left.amount, left.gateway_fee) - getNetAmount(right.amount, right.gateway_fee)) * direction;
+                return (getNetAmount(left.amount, left.gateway_fee, left.platform_fee) - getNetAmount(right.amount, right.gateway_fee, right.platform_fee)) * direction;
             }
 
             if (sortKey === 'requested') {
@@ -283,7 +284,7 @@ export default function AdminPayouts() {
                                     <div className="flex items-center gap-1.5">
                                         <Banknote className="w-3.5 h-3.5 text-emerald-500" />
                                         <span className="font-semibold text-emerald-700 text-sm">
-                                            {formatCurrency(getNetAmount(withdrawal.amount, withdrawal.gateway_fee))}
+                                            {formatCurrency(getNetAmount(withdrawal.amount, withdrawal.gateway_fee, withdrawal.platform_fee))}
                                         </span>
                                     </div>
                                 </div>
@@ -364,6 +365,24 @@ export default function AdminPayouts() {
                                             <span className="text-sm text-gray-500">Amount</span>
                                             <span className="text-sm font-semibold text-gray-900">
                                                 RM {approvalTarget.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-6">
+                                            <span className="text-sm text-gray-500">Gateway fee</span>
+                                            <span className="text-sm font-semibold text-gray-900">
+                                                RM {(approvalTarget.gateway_fee ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-6">
+                                            <span className="text-sm text-gray-500">Platform fee</span>
+                                            <span className="text-sm font-semibold text-gray-900">
+                                                RM {(approvalTarget.platform_fee ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-6">
+                                            <span className="text-sm text-gray-500">Actual payout</span>
+                                            <span className="text-sm font-semibold text-emerald-700">
+                                                {formatCurrency(getNetAmount(approvalTarget.amount, approvalTarget.gateway_fee, approvalTarget.platform_fee))}
                                             </span>
                                         </div>
                                         <div className="flex items-center justify-between gap-6">
