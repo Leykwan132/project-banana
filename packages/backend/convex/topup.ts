@@ -595,7 +595,7 @@ export const createBillplzBill = action({
         // Billplz amount is in cents
         const amountCents = Math.round(args.amount * 100);
         const receiptId = `rcpt_${crypto.randomUUID().replace(/-/g, "")}`;
-        const description = `Topup for ${business.name}`;
+        const description = `Campaign credits topup for ${business.name}`;
         const billplzBaseUrl = getBillplzBaseUrl();
 
         // Create Bill
