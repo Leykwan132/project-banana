@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { ConvexReactClient } from "convex/react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ToastProvider } from "@heroui/toast";
+import { ToastProvider } from "./components/ui/Toast";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "./lib/auth-client";
 import { PostHogProvider } from '@posthog/react'
@@ -59,9 +59,7 @@ createRoot(document.getElementById('root')!).render(
       <ConvexBetterAuthProvider client={convex} authClient={authClient}>
         <HeroUIProvider>
           <PostHogIdentitySync />
-          <ToastProvider placement='top-center' toastOffset={30} toastProps={{
-            timeout: 2000,
-          }} />
+          <ToastProvider>
           <BrowserRouter>
             <PostHogPageViewTracker />
             <Routes>
@@ -99,6 +97,7 @@ createRoot(document.getElementById('root')!).render(
               </Route>
             </Routes>
           </BrowserRouter>
+          </ToastProvider>
         </HeroUIProvider>
       </ConvexBetterAuthProvider>
     </PostHogProvider>

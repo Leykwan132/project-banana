@@ -4,7 +4,7 @@ import { ChevronLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
-import { addToast } from "@heroui/toast";
+import { toast } from "../components/ui/Toast";
 import icon from '../assets/icon.svg';
 
 const MIN_TOPUP_AMOUNT = Number(import.meta.env.VITE_TOPUP_MIN_AMOUNT ?? 100);
@@ -44,9 +44,9 @@ export default function TopUp() {
             console.error('Failed to create checkout session:', err);
             setError(err instanceof Error ? err.message : 'Failed to initiate payment');
             setIsLoading(false);
-            addToast({
-                title: 'Error',
-                description: 'Failed to initiate top up',
+            toast({
+                title: 'Top up failed',
+                description: 'Unable to initiate payment. Please try again.',
                 color: 'danger',
             });
         }

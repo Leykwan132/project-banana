@@ -3,7 +3,8 @@ import { Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAction, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
-import { addToast, Skeleton } from "@heroui/react";
+import { Skeleton } from "@heroui/react";
+import { toast } from "../components/ui/Toast";
 import PlanSelector, { type PlanType } from '../components/PlanSelector';
 import { PLAN_TYPE_LABELS } from '../lib/constants';
 
@@ -43,9 +44,9 @@ export default function Subscription() {
             }
         } catch (error) {
             console.error('Failed to create portal session:', error);
-            addToast({
-                title: 'Error',
-                description: 'Failed to open subscription management portal',
+            toast({
+                title: 'Something went wrong',
+                description: 'Unable to open subscription management portal.',
                 color: 'danger',
             });
             setIsManaging(false);

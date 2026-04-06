@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
-import { addToast } from '@heroui/toast';
+import { toast } from '../../components/ui/Toast';
 import { ArrowDown, ArrowUp, Banknote, Building2, Check, Loader2, Search, User, X } from 'lucide-react';
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Pagination } from '@heroui/react';
 
@@ -149,14 +149,14 @@ export default function AdminPayouts() {
         try {
             await approveAction({ withdrawalId: id });
             setApprovalTargetId(null);
-            addToast({
+            toast({
                 title: 'Payout triggered',
                 description: 'Billplz payout order created. Waiting for callback confirmation.',
                 color: 'success',
             });
         } catch (e) {
             console.error('Failed to approve withdrawal:', e);
-            addToast({
+            toast({
                 title: 'Approval failed',
                 description: e instanceof Error ? e.message : 'Unable to trigger the payout right now.',
                 color: 'danger',
@@ -181,14 +181,14 @@ export default function AdminPayouts() {
         setActionLoading(id);
         try {
             await rejectMutation({ withdrawalId: id });
-            addToast({
+            toast({
                 title: 'Withdrawal rejected',
                 description: 'Reserved funds were returned to the requester.',
                 color: 'warning',
             });
         } catch (e) {
             console.error('Failed to reject withdrawal:', e);
-            addToast({
+            toast({
                 title: 'Rejection failed',
                 description: e instanceof Error ? e.message : 'Unable to reject this withdrawal.',
                 color: 'danger',

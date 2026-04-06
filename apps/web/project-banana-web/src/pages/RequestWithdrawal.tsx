@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAction, useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
-import { addToast } from '@heroui/toast';
+import { toast } from '../components/ui/Toast';
 import {
     Modal,
     ModalContent,
@@ -123,9 +123,9 @@ export default function RequestWithdrawal() {
                 bankAccountId: selectedBankId,
             });
             setAmount('');
-            addToast({
+            toast({
                 title: 'Withdrawal requested',
-                description: 'Your request will take 3-5 business days to be processed.',
+                description: 'Your request will take 3–5 business days to process.',
                 color: 'success',
             });
             navigate('/withdrawals');

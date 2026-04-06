@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
-import { addToast } from '@heroui/toast';
+import { toast } from '../../components/ui/Toast';
 import { Building2, Check, ChevronRight, Loader2, MessageSquare, Play, Search, User, X } from 'lucide-react';
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Pagination } from '@heroui/react';
 import ReactPlayer from 'react-player';
@@ -153,7 +153,7 @@ export default function AdminSubmissions() {
                 }
             } catch (error) {
                 console.error('Failed to load video:', error);
-                addToast({
+                toast({
                     title: 'Unable to load video',
                     description: error instanceof Error ? error.message : 'Please try opening this submission again.',
                     color: 'danger',
@@ -170,7 +170,7 @@ export default function AdminSubmissions() {
         setActionLoading(id);
         try {
             await approveMutation({ submissionId: id, feedback: feedback.trim() || undefined });
-            addToast({
+            toast({
                 title: 'Submission approved',
                 color: 'success',
             });
@@ -178,7 +178,7 @@ export default function AdminSubmissions() {
             handleCloseReview();
         } catch (error) {
             console.error('Failed to approve submission:', error);
-            addToast({
+            toast({
                 title: 'Approval failed',
                 description: error instanceof Error ? error.message : 'Unable to approve this submission right now.',
                 color: 'danger',
@@ -191,7 +191,7 @@ export default function AdminSubmissions() {
     const handleRequestChanges = async (id: Id<'submissions'>) => {
         if (!feedback.trim()) {
             setShowFeedback(true);
-            addToast({
+            toast({
                 title: 'Feedback required',
                 description: 'Please add feedback before requesting changes.',
                 color: 'warning',
@@ -202,14 +202,14 @@ export default function AdminSubmissions() {
         setActionLoading(id);
         try {
             await requestChangesMutation({ submissionId: id, feedback: feedback.trim() });
-            addToast({
+            toast({
                 title: 'Changes requested',
                 color: 'success',
             });
             handleCloseReview();
         } catch (error) {
             console.error('Failed to request changes:', error);
-            addToast({
+            toast({
                 title: 'Request failed',
                 description: error instanceof Error ? error.message : 'Unable to request changes right now.',
                 color: 'danger',

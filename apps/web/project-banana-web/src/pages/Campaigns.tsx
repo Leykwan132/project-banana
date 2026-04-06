@@ -6,7 +6,7 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
 import { Skeleton } from "@heroui/skeleton";
-import { addToast } from "@heroui/toast";
+import { toast } from "../components/ui/Toast";
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
 import { CampaignStatus } from '../lib/constants';
@@ -187,7 +187,7 @@ export default function Campaigns() {
         }
 
         if (hasReachedCampaignLimit) {
-            addToast({
+            toast({
                 title: 'Active campaign limit reached',
                 description: 'You have reached the maximum number of active campaigns for your current plan. End or pause one active campaign before creating a new one.',
                 color: 'warning',

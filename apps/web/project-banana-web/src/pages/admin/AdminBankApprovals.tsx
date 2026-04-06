@@ -4,7 +4,7 @@ import { api } from '../../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../../packages/backend/convex/_generated/dataModel';
 import { ArrowDown, ArrowUp, Check, ChevronRight, Loader2, Search, X } from 'lucide-react';
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Pagination } from '@heroui/react';
-import { addToast } from '@heroui/toast';
+import { toast } from '../../components/ui/Toast';
 
 const ITEMS_PER_PAGE = 20;
 type SortKey = 'accountHolder' | 'bank' | 'account' | 'submitted';
@@ -124,14 +124,14 @@ export default function AdminBankApprovals() {
         setActionLoading(id);
         try {
             await approveMutation({ bankAccountId: id });
-            addToast({
+            toast({
                 title: 'Bank account approved',
                 color: 'success',
             });
             handleCloseReview();
         } catch (e) {
             console.error('Failed to approve:', e);
-            addToast({
+            toast({
                 title: 'Failed to approve bank account',
                 description: e instanceof Error ? e.message : 'Please try again.',
                 color: 'danger',
@@ -145,14 +145,14 @@ export default function AdminBankApprovals() {
         setActionLoading(id);
         try {
             await rejectMutation({ bankAccountId: id });
-            addToast({
+            toast({
                 title: 'Bank account rejected',
                 color: 'success',
             });
             handleCloseReview();
         } catch (e) {
             console.error('Failed to reject:', e);
-            addToast({
+            toast({
                 title: 'Failed to reject bank account',
                 description: e instanceof Error ? e.message : 'Please try again.',
                 color: 'danger',
@@ -204,7 +204,7 @@ export default function AdminBankApprovals() {
                 }));
             } catch (e) {
                 console.error('Failed to load proof:', e);
-                addToast({
+                toast({
                     title: 'Unable to load proof',
                     description: e instanceof Error ? e.message : 'Please try opening this review again.',
                     color: 'danger',

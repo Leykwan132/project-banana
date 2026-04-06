@@ -3,7 +3,7 @@ import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { Landmark, Loader2, Plus, ChevronLeft } from 'lucide-react';
 import Button from '../components/ui/Button';
-import { addToast } from '@heroui/toast';
+import { toast } from '../components/ui/Toast';
 import { BANK_OPTIONS } from '../lib/banks';
 import { BankAccountSourceType } from '../lib/constants';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -132,7 +132,7 @@ export default function BankAccounts() {
             setIsAdding(false);
             setBankSearchTerm('');
 
-            addToast({
+            toast({
                 title: 'Bank account submitted',
                 description: 'Your account is now pending review.',
                 color: 'success',

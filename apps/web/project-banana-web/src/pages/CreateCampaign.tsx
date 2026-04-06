@@ -17,7 +17,7 @@ import {
     ModalFooter
 } from "@heroui/react";
 import { Popover, PopoverTrigger, PopoverContent } from "@heroui/popover";
-import { addToast } from "@heroui/toast";
+import { toast } from "../components/ui/Toast";
 import Button from '../components/ui/Button';
 import iconDark from '../assets/icon-dark.svg';
 import { getCampaignCategoryVisual } from '../lib/campaignCategoryVisuals';
@@ -886,21 +886,21 @@ export default function CreateCampaign() {
                     case ERROR_CODES.INSUFFICIENT_CREDITS.code:
                     case ERROR_CODES.PLAN_RESTRICTED_FEATURE.code:
                     case ERROR_CODES.INVALID_INPUT.code:
-                        addToast({
+                        toast({
                             title: "Unable to publish campaign",
                             description: convexError.data?.message ?? "Please try again.",
                             color: "danger",
                         });
                         break;
                     case ERROR_CODES.CAMPAIGN_LIMIT_REACHED.code:
-                        addToast({
+                        toast({
                             title: "Active campaign limit reached",
                             description: "You have reached the maximum number of active campaigns for your current plan. End or pause one active campaign before publishing a new one.",
                             color: "warning",
                         });
                         break;
                     default:
-                        addToast({
+                        toast({
                             title: "Unable to publish campaign",
                             description: "Please try again.",
                             color: "danger",
@@ -962,7 +962,7 @@ export default function CreateCampaign() {
 
         const errors = await formik.validateForm();
         if (Object.keys(errors).length > 0) {
-            addToast({
+            toast({
                 title: "Error",
                 description: "Please ensure all required fields are filled properly before proceeding.",
                 color: "danger"
@@ -972,7 +972,7 @@ export default function CreateCampaign() {
 
         const isLogoValid = (useCompanyLogo && hasCompanyLogo) || logoFile !== null;
         if (!isLogoValid) {
-            addToast({
+            toast({
                 title: "Error",
                 description: "Please upload a campaign logo.",
                 color: "danger"
@@ -981,7 +981,7 @@ export default function CreateCampaign() {
         }
 
         if (!coverFile) {
-            addToast({
+            toast({
                 title: "Error",
                 description: "Please upload a campaign cover photo.",
                 color: "danger"
@@ -990,7 +990,7 @@ export default function CreateCampaign() {
         }
 
         if (estimatedRemainingCredits < 0) {
-            addToast({
+            toast({
                 title: "Insufficient credits",
                 description: "You do not have enough credits to publish this campaign. Please top up your balance.",
                 color: "danger"

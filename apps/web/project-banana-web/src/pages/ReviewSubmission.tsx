@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { Skeleton } from "@heroui/skeleton";
-import { addToast } from "@heroui/toast";
+import { toast } from "../components/ui/Toast";
 import ReactPlayer from 'react-player';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
@@ -48,7 +48,6 @@ export default function ReviewSubmission() {
         };
 
         void loadVideoUrl();
-        console.log(videoUrl)
         return () => {
             isMounted = false;
         };
@@ -69,7 +68,7 @@ export default function ReviewSubmission() {
                 submissionId: submissionId as Id<"submissions">,
                 feedback: feedback || undefined, // Optional
             });
-            addToast({
+            toast({
                 title: "Submission approved",
                 description: "The creator has been notified to post it to their account.",
                 color: "success",

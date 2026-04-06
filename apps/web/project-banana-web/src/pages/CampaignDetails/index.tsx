@@ -15,7 +15,7 @@ import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton, Modal, M
 import { PayoutThresholdModal, RequirementsModal, ScriptsModal, hasRequirements, normalizeCampaignDescription, normalizeRequirements, parseViews } from '../CreateCampaign';
 import type { Threshold, RequirementsData, ScriptsData } from '../CreateCampaign';
 import Button from '../../components/ui/Button';
-import { addToast } from "@heroui/toast";
+import { toast } from "../../components/ui/Toast";
 import { CampaignStatus } from '../../lib/constants';
 import { getCampaignCategoryVisual } from '../../lib/campaignCategoryVisuals';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -481,7 +481,7 @@ export default function CampaignDetails() {
             setCoverFile(null);
 
             const additionalCharge = requestedTotalBudget - currentTotalBudget;
-            addToast(
+            toast(
                 additionalCharge > 0
                     ? {
                         title: "Campaign updated successfully!",
@@ -497,7 +497,7 @@ export default function CampaignDetails() {
 
         } catch (error: any) {
             console.error("Failed to update campaign:", error);
-            addToast({
+            toast({
                 title: "Failed to update campaign. Please try again.",
                 description: error.data?.message || error.message,
                 color: "danger",
@@ -1755,14 +1755,14 @@ export default function CampaignDetails() {
                                                 campaignId: campaignId as Id<"campaigns">,
                                                 status: CampaignStatus.Paused
                                             });
-                                            addToast({
+                                            toast({
                                                 title: `Campaign paused successfully!`,
                                                 color: "success",
                                             });
                                             onClose();
                                         } catch (error: any) {
                                             console.error("Failed to pause campaign:", error);
-                                            addToast({
+                                            toast({
                                                 title: "Failed to pause campaign",
                                                 description: error.data?.message || error.message,
                                                 color: "danger",
@@ -1866,7 +1866,7 @@ export default function CampaignDetails() {
                                                         campaignId: campaignId as Id<"campaigns">,
                                                         status: CampaignStatus.PendingCancellation
                                                     });
-                                                    addToast({
+                                                    toast({
                                                         title: "Campaign pending cancellation",
                                                         description: "Creators can continue earning for 7 days. Remaining credits will be refunded after settlement.",
                                                         color: "success",
@@ -1874,7 +1874,7 @@ export default function CampaignDetails() {
                                                     navigate('/campaigns');
                                                 } catch (error: any) {
                                                     console.error("Failed to end campaign:", error);
-                                                    addToast({
+                                                    toast({
                                                         title: "Failed to end campaign",
                                                         description: error.data?.message || error.message,
                                                         color: "danger",
@@ -1993,14 +1993,14 @@ export default function CampaignDetails() {
                                                 campaignId: campaignId as Id<"campaigns">,
                                                 status: CampaignStatus.Active
                                             });
-                                            addToast({
+                                            toast({
                                                 title: `Campaign resumed successfully!`,
                                                 color: "success",
                                             });
                                             onClose();
                                         } catch (error: any) {
                                             console.error("Failed to resume campaign:", error);
-                                            addToast({
+                                            toast({
                                                 title: "Failed to resume campaign",
                                                 description: error.data?.message || error.message,
                                                 color: "danger",
