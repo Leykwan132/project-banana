@@ -75,6 +75,12 @@ export const getPayoutGatewayFee = query({
     },
 });
 
+export const getMinWithdrawalAmount = query({
+    handler: async () => {
+        return MIN_WITHDRAWAL_AMOUNT;
+    },
+});
+
 export const getPayoutPlatformFeeRate = query({
     handler: async () => {
         return PAYOUT_PLATFORM_FEE_RATE;
