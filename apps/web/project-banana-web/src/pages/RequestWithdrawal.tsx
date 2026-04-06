@@ -287,7 +287,7 @@ export default function RequestWithdrawal() {
                                 <span className="font-semibold">{formatCurrency(gatewayFee)}</span>
                             </div>
                             <div className="pt-4 border-t border-white/10 flex items-center justify-between text-base">
-                                <span className="text-white/80 font-medium">Actual amount</span>
+                                <span className="text-white/80 font-medium">Final amount</span>
                                 <span className="font-bold">{formatCurrency(estimatedDeposit)}</span>
                             </div>
                         </div>
@@ -364,7 +364,7 @@ export default function RequestWithdrawal() {
 
                                                 <div className="pt-6 border-t border-gray-100">
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-lg font-bold text-gray-900">Actual amount</span>
+                                                        <span className="text-lg font-bold text-gray-900">Final amount</span>
                                                         <span className="text-2xl font-bold text-gray-900">{formatCurrency(estimatedDeposit)}</span>
                                                     </div>
                                                 </div>
