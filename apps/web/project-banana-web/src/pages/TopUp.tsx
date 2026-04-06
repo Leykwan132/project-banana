@@ -7,6 +7,8 @@ import Button from '../components/ui/Button';
 import { addToast } from "@heroui/toast";
 import icon from '../assets/icon.svg';
 
+const MIN_TOPUP_AMOUNT = Number(import.meta.env.VITE_TOPUP_MIN_AMOUNT ?? 100);
+
 export default function TopUp() {
     const navigate = useNavigate();
     const [amount, setAmount] = useState('');
@@ -21,8 +23,8 @@ export default function TopUp() {
 
     const handleProceed = async () => {
         const numAmount = parseFloat(amount);
-        if (isNaN(numAmount) || numAmount < 100) {
-            setError('Minimum top up amount is RM 100');
+        if (isNaN(numAmount) || numAmount < MIN_TOPUP_AMOUNT) {
+            setError(`Minimum top up amount is RM ${MIN_TOPUP_AMOUNT}`);
             return;
         }
 
@@ -69,7 +71,7 @@ export default function TopUp() {
                 <div className="space-y-8">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">Top Up Credits</h1>
-                        <p className="text-gray-500">Enter the amount you'd like to top up (Min. RM 100).</p>
+                        <p className="text-gray-500">Enter the amount you'd like to top up (Min. RM {MIN_TOPUP_AMOUNT}).</p>
                     </div>
 
                     <div className="space-y-4">
@@ -83,7 +85,7 @@ export default function TopUp() {
                                     setAmount(e.target.value);
                                     setError(null);
                                 }}
-                                placeholder="100.00"
+                                placeholder={`${MIN_TOPUP_AMOUNT}.00`}
                                 disabled={isLoading}
                                 className="w-full bg-[#F9FAFB] border-none rounded-xl pl-12 pr-4 py-4 outline-none focus:ring-2 focus:ring-gray-200 transition-all text-gray-900 font-bold text-xl placeholder:text-gray-300 disabled:opacity-50"
                             />
