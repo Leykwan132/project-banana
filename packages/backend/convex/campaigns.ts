@@ -16,6 +16,7 @@ import {
 } from "./constants";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
 import { posthog } from "./posthog";
+import { notificationPool } from "./workpools";
 
 const getBusinessPlanType = (planType?: string | null) => (planType ?? "payasyougo").toLowerCase();
 const isPayAsYouGoPlan = (planType?: string | null) => getBusinessPlanType(planType) === "payasyougo";
@@ -559,9 +560,11 @@ export const updateCampaignStatus = mutation({
                 .filter((q) => q.eq(q.field("status"), ApplicationStatus.PendingSubmission))
                 .collect();
 
-            await Promise.all(
-                pendingSubmissionApplications.map((application) =>
-                    ctx.scheduler.runAfter(0, internal.notifications.createAndSendNotification, {
+            if (pendingSubmissionApplications.length > 0) {
+                await notificationPool.enqueueMutationBatch(
+                    ctx,
+                    internal.notifications.createAndSendNotification,
+                    pendingSubmissionApplications.map((application) => ({
                         betterAuthUserId: application.user_id,
                         title: NotificationCopy.campaignPausedSubmitSoon.title,
                         description: NotificationCopy.campaignPausedSubmitSoon.description(campaign.name),
@@ -569,9 +572,9 @@ export const updateCampaignStatus = mutation({
                             type: NotificationType.CampaignPausedSubmitSoon,
                             applicationId: application._id,
                         },
-                    })
-                ),
-            );
+                    })),
+                );
+            }
         }
 
         if (args.status === CampaignStatus.PendingCancellation) {
@@ -581,9 +584,11 @@ export const updateCampaignStatus = mutation({
                 .filter((q) => q.eq(q.field("status"), ApplicationStatus.ReadyToPost))
                 .collect();
 
-            await Promise.all(
-                readyToPostApplications.map((application) =>
-                    ctx.scheduler.runAfter(0, internal.notifications.createAndSendNotification, {
+            if (readyToPostApplications.length > 0) {
+                await notificationPool.enqueueMutationBatch(
+                    ctx,
+                    internal.notifications.createAndSendNotification,
+                    readyToPostApplications.map((application) => ({
                         betterAuthUserId: application.user_id,
                         title: NotificationCopy.campaignEndingSoon.title,
                         description: NotificationCopy.campaignEndingSoon.description(campaign.name),
@@ -591,9 +596,9 @@ export const updateCampaignStatus = mutation({
                             type: NotificationType.CampaignEndingSoon,
                             applicationId: application._id,
                         },
-                    })
-                ),
-            );
+                    })),
+                );
+            }
         }
     }
 });

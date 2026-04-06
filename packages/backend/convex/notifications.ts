@@ -4,6 +4,7 @@ import { PushNotifications } from "@convex-dev/expo-push-notifications";
 import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { NotificationType } from "./notificationConstants";
+import { emailPool } from "./workpools";
 
 const pushNotifications = new PushNotifications(components.pushNotifications);
 const platformMissingDescriptionValidator = v.object({
@@ -527,21 +528,21 @@ export const dispatchSubmissionOutcome = internalAction({
         }
 
         if (args.data.type === NotificationType.SubmissionApproved) {
-            await ctx.runAction(internal.emails.sendSubmissionApprovedEmail, {
+            await emailPool.enqueueAction(ctx, internal.emails.sendSubmissionApprovedEmail, {
                 email: authUser.email,
                 campaignName: args.campaignName,
                 businessName: args.businessName,
                 redirectUrl,
-            });
+            }, { retry: false });
             return delivery;
         }
 
-        await ctx.runAction(internal.emails.sendSubmissionChangesEmail, {
+        await emailPool.enqueueAction(ctx, internal.emails.sendSubmissionChangesEmail, {
             email: authUser.email,
             campaignName: args.campaignName,
             businessName: args.businessName,
             redirectUrl,
-        });
+        }, { retry: false });
 
         return delivery;
     },
@@ -586,19 +587,19 @@ export const dispatchCreatorBankAccountOutcome = internalAction({
         }
 
         if (args.data.type === NotificationType.BankAccountApproved) {
-            await ctx.runAction(internal.emails.sendBankAccountApprovedEmail, {
+            await emailPool.enqueueAction(ctx, internal.emails.sendBankAccountApprovedEmail, {
                 email: authUser.email,
                 endingDigits: args.endingDigits,
                 redirectUrl,
-            });
+            }, { retry: false });
             return { pushSent };
         }
 
-        await ctx.runAction(internal.emails.sendBankAccountRejectedEmail, {
+        await emailPool.enqueueAction(ctx, internal.emails.sendBankAccountRejectedEmail, {
             email: authUser.email,
             endingDigits: args.endingDigits,
             redirectUrl,
-        });
+        }, { retry: false });
 
         return { pushSent };
     },
@@ -643,19 +644,19 @@ export const dispatchBusinessBankAccountOutcome = internalAction({
         }
 
         if (args.data.type === NotificationType.BankAccountApproved) {
-            await ctx.runAction(internal.emails.sendBankAccountApprovedEmail, {
+            await emailPool.enqueueAction(ctx, internal.emails.sendBankAccountApprovedEmail, {
                 email: authUser.email,
                 endingDigits: args.endingDigits,
                 redirectUrl,
-            });
+            }, { retry: false });
             return { pushSent: false };
         }
 
-        await ctx.runAction(internal.emails.sendBankAccountRejectedEmail, {
+        await emailPool.enqueueAction(ctx, internal.emails.sendBankAccountRejectedEmail, {
             email: authUser.email,
             endingDigits: args.endingDigits,
             redirectUrl,
-        });
+        }, { retry: false });
 
         return { pushSent: false };
     },
@@ -685,14 +686,14 @@ export const dispatchBusinessWithdrawalPaidEmail = internalAction({
             return { emailSent: false };
         }
 
-        await ctx.runAction(internal.emails.sendWithdrawalPaidEmail, {
+        await emailPool.enqueueAction(ctx, internal.emails.sendWithdrawalPaidEmail, {
             email: authUser.email,
             amount: args.amount,
             netAmount: args.netAmount,
             bankName: args.bankName,
             endingDigits: args.endingDigits,
             redirectUrl,
-        });
+        }, { retry: false });
 
         return { emailSent: true };
     },

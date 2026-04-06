@@ -7,6 +7,7 @@ import pushNotifications from "@convex-dev/expo-push-notifications/convex.config
 import posthog from "@posthog/convex/convex.config.js";
 import resend from "@convex-dev/resend/convex.config.js";
 import migrations from "@convex-dev/migrations/convex.config.js";
+import workpool from "@convex-dev/workpool/convex.config.js";
 
 const app = defineApp();
 app.use(migrations);
@@ -16,6 +17,9 @@ app.use(r2);
 app.use(pushNotifications);
 app.use(posthog);
 app.use(resend);
+app.use(workpool, { name: "scrapeWorkpool" });
+app.use(workpool, { name: "notificationWorkpool" });
+app.use(workpool, { name: "emailWorkpool" });
 app.use(aggregate, { name: "aggregateCampaignAnalytics" });
 app.use(aggregate, { name: "aggregateCampaignByBusiness" });
 app.use(aggregate, { name: "aggregateBusinessAnalytics" });

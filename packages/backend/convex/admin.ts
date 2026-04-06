@@ -7,6 +7,7 @@ import { generateDownloadUrl } from "./r2";
 import { WithdrawalSourceType } from "./constants";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
 import { createBillplzPaymentOrder } from "./payouts";
+import { notificationPool } from "./workpools";
 
 // ============================================================
 // ADMIN AUTH HELPER
@@ -323,7 +324,7 @@ export const approveBankAccount = mutation({
         const accountType = account.source_type ?? (business ? WithdrawalSourceType.Business : WithdrawalSourceType.Creator);
 
         if (accountType === WithdrawalSourceType.Business) {
-            await ctx.scheduler.runAfter(0, internal.notifications.dispatchBusinessBankAccountOutcome, {
+            await notificationPool.enqueueAction(ctx, internal.notifications.dispatchBusinessBankAccountOutcome, {
                 userId: account.user_id,
                 data: {
                     type: NotificationType.BankAccountApproved,
@@ -333,9 +334,9 @@ export const approveBankAccount = mutation({
                 },
                 endingDigits,
                 redirectPath: "/bank-accounts",
-            });
+            }, { retry: false });
         } else {
-            await ctx.scheduler.runAfter(0, internal.notifications.dispatchCreatorBankAccountOutcome, {
+            await notificationPool.enqueueAction(ctx, internal.notifications.dispatchCreatorBankAccountOutcome, {
                 userId: account.user_id,
                 title: NotificationCopy.bankAccountApproved.title,
                 description: NotificationCopy.bankAccountApproved.description(endingDigits),
@@ -347,7 +348,7 @@ export const approveBankAccount = mutation({
                 },
                 endingDigits,
                 redirectPath: "/bank-account",
-            });
+            }, { retry: false });
         }
 
         return args.bankAccountId;
@@ -381,7 +382,7 @@ export const rejectBankAccount = mutation({
         const accountType = account.source_type ?? (business ? WithdrawalSourceType.Business : WithdrawalSourceType.Creator);
 
         if (accountType === WithdrawalSourceType.Business) {
-            await ctx.scheduler.runAfter(0, internal.notifications.dispatchBusinessBankAccountOutcome, {
+            await notificationPool.enqueueAction(ctx, internal.notifications.dispatchBusinessBankAccountOutcome, {
                 userId: account.user_id,
                 data: {
                     type: NotificationType.BankAccountRejected,
@@ -391,9 +392,9 @@ export const rejectBankAccount = mutation({
                 },
                 endingDigits,
                 redirectPath: "/bank-accounts",
-            });
+            }, { retry: false });
         } else {
-            await ctx.scheduler.runAfter(0, internal.notifications.dispatchCreatorBankAccountOutcome, {
+            await notificationPool.enqueueAction(ctx, internal.notifications.dispatchCreatorBankAccountOutcome, {
                 userId: account.user_id,
                 title: NotificationCopy.bankAccountRejected.title,
                 description: NotificationCopy.bankAccountRejected.description(endingDigits),
@@ -405,7 +406,7 @@ export const rejectBankAccount = mutation({
                 },
                 endingDigits,
                 redirectPath: "/bank-account/add",
-            });
+            }, { retry: false });
         }
 
         return args.bankAccountId;

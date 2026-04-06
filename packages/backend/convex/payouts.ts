@@ -6,6 +6,7 @@ import { PayoutStatus, WithdrawalStatus, WithdrawalSourceType, PAYOUT_GATEWAY_FE
 import { ErrorType } from "./errors";
 import { generateChecksumSHA512, getBillplzBaseUrl } from "./utils";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
+import { notificationPool } from "./workpools";
 
 // ============================================================
 // PAYOUT QUERIES
@@ -755,16 +756,16 @@ export const processPaymentOrderCallback = internalMutation({
             console.log(`Withdrawal ${withdrawal._id} marked as completed`);
 
             if (withdrawal.source_type === WithdrawalSourceType.Business) {
-                await ctx.scheduler.runAfter(0, internal.notifications.dispatchBusinessWithdrawalPaidEmail, {
+                await notificationPool.enqueueAction(ctx, internal.notifications.dispatchBusinessWithdrawalPaidEmail, {
                     userId: withdrawal.user_id,
                     amount: formattedRequestedAmount,
                     netAmount: formattedNetAmount,
                     bankName: bankAccount?.bank_name ?? "Bank account",
                     endingDigits,
                     redirectPath: "/withdrawals",
-                });
+                }, { retry: false });
             } else {
-                await ctx.scheduler.runAfter(0, internal.notifications.dispatchCreatorWithdrawalPaid, {
+                await notificationPool.enqueueAction(ctx, internal.notifications.dispatchCreatorWithdrawalPaid, {
                     userId: withdrawal.user_id,
                     title: NotificationCopy.withdrawalPaid.title,
                     description: NotificationCopy.withdrawalPaid.description(formattedNetAmount, endingDigits),
@@ -773,7 +774,7 @@ export const processPaymentOrderCallback = internalMutation({
                         withdrawalId: withdrawal._id,
                         endingDigits,
                     },
-                });
+                }, { retry: false });
             }
         } else if (args.status === WithdrawalStatus.Refunded) {
             if (withdrawal.source_type === WithdrawalSourceType.Business && withdrawal.business_id) {

@@ -6,6 +6,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { posthog } from "./posthog";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
 import { CampaignStatus } from "./constants";
+import { notificationPool } from "./workpools";
 
 const submissionBlockedCampaignStatuses = new Set<string>([
     CampaignStatus.PendingCancellation,
@@ -335,7 +336,7 @@ export const approveSubmission = mutation({
         const campaignName = access.campaign?.name ?? "Campaign";
         const businessName = access.campaign?.business_name ?? access.business?.name ?? "Business";
 
-        await ctx.scheduler.runAfter(0, internal.notifications.dispatchSubmissionOutcome, {
+        await notificationPool.enqueueAction(ctx, internal.notifications.dispatchSubmissionOutcome, {
             userId: submission.user_id,
             title: NotificationCopy.submissionApproved.title,
             description: NotificationCopy.submissionApproved.description(campaignName),
@@ -347,7 +348,7 @@ export const approveSubmission = mutation({
             campaignName,
             businessName,
             redirectPath: `/application/${submission.application_id}`,
-        });
+        }, { retry: false });
     },
 });
 
@@ -412,7 +413,7 @@ export const requestChanges = mutation({
         const campaignName = access.campaign?.name ?? "Campaign";
         const businessName = access.campaign?.business_name ?? access.business?.name ?? "Business";
 
-        await ctx.scheduler.runAfter(0, internal.notifications.dispatchSubmissionOutcome, {
+        await notificationPool.enqueueAction(ctx, internal.notifications.dispatchSubmissionOutcome, {
             userId: submission.user_id,
             title: NotificationCopy.submissionRejected.title,
             description: NotificationCopy.submissionRejected.description(businessName, campaignName),
@@ -424,7 +425,7 @@ export const requestChanges = mutation({
             campaignName,
             businessName,
             redirectPath: `/submission/${args.submissionId}`,
-        });
+        }, { retry: false });
     },
 });
 
