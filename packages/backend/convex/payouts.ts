@@ -186,6 +186,8 @@ export async function createBillplzPaymentOrder(args: {
     bankAccountNumber: string;
     name: string;
     description: string;
+    callbackUrl: string;
+    email?: string;
     total: number; // Amount in cents (e.g., 2000 = RM 20.00)
 }): Promise<{ id: string; status: string }> {
     const apiKey = process.env.BILLPLZ_API_KEY;
@@ -204,22 +206,29 @@ export async function createBillplzPaymentOrder(args: {
     const rawString = `${paymentOrderCollectionId}${args.bankAccountNumber}${args.total}${epoch}`;
     const checksum = await generateChecksumSHA512(rawString, xSignatureKey);
 
+    const body = new URLSearchParams({
+        payment_order_collection_id: paymentOrderCollectionId,
+        bank_code: billplzBaseUrl.includes("-sandbox") ? "DUMMYBANKVERIFIED" : args.bankCode,
+        bank_account_number: args.bankAccountNumber,
+        name: args.name,
+        description: args.description,
+        callback_url: args.callbackUrl,
+        total: args.total.toString(),
+        epoch: epoch.toString(),
+        checksum: checksum,
+    });
+
+    if (args.email) {
+        body.set("email", args.email);
+    }
+
     const response = await fetch(`${billplzBaseUrl}/api/v5/payment_orders`, {
         method: "POST",
         headers: {
             Authorization: `Basic ${btoa(apiKey + ":")}`,
             "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-            payment_order_collection_id: paymentOrderCollectionId,
-            bank_code: billplzBaseUrl.includes("-sandbox") ? "DUMMYBANKVERIFIED" : args.bankCode,
-            bank_account_number: args.bankAccountNumber,
-            name: args.name,
-            description: args.description,
-            total: args.total.toString(),
-            epoch: epoch.toString(),
-            checksum: checksum,
-        }),
+        body,
     });
 
     if (!response.ok) {

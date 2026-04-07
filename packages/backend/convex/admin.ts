@@ -7,6 +7,7 @@ import { generateDownloadUrl } from "./r2";
 import { WithdrawalSourceType } from "./constants";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
 import { createBillplzPaymentOrder } from "./payouts";
+import { authComponent } from "./auth";
 import { notificationPool } from "./workpools";
 
 // ============================================================
@@ -248,6 +249,7 @@ export const getWithdrawalForApproval = internalQuery({
 
         const sourceType = withdrawal.source_type;
         const bankAccount = await ctx.db.get(withdrawal.bank_account_id);
+        const authUser = await authComponent.getAnyUserById(ctx, withdrawal.user_id);
         let requesterName = withdrawal.user_id;
 
         if (sourceType === WithdrawalSourceType.Business && withdrawal.business_id) {
@@ -265,6 +267,7 @@ export const getWithdrawalForApproval = internalQuery({
             withdrawal,
             bankAccount,
             requesterName,
+            requesterEmail: authUser?.email ?? undefined,
         };
     },
 });
@@ -533,10 +536,12 @@ export const approveWithdrawal = action({
         });
         if (!approvalData) throw new Error("Withdrawal not found");
 
-        const { withdrawal, bankAccount, requesterName } = approvalData;
+        const { withdrawal, bankAccount, requesterName, requesterEmail } = approvalData;
         if (withdrawal.status !== "pending") throw new Error("Withdrawal is not pending approval");
         if (!bankAccount) throw new Error("Bank account not found");
         if (bankAccount.status !== "verified") throw new Error("Bank account is not verified");
+        const siteUrl = process.env.CONVEX_SITE_URL;
+        if (!siteUrl) throw new Error("CONVEX_SITE_URL is not set in environment variables");
 
         const bankCode = bankAccount.bank_code || "";
         const accountHolderName = bankAccount.account_holder_name || requesterName;
@@ -554,6 +559,8 @@ export const approveWithdrawal = action({
             description: sourceType === WithdrawalSourceType.Business
                 ? `Business withdrawal for ${requesterName}`
                 : `Payout for ${requesterName}`,
+            callbackUrl: `${siteUrl}/webhooks/billplz/payment_order`,
+            email: requesterEmail,
             total: totalCents,
         });
 
