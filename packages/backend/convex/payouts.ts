@@ -1,4 +1,4 @@
-import { action, mutation, query, internalMutation, internalQuery } from "./_generated/server";
+import { action, mutation, query, internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -315,61 +315,27 @@ async function createBillplzPaymentOrderCollection(args: {
     return data;
 }
 
+/**
+ * Internal action to expose the collection creation logic
+ */
+export const initCreatePaymentOrderCollection = internalAction({
+    args: {},
+    handler: async (ctx) => {
+        const siteUrl = process.env.CONVEX_SITE_URL;
+        if (!siteUrl) {
+            throw new Error("CONVEX_SITE_URL environment variable is not set");
+        }
+
+        return await createBillplzPaymentOrderCollection({
+            title: "Withdrawals",
+            callbackUrl: `${siteUrl}/webhooks/billplz/payment_order`,
+        });
+    },
+});
+
 // ============================================================
 // PAYOUT MUTATIONS
 // ============================================================
-
-/**
- * Create a Billplz Payment Order Collection.
- * This must be called once (e.g. from admin) to obtain a collection ID.
- * The resulting collection ID should be stored as BILLPLZ_PAYMENT_ORDER_COLLECTION_ID in env.
- *
- * The callback_url is automatically set to the existing payment order webhook endpoint.
- */
-export const createPaymentOrderCollection = action({
-    args: {
-        title: v.optional(v.string()),
-    },
-    handler: async (_ctx, args): Promise<{ id: string; title: string; status: string }> => {
-        const siteUrl = process.env.CONVEX_SITE_URL;
-        if (!siteUrl) {
-            throw new Error("CONVEX_SITE_URL is not set in environment variables");
-        }
-
-        const title = args.title ?? "Project Banana Payout Collection";
-        const callbackUrl = `${siteUrl}/webhooks/billplz/payment_order`;
-
-        console.log(`Creating Billplz Payment Order Collection: "${title}", callback: ${callbackUrl}`);
-
-        return await createBillplzPaymentOrderCollection({ title, callbackUrl });
-    },
-});
-
-/**
- * Create a new payout (usually called by admin/system)
- */
-export const createPayout = mutation({
-    args: {
-        userId: v.string(),
-        applicationId: v.optional(v.id("applications")),
-        amount: v.number(),
-    },
-    handler: async (ctx, args) => {
-        const now = Date.now();
-
-        const payoutId = await ctx.db.insert("payouts", {
-            user_id: args.userId,
-            application_id: args.applicationId,
-            amount: args.amount,
-            status: PayoutStatus.Pending,
-            created_at: now,
-            updated_at: now,
-        });
-
-        return payoutId;
-    },
-});
-
 export const upsertCampaignPayout = internalMutation({
     args: {
         userId: v.string(),
