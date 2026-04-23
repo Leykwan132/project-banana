@@ -86,7 +86,7 @@ const businessTestimonials: { quote: string; author: string; role: string }[] = 
     },
 ];
 
-
+const SHOW_EARLY_ADOPTER_CTA = true;
 
 const businessFaqs = [
     {
@@ -198,6 +198,36 @@ function BusinessTrustedBrands() {
 }
 
 function BusinessTestimonialsSection() {
+    if (SHOW_EARLY_ADOPTER_CTA) {
+        return (
+            <section className="border-y border-gray-100 bg-gray-50 py-20">
+                <div className="mx-auto max-w-7xl px-6">
+                    <div className="mx-auto mb-10 max-w-3xl text-center">
+                        <h2 className="text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">Testimonials</h2>
+                    </div>
+                    <div className="mx-auto max-w-[22rem] text-left">
+                        <div className="flex min-h-[320px] flex-col justify-between rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
+                            <div>
+                                <h3 className="text-[1.35rem] font-bold leading-tight tracking-tight text-gray-900 mb-4">Become an early adopter</h3>
+                                <p className="text-[15px] leading-relaxed text-gray-800"> We're offering exclusive perks and special pricing to a select few early businesses.</p>
+                            </div>
+                            <div className="mt-8">
+                                <a
+                                    href="https://forms.gle/xidtiQhASjB9BpMf9"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex justify-center items-center gap-2 rounded-full bg-gray-900 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-black w-full"
+                                >
+                                    Fill up form <ArrowRight className="h-4 w-4" />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
     if (businessTestimonials.length === 0) {
         return null;
     }

@@ -1,4 +1,4 @@
-import { ChevronDown, ImageIcon, Sparkles, Download } from 'lucide-react';
+import { ChevronDown, ImageIcon, Sparkles, Download, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -245,7 +245,7 @@ export default function CreatorLanding() {
                 <div className="grid items-center gap-12 md:grid-cols-2 lg:gap-16">
                     <div>
                         <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
-                            <Sparkles className="h-3.5 w-3.5" /> Built for Malaysians
+                            <Sparkles className="h-3.5 w-3.5" /> Malaysia First
                         </div>
                         <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 md:text-6xl">
                             Anyone can earn from content now.
@@ -253,12 +253,11 @@ export default function CreatorLanding() {
                         <p className="mt-6 max-w-xl text-xl text-gray-600">
                             Lumina is a open platform for creators like you to earn.
                         </p>
-                        <Link
-                            to="/login"
-                            className="mt-10 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-black"
+                        <div
+                            className="mt-10 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white opacity-80 cursor-not-allowed"
                         >
-                            Download the app <Download className="h-5 w-5" />
-                        </Link>
+                            Coming soon <Clock className="h-5 w-5" />
+                        </div>
                     </div>
 
                     <div className="flex items-center justify-center relative w-full h-full max-w-sm mx-auto">
@@ -282,12 +281,11 @@ export default function CreatorLanding() {
             <section className="border-t border-gray-100 bg-gray-50 py-24 text-center">
                 <div className="mx-auto px-6">
                     <h2 className="text-4xl font-bold tracking-tight text-gray-900 md:text-6xl">If you can create, you're in.</h2>
-                    <Link
-                        to="/login"
-                        className="mt-8 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-black"
+                    <div
+                        className="mt-8 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white opacity-80 cursor-not-allowed"
                     >
-                        Download Lumina<Download className="h-5 w-5" />
-                    </Link>
+                        Coming soon <Clock className="h-5 w-5" />
+                    </div>
                 </div>
             </section>
         </div>
