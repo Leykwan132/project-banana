@@ -8,7 +8,8 @@
     "build": "vite build",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.10.10",
@@ -47,6 +48,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.37.1",
     "@eslint/js": "^9.39.1",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.5",
@@ -58,6 +60,7 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "wrangler": "^4.92.0"
   }
 }
