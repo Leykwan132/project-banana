@@ -92,8 +92,8 @@ This PR implements Tasks 1–5 below. It makes existing creators usable on web t
 - [x] Run `bun run --cwd apps/web/project-banana-web check-types` and `bun run --cwd apps/web/project-banana-web build`; separate baseline issues from regressions. Do not commit unrelated dependency changes.
 - [x] Review the entire branch diff against the spec and routing matrix, then perform the selected execution workflow's independent review. Fix actionable findings and rerun affected checks.
 - [x] Confirm no invitation onboarding, application, or financial feature is falsely described as shipped, and no unrelated local modifications or credentials are staged.
-- [ ] Push `codex/shared-web-login` and create a PR against the remote default branch. The PR describes separate logins, record-based guards, existing creator campaign access, validation, and the remaining invitation and creator-migration scope.
-- [ ] Attach the created PR to this chat with `attach_artifact` and return its link.
+- [x] Push `codex/shared-web-login` and create a PR against the remote default branch. The PR describes separate logins, record-based guards, existing creator campaign access, validation, and the remaining invitation and creator-migration scope.
+- [x] Attach the created PR to this chat with `attach_artifact` and return its link.
 
 ## Execution record
 
@@ -104,6 +104,8 @@ This PR implements Tasks 1–5 below. It makes existing creators usable on web t
 - Full repository test suite: 17 passed, 0 failed. This includes 12 new web tests and 5 existing backend tests.
 - Production build passed using Bun as the runtime. The existing large-bundle warning remains.
 - Backend TypeScript check passed. App TypeScript check passed with unused-local and unused-parameter diagnostics disabled; the full strict app check retains five pre-existing unused-variable diagnostics in backend analytics, crons, financials, and payouts. The existing `check-types` script does not traverse the app project, so the app project was checked explicitly.
-- Browser checks confirmed both login pages, legacy login error preservation, and signed-out business-route redirection. Authenticated campaign data, Google OAuth completion, dual-role switching, and the timer effect were not exercised against a deployed backend.
+- Browser checks confirmed both login pages, legacy login error preservation, and signed-out business and creator route redirection. Authenticated campaign data, Google OAuth completion, dual-role switching, and the timer effect were not exercised against a deployed backend.
 - No backend deployment performed: the checkout contains unrelated backend edits, which must not be deployed as a side effect of this PR. Deploy the new membership query with the web release.
 - Invitations and the remaining creator feature migration remain separate units. Existing backend creator onboarding is unchanged; this PR does not claim backend invitation enforcement.
+
+- PR created and attached: https://github.com/Leykwan132/project-banana/pull/2 (branch `codex/shared-web-login`).
