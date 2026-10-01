@@ -1,4 +1,4 @@
-import { ChevronDown, ImageIcon, Sparkles, Download, Clock } from 'lucide-react';
+import { ChevronDown, ImageIcon, Sparkles, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -50,7 +50,7 @@ type AlternatingFeature = {
 const newCreatorFeatures: AlternatingFeature[] = [
     {
         title: 'Open campaigns',
-        description: 'Jobs are open to anyone that can create regardless of follower count.',
+        description: 'Invited creators can discover campaigns regardless of follower count.',
         image: '/landing-creator-campaign.svg',
     },
     {
@@ -70,7 +70,7 @@ const creatorTestimonials: { quote: string; author: string; role: string }[] = [
 const creatorFaqs = [
     {
         question: 'Can I start with a new account?',
-        answer: 'Yes. Views are all that matter.',
+        answer: 'New creators join by invitation. Existing creators can sign in using their account.',
     },
     {
         question: 'Can I have multiple applications for the same campaign?',
@@ -248,16 +248,14 @@ export default function CreatorLanding() {
                             <Sparkles className="h-3.5 w-3.5" /> Malaysia First
                         </div>
                         <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 md:text-6xl">
-                            Anyone can earn from content now.
+                            Create content. Find your next campaign.
                         </h1>
                         <p className="mt-6 max-w-xl text-xl text-gray-600">
-                            Lumina is a open platform for creators like you to earn.
+                            Discover campaigns and access your creator workspace on the web. New creators join by invitation.
                         </p>
-                        <div
-                            className="mt-10 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white opacity-80 cursor-not-allowed"
-                        >
-                            Coming soon <Clock className="h-5 w-5" />
-                        </div>
+                        <Link to="/creator/login" className="mt-10 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white hover:bg-black">
+                            Creator login <ArrowRight className="h-5 w-5" />
+                        </Link>
                     </div>
 
                     <div className="flex items-center justify-center relative w-full h-full max-w-sm mx-auto">
@@ -270,7 +268,7 @@ export default function CreatorLanding() {
                 <CreatorTrustedBrands />
             </div>
 
-            <CreatorHowItWorksSection title="How the app works" cards={creatorDashboardCards} />
+            <CreatorHowItWorksSection title="How Lumina works" cards={creatorDashboardCards} />
 
             <CreatorAlternatingFeaturesSection />
 
@@ -280,12 +278,11 @@ export default function CreatorLanding() {
 
             <section className="border-t border-gray-100 bg-gray-50 py-24 text-center">
                 <div className="mx-auto px-6">
-                    <h2 className="text-4xl font-bold tracking-tight text-gray-900 md:text-6xl">If you can create, you're in.</h2>
-                    <div
-                        className="mt-8 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white opacity-80 cursor-not-allowed"
-                    >
-                        Coming soon <Clock className="h-5 w-5" />
-                    </div>
+                    <h2 className="text-4xl font-bold tracking-tight text-gray-900 md:text-6xl">Your next campaign starts here.</h2>
+                    <p className="mt-5 text-gray-600">Already a creator? Sign in. New creator accounts are by invitation.</p>
+                    <Link to="/creator/login" className="mt-8 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white hover:bg-black">
+                        Creator login <ArrowRight className="h-5 w-5" />
+                    </Link>
                 </div>
             </section>
         </div>

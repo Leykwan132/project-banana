@@ -2,16 +2,21 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { ConvexReactClient } from "convex/react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ToastProvider } from "./components/ui/Toast";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { authClient } from "./lib/auth-client";
 import { PostHogProvider } from '@posthog/react'
 
+import WorkspaceAccess from './pages/WorkspaceAccess';
+import CreatorCampaigns from './pages/creator/CreatorCampaigns';
+import CreatorCampaignDetails from './pages/creator/CreatorCampaignDetails';
+import { CreatorLayout } from './components/CreatorLayout';
+import { WorkspaceBoundary } from './components/WorkspaceBoundary';
 import App from './App'
 import Login from './pages/Login'
 import AuthRedirect from './pages/AuthRedirect'
-import Onboarding from './pages/Onboarding'
+import { BusinessOnboarding } from './components/BusinessOnboarding'
 import Overview from './pages/Overview'
 import Campaigns from './pages/Campaigns'
 import CreateCampaign from './pages/CreateCampaign'
@@ -53,6 +58,11 @@ const options = {
 } as const;
 
 
+function LegacyLogin() {
+  const location = useLocation();
+  return <Navigate to={`/business/login${location.search}`} replace />;
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={options}>
@@ -62,7 +72,7 @@ createRoot(document.getElementById('root')!).render(
           <ToastProvider>
           <BrowserRouter>
             <PostHogPageViewTracker />
-            <Routes>
+            <WorkspaceBoundary><Routes>
               <Route path="/" element={<App />} />
               <Route path="/business" element={<App />} />
               <Route path="/pricing" element={<App />} />
@@ -70,9 +80,17 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/support" element={<App />} />
               <Route path="/privacy-policy" element={<App />} />
               <Route path="/terms-and-conditions" element={<App />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<LegacyLogin />} />
+              <Route path="/business/login" element={<Login workspace="business" />} />
+              <Route path="/creator/login" element={<Login workspace="creator" />} />
+              <Route path="/workspace-access" element={<WorkspaceAccess />} />
+              <Route element={<CreatorLayout />}>
+                <Route path="/creator" element={<Navigate to="/creator/campaigns" replace />} />
+                <Route path="/creator/campaigns" element={<CreatorCampaigns />} />
+                <Route path="/creator/campaigns/:campaignId" element={<CreatorCampaignDetails />} />
+              </Route>
               <Route path="/auth-redirect" element={<AuthRedirect />} />
-              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/onboarding" element={<BusinessOnboarding />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/overview" element={<Overview />} />
                 <Route path="/campaigns" element={<Campaigns />} />
@@ -95,7 +113,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/admin/submissions" element={<AdminSubmissions />} />
                 <Route path="/admin/payouts" element={<AdminPayouts />} />
               </Route>
-            </Routes>
+            </Routes></WorkspaceBoundary>
           </BrowserRouter>
           </ToastProvider>
         </HeroUIProvider>

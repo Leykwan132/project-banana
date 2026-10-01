@@ -207,3 +207,24 @@ export const deleteNotificationUser = internalMutation({
         return existing._id;
     },
 });
+
+/** Resolve workspace access exclusively from the authenticated account's records. */
+export const getMyWorkspaces = query({
+    args: {},
+    returns: v.union(v.null(), v.object({
+        businessId: v.union(v.id("businesses"), v.null()),
+        creatorId: v.union(v.id("creators"), v.null()),
+    })),
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return null;
+        const [business, creator] = await Promise.all([
+            ctx.db.query("businesses").withIndex("by_user", q => q.eq("user_id", identity.subject)).unique(),
+            ctx.db.query("creators").withIndex("by_user", q => q.eq("user_id", identity.subject)).unique(),
+        ]);
+        return {
+            businessId: business?._id ?? null,
+            creatorId: creator && !creator.is_deleted ? creator._id : null,
+        };
+    },
+});

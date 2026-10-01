@@ -28,7 +28,7 @@ type NavLink = {
 const pricingFaqs: PricingFaq[] = [
     {
         question: 'Are there creator fees?',
-        answer: "No it's an open platform, we are allowing everyone to participate.",
+        answer: "There are no creator fees. New creator accounts are by invitation.",
     },
     {
         question: 'Does it cost money to create a campaign?',
@@ -97,9 +97,10 @@ function Footer() {
                         </li>
                         {!isAuthenticated && (
                             <li>
-                                <Link to="/login" className="transition-colors hover:text-gray-900">
-                                    Log In
+                                <Link to="/business/login" className="transition-colors hover:text-gray-900">
+                                    Business login
                                 </Link>
+                                <Link to="/creator/login" className="ml-4 transition-colors hover:text-gray-900">Creator login</Link>
                             </li>
                         )}
                     </ul>
@@ -185,7 +186,7 @@ function PricingPage() {
                 <PlanSelector
                     billingCycle={billingCycle}
                     onBillingCycleChange={setBillingCycle}
-                    onSelectPlan={() => navigate('/login')}
+                    onSelectPlan={() => navigate('/business/login')}
                     isLandingPage={true}
                 />
             </div>
@@ -241,18 +242,11 @@ export default function App() {
         },
     ].filter((link) => link.show);
 
+    const workspace = isBusiness || isPricing ? 'business' : 'creator';
+    const workspaceEntry = isAuthenticated ? `/auth-redirect?workspace=${workspace}` : `/${workspace}/login`;
     const mobileMenuLinks: NavLink[] = [
         ...topNavLinks,
-        ...(isBusiness
-            ? [
-                  {
-                      label: isAuthenticated ? 'Go to dashboard' : 'Log in',
-                      to: isAuthenticated ? '/overview' : '/login',
-                      isActive: pathname === '/login' || pathname === '/overview',
-                      isPrimary: true,
-                  },
-              ]
-            : []),
+        { label: isAuthenticated ? 'Open workspace' : `${workspace === 'business' ? 'Business' : 'Creator'} login`, to: workspaceEntry, isActive: false, isPrimary: true },
     ];
 
     let content = <CreatorLanding />;
@@ -285,15 +279,14 @@ export default function App() {
 
                         <div className="h-4 w-px bg-gray-200" />
 
-                        {isBusiness &&
-                            (isAuthenticated ? (
-                                <Link to="/overview" className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
-                                    Go to dashboard
+                        {(isAuthenticated ? (
+                                <Link to={workspaceEntry} className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+                                    Open workspace
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
                             ) : (
-                                <Link to="/login" className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
-                                    Log in
+                                <Link to={workspaceEntry} className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+                                    {workspace === 'business' ? 'Business login' : 'Creator login'}
                                 </Link>
                             ))}
                     </div>

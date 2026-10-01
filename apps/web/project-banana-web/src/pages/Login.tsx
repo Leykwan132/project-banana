@@ -1,29 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { authClient } from "../lib/auth-client";
 import iconDark from "../assets/icon-dark.svg";
 
-export default function Login() {
-    const { data: session, isPending } = authClient.useSession();
+import { useWorkspaces } from '../hooks/useWorkspaces';
+import { callbackPath, loginPath, resolveWorkspace } from '../lib/workspace';
+import type { Workspace } from '../lib/workspace';
+
+export default function Login({ workspace = 'business' }: { workspace?: Workspace }) {
+    const { session, loading, membership } = useWorkspaces();
+    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [isSigningIn, setIsSigningIn] = useState(false);
-    const loginError = searchParams.get('error');
+    const [signInError, setSignInError] = useState(false);
+    const loginError = searchParams.get('error') || signInError;
+    useEffect(() => {
+        if (!loading && session?.user && membership) navigate(resolveWorkspace(workspace, membership), { replace: true });
+    }, [loading, session?.user, membership, workspace, navigate]);
 
     const signIn = async () => {
+        setSignInError(false);
         setIsSigningIn(true);
         try {
-            await authClient.signIn.social({
+            const result = await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/auth-redirect?loggingIn=true",
+                callbackURL: callbackPath(workspace),
+                errorCallbackURL: loginPath(workspace),
             });
+            if (result.error) { setSignInError(true); setIsSigningIn(false); }
         } catch {
+            setSignInError(true);
             setIsSigningIn(false);
         }
     };
 
-    const isBusy = isSigningIn || (!isPending && !!session?.user);
+    const isBusy = isSigningIn || loading || !!session?.user;
 
     return (
         <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 relative">
@@ -35,14 +48,15 @@ export default function Login() {
             </div>
 
             <div className="w-full max-w-[320px] text-center">
-                <h1 className="text-2xl font-bold tracking-tight text-gray-900">Welcome to Lumina</h1>
-                <p className="text-[15px] text-gray-500 mb-8 mt-1">The new way to run content marketing.</p>
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900">{workspace === 'business' ? 'Business login' : 'Creator login'}</h1>
+                <p className="text-[15px] text-gray-500 mb-8 mt-1">{workspace === 'business' ? 'Sign in or create your business account.' : 'Sign in to your creator workspace.'}</p>
                 {loginError ? (
                     <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
                         Login failed. Please try again.
                     </div>
                 ) : null}
 
+                {workspace === 'creator' && <p className="mb-6 text-sm text-gray-600">New creators join by invitation. Existing creators can sign in with their account.</p>}
                 <div className="flex flex-col gap-2.5">
                     <button
                         onClick={signIn}
@@ -68,6 +82,9 @@ export default function Login() {
                         )}
                     </button>
                 </div>
+                <Link to={loginPath(workspace === 'business' ? 'creator' : 'business')} className="mt-6 inline-block text-sm text-gray-600 underline">
+                    {workspace === 'business' ? 'Looking for creator login?' : 'Looking for business login?'}
+                </Link>
             </div>
 
             <div className="absolute bottom-6 md:bottom-8 text-center w-full">

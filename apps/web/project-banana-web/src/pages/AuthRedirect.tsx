@@ -1,39 +1,25 @@
 import { useEffect } from "react";
-import { useQuery } from "convex/react";
 import { Loader2 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { api } from "../../../../../packages/backend/convex/_generated/api";
-import { authClient } from "../lib/auth-client";
+import { useWorkspaces } from '../hooks/useWorkspaces';
+import { loginPath, parseWorkspace, resolveWorkspace } from '../lib/workspace';
 import iconDark from "../assets/icon-dark.svg";
 
 export default function AuthRedirect() {
-    const { data: session, isPending } = authClient.useSession();
-    const business = useQuery(api.businesses.getMyBusiness, session?.user ? {} : "skip");
+    const { session, loading, membership } = useWorkspaces();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const workspace = parseWorkspace(searchParams.get('workspace'));
     const authError = searchParams.get('error') ?? searchParams.get('error_description');
-
     useEffect(() => {
-        if (isPending) {
-            return;
+        if (loading) return;
+        if (authError || !session?.user) {
+            navigate(loginPath(workspace, authError ?? undefined), { replace: true });
+        } else if (membership) {
+            navigate(resolveWorkspace(workspace, membership), { replace: true });
         }
-
-        if (authError) {
-            navigate(`/login?error=${encodeURIComponent(authError)}`, { replace: true });
-            return;
-        }
-
-        if (!session?.user) {
-            return;
-        }
-
-        if (business === undefined) {
-            return;
-        }
-
-        navigate(business ? '/overview' : '/onboarding', { replace: true });
-    }, [authError, business, isPending, navigate, session?.user]);
+    }, [authError, loading, membership, navigate, session?.user, workspace]);
 
     return (
         <div className="min-h-screen bg-white">
@@ -50,7 +36,7 @@ export default function AuthRedirect() {
                         <Loader2 className="mb-6 h-8 w-8 animate-spin text-gray-900" />
                         <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Logging you in</h1>
                         <p className="mt-2 text-sm text-gray-500">
-                            Checking your business account and preparing the next step.
+                            Checking your account and preparing your workspace.
                         </p>
                     </div>
                 </div>

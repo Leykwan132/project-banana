@@ -301,7 +301,7 @@ export default function BusinessLanding() {
                         Try Lumina today.
                     </h1>
                     <Link
-                        to="/login"
+                        to="/business/login"
                         className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#1A1A1A] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-black"
                     >
                         Get started <ArrowRight className="h-4 w-4" />
@@ -331,7 +331,7 @@ export default function BusinessLanding() {
                 <div className="mx-auto max-w-3xl px-6">
                     <h2 className="text-4xl font-bold tracking-tight text-gray-900 md:text-6xl">Build a reliable UGC growth engine</h2>
                     <Link
-                        to="/login"
+                        to="/business/login"
                         className="mt-8 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-black"
                     >
                         Get started <ArrowRight className="h-5 w-5" />

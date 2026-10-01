@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Megaphone, CheckSquare, Settings, CreditCard, LogOut, Zap, Loader2, Landmark, Building2, Crown } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
+import { useWorkspaces } from '../hooks/useWorkspaces';
+import { callbackPath } from '../lib/workspace';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import iconDark from '../assets/icon-dark.svg';
@@ -36,6 +38,7 @@ const getPlanDisplay = (planType?: string) => {
 
 export function Sidebar() {
     const navigate = useNavigate();
+    const { membership } = useWorkspaces();
     const business = useQuery(api.businesses.getMyBusiness);
     const activeCampaignCount = useQuery(api.campaigns.getActiveCampaignCount, business?._id ? { businessId: business._id } : "skip");
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -67,6 +70,7 @@ export function Sidebar() {
             </div>
 
             <div className="flex-1 flex flex-col gap-6 px-4 py-6 overflow-y-auto">
+                {membership?.creatorId && <NavLink to={callbackPath('creator')} className="rounded-xl border border-gray-200 px-3 py-3 text-sm font-semibold">Switch workspace</NavLink>}
                 <div>
                     <div className="px-2 mb-2 text-xs font-medium text-gray-400 uppercase tracking-wider">
                         General

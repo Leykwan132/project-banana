@@ -1,14 +1,15 @@
 import { Loader2 } from 'lucide-react';
 import { Navigate, Outlet } from 'react-router-dom';
 
-import { authClient } from '../lib/auth-client';
+import { useWorkspaces } from '../hooks/useWorkspaces';
+import { protectedWorkspacePath } from '../lib/workspace';
 import { Sidebar } from './Sidebar';
 import { ProductTour } from './ProductTour';
 
 export function DashboardLayout() {
-    const { data: session, isPending } = authClient.useSession();
+    const { loading, membership } = useWorkspaces();
 
-    if (isPending) {
+    if (loading) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-white">
                 <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
@@ -16,9 +17,8 @@ export function DashboardLayout() {
         );
     }
 
-    if (!session?.user) {
-        return <Navigate to="/business" replace />;
-    }
+    const redirect = protectedWorkspacePath('business', membership);
+    if (redirect) return <Navigate to={redirect} replace />;
 
     return (
         <div className="flex min-h-screen bg-white">
