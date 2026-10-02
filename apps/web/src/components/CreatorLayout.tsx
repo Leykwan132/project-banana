@@ -59,12 +59,14 @@ export function CreatorShell({ name, image, hasBusiness }: { name?: string; imag
     }
     function sidebar(compact: boolean, mobile = false) {
         return <div className="flex h-full flex-col bg-white">
-            <div className={`group/brand flex h-20 shrink-0 items-center border-b border-[#F4F6F8] ${compact ? 'justify-between gap-0 px-1' : 'gap-3 px-4'}`}>
+            <div className={`flex h-20 shrink-0 items-center border-b border-[#F4F6F8] ${compact ? 'justify-center px-1' : 'gap-3 px-4'}`}>
+                <div className={`relative flex items-center ${compact ? 'group/collapsed-logo' : 'min-w-0 flex-1'}`}>
                 <Link to="/creator/campaigns" aria-label="Lumina creator home" className="flex min-w-0 items-center gap-3">
                     <img src={logo} alt="" className="h-8 w-8 shrink-0" />
                     {!compact && <div><span className="text-xl font-semibold tracking-tight">Lumina</span><p className="text-xs text-gray-400">Creator</p></div>}
                 </Link>
-                {!mobile && <button onClick={toggleCollapsed} aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!compact} title={compact ? 'Expand sidebar' : 'Collapse sidebar'} className={`rounded-lg p-2 text-gray-500 transition-opacity hover:bg-gray-100 ${compact ? '' : 'ml-auto opacity-0 pointer-events-none group-hover/brand:opacity-100 group-hover/brand:pointer-events-auto group-focus-within/brand:opacity-100 group-focus-within/brand:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto'}`}>{compact ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}</button>}
+                {!mobile && <button onClick={toggleCollapsed} aria-label={compact ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!compact} title={compact ? 'Expand sidebar' : 'Collapse sidebar'} className={`rounded-lg p-2 text-gray-500 transition-opacity hover:bg-gray-100 ${compact ? 'absolute left-10 top-1/2 -translate-y-1/2 opacity-0 pointer-events-none group-hover/collapsed-logo:opacity-100 group-hover/collapsed-logo:pointer-events-auto group-focus-within/collapsed-logo:opacity-100 group-focus-within/collapsed-logo:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto' : 'ml-auto'}`}>{compact ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}</button>}
+                </div>
                 {mobile && <button onClick={() => setMobileOpen(false)} aria-label="Close navigation" className="ml-auto rounded-lg p-2 text-gray-500 hover:bg-gray-100"><X size={20} /></button>}
             </div>
             <nav aria-label={mobile ? 'Mobile creator navigation' : 'Creator navigation'} className={`flex-1 space-y-2 py-6 ${compact ? 'px-3' : 'px-4'}`}>
