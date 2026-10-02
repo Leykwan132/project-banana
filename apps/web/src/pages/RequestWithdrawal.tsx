@@ -9,6 +9,7 @@ import { api } from '../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import { BANK_OPTIONS } from '../lib/banks';
 import { BankAccountSourceType } from '../lib/constants';
+import { getWithdrawalValidationError } from '../lib/withdrawal-validation';
 
 const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -35,6 +36,7 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
     const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
     const [withdrawalError, setWithdrawalError] = useState('');
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [hasAcceptedWithdrawalPolicy, setHasAcceptedWithdrawalPolicy] = useState(false);
 
     const availableCredits = isCreator ? (creatorBalance?.balance ?? 0) : (business?.credit_balance ?? 0);
     const verifiedBankAccounts = useMemo(
@@ -82,6 +84,13 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
     const platformFee = isCreator ? Math.round(normalizedAmount * (platformFeeRate ?? 0) * 100) / 100 : 0;
     const totalFee = gatewayFee + platformFee;
     const estimatedDeposit = Math.max(normalizedAmount - totalFee, 0);
+    const validationError = getWithdrawalValidationError({
+        amount: parsedAmount,
+        availableBalance: availableCredits,
+        minimumAmount: minWithdrawalAmount,
+        gatewayFee,
+        hasVerifiedBank: Boolean(selectedBank),
+    });
 
     const handleMax = () => {
         setAmount(availableCredits.toFixed(2));
@@ -93,38 +102,19 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
     };
 
     const handleWithdrawalClick = () => {
-        if (!selectedBankId) {
-            setWithdrawalError('Add and verify a bank account before requesting a withdrawal.');
-            return;
-        }
-
-        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-            setWithdrawalError('Enter a valid withdrawal amount.');
-            return;
-        }
-
-        if (minWithdrawalAmount > 0 && parsedAmount < minWithdrawalAmount) {
-            setWithdrawalError(`Minimum withdrawal amount is ${formatCurrency(minWithdrawalAmount)}.`);
-            return;
-        }
-
-        if (parsedAmount <= gatewayFee) {
-            setWithdrawalError(`Withdrawal amount must be greater than ${formatCurrency(gatewayFee)}.`);
-            return;
-        }
-
-        if (parsedAmount > availableCredits) {
-            setWithdrawalError('Withdrawal amount exceeds your available balance.');
+        if (validationError) {
+            setWithdrawalError(validationError);
             return;
         }
 
         setWithdrawalError('');
+        setHasAcceptedWithdrawalPolicy(false);
         setIsConfirmModalOpen(true);
     };
 
     const handleSubmitWithdrawal = async () => {
-        if (!selectedBankId) {
-            setWithdrawalError('Bank account must be selected.');
+        if (validationError || !selectedBankId) {
+            setWithdrawalError(validationError ?? 'Bank account must be selected.');
             return;
         }
 
@@ -281,16 +271,20 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
                             <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                                 {withdrawalError}
                             </div>
+                        ) : validationError && (amount !== '' || verifiedBankAccounts.length === 0) ? (
+                            <div className="text-sm text-rose-600" role="status">
+                                {validationError}
+                            </div>
                         ) : null}
 
                         <Button
                             variant="primary"
                             onClick={handleWithdrawalClick}
                             isLoading={isSubmittingWithdrawal}
-                            disabled={verifiedBankAccounts.length === 0 || isSubmittingWithdrawal}
+                            disabled={Boolean(validationError) || isSubmittingWithdrawal}
                             className="w-full h-14 rounded-xl"
                         >
-                            {isSubmittingWithdrawal ? 'Requesting withdrawal…' : (isCreator ? 'Withdraw earnings' : 'Withdraw credits')}
+                            {isSubmittingWithdrawal ? 'Requesting withdrawal…' : 'Review & Continue'}
                         </Button>
                     </div>
                 </div>
@@ -340,7 +334,10 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
             {/* Confirmation Modal */}
             <Modal
                 isOpen={isConfirmModalOpen}
-                onOpenChange={setIsConfirmModalOpen}
+                onOpenChange={(isOpen) => {
+                    setIsConfirmModalOpen(isOpen);
+                    if (!isOpen) setHasAcceptedWithdrawalPolicy(false);
+                }}
                 size="5xl"
                 scrollBehavior="inside"
                 isDismissable={!isSubmittingWithdrawal}
@@ -406,6 +403,32 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
                                         </div>
                                     </div>
                                 </div>
+                                <div className="mt-8 rounded-2xl bg-gray-50 p-5">
+                                    <h3 className="font-semibold text-gray-900">Withdrawal policy</h3>
+                                    <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                                        <li>Withdrawals are processed within 3–5 business days.</li>
+                                        <li>
+                                            {isCreator
+                                                ? `A ${((platformFeeRate ?? 0) * 100).toLocaleString()}% platform fee is included in this withdrawal.`
+                                                : 'The applicable gateway fee is included in this withdrawal.'}
+                                        </li>
+                                    </ul>
+                                    <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-gray-200 pt-4 text-sm text-gray-800">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasAcceptedWithdrawalPolicy}
+                                            onChange={(event) => setHasAcceptedWithdrawalPolicy(event.target.checked)}
+                                            disabled={isSubmittingWithdrawal}
+                                            className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900"
+                                        />
+                                        <span>I have read and agree to the withdrawal policy above.</span>
+                                    </label>
+                                </div>
+                                {withdrawalError ? (
+                                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+                                        {withdrawalError}
+                                    </div>
+                                ) : null}
                             </ModalBody>
                             <ModalFooter className="px-8 pb-8 pt-0">
                                 <button
@@ -420,6 +443,7 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
                                     type="button"
                                     isLoading={isSubmittingWithdrawal}
                                     onClick={handleSubmitWithdrawal}
+                                    disabled={!hasAcceptedWithdrawalPolicy || isSubmittingWithdrawal}
                                     className="px-6 py-2.5 bg-black text-white hover:bg-gray-900 rounded-xl"
                                 >
                                     {isSubmittingWithdrawal ? 'Requesting...' : 'Confirm Request'}
