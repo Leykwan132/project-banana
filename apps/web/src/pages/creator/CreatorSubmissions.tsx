@@ -20,7 +20,7 @@ export default function CreatorSubmissions() {
         <div className="flex flex-wrap items-start justify-between gap-5">
             <div><h1 className="text-2xl font-bold">Submissions</h1><p className="mt-2 text-sm text-gray-500">Track your campaign submissions and their review status.</p></div>
             <div><p id="submission-filter-label" className="mb-2 text-xs font-medium text-gray-500">Filter by status</p>
-                <Dropdown><DropdownTrigger><HeroButton aria-labelledby="submission-filter-label submission-filter-value" variant="bordered" className="min-w-48 justify-between border-gray-200" endContent={<ChevronDown size={16} />}><span id="submission-filter-value">{filter === 'all' ? 'All statuses' : submissionStatus(filter).label}</span></HeroButton></DropdownTrigger>
+                <Dropdown disableAnimation><DropdownTrigger><HeroButton disableRipple disableAnimation aria-labelledby="submission-filter-label submission-filter-value" variant="bordered" className="min-w-48 justify-between border-gray-200" endContent={<ChevronDown size={16} />}><span id="submission-filter-value">{filter === 'all' ? 'All statuses' : submissionStatus(filter).label}</span></HeroButton></DropdownTrigger>
                     <DropdownMenu aria-label="Filter submissions by status" selectionMode="single" disallowEmptySelection selectedKeys={new Set([filter])} onSelectionChange={keys => { const key = Array.from(keys)[0]; if (key) setFilter(String(key)); }} items={options}>{item => <DropdownItem key={item.key}>{item.label}</DropdownItem>}</DropdownMenu>
                 </Dropdown>
             </div>
