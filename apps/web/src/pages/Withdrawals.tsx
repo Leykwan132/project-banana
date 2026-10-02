@@ -1,5 +1,7 @@
 import { Loader2, ArrowRight, Landmark } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from 'convex/react';
+import { Popover, PopoverTrigger, PopoverContent } from '@heroui/react';
 import { useNavigate } from 'react-router-dom';
 import type { Id } from '../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../packages/backend/convex/_generated/api';
@@ -8,6 +10,38 @@ import StatusBadge from '../components/ui/StatusBadge';
 
 const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function WithdrawalAmount({ requested, gatewayFee, platformFee, finalAmount }: { requested: number; gatewayFee: number; platformFee: number; finalAmount: number }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const keepOpen = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        closeTimer.current = null;
+        setIsOpen(true);
+    };
+    const closeSoon = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        closeTimer.current = setTimeout(() => setIsOpen(false), 160);
+    };
+    useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
+    const rows = [
+        ['Requested amount', requested],
+        ['Gateway fee', -gatewayFee],
+        ['Platform fee', -platformFee],
+    ] as const;
+    return <Popover placement="top" showArrow isOpen={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger>
+            <button type="button" aria-label={`Show breakdown for ${formatCurrency(finalAmount)}`} aria-expanded={isOpen} onMouseEnter={keepOpen} onMouseLeave={closeSoon} onFocus={keepOpen} onBlur={closeSoon} onClick={keepOpen} className="cursor-help border-b border-dotted border-gray-400 font-medium text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500">{formatCurrency(finalAmount)}</button>
+        </PopoverTrigger>
+        <PopoverContent>
+            <div onMouseEnter={keepOpen} onMouseLeave={closeSoon} className="w-60 space-y-3 rounded-xl bg-white p-4 text-xs text-gray-700 shadow-lg">
+                {rows.map(([label, value]) => <div key={label} className="flex items-center justify-between gap-5"><span className="text-gray-500">{label}</span><span className="whitespace-nowrap font-medium text-gray-900">{value < 0 ? `- ${formatCurrency(Math.abs(value))}` : formatCurrency(value)}</span></div>)}
+                <div className="h-px bg-gray-100" />
+                <div className="flex items-center justify-between gap-5"><span className="text-gray-500">Final amount</span><span className="whitespace-nowrap font-semibold text-gray-900">{formatCurrency(finalAmount)}</span></div>
+            </div>
+        </PopoverContent>
+    </Popover>;
+}
 
 const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('en-US', {
@@ -135,27 +169,7 @@ export default function Withdrawals({ workspace = 'business' }: { workspace?: 'b
                                             <span>****{withdrawal.account_number?.slice(-4) ?? '0000'}</span>
                                         </div>
                                         <div className="col-span-1 flex items-center justify-center">
-                                            <details className="w-full text-center">
-                                                <summary aria-label="Show withdrawal amount and fees" className="cursor-pointer font-medium text-gray-900">
-                                                    {formatCurrency(actualAmount)}
-                                                </summary>
-                                                <div className="mt-3 space-y-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-gray-500">Requested amount</span>
-                                                        <span className="font-medium text-gray-900">{formatCurrency(withdrawal.amount)}</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-gray-500">Gateway fee</span>
-                                                        <span className="font-medium text-gray-900">- {formatCurrency(gatewayFee)}</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1"><span className="text-gray-500">Platform fee</span><span className="font-medium text-gray-900">- {formatCurrency(platformFee)}</span></div>
-                                                    <div className="h-px bg-gray-100" />
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-gray-500">Final amount</span>
-                                                        <span className="font-semibold text-gray-900">{formatCurrency(actualAmount)}</span>
-                                                    </div>
-                                                </div>
-                                            </details>
+                                            <WithdrawalAmount requested={withdrawal.amount} gatewayFee={gatewayFee} platformFee={platformFee} finalAmount={actualAmount} />
                                         </div>
                                         <div className="col-span-1 flex items-center justify-center font-medium">
                                             <StatusBadge status={withdrawal.status || 'unknown'} />
