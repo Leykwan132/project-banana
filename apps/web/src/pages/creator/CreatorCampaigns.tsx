@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
 import { Link } from 'react-router-dom';
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from '@heroui/react';
-import { ArrowUpRight, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { CampaignImage } from '../../components/CampaignImage';
 
@@ -39,11 +39,19 @@ export default function CreatorCampaigns() {
         </div>
         {status === 'LoadingFirstPage' && <p role="status">Loading campaigns…</p>}
         {status !== 'LoadingFirstPage' && results.length === 0 && <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center"><h2 className="text-xl font-semibold">No active campaigns yet</h2><p className="mt-2 text-gray-600">New campaigns will appear here when they’re available.</p></div>}
-        <div className="space-y-4">
-            {campaigns.map(campaign => <Link key={campaign.campaignId} to={`/creator/campaigns/${campaign.campaignId}`} className="group flex flex-wrap items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 transition hover:border-gray-200 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500 sm:flex-nowrap sm:gap-5 sm:p-5">
-                <div className="w-20 shrink-0 sm:w-28"><CampaignImage aspect="square" r2Key={campaign.cover_photo_url || campaign.cover_photo_r2_key ? campaign.cover_photo_r2_key : campaign.logo_r2_key} url={campaign.cover_photo_url || campaign.cover_photo_r2_key ? campaign.cover_photo_url : campaign.logo_url} name={campaign.name} /></div>
-                <div className="min-w-0 flex-1"><p className="text-xs text-gray-500">{campaign.business_name ?? 'Brand campaign'}</p><h2 className="mt-1 font-semibold text-gray-900 sm:text-lg">{campaign.name}</h2><p className="mt-2 text-sm text-gray-500">{campaign.category.join(' · ')}</p><div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm"><p><span className="text-gray-500">Base pay </span><strong className="font-semibold">{money(campaign.base_pay)}</strong></p><p><span className="text-gray-500">Maximum </span><strong className="font-semibold">{money(campaign.maximum_payout)}</strong></p></div></div>
-                <div className="flex w-full justify-end sm:w-auto sm:shrink-0"><span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gray-900 px-4 py-2.5 text-sm font-medium text-white group-hover:bg-gray-700">Read brief <ArrowUpRight size={15} /></span></div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {campaigns.map(campaign => <Link key={campaign.campaignId} to={`/creator/campaigns/${campaign.campaignId}`} className="group flex min-w-0 flex-col rounded-2xl border border-gray-100 bg-white p-4 transition hover:border-gray-200 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500">
+                <div className="mb-3 flex min-h-6 flex-wrap gap-2">
+                    {campaign.category.slice(0, 2).map(category => <span key={category} className="max-w-full truncate rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-black">{category}</span>)}
+                    {campaign.category.length > 2 && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-black">+{campaign.category.length - 2}</span>}
+                </div>
+                <CampaignImage aspect="video" r2Key={campaign.cover_photo_url || campaign.cover_photo_r2_key ? campaign.cover_photo_r2_key : campaign.logo_r2_key} url={campaign.cover_photo_url || campaign.cover_photo_r2_key ? campaign.cover_photo_url : campaign.logo_url} name={campaign.name} />
+                <p className="mt-4 truncate text-xs font-medium text-gray-500">{campaign.business_name ?? 'Brand campaign'}</p>
+                <h2 className="mt-1 line-clamp-2 min-h-12 font-semibold text-gray-900 group-hover:text-gray-700">{campaign.name}</h2>
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
+                    <p className="min-w-0 text-xs text-gray-500">Base pay <strong className="mt-1 block truncate text-sm font-semibold text-gray-900">{money(campaign.base_pay)}</strong></p>
+                    <p className="min-w-0 text-xs text-gray-500">Maximum payout <strong className="mt-1 block truncate text-sm font-semibold text-gray-900">{money(campaign.maximum_payout)}</strong></p>
+                </div>
             </Link>)}
         </div>
         {sortingMore && <p className="mt-6 text-sm text-gray-500" role="status">Loading remaining campaigns to finish sorting…</p>}
