@@ -34,12 +34,12 @@ This PR implements Tasks 1–5 below. It makes existing creators usable on web t
 
 ### Task 1: Current-account membership and routing policy
 
-**Files:** Modify `packages/backend/convex/users.ts`, `apps/web/project-banana-web/src/lib/workspace.ts`, and `apps/web/project-banana-web/tests/workspace.test.ts`. Reuse the existing generated users module declaration; preserve the unrelated local API declaration change.
+**Files:** Modify `packages/backend/convex/users.ts`, `apps/web/src/lib/workspace.ts`, and `apps/web/tests/workspace.test.ts`. Reuse the existing generated users module declaration; preserve the unrelated local API declaration change.
 
 **Interfaces:** `users.getMyWorkspaces({})` returns null for signed-out callers or `{ businessId: Id<'businesses'> | null, creatorId: Id<'creators'> | null }` for the authenticated identity. `parseWorkspace(value: string | null): 'business' | 'creator'`. `resolveWorkspace(workspace, membership): '/overview' | '/onboarding' | '/creator/campaigns' | '/workspace-access?workspace=business' | '/workspace-access?workspace=creator'`.
 
 - [x] Write Bun tests covering all six routing rows in the spec, legacy and invalid workspace values, and deleted creator membership. Test backend membership lookup with an authenticated-context stub to prove identity-derived lookup, nullable records, and deleted-creator exclusion.
-- [x] Run `bun test apps/web/project-banana-web/tests/workspace.test.ts`; verify meaningful failures before implementation.
+- [x] Run `bun test apps/web/tests/workspace.test.ts`; verify meaningful failures before implementation.
 - [x] Implement the query using existing `by_user` indexes and the routing policy with explicit workspace values. Do not use an email or accept a user ID argument.
 - [x] Run the tests and verify all cases pass.
 - [x] Commit only the query, generated module declaration change, policy, and tests.
@@ -88,8 +88,8 @@ This PR implements Tasks 1–5 below. It makes existing creators usable on web t
 
 **Files:** Update this plan's checkboxes and validation notes; create no unrelated product files.
 
-- [x] Run `bun test apps/web/project-banana-web/tests/workspace.test.ts` and membership tests.
-- [x] Run `bun run --cwd apps/web/project-banana-web check-types` and `bun run --cwd apps/web/project-banana-web build`; separate baseline issues from regressions. Do not commit unrelated dependency changes.
+- [x] Run `bun test apps/web/tests/workspace.test.ts` and membership tests.
+- [x] Run `bun run --cwd apps/web check-types` and `bun run --cwd apps/web build`; separate baseline issues from regressions. Do not commit unrelated dependency changes.
 - [x] Review the entire branch diff against the spec and routing matrix, then perform the selected execution workflow's independent review. Fix actionable findings and rerun affected checks.
 - [x] Confirm no invitation onboarding, application, or financial feature is falsely described as shipped, and no unrelated local modifications or credentials are staged.
 - [x] Push `codex/shared-web-login` and create a PR against the remote default branch. The PR describes separate logins, record-based guards, existing creator campaign access, validation, and the remaining invitation and creator-migration scope.
