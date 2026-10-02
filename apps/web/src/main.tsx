@@ -43,6 +43,10 @@ import CreatorInvitation from './pages/creator/CreatorInvitation'
 import { PostHogIdentitySync } from './components/PostHogIdentitySync';
 import { PostHogPageViewTracker } from './components/PostHogPageViewTracker';
 import { registerBaseAnalyticsContext } from './lib/analytics';
+import { clearStaleProductTourActive } from './lib/productTour';
+
+// Tour sample data is only valid while the guided tour is running in this app session.
+clearStaleProductTourActive();
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string, {
   // Optionally pause queries until the user is authenticated

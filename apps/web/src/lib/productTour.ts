@@ -32,6 +32,11 @@ export const setProductTourBannerDismissed = (value: boolean) => {
 
 export const isProductTourActive = () => readStorageBoolean(PRODUCT_TOUR_ACTIVE_KEY);
 
+export const clearStaleProductTourActive = (storage?: Pick<Storage, 'removeItem'>) => {
+    const targetStorage = storage ?? (typeof window !== 'undefined' ? window.localStorage : undefined);
+    targetStorage?.removeItem(PRODUCT_TOUR_ACTIVE_KEY);
+};
+
 export const setProductTourActive = (value: boolean) => {
     writeStorageBoolean(PRODUCT_TOUR_ACTIVE_KEY, value);
     if (typeof window === 'undefined') return;
