@@ -3,7 +3,7 @@ import { useAction, useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../components/ui/Toast';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal';
-import { Banknote, Building2, ChevronLeft, Landmark, Loader2, ShieldCheck, Wallet } from 'lucide-react';
+import { Banknote, Building2, ChevronDown, ChevronLeft, Landmark, Loader2, ShieldCheck, Wallet } from 'lucide-react';
 import type { Id } from '../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
@@ -31,6 +31,7 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
 
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<Id<'bank_accounts'> | null>(null);
+    const [showAllBankAccounts, setShowAllBankAccounts] = useState(false);
     const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
     const [withdrawalError, setWithdrawalError] = useState('');
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -60,6 +61,9 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
         () => verifiedBankAccounts.find((account) => account._id === selectedBankId),
         [verifiedBankAccounts, selectedBankId]
     );
+    const visibleBankAccounts = showAllBankAccounts
+        ? verifiedBankAccounts
+        : verifiedBankAccounts.slice(0, 5);
 
     if ((isCreator ? creatorBalance === undefined : business === undefined) || bankAccounts === undefined || businessGatewayFee === undefined || platformFeeRate === undefined || minimum === undefined) {
         return (
@@ -222,8 +226,8 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
                             {verifiedBankAccounts.length === 0 ? (
                                 <p className="text-sm text-gray-400">No verified bank accounts yet.</p>
                             ) : (
-                                <div className="space-y-3">
-                                    {verifiedBankAccounts.map((account) => {
+                                <div id="withdrawal-bank-accounts" className="space-y-3">
+                                    {visibleBankAccounts.map((account) => {
                                         const metadata = BANK_OPTIONS.find((option) => option.name === account.bank_name);
                                         const isSelected = selectedBankId === account._id;
 
@@ -258,6 +262,18 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
                                         );
                                     })}
                                 </div>
+                            )}
+                            {verifiedBankAccounts.length > 5 && (
+                                <button
+                                    type="button"
+                                    aria-expanded={showAllBankAccounts}
+                                    aria-controls="withdrawal-bank-accounts"
+                                    onClick={() => setShowAllBankAccounts((showAll) => !showAll)}
+                                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-gray-600 transition-colors hover:text-gray-900"
+                                >
+                                    {showAllBankAccounts ? 'Show less' : 'Show all'}
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${showAllBankAccounts ? 'rotate-180' : ''}`} />
+                                </button>
                             )}
                         </div>
 
