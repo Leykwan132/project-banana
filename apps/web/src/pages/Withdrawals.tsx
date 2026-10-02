@@ -52,18 +52,18 @@ export default function Withdrawals({ workspace = 'business' }: { workspace?: 'b
 
             <div className="flex flex-col gap-8">
                 {/* Top Section: Balance & Actions */}
-                <div className="w-full max-w-lg">
-                    <div className="bg-[#0F172A] text-white p-8 rounded-xl flex flex-col justify-between min-h-[300px] shadow-xl shadow-black/10 relative">
+                <div className="w-full max-w-[22.4rem]">
+                    <div className="bg-[#0F172A] text-white rounded-xl flex h-[210px] flex-col justify-between p-6 shadow-xl shadow-black/10 relative">
                         {/* Icon */}
-                        <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
-                            <Landmark className="w-7 h-7 text-white" />
+                        <div className="h-10 w-10 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
+                            <Landmark className="h-5 w-5 text-white" />
                         </div>
 
                         {/* Bottom Section */}
-                        <div className="flex flex-wrap items-end justify-between gap-4 mt-8">
+                        <div className="flex flex-wrap items-end justify-between gap-4 mt-6">
                             <div>
                                 <div className="text-gray-400 font-medium mb-2">Available to withdraw</div>
-                                <div className="text-4xl font-bold">
+                                <div className="whitespace-nowrap text-3xl font-bold">
                                     {isLoading ? (
                                         <Loader2 className="w-8 h-8 animate-spin" />
                                     ) : (
@@ -74,7 +74,7 @@ export default function Withdrawals({ workspace = 'business' }: { workspace?: 'b
                             <Button
                                 variant='outline'
                                 data-tour-id="withdrawals-request-button"
-                                className="rounded-full px-6 text-gray-900 bg-white hover:bg-gray-100 border-none"
+                                className="!px-4 whitespace-nowrap rounded-full text-gray-900 bg-white hover:bg-gray-100 border-none"
                                 icon={<ArrowRight className="w-4 h-4" />}
                                 onClick={handleRequestWithdrawal}
                             >
