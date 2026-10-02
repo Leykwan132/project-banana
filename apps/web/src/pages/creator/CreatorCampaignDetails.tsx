@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { CampaignImage } from '../../components/CampaignImage';
+import { CampaignCategoryTag } from '../../components/CampaignCategoryTag';
 import Button from '../../components/ui/Button';
 
 export default function CreatorCampaignDetails() {
@@ -22,7 +23,7 @@ export default function CreatorCampaignDetails() {
                     <div className="relative">
                         <CampaignImage name={campaign.name} r2Key={campaign.cover_photo_r2_key} url={campaign.cover_photo_url} />
                         <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
-                            {campaign.category.slice(0, 2).map(category => <span key={category} className="max-w-full truncate rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-black">{category}</span>)}
+                            {campaign.category.slice(0, 2).map(category => <CampaignCategoryTag key={category} label={category} />)}
                             {campaign.category.length > 2 && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-black">+{campaign.category.length - 2}</span>}
                         </div>
                     </div>
