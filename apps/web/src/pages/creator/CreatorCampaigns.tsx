@@ -9,6 +9,20 @@ import { CampaignCategoryTag } from '../../components/CampaignCategoryTag';
 import { CreatorPageHeader } from '../../components/CreatorPageHeader';
 
 const money = (amount: number) => new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(amount);
+const relativeTime = new Intl.RelativeTimeFormat('en', { numeric: 'always' });
+const campaignAge = (createdAt: number) => {
+    const elapsed = Math.max(0, Date.now() - createdAt);
+    const minutes = Math.floor(elapsed / 60_000);
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return relativeTime.format(-minutes, 'minute');
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return relativeTime.format(-hours, 'hour');
+    const days = Math.floor(hours / 24);
+    if (days < 30) return relativeTime.format(-days, 'day');
+    const months = Math.floor(days / 30);
+    if (months < 12) return relativeTime.format(-months, 'month');
+    return relativeTime.format(-Math.floor(months / 12), 'year');
+};
 const sorts = [
     { key: 'newest', label: 'Newest first' },
     { key: 'base-high', label: 'Base pay: highest first' },
@@ -66,7 +80,10 @@ export default function CreatorCampaigns() {
                         {campaign.category.length > 2 && <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-black">+{campaign.category.length - 2}</span>}
                     </div>
                 </div>
-                <p className="mt-4 truncate text-xs font-medium text-gray-500">{campaign.business_name ?? 'Brand campaign'}</p>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="min-w-0 truncate text-xs font-medium text-gray-500">{campaign.business_name ?? 'Brand campaign'}</p>
+                    <time dateTime={new Date(campaign.created_at).toISOString()} className="shrink-0 text-xs text-gray-400">{campaignAge(campaign.created_at)}</time>
+                </div>
                 <h2 className="mt-1 line-clamp-2 font-semibold text-gray-900 group-hover:text-gray-700">{campaign.name}</h2>
                 <div className="mt-auto grid grid-cols-2 gap-3 border-t border-gray-200 pt-4">
                     <p className="min-w-0 text-xs text-gray-500">Base pay <strong className="mt-1 block truncate text-sm font-semibold text-gray-900">{money(campaign.base_pay)}</strong></p>

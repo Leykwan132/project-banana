@@ -280,6 +280,7 @@ export const getActiveCampaigns = query({
                     budget_claimed: campaign.budget_claimed,
                     category: campaign.category,
                     business_name: business?.name,
+                    created_at: campaign.created_at,
                 };
             })
         );
