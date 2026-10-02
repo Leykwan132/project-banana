@@ -96,8 +96,8 @@ export default function Withdrawals({ workspace = 'business' }: { workspace?: 'b
                         {/* Bottom Section */}
                         <div className="flex flex-wrap items-end justify-between gap-4 mt-6">
                             <div>
-                                <div className="text-gray-400 font-medium mb-2">Available to withdraw</div>
-                                <div className="whitespace-nowrap text-3xl font-bold">
+                                <div className="mb-2 text-sm font-medium text-gray-400">Available to withdraw</div>
+                                <div className="whitespace-nowrap text-2xl font-bold">
                                     {isLoading ? (
                                         <Loader2 className="w-8 h-8 animate-spin" />
                                     ) : (
