@@ -13,14 +13,21 @@ import { BankAccountSourceType } from '../lib/constants';
 const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export default function RequestWithdrawal() {
+export default function RequestWithdrawal({ workspace = 'business' }: { workspace?: 'business' | 'creator' }) {
+    const isCreator = workspace === 'creator';
+    const withdrawalPath = isCreator ? '/creator/withdraw' : '/withdrawals';
     const navigate = useNavigate();
-    const business = useQuery(api.businesses.getMyBusiness);
-    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Business });
-    const gatewayFee = useQuery(api.payouts.getPayoutGatewayFee) ?? 0;
-    const minWithdrawalAmount = useQuery(api.payouts.getMinWithdrawalAmount) ?? 0;
+    const business = useQuery(api.businesses.getMyBusiness, isCreator ? 'skip' : {});
+    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: isCreator ? BankAccountSourceType.Creator : BankAccountSourceType.Business });
+    const businessGatewayFee = useQuery(api.payouts.getPayoutGatewayFee);
+    const platformFeeRate = useQuery(api.payouts.getPayoutPlatformFeeRate);
+    const creatorBalance = useQuery(api.users.getUserBalance, isCreator ? {} : 'skip');
+    const gatewayFee = isCreator ? 0 : (businessGatewayFee ?? 0);
+    const minimum = useQuery(api.payouts.getMinWithdrawalAmount);
+    const minWithdrawalAmount = minimum ?? 0;
 
     const requestBusinessWithdrawal = useAction(api.payouts.requestBusinessWithdrawal);
+    const requestCreatorWithdrawal = useAction(api.payouts.requestWithdrawal);
 
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<Id<'bank_accounts'> | null>(null);
@@ -28,7 +35,7 @@ export default function RequestWithdrawal() {
     const [withdrawalError, setWithdrawalError] = useState('');
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
-    const availableCredits = business?.credit_balance ?? 0;
+    const availableCredits = isCreator ? (creatorBalance?.balance ?? 0) : (business?.credit_balance ?? 0);
     const verifiedBankAccounts = useMemo(
         () => ((bankAccounts ?? []) as Array<{
             _id: Id<'bank_accounts'>;
@@ -54,7 +61,7 @@ export default function RequestWithdrawal() {
         [verifiedBankAccounts, selectedBankId]
     );
 
-    if (business === undefined || bankAccounts === undefined) {
+    if ((isCreator ? creatorBalance === undefined : business === undefined) || bankAccounts === undefined || businessGatewayFee === undefined || platformFeeRate === undefined || minimum === undefined) {
         return (
             <div className="flex min-h-[50vh] items-center justify-center">
                 <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
@@ -62,13 +69,15 @@ export default function RequestWithdrawal() {
         );
     }
 
-    if (business === null) {
+    if (!isCreator && business === null) {
         return <div className="p-8">Please complete onboarding first.</div>;
     }
 
     const parsedAmount = Number.parseFloat(amount);
     const normalizedAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
-    const estimatedDeposit = normalizedAmount > gatewayFee ? normalizedAmount - gatewayFee : 0;
+    const platformFee = isCreator ? Math.round(normalizedAmount * (platformFeeRate ?? 0) * 100) / 100 : 0;
+    const totalFee = gatewayFee + platformFee;
+    const estimatedDeposit = Math.max(normalizedAmount - totalFee, 0);
 
     const handleMax = () => {
         setAmount(availableCredits.toFixed(2));
@@ -76,7 +85,7 @@ export default function RequestWithdrawal() {
     };
 
     const handleBack = () => {
-        navigate('/withdrawals');
+        navigate(withdrawalPath);
     };
 
     const handleWithdrawalClick = () => {
@@ -101,7 +110,7 @@ export default function RequestWithdrawal() {
         }
 
         if (parsedAmount > availableCredits) {
-            setWithdrawalError('Withdrawal amount exceeds your available credits.');
+            setWithdrawalError('Withdrawal amount exceeds your available balance.');
             return;
         }
 
@@ -118,7 +127,7 @@ export default function RequestWithdrawal() {
         setIsSubmittingWithdrawal(true);
 
         try {
-            await requestBusinessWithdrawal({
+            await (isCreator ? requestCreatorWithdrawal : requestBusinessWithdrawal)({
                 amount: parsedAmount,
                 bankAccountId: selectedBankId,
             });
@@ -128,9 +137,9 @@ export default function RequestWithdrawal() {
                 description: 'Your request will take 3–5 business days to process.',
                 color: 'success',
             });
-            navigate('/withdrawals');
+            navigate(withdrawalPath);
         } catch (error) {
-            console.error('Failed to create business withdrawal:', error);
+            console.error('Failed to request withdrawal:', error);
             setWithdrawalError(error instanceof Error ? error.message : 'Unable to create withdrawal request.');
         } finally {
             setIsSubmittingWithdrawal(false);
@@ -138,7 +147,7 @@ export default function RequestWithdrawal() {
     };
 
     return (
-        <div className="animate-fadeIn p-8 pb-24 text-gray-900">
+        <div className="animate-fadeIn p-4 sm:p-8 pb-24 text-gray-900">
             {/* Header / Navigation */}
             <div className="flex justify-between items-center mb-6">
                 <Button
@@ -204,7 +213,7 @@ export default function RequestWithdrawal() {
                                 <label className="text-sm font-semibold text-gray-900">Bank account</label>
                                 <button
                                     type="button"
-                                    onClick={() => navigate('/bank-accounts')}
+                                    onClick={() => navigate(isCreator ? '/creator/bank-accounts' : '/bank-accounts')}
                                     className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors"
                                 >
                                     <span className="text-base leading-none">+</span> Add bank account
@@ -265,7 +274,7 @@ export default function RequestWithdrawal() {
                             disabled={verifiedBankAccounts.length === 0 || isSubmittingWithdrawal}
                             className="w-full h-14 rounded-xl"
                         >
-                            {isSubmittingWithdrawal ? 'Creating payout order...' : 'Withdraw credits'}
+                            {isSubmittingWithdrawal ? 'Requesting withdrawal…' : (isCreator ? 'Withdraw earnings' : 'Withdraw credits')}
                         </Button>
                     </div>
                 </div>
@@ -283,8 +292,8 @@ export default function RequestWithdrawal() {
                                 <span className="font-semibold">{formatCurrency(normalizedAmount)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className="text-white/60">Gateway fee</span>
-                                <span className="font-semibold">{formatCurrency(gatewayFee)}</span>
+                                <span className="text-white/60">{isCreator ? 'Platform fee' : 'Gateway fee'}</span>
+                                <span className="font-semibold">{formatCurrency(totalFee)}</span>
                             </div>
                             <div className="pt-4 border-t border-white/10 flex items-center justify-between text-base">
                                 <span className="text-white/80 font-medium">Final amount</span>
@@ -305,7 +314,7 @@ export default function RequestWithdrawal() {
                             </li>
                             <li className="flex gap-2">
                                 <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                                Business withdrawals only include the gateway fee.
+                                {isCreator ? `Creator withdrawals include a ${((platformFeeRate ?? 0) * 100).toLocaleString()}% platform fee.` : 'Business withdrawals only include the gateway fee.'}
                             </li>
                         </ul>
                     </div>
@@ -357,8 +366,8 @@ export default function RequestWithdrawal() {
                                                         <span className="font-semibold text-gray-900">{formatCurrency(normalizedAmount)}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between text-base">
-                                                        <span className="text-gray-500">Gateway fee</span>
-                                                        <span className="font-semibold text-gray-900">{formatCurrency(gatewayFee)}</span>
+                                                        <span className="text-gray-500">{isCreator ? 'Platform fee' : 'Gateway fee'}</span>
+                                                        <span className="font-semibold text-gray-900">{formatCurrency(totalFee)}</span>
                                                     </div>
                                                 </div>
 
@@ -371,7 +380,7 @@ export default function RequestWithdrawal() {
 
                                                 <div className="pt-6 border-t border-gray-100">
                                                     <div className="flex items-center justify-between text-base">
-                                                        <span className="text-gray-500">Credits remaining after withdrawal</span>
+                                                        <span className="text-gray-500">Balance remaining after withdrawal</span>
                                                         <span className="font-semibold text-gray-900">
                                                             {formatCurrency(availableCredits - normalizedAmount)}
                                                         </span>

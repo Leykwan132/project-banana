@@ -9,6 +9,7 @@ import { authClient } from "./lib/auth-client";
 import { PostHogProvider } from '@posthog/react'
 
 import WorkspaceAccess from './pages/WorkspaceAccess';
+import CreatorSubmissions from './pages/creator/CreatorSubmissions';
 import CreatorCampaigns from './pages/creator/CreatorCampaigns';
 import CreatorCampaignDetails from './pages/creator/CreatorCampaignDetails';
 import { CreatorLayout } from './components/CreatorLayout';
@@ -101,6 +102,10 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/creator" element={<Navigate to="/creator/campaigns" replace />} />
                 <Route path="/creator/campaigns" element={<CreatorCampaigns />} />
                 <Route path="/creator/campaigns/:campaignId" element={<CreatorCampaignDetails />} />
+                <Route path="/creator/submissions" element={<CreatorSubmissions />} />
+                <Route path="/creator/withdraw" element={<Withdrawals workspace="creator" />} />
+                <Route path="/creator/withdraw/request" element={<RequestWithdrawal workspace="creator" />} />
+                <Route path="/creator/bank-accounts" element={<BankAccounts workspace="creator" />} />
               </Route>
               <Route path="/auth-redirect" element={<AuthRedirect />} />
               <Route path="/onboarding" element={<BusinessOnboarding />} />

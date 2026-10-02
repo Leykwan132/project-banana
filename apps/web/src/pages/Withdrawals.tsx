@@ -20,13 +20,15 @@ const formatDate = (timestamp: number) => {
     });
 };
 
-export default function Withdrawals() {
+export default function Withdrawals({ workspace = 'business' }: { workspace?: 'business' | 'creator' }) {
+    const isCreator = workspace === 'creator';
     const navigate = useNavigate();
-    const business = useQuery(api.businesses.getMyBusiness);
-    const withdrawals = useQuery(api.payouts.getBusinessWithdrawals);
+    const business = useQuery(api.businesses.getMyBusiness, isCreator ? 'skip' : {});
+    const withdrawals = useQuery(isCreator ? api.payouts.getUserWithdrawals : api.payouts.getBusinessWithdrawals);
 
-    const availableCredits = business?.credit_balance ?? 0;
-    const isLoading = business === undefined || withdrawals === undefined;
+    const creatorBalance = useQuery(api.users.getUserBalance, isCreator ? {} : 'skip');
+    const availableCredits = isCreator ? (creatorBalance?.balance ?? 0) : (business?.credit_balance ?? 0);
+    const isLoading = (isCreator ? creatorBalance === undefined : business === undefined) || withdrawals === undefined;
 
     const withdrawalHistory = (withdrawals ?? []) as Array<{
         _id: Id<'withdrawals'>;
@@ -40,12 +42,13 @@ export default function Withdrawals() {
     }>;
 
     const handleRequestWithdrawal = () => {
-        navigate('/withdrawals/request');
+        navigate(isCreator ? '/creator/withdraw/request' : '/withdrawals/request');
     };
 
     return (
-        <div className="bg-white p-8 font-sans text-gray-900 animate-fadeIn">
-            <h1 className="text-2xl font-bold mb-6">Withdrawals</h1>
+        <div className="bg-white p-4 sm:p-8 font-sans text-gray-900 animate-fadeIn">
+            <h1 className="text-2xl font-bold mb-6">{isCreator ? 'Withdraw' : 'Withdrawals'}</h1>
+            {isCreator && <Button variant="ghost" onClick={() => navigate('/creator/bank-accounts')} className="mb-6">Manage bank accounts</Button>}
 
             <div className="flex flex-col gap-8">
                 {/* Top Section: Balance & Actions */}
@@ -57,14 +60,14 @@ export default function Withdrawals() {
                         </div>
 
                         {/* Bottom Section */}
-                        <div className="flex items-end justify-between mt-8">
+                        <div className="flex flex-wrap items-end justify-between gap-4 mt-8">
                             <div>
                                 <div className="text-gray-400 font-medium mb-2">Available to withdraw</div>
                                 <div className="text-4xl font-bold">
                                     {isLoading ? (
                                         <Loader2 className="w-8 h-8 animate-spin" />
                                     ) : (
-                                        `Rm ${availableCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                        `RM ${availableCredits.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                     )}
                                 </div>
                             </div>
@@ -82,8 +85,8 @@ export default function Withdrawals() {
                 </div>
 
                 {/* History Section */}
-                <div className="bg-white overflow-visible">
-                    <div className="flex items-center justify-between mb-4 w-[75%]">
+                <div className="bg-white overflow-x-auto">
+                    <div className="flex items-center justify-between mb-4 w-full">
                         <div className="flex items-center gap-6">
                             <button className="font-bold text-lg transition-colors relative pb-1 text-gray-900 border-b-2 border-gray-900">
                                 Past Withdrawals
@@ -91,7 +94,7 @@ export default function Withdrawals() {
                         </div>
                     </div>
 
-                    <div className="bg-[#F4F6F8] w-[75%] rounded-lg mt-2 grid grid-cols-5 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider select-none">
+                    <div className="bg-[#F4F6F8] w-full min-w-[640px] rounded-lg mt-2 grid grid-cols-5 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider select-none">
                         <div className="col-span-1 pl-2 flex items-center">Date</div>
                         <div className="col-span-1 flex items-center justify-center">Bank</div>
                         <div className="col-span-1 flex items-center justify-center">Account Number</div>
@@ -100,21 +103,22 @@ export default function Withdrawals() {
                     </div>
 
                     {isLoading ? (
-                        <div className="flex items-center justify-center py-12 w-[75%]">
+                        <div className="flex items-center justify-center py-12 w-full">
                             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                         </div>
                     ) : !withdrawalHistory || withdrawalHistory.length === 0 ? (
-                        <div className="py-12 text-center text-gray-500 w-[75%]">
+                        <div className="py-12 text-center text-gray-500 w-full">
                             No withdrawal history found
                         </div>
                     ) : (
-                        <div className="divide-y divide-[#F4F6F8] w-[75%]">
+                        <div className="divide-y divide-[#F4F6F8] w-full min-w-[640px]">
                             {withdrawalHistory.map((withdrawal) => {
                                 const actualAmount = Math.max(
                                     withdrawal.amount - (withdrawal.gateway_fee ?? 0) - (withdrawal.platform_fee ?? 0),
                                     0,
                                 );
                                 const gatewayFee = withdrawal.gateway_fee ?? 0;
+                                const platformFee = withdrawal.platform_fee ?? 0;
 
                                 return (
                                     <div
@@ -131,26 +135,27 @@ export default function Withdrawals() {
                                             <span>****{withdrawal.account_number?.slice(-4) ?? '0000'}</span>
                                         </div>
                                         <div className="col-span-1 flex items-center justify-center">
-                                            <div className="group relative">
-                                                <div className="cursor-help border-b border-dotted border-gray-300 font-medium text-gray-900">
+                                            <details className="w-full text-center">
+                                                <summary aria-label="Show withdrawal amount and fees" className="cursor-pointer font-medium text-gray-900">
                                                     {formatCurrency(actualAmount)}
-                                                </div>
-                                                <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] group-hover:flex group-hover:flex-col group-hover:gap-2">
-                                                    <div className="flex items-center justify-between gap-6 whitespace-nowrap">
+                                                </summary>
+                                                <div className="mt-3 space-y-3 rounded-xl bg-gray-50 p-3 text-xs text-gray-700">
+                                                    <div className="flex flex-col gap-1">
                                                         <span className="text-gray-500">Requested amount</span>
                                                         <span className="font-medium text-gray-900">{formatCurrency(withdrawal.amount)}</span>
                                                     </div>
-                                                    <div className="flex items-center justify-between gap-6 whitespace-nowrap">
+                                                    <div className="flex flex-col gap-1">
                                                         <span className="text-gray-500">Gateway fee</span>
                                                         <span className="font-medium text-gray-900">- {formatCurrency(gatewayFee)}</span>
                                                     </div>
+                                                    <div className="flex flex-col gap-1"><span className="text-gray-500">Platform fee</span><span className="font-medium text-gray-900">- {formatCurrency(platformFee)}</span></div>
                                                     <div className="h-px bg-gray-100" />
-                                                    <div className="flex items-center justify-between gap-6 whitespace-nowrap">
+                                                    <div className="flex flex-col gap-1">
                                                         <span className="text-gray-500">Final amount</span>
                                                         <span className="font-semibold text-gray-900">{formatCurrency(actualAmount)}</span>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </details>
                                         </div>
                                         <div className="col-span-1 flex items-center justify-center font-medium">
                                             <StatusBadge status={withdrawal.status || 'unknown'} />

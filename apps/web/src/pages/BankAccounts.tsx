@@ -42,20 +42,21 @@ const TOUR_MOCK_BANK_ACCOUNTS: BankAccountListItem[] = [
     },
 ];
 
-export default function BankAccounts() {
-    const business = useQuery(api.businesses.getMyBusiness);
-    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Business });
-    const [isTourActive, setIsTourActive] = useState(() => isProductTourActive());
+export default function BankAccounts({ workspace = 'business' }: { workspace?: 'business' | 'creator' }) {
+    const isCreator = workspace === 'creator';
+    const business = useQuery(api.businesses.getMyBusiness, isCreator ? 'skip' : {});
+    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: isCreator ? BankAccountSourceType.Creator : BankAccountSourceType.Business });
+    const [isTourActive, setIsTourActive] = useState(() => !isCreator && isProductTourActive());
 
     useEffect(() => {
         const syncTourState = () => {
-            setIsTourActive(isProductTourActive());
+            setIsTourActive(!isCreator && isProductTourActive());
         };
         window.addEventListener(PRODUCT_TOUR_STATE_EVENT, syncTourState);
         return () => {
             window.removeEventListener(PRODUCT_TOUR_STATE_EVENT, syncTourState);
         };
-    }, []);
+    }, [isCreator]);
 
     const generateProofUploadUrl = useAction(api.bankAccounts.generateProofUploadUrl);
     const createBankAccount = useMutation(api.bankAccounts.createBankAccount);
@@ -75,7 +76,7 @@ export default function BankAccounts() {
         bank.name.toLowerCase().includes(bankSearchTerm.toLowerCase())
     );
 
-    const isLoading = !isTourActive && (business === undefined || bankAccounts === undefined);
+    const isLoading = !isTourActive && ((!isCreator && business === undefined) || bankAccounts === undefined);
     const effectiveBankAccounts: BankAccountListItem[] = isTourActive
         ? TOUR_MOCK_BANK_ACCOUNTS
         : ((bankAccounts ?? []) as BankAccountListItem[]);
@@ -88,7 +89,7 @@ export default function BankAccounts() {
         );
     }
 
-    if (!isTourActive && business === null) {
+    if (!isCreator && !isTourActive && business === null) {
         return <div className="p-8">Please complete onboarding first.</div>;
     }
 
@@ -122,7 +123,7 @@ export default function BankAccounts() {
                 accountHolderName: accountHolderName.trim(),
                 accountNumber: accountNumber.trim(),
                 proofDocumentKey: r2Key,
-                sourceType: BankAccountSourceType.Business,
+                sourceType: isCreator ? BankAccountSourceType.Creator : BankAccountSourceType.Business,
             });
 
             setBankName('');
