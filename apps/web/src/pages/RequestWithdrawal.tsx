@@ -3,7 +3,7 @@ import { useAction, useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../components/ui/Toast';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal';
-import { Banknote, Building2, ChevronDown, ChevronLeft, Landmark, Loader2, ShieldCheck, Wallet } from 'lucide-react';
+import { Banknote, Building2, ChevronDown, ChevronLeft, Landmark, Loader2, ShieldCheck } from 'lucide-react';
 import type { Id } from '../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
@@ -289,29 +289,8 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
                     </div>
                 </div>
 
-                {/* Right Column: Info & Summary */}
+                {/* Right Column: Withdrawal policy */}
                 <div className="space-y-6">
-                    <div className="rounded-3xl bg-[#0F172A] p-6 text-white shadow-xl">
-                        <div className="flex items-center gap-3 text-sm text-white/70">
-                            <Wallet className="h-4 w-4" />
-                            Summary
-                        </div>
-                        <div className="mt-6 space-y-4 text-sm">
-                            <div className="flex items-center justify-between">
-                                <span className="text-white/60">Requested amount</span>
-                                <span className="font-semibold">{formatCurrency(normalizedAmount)}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-white/60">{isCreator ? 'Platform fee' : 'Gateway fee'}</span>
-                                <span className="font-semibold">{formatCurrency(totalFee)}</span>
-                            </div>
-                            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-base">
-                                <span className="text-white/80 font-medium">Final amount</span>
-                                <span className="font-bold">{formatCurrency(estimatedDeposit)}</span>
-                            </div>
-                        </div>
-                    </div>
-
                     <div className="rounded-3xl border border-gray-100 bg-gray-50 p-6">
                         <div className="flex items-center gap-3 text-sm font-semibold text-gray-900">
                             <Building2 className="h-4 w-4" />

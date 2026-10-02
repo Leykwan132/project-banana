@@ -862,7 +862,7 @@ export default function CampaignDetails() {
                                                         formik.setFieldValue('category', isSelected ? [] : [cat.label]);
                                                     }
                                                 }}
-                                                className={`relative flex flex-col items-center justify-center gap-3 p-4 w-36 aspect-3/4 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'border-black bg-gray-50 scale-[1.02]' : 'border-gray-100 bg-white hover:border-gray-200'}`}
+                                                className={`relative flex flex-col items-center justify-center gap-3 p-4 w-36 aspect-3/4 rounded-xl border border-gray-200 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 ${isSelected ? 'bg-[#F4F6F8]' : 'bg-white hover:bg-[#F9FAFB]'}`}
                                             >
                                                 <div className="absolute top-2 right-2">
                                                     <Popover>
@@ -1289,12 +1289,14 @@ export default function CampaignDetails() {
                         {/* Metrics Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                             {CAMPAIGN_ANALYTICS_METRICS.map((metric) => (
-                                <div
+                                <button
                                     key={metric}
+                                    type="button"
                                     onClick={() => setAnalyticsMetric(metric)}
-                                    className={`p-6 rounded-3xl border transition-all cursor-pointer ${analyticsMetric === metric
-                                        ? 'bg-[#F9FAFB] border-black shadow-sm'
-                                        : 'bg-white border-[#F4F6F8] hover:border-gray-200'
+                                    aria-pressed={analyticsMetric === metric}
+                                    className={`w-full rounded-3xl border border-gray-200 p-6 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 ${analyticsMetric === metric
+                                        ? 'bg-gray-100'
+                                        : 'bg-white hover:bg-[#F9FAFB]'
                                         }`}
                                 >
                                     <div className="text-gray-900 font-medium mb-4 text-sm">{metric}</div>
@@ -1308,7 +1310,7 @@ export default function CampaignDetails() {
                                             year: 'numeric'
                                         })}
                                     </div>
-                                </div>
+                                </button>
                             ))}
                         </div>
 

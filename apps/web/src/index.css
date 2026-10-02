@@ -11,6 +11,7 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: 'Google Sans', sans-serif;
+  letter-spacing: 0.01em;
 }
 
 *,
@@ -20,7 +21,8 @@ button,
 input,
 select,
 textarea {
-  font-family: inherit;
+  font-family: 'Google Sans', sans-serif !important;
+  letter-spacing: 0.01em !important;
 }
 
 @keyframes fadeIn {

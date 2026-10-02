@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeftRight, FileCheck2, Landmark, LogOut, Megaphone, Menu, ChevronDown, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { ArrowLeftRight, FileCheck2, Landmark, LoaderCircle, LogOut, Megaphone, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useWorkspaces } from '../hooks/useWorkspaces';
-import { callbackPath, protectedWorkspacePath } from '../lib/workspace';
+import { protectedWorkspacePath, rememberWorkspace, switchWorkspacePath } from '../lib/workspace';
 import { Avatar, Dropdown, Label } from '@heroui/react';
 import logo from '../assets/icon.svg';
 
@@ -81,13 +81,13 @@ export function CreatorShell({ name, image, hasBusiness }: { name?: string; imag
                                 <Avatar.Image src={image ?? undefined} alt={name ?? 'Creator'} />
                                 <Avatar.Fallback>{(name ?? 'Creator').trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</Avatar.Fallback>
                             </Avatar>
-                            {!compact && <><span className="min-w-0 flex-1 truncate text-sm font-medium">{name ?? 'Creator'}</span><ChevronDown size={16} className="shrink-0 text-gray-400" /></>}
+                            {!compact && <span className="min-w-0 flex-1 truncate text-sm font-medium">{name ?? 'Creator'}</span>}
                         </button>
                     </Dropdown.Trigger>
                     <Dropdown.Popover placement={compact ? 'right top' : 'top start'} UNSTABLE_portalContainer={mobile ? (dialog.current ?? undefined) : undefined}>
                         <Dropdown.Menu aria-label="Creator account actions" disabledKeys={signingOut ? ['sign-out'] : []}>
-                            {hasBusiness ? <Dropdown.Item id="business" textValue="Switch to Business" href={callbackPath('business')}><ArrowLeftRight size={18} /><Label>Switch to Business</Label></Dropdown.Item> : null}
-                            <Dropdown.Item id="sign-out" textValue={signingOut ? 'Signing out' : 'Sign out'} onAction={signOut} isDisabled={signingOut}><LogOut size={18} /><Label>{signingOut ? 'Signing out…' : 'Sign out'}</Label></Dropdown.Item>
+                            {hasBusiness ? <Dropdown.Item id="business" textValue="Switch to Business" href={switchWorkspacePath('business')}><ArrowLeftRight size={18} /><Label>Switch to Business</Label></Dropdown.Item> : null}
+                            <Dropdown.Item id="sign-out" textValue={signingOut ? 'Signing out' : 'Sign out'} onAction={signOut} isDisabled={signingOut} className="text-red-600"><LogOut size={18} className="text-red-600" /><Label className="text-red-600">{signingOut ? 'Signing out…' : 'Sign out'}</Label></Dropdown.Item>
                         </Dropdown.Menu>
                     </Dropdown.Popover>
                 </Dropdown>
@@ -108,7 +108,15 @@ export function CreatorShell({ name, image, hasBusiness }: { name?: string; imag
 
 export function CreatorLayout() {
     const { session, loading, membership } = useWorkspaces();
-    if (loading) return <p className="p-10" role="status">Loading your creator workspace…</p>;
+    useEffect(() => {
+        if (!loading && membership?.creatorId) rememberWorkspace(session?.user.id, 'creator');
+    }, [loading, membership?.creatorId, session?.user.id]);
+    if (loading) return <main className="grid min-h-screen place-items-center bg-white" role="status" aria-busy="true">
+        <div className="flex flex-col items-center gap-3 text-gray-500">
+            <LoaderCircle className="h-9 w-9 animate-spin text-[#FF9500]" aria-hidden="true" />
+            <p className="text-sm font-medium">Loading your creator workspace…</p>
+        </div>
+    </main>;
     const redirect = protectedWorkspacePath('creator', membership);
     if (redirect) return <Navigate to={redirect} replace />;
     return <CreatorShell name={session?.user.name} image={session?.user.image} hasBusiness={Boolean(membership?.businessId)} />;

@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Check, Loader2, X, BadgeCheck } from 'lucide-react';
 import { useAction } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import Button from './ui/Button';
 import { getStripePriceId } from '../lib/stripe-prices';
+import { getSubscriptionCheckoutIssue } from '../lib/subscription-checkout';
+import { toast } from './ui/Toast';
 
 const PLANS = [
     {
@@ -90,6 +93,7 @@ export default function PlanSelector({
     isLandingPage = false,
 }: PlanSelectorProps) {
     const createSubscriptionCheckout = useAction(api.stripe.createSubscriptionCheckout);
+    const [checkoutPlan, setCheckoutPlan] = useState<PlanType | null>(null);
 
     const handleStartSubscription = async (planType: PlanType) => {
         if (onSelectPlan) {
@@ -97,26 +101,48 @@ export default function PlanSelector({
             return;
         }
 
-        // Default behavior: create checkout
+        if (checkoutPlan) return;
+        setCheckoutPlan(planType);
+
         try {
             const priceId = getStripePriceId(planType, billingCycle);
-            if (!priceId) {
-                if (planType === 'payasyougo') {
-                    window.location.assign('/');
-                }
+            const priceIssue = getSubscriptionCheckoutIssue(priceId);
+            if (priceIssue === 'missing-price') {
+                const planName = PLANS.find((plan) => plan.type === planType)?.name ?? 'This plan';
+                toast({
+                    title: 'Plan unavailable',
+                    description: `${planName} is not configured for ${billingCycle} billing yet. Please choose another plan or contact support.`,
+                    color: 'warning',
+                });
                 return;
             }
+
             const result = await createSubscriptionCheckout({
                 priceId,
                 planType,
                 billingCycle,
             });
 
-            if (result.url) {
-                window.location.assign(result.url);
+            const sessionIssue = getSubscriptionCheckoutIssue(priceId, result.url);
+            if (sessionIssue === 'missing-checkout-url') {
+                toast({
+                    title: 'Checkout unavailable',
+                    description: 'Stripe did not return a checkout link. Please try again or contact support.',
+                    color: 'danger',
+                });
+                return;
             }
+
+            if (result.url) window.location.assign(result.url);
         } catch (error) {
             console.error('Failed to create checkout session:', error);
+            toast({
+                title: 'Unable to start checkout',
+                description: 'We could not open Stripe checkout. Please try again in a moment.',
+                color: 'danger',
+            });
+        } finally {
+            setCheckoutPlan(null);
         }
     };
 
@@ -225,10 +251,10 @@ export default function PlanSelector({
                                 <Button
                                     variant="primary"
                                     className="w-full justify-center bg-[#1A1F36] hover:bg-black text-white shadow-sm mt-auto h-[46px] rounded-full text-[15px] font-bold"
-                                    disabled={isLoading}
+                                    disabled={isLoading || checkoutPlan !== null}
                                     onClick={() => handleStartSubscription(plan.type)}
                                 >
-                                    {isLoading && selectedPlan === plan.type ? (
+                                    {(isLoading && selectedPlan === plan.type) || checkoutPlan === plan.type ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
                                         isLandingPage ? 'Try Lumina' : 'Get Started'

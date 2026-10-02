@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "bun install --cwd ../.. --frozen-lockfile",
     "build": "vite build",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",

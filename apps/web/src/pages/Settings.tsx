@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Building, Bug, MessageCircle, ArrowUpRight } from 'lucide-react';
+import { Skeleton } from '@heroui/react';
 import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import { authClient } from '../lib/auth-client';
@@ -120,6 +121,32 @@ export default function Settings() {
             setIsSaving(false);
         }
     };
+
+    if (business === undefined) {
+        return (
+            <section className="animate-fadeIn p-8 pb-24 font-sans text-gray-900" role="status" aria-label="Loading settings" aria-busy="true">
+                <Skeleton className="mb-6 h-8 w-32 rounded-lg" />
+                <div className="grid max-w-4xl grid-cols-1 gap-8">
+                    <div>
+                        <Skeleton className="mb-4 h-6 w-40 rounded-lg" />
+                        <div className="rounded-3xl bg-[#F9FAFB] p-8">
+                            <div className="flex flex-col items-start gap-8 md:flex-row">
+                                <Skeleton className="h-24 w-24 shrink-0 rounded-full" />
+                                <div className="w-full space-y-5">
+                                    {[0, 1, 2, 3].map((item) => (
+                                        <div key={item}>
+                                            <Skeleton className="mb-2 h-4 w-28 rounded-md" />
+                                            <Skeleton className="h-12 w-full rounded-xl" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <div className="p-8 font-sans text-gray-900 pb-24 animate-fadeIn">

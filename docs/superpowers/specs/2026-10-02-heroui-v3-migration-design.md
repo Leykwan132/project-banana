@@ -28,7 +28,7 @@ Migrate every HeroUI call site currently found in `apps/web/src`, including:
 
 Preserve the visible status labels and icon colors, table sorting and row navigation, popover amount breakdown, dropdown choices, loading placeholders, pagination behavior, and current campaign budget progress display. Replace the v2 `Progress` component with the v3 `ProgressBar` API.
 
-The provider is removed from `main.tsx` if v3 requires none. The old `src/hero.ts` configuration and v2-specific stylesheet source/plugin declarations are removed or replaced with the documented v3 setup. Preserve the current Google Sans and Inter font loading and the app-wide letter spacing while making these styling changes.
+The provider is removed from `main.tsx` if v3 requires none. The old `src/hero.ts` configuration and v2-specific stylesheet source/plugin declarations are removed or replaced with the documented v3 setup. Preserve Google Sans as the sole font family across the web app and keep the app-wide letter spacing while making these styling changes.
 
 ## Dependencies and files
 
@@ -36,7 +36,7 @@ The provider is removed from `main.tsx` if v3 requires none. The old `src/hero.t
 - Remove obsolete v2 component packages and the unused direct Framer Motion dependency if no remaining app code needs it.
 - Update component imports and APIs in all existing HeroUI call sites.
 - Update `apps/web/src/main.tsx`, `apps/web/src/index.css`, and remove `apps/web/src/hero.ts` when no longer needed.
-- Preserve pre-existing user changes in package scripts, root package manager version, Google Sans and Inter font loading, and app-wide letter spacing.
+- Preserve pre-existing user changes in package scripts and root package manager version; preserve Google Sans as the sole web font and app-wide letter spacing.
 - Leave unrelated mobile, Convex, credential, and generated files untouched.
 
 ## Validation
@@ -48,4 +48,4 @@ After the complete migration, run the web app's type check, lint, and production
 1. The web app uses HeroUI v3 only, with no v2 HeroUI packages or setup remaining.
 2. All current HeroUI-backed screens type-check and build with their behaviors preserved.
 3. HeroUI's v2 Tailwind plugin/provider setup and unnecessary Framer Motion dependency are removed.
-4. Google Sans and Inter remain loaded, app-wide letter spacing is preserved, and user-owned working-tree changes are preserved.
+4. Google Sans is the sole web font, app-wide letter spacing is preserved, and user-owned working-tree changes are preserved.

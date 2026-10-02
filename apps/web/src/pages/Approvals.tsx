@@ -126,7 +126,7 @@ export default function Approvals() {
                     {sortedCampaigns.map((campaign) => {
                         const hasPending = campaign.pending_approvals && campaign.pending_approvals > 0;
                         return (
-                            <button key={campaign._id} type="button" onClick={() => navigate(`/approvals/${campaign._id}`)} className="w-full rounded-md text-left transition-colors duration-200 hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 group">
+                            <button key={campaign._id} type="button" onClick={() => navigate(`/approvals/${campaign._id}`)} className="w-full cursor-pointer rounded-2xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
                             <Card className="flex flex-col w-full border-none bg-[#F4F6F8] p-6 shadow-none">
                                 <Card.Content className="w-full p-0">
                                 {/* Text Content Section (Top) */}

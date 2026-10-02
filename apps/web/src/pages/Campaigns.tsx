@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 
-import { Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { Rocket, Plus, type LucideIcon } from 'lucide-react';
 
-import { Skeleton } from "@heroui/react";
+import { Skeleton, Table, type SortDescriptor } from "@heroui/react";
 import { toast } from "../components/ui/Toast";
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
 import { CampaignStatus } from '../lib/constants';
 import { getCampaignCategoryVisual } from '../lib/campaignCategoryVisuals';
+import { businessTableCellClassName, businessTableClassName, businessTableColumnClassName, businessTableContentClassName } from '../components/ui/businessTableStyles';
 
 // Empty State Component
 const EmptyState = ({ onCreate, isCreateDisabled = false }: { onCreate: () => void; isCreateDisabled?: boolean }) => (
@@ -44,6 +45,90 @@ interface CampaignData {
     created_at: number;
     // Add other fields if strictly necessary for the UI
     [key: string]: any; // Allow loose typing to prevent other errors easily
+}
+
+type CampaignRow = {
+    id: string;
+    name: string;
+    submissions: number;
+    budget: string;
+    claimed: string;
+    rawBudget: number;
+    rawClaimed: number;
+    status: CampaignStatus;
+    createdDate: string;
+    icon: LucideIcon;
+    iconBgClass: string;
+    iconColorClass: string;
+};
+
+function CampaignTable({
+    campaigns,
+    sort,
+    onSort,
+    onOpenCampaign,
+}: {
+    campaigns: CampaignRow[];
+    sort: { key: string; direction: 'asc' | 'desc' } | null;
+    onSort: (key: string) => void;
+    onOpenCampaign: (id: string) => void;
+}) {
+    const sortDescriptor: SortDescriptor | undefined = sort ? {
+        column: sort.key,
+        direction: sort.direction === 'asc' ? 'ascending' : 'descending',
+    } : undefined;
+
+    return <Table variant="primary" className={businessTableClassName}>
+        <Table.ScrollContainer>
+            <Table.Content
+                aria-label="Campaigns"
+                className={`${businessTableContentClassName} min-w-[900px]`}
+                sortDescriptor={sortDescriptor}
+                onSortChange={descriptor => onSort(String(descriptor.column))}
+                onRowAction={key => onOpenCampaign(String(key))}
+            >
+                <Table.Header>
+                    <Table.Column id="name" isRowHeader allowsSorting className={businessTableColumnClassName}>
+                        {({ sortDirection }) => <Table.SortableColumnHeader sortDirection={sortDirection}>CAMPAIGN</Table.SortableColumnHeader>}
+                    </Table.Column>
+                    <Table.Column id="status" allowsSorting className={businessTableColumnClassName}>
+                        {({ sortDirection }) => <Table.SortableColumnHeader sortDirection={sortDirection}>STATUS</Table.SortableColumnHeader>}
+                    </Table.Column>
+                    <Table.Column id="createdDate" allowsSorting className={businessTableColumnClassName}>
+                        {({ sortDirection }) => <Table.SortableColumnHeader sortDirection={sortDirection}>DATE CREATED</Table.SortableColumnHeader>}
+                    </Table.Column>
+                    <Table.Column id="submissions" allowsSorting className={businessTableColumnClassName}>
+                        {({ sortDirection }) => <Table.SortableColumnHeader sortDirection={sortDirection}>SUBMISSIONS</Table.SortableColumnHeader>}
+                    </Table.Column>
+                    <Table.Column id="budget" allowsSorting className={businessTableColumnClassName}>
+                        {({ sortDirection }) => <Table.SortableColumnHeader sortDirection={sortDirection}>BUDGET CLAIMED</Table.SortableColumnHeader>}
+                    </Table.Column>
+                </Table.Header>
+                <Table.Body items={campaigns}>
+                    {campaign => <Table.Row id={campaign.id} textValue={campaign.name} className="group cursor-pointer focus-visible:outline-2 focus-visible:outline-amber-500">
+                        <Table.Cell className={businessTableCellClassName}>
+                            <div className="flex items-center gap-3">
+                                <div className={`rounded-lg p-2 ${campaign.iconBgClass} ${campaign.iconColorClass}`}><campaign.icon className="h-5 w-5" /></div>
+                                <span className="font-semibold text-gray-900">{campaign.name}</span>
+                            </div>
+                        </Table.Cell>
+                        <Table.Cell className={businessTableCellClassName}><StatusBadge status={campaign.status} /></Table.Cell>
+                        <Table.Cell className={`${businessTableCellClassName} font-medium`}>{campaign.createdDate}</Table.Cell>
+                        <Table.Cell className={`${businessTableCellClassName} font-medium`}>{campaign.submissions}</Table.Cell>
+                        <Table.Cell className={businessTableCellClassName}>
+                            <div className="flex min-w-36 flex-col gap-1">
+                                <span className={`font-semibold ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'text-green-600' : 'text-gray-900'}`}>{campaign.claimed}</span>
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                                    <div className={`h-full rounded-full transition-all duration-300 ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'bg-green-500' : 'bg-gray-900'}`} style={{ width: `${Math.min(100, Math.max(0, (campaign.rawClaimed / (campaign.rawBudget || 1)) * 100))}%` }} />
+                                </div>
+                                <span className="text-right text-xs font-medium text-gray-400">{campaign.budget}</span>
+                            </div>
+                        </Table.Cell>
+                    </Table.Row>}
+                </Table.Body>
+            </Table.Content>
+        </Table.ScrollContainer>
+    </Table>;
 }
 
 const TOUR_MOCK_CAMPAIGNS: CampaignData[] = [
@@ -108,36 +193,26 @@ const getActiveCampaignLimit = (planType?: string | null) => {
 };
 
 const CampaignsSkeleton = () => {
+    const rows = Array.from({ length: 5 }, (_, id) => ({ id }));
     return (
-        <div className="bg-white overflow-hidden">
-            <div className="bg-[#F4F6F8] rounded-sm mt-2 grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <div className="col-span-5 pl-2">Campaigns</div>
-                <div className="col-span-1 flex items-center justify-center">Status</div>
-                <div className="col-span-1 flex items-center justify-center">Date Created</div>
-                <div className="col-span-1 flex items-center justify-center">Submissions</div>
-                <div className="col-span-2 flex items-center justify-center">Budget Claimed</div>
-            </div>
-            <div className="divide-y divide-[#F4F6F8]">
-                {Array(5).fill(0).map((_, index) => (
-                    <div key={index} className="grid grid-cols-10 gap-4 p-6 items-center">
-                        <div className="col-span-5 flex items-center gap-3">
-                            <Skeleton className="rounded-lg w-10 h-10" />
-                            <div className="space-y-2 w-3/4">
-                                <Skeleton className="h-4 w-3/5 rounded-lg" />
-                            </div>
-                        </div>
-                        <div className="col-span-1 flex justify-center"><Skeleton className="h-6 w-16 rounded-full" /></div>
-                        <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-16 rounded-lg" /></div>
-                        <div className="col-span-1 flex justify-center"><Skeleton className="h-4 w-8 rounded-lg" /></div>
-                        <div className="col-span-2 flex flex-col justify-center px-4 w-full gap-1.5">
-                            <div className="w-full flex justify-start"><Skeleton className="h-3 w-10 rounded-lg" /></div>
-                            <Skeleton className="h-1.5 w-full rounded-full" />
-                            <div className="w-full flex justify-end"><Skeleton className="h-3 w-10 rounded-lg" /></div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+        <Table variant="primary" className={businessTableClassName}>
+            <Table.ScrollContainer>
+                <Table.Content aria-label="Loading campaigns" aria-busy="true" className={`${businessTableContentClassName} min-w-[900px]`}>
+                    <Table.Header>
+                        {['Campaign', 'Status', 'Date created', 'Submissions', 'Budget claimed'].map(label => <Table.Column key={label} className={businessTableColumnClassName}>{label.toUpperCase()}</Table.Column>)}
+                    </Table.Header>
+                    <Table.Body items={rows}>
+                        {row => <Table.Row id={row.id}>
+                            <Table.Cell className={businessTableCellClassName}><div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-lg" /><Skeleton className="h-4 w-40 rounded-lg" /></div></Table.Cell>
+                            <Table.Cell className={businessTableCellClassName}><Skeleton className="h-6 w-16 rounded-full" /></Table.Cell>
+                            <Table.Cell className={businessTableCellClassName}><Skeleton className="h-4 w-24 rounded-lg" /></Table.Cell>
+                            <Table.Cell className={businessTableCellClassName}><Skeleton className="h-4 w-8 rounded-lg" /></Table.Cell>
+                            <Table.Cell className={businessTableCellClassName}><div className="flex min-w-36 flex-col gap-1.5"><Skeleton className="h-3 w-12 rounded-lg" /><Skeleton className="h-1.5 w-full rounded-full" /><Skeleton className="ml-auto h-3 w-12 rounded-lg" /></div></Table.Cell>
+                        </Table.Row>}
+                    </Table.Body>
+                </Table.Content>
+            </Table.ScrollContainer>
+        </Table>
     );
 };
 
@@ -291,11 +366,6 @@ export default function Campaigns() {
         }
     };
 
-    const SortIcon = ({ sortConfig, columnKey }: { sortConfig: { key: string, direction: 'asc' | 'desc' } | null, columnKey: string }) => {
-        if (!sortConfig || sortConfig.key !== columnKey) return null;
-        return sortConfig.direction === 'asc' ? <ArrowUp className="w-4 h-4 ml-1 inline" /> : <ArrowDown className="w-4 h-4 ml-1 inline" />;
-    };
-
     const isLoading = !isTourActive && (status === "LoadingFirstPage" || business === undefined);
 
     if (isLoading) {
@@ -347,61 +417,7 @@ export default function Campaigns() {
                 </div>
 
                 {sortedOngoing.length > 0 ? (
-                    <div className="bg-white overflow-hidden">
-                        <div className="bg-[#F4F6F8] rounded-sm mt-2  grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name')}>
-                                Campaigns <SortIcon sortConfig={ongoingSort} columnKey="name" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status')}>
-                                Status <SortIcon sortConfig={ongoingSort} columnKey="status" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate')}>
-                                Date Created <SortIcon sortConfig={ongoingSort} columnKey="createdDate" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions')}>
-                                Submissions <SortIcon sortConfig={ongoingSort} columnKey="submissions" />
-                            </div>
-                            <div className="col-span-2 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget')}>
-                                Budget Claimed <SortIcon sortConfig={ongoingSort} columnKey="budget" />
-                            </div>
-                        </div>
-
-                        <div className="divide-y divide-[#F4F6F8]">
-                            {sortedOngoing.map((campaign: any, index: number) => (
-                                <div
-                                    key={index}
-                                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                                    className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors cursor-pointer"
-                                >
-                                    <div className="col-span-5 flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${campaign.iconBgClass} ${campaign.iconColorClass}`}>
-                                            <campaign.icon className="w-5 h-5" />
-                                        </div>
-                                        <span className="font-semibold text-gray-900">{campaign.name}</span>
-                                    </div>
-                                    <div className="col-span-1 flex items-center justify-center">
-                                        <StatusBadge status={campaign.status} />
-                                    </div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
-                                    <div className="col-span-2 flex flex-col justify-center px-4 w-full gap-1">
-                                        <div className={`w-full font-semibold text-left ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'text-green-500' : 'text-gray-900'}`}>
-                                            {campaign.claimed}
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full transition-all duration-300 ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'bg-green-500' : 'bg-gray-900'}`}
-                                                style={{ width: `${Math.min(100, Math.max(0, (campaign.rawClaimed / (campaign.rawBudget || 1)) * 100))}%` }}
-                                            />
-                                        </div>
-                                        <div className="w-full font-medium text-gray-400 text-right">
-                                            {campaign.budget}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <CampaignTable campaigns={sortedOngoing} sort={ongoingSort} onSort={key => requestSort(key)} onOpenCampaign={id => navigate(`/campaigns/${id}`)} />
                 ) : (
                     <div className="p-8 text-center text-gray-500 bg-[#F9FAFB] rounded-3xl">
                         No ongoing campaigns found.
@@ -416,61 +432,7 @@ export default function Campaigns() {
                 </div>
 
                 {sortedPast.length > 0 ? (
-                    <div className="bg-white overflow-hidden">
-                        <div className="bg-[#F4F6F8] rounded-sm mt-2 grid grid-cols-10 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            <div className="col-span-5 pl-2 cursor-pointer hover:text-gray-600" onClick={() => requestSort('name', true)}>
-                                Campaigns <SortIcon sortConfig={pastSort} columnKey="name" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('status', true)}>
-                                Status <SortIcon sortConfig={pastSort} columnKey="status" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('createdDate', true)}>
-                                Date Created <SortIcon sortConfig={pastSort} columnKey="createdDate" />
-                            </div>
-                            <div className="col-span-1 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('submissions', true)}>
-                                Submissions <SortIcon sortConfig={pastSort} columnKey="submissions" />
-                            </div>
-                            <div className="col-span-2 flex items-center justify-center cursor-pointer hover:text-gray-600" onClick={() => requestSort('budget', true)}>
-                                Budget Claimed <SortIcon sortConfig={pastSort} columnKey="budget" />
-                            </div>
-                        </div>
-
-                        <div className="divide-y divide-[#F4F6F8]">
-                            {sortedPast.map((campaign: any, index: number) => (
-                                <div
-                                    key={index}
-                                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
-                                    className="grid grid-cols-10 gap-4 p-6 items-center hover:bg-gray-50 transition-colors cursor-pointer"
-                                >
-                                    <div className="col-span-5 flex items-center gap-3">
-                                        <div className={`p-2 rounded-lg ${campaign.iconBgClass} ${campaign.iconColorClass}`}>
-                                            <campaign.icon className="w-5 h-5" />
-                                        </div>
-                                        <span className="font-semibold text-gray-900">{campaign.name}</span>
-                                    </div>
-                                    <div className="col-span-1 flex items-center justify-center">
-                                        <StatusBadge status={campaign.status} />
-                                    </div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.createdDate}</div>
-                                    <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">{campaign.submissions}</div>
-                                    <div className="col-span-2 flex flex-col justify-center px-4 w-full gap-1">
-                                        <div className={`w-full font-semibold text-left ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'text-green-500' : 'text-gray-900'}`}>
-                                            {campaign.claimed}
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full transition-all duration-300 ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'bg-green-500' : 'bg-gray-900'}`}
-                                                style={{ width: `${Math.min(100, Math.max(0, (campaign.rawClaimed / (campaign.rawBudget || 1)) * 100))}%` }}
-                                            />
-                                        </div>
-                                        <div className="w-full font-medium text-gray-900 text-right">
-                                            {campaign.budget}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <CampaignTable campaigns={sortedPast} sort={pastSort} onSort={key => requestSort(key, true)} onOpenCampaign={id => navigate(`/campaigns/${id}`)} />
                 ) : (
                     <div className="p-8 text-center text-gray-500 bg-[#F9FAFB] rounded-3xl">
                         No completed campaigns found.

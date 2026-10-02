@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { callbackPath, loginPath, parseWorkspace, resolveWorkspace, protectedWorkspacePath } from '../src/lib/workspace';
+import { callbackPath, getLastWorkspace, loginPath, parseWorkspace, protectedWorkspacePath, rememberWorkspace, resolveWorkspace, switchWorkspacePath } from '../src/lib/workspace';
 
 const business = { businessId: 'business-1', creatorId: null };
 const creator = { businessId: null, creatorId: 'creator-1' };
@@ -10,6 +10,11 @@ describe('workspace selection and access', () => {
   test('business intent opens its dashboard for business and dual-role accounts', () => {
     expect(resolveWorkspace('business', business)).toBe('/overview');
     expect(resolveWorkspace('business', both)).toBe('/overview');
+  });
+  test('dual-workspace accounts return to their last-used workspace when available', () => {
+    expect(resolveWorkspace('business', both, 'creator')).toBe('/creator/campaigns');
+    expect(resolveWorkspace('creator', both, 'business')).toBe('/overview');
+    expect(resolveWorkspace('creator', both)).toBe('/creator/campaigns');
   });
   test('creator-only business login requires explicit business registration', () => {
     expect(resolveWorkspace('business', creator)).toBe('/workspace-access?workspace=business');
@@ -30,8 +35,21 @@ describe('workspace selection and access', () => {
   });
   test('callbacks and errors preserve intent and encode untrusted error text', () => {
     expect(callbackPath('creator')).toBe('/auth-redirect?workspace=creator');
+    expect(switchWorkspacePath('business')).toBe('/auth-redirect?workspace=business&switch=true');
     expect(loginPath('creator', 'bad&workspace=business')).toBe('/creator/login?error=bad%26workspace%3Dbusiness');
     expect(loginPath('business')).toBe('/business/login');
+  });
+  test('remembers workspace separately for each signed-in user', () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+    };
+    rememberWorkspace('user-1', 'creator', storage);
+    rememberWorkspace('user-2', 'business', storage);
+    expect(getLastWorkspace('user-1', storage)).toBe('creator');
+    expect(getLastWorkspace('user-2', storage)).toBe('business');
+    expect(getLastWorkspace('user-3', storage)).toBeUndefined();
   });
   test('protected routes wait for membership instead of starting onboarding', () => {
     expect(protectedWorkspacePath('business', undefined)).toBe(null);

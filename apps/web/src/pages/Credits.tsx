@@ -7,6 +7,8 @@ import { AppPagination } from "../components/ui/AppPagination";
 import iconDark from '../assets/icon-dark.svg';
 import StatusBadge from '../components/ui/StatusBadge';
 import { CreditType } from '../lib/constants';
+import { Table } from '@heroui/react';
+import { businessTableCellClassName, businessTableClassName, businessTableColumnClassName, businessTableContentClassName } from '../components/ui/businessTableStyles';
 
 import { useState } from 'react';
 
@@ -92,18 +94,18 @@ export default function Credits() {
 
             <div className="flex flex-col gap-8">
                 {/* Top Section: Balance & Actions */}
-                <div className="w-full max-w-lg">
-                    <div className="bg-[#1C1C1C] text-white p-8 rounded-xl flex flex-col justify-between min-h-[300px] shadow-xl shadow-black/10 relative">
+                <div className="w-full max-w-md">
+                    <div className="bg-[#1C1C1C] text-white p-6 rounded-xl flex flex-col justify-between min-h-[210px] shadow-lg shadow-black/10 relative">
                         {/* Icon */}
-                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                            <img src={iconDark} alt="Banana" className="w-8 h-8 object-contain" />
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                            <img src={iconDark} alt="Banana" className="w-7 h-7 object-contain" />
                         </div>
 
                         {/* Bottom Section */}
                         <div className="flex items-end justify-between mt-8">
                             <div>
                                 <div className="text-gray-400 font-medium mb-2">Available Credits</div>
-                                <div className="text-4xl font-bold">
+                                <div className="text-3xl font-bold">
                                     {isLoading ? (
                                         <Loader2 className="w-8 h-8 animate-spin" />
                                     ) : (
@@ -125,8 +127,8 @@ export default function Credits() {
                 </div>
 
                 {/* History Section with Tabs */}
-                <div className="bg-white overflow-hidden">
-                    <div className="flex items-center justify-between mb-4 w-[70%]">
+                <div className="w-full overflow-hidden">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-4 w-full">
                         {/* Tab Buttons */}
                         <div className="flex items-center gap-6">
                             <button
@@ -171,58 +173,39 @@ export default function Credits() {
                     {/* Past Topups Tab Content */}
                     {activeTab === "topups" && (
                         <>
-                            <div className="bg-[#F4F6F8] w-[70%] rounded-lg mt-2 grid grid-cols-4 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider select-none">
-                                <div className="col-span-1 pl-2">Date</div>
-                                <div className="col-span-1 flex items-center justify-center">Amount</div>
-                                <div className="col-span-1 flex items-center justify-center">Payment Link</div>
-                                <div className="col-span-1 flex items-center justify-center">Status</div>
-                            </div>
-
                             {isLoading ? (
-                                <div className="flex items-center justify-center py-12 w-[70%]">
+                                <div role="status" aria-label="Loading top-ups" className="mt-2 flex h-40 items-center justify-center rounded-[22px] border border-gray-200 bg-gray-100 text-gray-400">
                                     <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                                 </div>
                             ) : !topUpHistory || topUpHistory.length === 0 ? (
-                                <div className="py-12 text-center text-gray-500 w-[70%]">
+                                <div className="mt-2 rounded-[22px] border border-gray-200 bg-gray-50 py-12 text-center text-gray-500">
                                     No top-up history found
                                 </div>
                             ) : (
                                 <>
-                                    <div className="divide-y divide-[#F4F6F8]">
-                                        {paginatedHistory.map((item: any) => (
-                                            <div
-                                                key={item._id}
-                                                className="grid grid-cols-4 p-6 items-center hover:bg-gray-50 transition-colors w-[70%]"
-                                            >
-                                                <div className="col-span-1 font-medium text-gray-900 truncate pl-2">
-                                                    {formatDate(item.created_at)}
-                                                </div>
-                                                <div className="col-span-1 text-gray-900 font-medium flex items-center justify-center">
-                                                    Rm {(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </div>
-                                                <div className="col-span-1 flex items-center justify-center">
-                                                    {item.billplz_url ? (
-                                                        <a
-                                                            href={item.billplz_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-gray-900 hover:text-black underline font-medium text-sm transition-colors"
-                                                        >
-                                                            Payment link
-                                                        </a>
-                                                    ) : (
-                                                        <span className="text-gray-400 text-sm">-</span>
-                                                    )}
-                                                </div>
-                                                <div className="col-span-1 flex items-center justify-center font-medium">
-                                                    <StatusBadge status={item.status || 'unknown'} />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <Table variant="primary" className={businessTableClassName}>
+                                        <Table.ScrollContainer>
+                                            <Table.Content aria-label="Past top-ups" className={`${businessTableContentClassName} min-w-[720px]`}>
+                                                <Table.Header>
+                                                    <Table.Column className={businessTableColumnClassName}>DATE</Table.Column>
+                                                    <Table.Column className={businessTableColumnClassName}>AMOUNT</Table.Column>
+                                                    <Table.Column className={businessTableColumnClassName}>PAYMENT LINK</Table.Column>
+                                                    <Table.Column className={businessTableColumnClassName}>STATUS</Table.Column>
+                                                </Table.Header>
+                                                <Table.Body items={paginatedHistory}>
+                                                    {item => <Table.Row id={item._id} textValue={`${formatDate(item.created_at)} ${item.status || 'unknown'}`} className="group">
+                                                        <Table.Cell className={`${businessTableCellClassName} font-medium`}>{formatDate(item.created_at)}</Table.Cell>
+                                                        <Table.Cell className={`${businessTableCellClassName} font-medium`}>RM {(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Table.Cell>
+                                                        <Table.Cell className={businessTableCellClassName}>{item.billplz_url ? <a href={item.billplz_url} target="_blank" rel="noopener noreferrer" className="text-gray-700 underline transition-colors hover:text-gray-900">Payment link</a> : <span className="text-gray-400">-</span>}</Table.Cell>
+                                                        <Table.Cell className={businessTableCellClassName}><StatusBadge status={item.status || 'unknown'} /></Table.Cell>
+                                                    </Table.Row>}
+                                                </Table.Body>
+                                            </Table.Content>
+                                        </Table.ScrollContainer>
+                                    </Table>
 
                                     {totalTopUps > ITEMS_PER_PAGE && (
-                                        <div className="mt-6 flex justify-center w-[70%]">
+                                        <div className="mt-6 flex justify-center">
                                             <AppPagination
                                                 total={Math.ceil(totalTopUps / ITEMS_PER_PAGE)}
                                                 page={page}
@@ -238,71 +221,48 @@ export default function Credits() {
                     {/* Past Spending Tab Content */}
                     {activeTab === "spending" && (
                         <>
-                            <div className="bg-[#F4F6F8] w-[70%] rounded-lg mt-2 grid grid-cols-12 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider select-none">
-                                <div className="col-span-2 pl-2">Date</div>
-                                <div className="col-span-4 flex items-center justify-center">Campaign</div>
-                                <div className="col-span-2 flex items-center justify-center">Type</div>
-                                <div className="col-span-2 flex items-center justify-center">Amount</div>
-                                <div className="col-span-2 flex items-center justify-center">Status</div>
-                            </div>
-
                             {isSpendingLoading ? (
-                                <div className="flex items-center justify-center py-12 w-[70%]">
+                                <div role="status" aria-label="Loading credit spending" className="mt-2 flex h-40 items-center justify-center rounded-[22px] border border-gray-200 bg-gray-100 text-gray-400">
                                     <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                                 </div>
                             ) : !spendingHistory || spendingHistory.length === 0 ? (
-                                <div className="py-12 text-center text-gray-500 w-[70%]">
+                                <div className="mt-2 rounded-[22px] border border-gray-200 bg-gray-50 py-12 text-center text-gray-500">
                                     No spending history found
                                 </div>
                             ) : (
                                 <>
-                                    <div className="divide-y divide-[#F4F6F8]">
-                                        {paginatedSpending.map((item: any) => {
+                                    <Table variant="primary" className={businessTableClassName}>
+                                      <Table.ScrollContainer>
+                                        <Table.Content aria-label="Past credit spending" className={`${businessTableContentClassName} min-w-[820px]`}>
+                                          <Table.Header>
+                                            <Table.Column className={businessTableColumnClassName}>DATE</Table.Column>
+                                            <Table.Column className={businessTableColumnClassName}>CAMPAIGN</Table.Column>
+                                            <Table.Column className={businessTableColumnClassName}>TYPE</Table.Column>
+                                            <Table.Column className={businessTableColumnClassName}>AMOUNT</Table.Column>
+                                            <Table.Column className={businessTableColumnClassName}>STATUS</Table.Column>
+                                          </Table.Header>
+                                          <Table.Body items={paginatedSpending}>
+                                            {item => {
                                             const isRefund = item.type === CreditType.Refund || (item.amount ?? 0) > 0;
                                             const formattedAmount = Math.abs(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-                                            return (
-                                                <div
-                                                    key={item._id}
-                                                    className="grid grid-cols-12 gap-4 p-6 items-center hover:bg-gray-50 transition-colors w-[70%]"
-                                                >
-                                                    <div className="col-span-2 font-medium text-gray-900 truncate pl-2">
-                                                        {formatDate(item.created_at)}
-                                                    </div>
-                                                    <div className="col-span-4 flex items-center justify-center">
-                                                        {item.campaign_id ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => navigate(`/campaigns/${item.campaign_id}`)}
-                                                                className="max-w-full cursor-pointer truncate font-medium text-gray-700 underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
-                                                                title={item.campaign_name}
-                                                            >
-                                                                {item.campaign_name}
-                                                            </button>
-                                                        ) : (
-                                                            <span className="max-w-full truncate font-medium text-gray-900" title={item.campaign_name}>
-                                                                {item.campaign_name}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="col-span-2 flex items-center justify-center">
-                                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isRefund ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>
-                                                            {isRefund ? 'Refund' : 'Spent'}
-                                                        </span>
-                                                    </div>
-                                                    <div className={`col-span-2 font-medium flex items-center justify-center ${isRefund ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                        {isRefund ? '+ ' : '- '}Rm {formattedAmount}
-                                                    </div>
-                                                    <div className="col-span-2 flex items-center justify-center font-medium">
-                                                        <StatusBadge status={item.status || 'unknown'} />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                            return <Table.Row id={item._id} textValue={`${item.campaign_name ?? 'Credit transaction'} ${isRefund ? 'refund' : 'spent'}`} className="group">
+                                                <Table.Cell className={`${businessTableCellClassName} font-medium`}>{formatDate(item.created_at)}</Table.Cell>
+                                                <Table.Cell className={businessTableCellClassName}>
+                                                    {item.campaign_id ? <button type="button" onClick={() => navigate(`/campaigns/${item.campaign_id}`)} className="max-w-full truncate font-medium text-gray-700 underline decoration-gray-300 underline-offset-2 hover:text-gray-900" title={item.campaign_name}>{item.campaign_name}</button> : <span className="max-w-full truncate font-medium text-gray-900" title={item.campaign_name}>{item.campaign_name}</span>}
+                                                </Table.Cell>
+                                                <Table.Cell className={businessTableCellClassName}><span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${isRefund ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-700'}`}>{isRefund ? 'Refund' : 'Spent'}</span></Table.Cell>
+                                                <Table.Cell className={`${businessTableCellClassName} font-medium ${isRefund ? '!text-emerald-600' : '!text-red-600'}`}>{isRefund ? '+ ' : '- '}RM {formattedAmount}</Table.Cell>
+                                                <Table.Cell className={businessTableCellClassName}><StatusBadge status={item.status || 'unknown'} /></Table.Cell>
+                                            </Table.Row>;
+                                          }}
+                                          </Table.Body>
+                                        </Table.Content>
+                                      </Table.ScrollContainer>
+                                    </Table>
 
                                     {totalSpending > ITEMS_PER_PAGE && (
-                                        <div className="mt-6 flex justify-center w-[70%]">
+                                        <div className="mt-6 flex justify-center">
                                             <AppPagination
                                                 total={Math.ceil(totalSpending / ITEMS_PER_PAGE)}
                                                 page={spendingPage}

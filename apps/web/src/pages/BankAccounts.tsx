@@ -8,6 +8,8 @@ import { BANK_OPTIONS } from '../lib/banks';
 import { BankAccountSourceType } from '../lib/constants';
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';
+import { Table } from '@heroui/react';
+import { businessTableCellClassName, businessTableClassName, businessTableColumnClassName, businessTableContentClassName } from '../components/ui/businessTableStyles';
 
 type ProofFile = File | null;
 type BankAccountListItem = {
@@ -330,47 +332,36 @@ export default function BankAccounts({ workspace = 'business' }: { workspace?: '
                 </div>
 
                 {effectiveBankAccounts.length > 0 ? (
-                    <div className="bg-white overflow-hidden">
-                        <div className="bg-[#F4F6F8] rounded-sm mt-2 grid grid-cols-12 gap-4 p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            <div className="col-span-3 pl-2">Bank</div>
-                            <div className="col-span-3 flex items-center justify-start">Account Name</div>
-                            <div className="col-span-3 flex items-center justify-start">Account Number</div>
-                            <div className="col-span-3 flex items-center justify-center">Status</div>
-                        </div>
-
-                        <div className="divide-y divide-[#F4F6F8]">
-                            {effectiveBankAccounts.map((account) => {
-                                const metadata = BANK_OPTIONS.find((option) => option.name === account.bank_name);
-
-                                return (
-                                    <div
-                                        key={account._id}
-                                        className="grid grid-cols-12 gap-4 p-6 items-center hover:bg-gray-50 transition-colors"
-                                    >
-                                        <div className="col-span-3 flex items-center gap-3 pl-2">
-                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 border border-gray-100">
-                                                {metadata?.logo ? (
-                                                    <img src={metadata.logo} alt={account.bank_name} className="h-6 w-6 object-contain" />
-                                                ) : (
-                                                    <Landmark className="h-4 w-4 text-gray-500" />
-                                                )}
-                                            </div>
-                                            <span className="font-semibold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{account.bank_name}</span>
-                                        </div>
-                                        <div className="col-span-3 text-gray-900 font-medium whitespace-nowrap overflow-hidden text-ellipsis flex items-center justify-start">
-                                            {account.account_holder_name}
-                                        </div>
-                                        <div className="col-span-3 text-gray-900 font-medium flex items-center justify-start truncate">
-                                            ****{account.account_number.slice(-4)}
-                                        </div>
-                                        <div className="col-span-3 flex items-center justify-center">
-                                            <StatusBadge status={account.status || 'unknown'} />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                    <Table variant="primary" className={businessTableClassName}>
+                        <Table.ScrollContainer>
+                            <Table.Content aria-label="Business bank accounts" className={`${businessTableContentClassName} min-w-[760px]`}>
+                                <Table.Header>
+                                    <Table.Column className={businessTableColumnClassName}>BANK</Table.Column>
+                                    <Table.Column className={businessTableColumnClassName}>ACCOUNT NAME</Table.Column>
+                                    <Table.Column className={businessTableColumnClassName}>ACCOUNT NUMBER</Table.Column>
+                                    <Table.Column className={businessTableColumnClassName}>STATUS</Table.Column>
+                                </Table.Header>
+                                <Table.Body items={effectiveBankAccounts}>
+                                    {account => {
+                                        const metadata = BANK_OPTIONS.find((option) => option.name === account.bank_name);
+                                        return <Table.Row id={account._id} textValue={`${account.bank_name} ${account.account_holder_name}`} className="group">
+                                            <Table.Cell className={businessTableCellClassName}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-100 bg-gray-50">
+                                                        {metadata?.logo ? <img src={metadata.logo} alt={account.bank_name} className="h-6 w-6 object-contain" /> : <Landmark className="h-4 w-4 text-gray-500" />}
+                                                    </div>
+                                                    <span className="truncate font-semibold">{account.bank_name}</span>
+                                                </div>
+                                            </Table.Cell>
+                                            <Table.Cell className={businessTableCellClassName}>{account.account_holder_name}</Table.Cell>
+                                            <Table.Cell className={businessTableCellClassName}>****{account.account_number.slice(-4)}</Table.Cell>
+                                            <Table.Cell className={businessTableCellClassName}><StatusBadge status={account.status || 'unknown'} /></Table.Cell>
+                                        </Table.Row>;
+                                    }}
+                                </Table.Body>
+                            </Table.Content>
+                        </Table.ScrollContainer>
+                    </Table>
                 ) : (
                     <div className="flex flex-col items-center justify-center p-20 bg-[#F9FAFB] rounded-3xl text-center">
                         <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
