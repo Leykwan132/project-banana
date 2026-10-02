@@ -71,10 +71,10 @@ export default function CreatorCampaigns() {
                 <div className="border-t border-gray-200 pt-4">
                     <Progress
                         aria-label={`Campaign budget: ${money(campaign.budget_claimed)} claimed of ${money(campaign.total_budget)}`}
-                        label={<span className="text-xs font-medium text-gray-500">Total budget <strong className="ml-1 text-sm font-semibold text-gray-900">{money(campaign.total_budget)}</strong></span>}
+                        label={<span className="text-xs font-medium text-gray-500">{money(campaign.budget_claimed)} claimed</span>}
                         value={Math.max(0, Math.min(campaign.budget_claimed, campaign.total_budget))}
                         maxValue={campaign.total_budget > 0 ? campaign.total_budget : 1}
-                        valueLabel={`${money(campaign.budget_claimed)} claimed`}
+                        valueLabel={`Total budget ${money(campaign.total_budget)}`}
                         showValueLabel
                         size="sm"
                         color="primary"
