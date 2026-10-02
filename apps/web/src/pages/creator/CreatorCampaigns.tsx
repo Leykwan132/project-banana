@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
 import { Link } from 'react-router-dom';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from '@heroui/react';
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Skeleton } from '@heroui/react';
 import { ChevronDown } from 'lucide-react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { CampaignImage } from '../../components/CampaignImage';
@@ -37,7 +37,24 @@ export default function CreatorCampaigns() {
                 </Dropdown>
             </div>
         </div>
-        {status === 'LoadingFirstPage' && <p role="status">Loading campaigns…</p>}
+        {status === 'LoadingFirstPage' && <div role="status" aria-label="Loading campaigns" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <span className="sr-only">Loading campaigns…</span>
+            {Array.from({ length: 6 }, (_, index) => <div key={index} aria-hidden="true" className="min-w-0">
+                <div className="relative">
+                    <Skeleton className="aspect-video w-full rounded-xl" />
+                    <div className="absolute left-3 top-3 flex gap-2">
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                </div>
+                <Skeleton className="mt-4 h-3 w-24 rounded-md" />
+                <Skeleton className="mt-2 h-5 w-4/5 rounded-md" />
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
+                    <div><Skeleton className="h-3 w-14 rounded-md" /><Skeleton className="mt-2 h-4 w-20 rounded-md" /></div>
+                    <div><Skeleton className="h-3 w-20 rounded-md" /><Skeleton className="mt-2 h-4 w-24 rounded-md" /></div>
+                </div>
+            </div>)}
+        </div>}
         {status !== 'LoadingFirstPage' && results.length === 0 && <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center"><h2 className="text-xl font-semibold">No active campaigns yet</h2><p className="mt-2 text-gray-600">New campaigns will appear here when they’re available.</p></div>}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {campaigns.map(campaign => <Link key={campaign.campaignId} to={`/creator/campaigns/${campaign.campaignId}`} className="group flex min-w-0 flex-col transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500">
