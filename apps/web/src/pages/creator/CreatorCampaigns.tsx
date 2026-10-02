@@ -31,6 +31,27 @@ const sorts = [
     { key: 'maximum-low', label: 'Maximum payout: lowest first' },
 ];
 
+function CampaignCardSkeletons({ count }: { count: number }) {
+    return <div aria-hidden="true" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: count }, (_, index) => <div key={index} className="flex h-full min-w-0 flex-col rounded-2xl bg-gray-50 p-4">
+            <div className="relative">
+                <Skeleton className="aspect-square w-full rounded-xl" />
+                <div className="absolute left-3 top-3 flex gap-2">
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+            </div>
+            <Skeleton className="mt-4 h-3 w-24 rounded-md" />
+            <Skeleton className="mt-2 h-5 w-4/5 rounded-md" />
+            <div className="min-h-4 flex-1" />
+            <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
+                <div><Skeleton className="h-3 w-14 rounded-md" /><Skeleton className="mt-2 h-4 w-20 rounded-md" /></div>
+                <div><Skeleton className="h-3 w-20 rounded-md" /><Skeleton className="mt-2 h-4 w-24 rounded-md" /></div>
+            </div>
+        </div>)}
+    </div>;
+}
+
 export default function CreatorCampaigns() {
     const { results, status, loadMore } = usePaginatedQuery(api.campaigns.getActiveCampaigns, {}, { initialNumItems: 12 });
     const [sort, setSort] = useState('newest');
@@ -43,6 +64,7 @@ export default function CreatorCampaigns() {
         campaigns.sort((a, b) => (a[field] - b[field]) * (sort.endsWith('high') ? -1 : 1));
     }
     const sortingMore = sort !== 'newest' && status !== 'Exhausted' && status !== 'LoadingFirstPage';
+    const loadingMore = sortingMore || status === 'LoadingMore';
     const sortLabel = sorts.find(option => option.key === sort)?.label ?? sorts[0].label;
     return <section className="animate-fadeIn p-4 text-gray-900 sm:p-8">
         <CreatorPageHeader title="Browse campaigns" description="Explore active campaigns and read the briefs.">
@@ -52,24 +74,9 @@ export default function CreatorCampaigns() {
                 </Dropdown>
             </div>
         </CreatorPageHeader>
-        {status === 'LoadingFirstPage' && <div role="status" aria-label="Loading campaigns" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {status === 'LoadingFirstPage' && <div role="status" aria-label="Loading campaigns">
             <span className="sr-only">Loading campaigns…</span>
-            {Array.from({ length: 6 }, (_, index) => <div key={index} aria-hidden="true" className="flex h-full min-w-0 flex-col rounded-2xl bg-gray-50 p-4">
-                <div className="relative">
-                    <Skeleton className="aspect-square w-full rounded-xl" />
-                    <div className="absolute left-3 top-3 flex gap-2">
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                        <Skeleton className="h-6 w-16 rounded-full" />
-                    </div>
-                </div>
-                <Skeleton className="mt-4 h-3 w-24 rounded-md" />
-                <Skeleton className="mt-2 h-5 w-4/5 rounded-md" />
-                <div className="min-h-4 flex-1" />
-                <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
-                    <div><Skeleton className="h-3 w-14 rounded-md" /><Skeleton className="mt-2 h-4 w-20 rounded-md" /></div>
-                    <div><Skeleton className="h-3 w-20 rounded-md" /><Skeleton className="mt-2 h-4 w-24 rounded-md" /></div>
-                </div>
-            </div>)}
+            <CampaignCardSkeletons count={6} />
         </div>}
         {status !== 'LoadingFirstPage' && results.length === 0 && <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center"><h2 className="text-xl font-semibold">No active campaigns yet</h2><p className="mt-2 text-gray-600">New campaigns will appear here when they’re available.</p></div>}
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -93,7 +100,7 @@ export default function CreatorCampaigns() {
                 </div>
             </Link>)}
         </div>
-        {sortingMore && <p className="mt-6 text-sm text-gray-500" role="status">Loading remaining campaigns to finish sorting…</p>}
-        {sort === 'newest' && (status === 'CanLoadMore' || status === 'LoadingMore') && <button onClick={() => loadMore(12)} disabled={status === 'LoadingMore'} className="mx-auto mt-8 block rounded-full border border-gray-300 bg-white px-6 py-3 disabled:opacity-50">{status === 'LoadingMore' ? 'Loading…' : 'Load more campaigns'}</button>}
+        {loadingMore && <div role="status" aria-label="Loading more campaigns" className="mt-6"><span className="sr-only">Loading more campaigns…</span><CampaignCardSkeletons count={3} /></div>}
+        {sort === 'newest' && status === 'CanLoadMore' && <button onClick={() => loadMore(12)} className="mx-auto mt-8 block rounded-full border border-gray-300 bg-white px-6 py-3">Load more campaigns</button>}
     </section>;
 }
