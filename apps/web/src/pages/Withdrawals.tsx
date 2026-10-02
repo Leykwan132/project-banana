@@ -82,7 +82,6 @@ export default function Withdrawals({ workspace = 'business' }: { workspace?: 'b
     return (
         <div className="bg-white p-4 sm:p-8 font-sans text-gray-900 animate-fadeIn">
             <h1 className="text-2xl font-bold mb-6">{isCreator ? 'Withdraw' : 'Withdrawals'}</h1>
-            {isCreator && <Button variant="ghost" onClick={() => navigate('/creator/bank-accounts')} className="mb-6">Manage bank accounts</Button>}
 
             <div className="flex flex-col gap-8">
                 {/* Top Section: Balance & Actions */}
