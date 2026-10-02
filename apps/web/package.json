@@ -9,7 +9,7 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "bun --bun run build && bunx --bun wrangler deploy --keep-vars"
+    "deploy": "bun --bun run build && bunx --bun wrangler deploy --config ../../wrangler.jsonc --keep-vars"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.10.10",

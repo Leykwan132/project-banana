@@ -93,3 +93,20 @@ Validate without publishing using `bun run deploy --dry-run`.
 This command deploys the web app only; the Convex backend has its own release flow.
 
 Reference: [Cloudflare static assets](https://developers.cloudflare.com/workers/static-assets/).
+
+### Cloudflare Workers Builds
+
+Wrangler configuration lives at the repository root (`wrangler.jsonc`) and
+points to `apps/web/dist`. The web deploy script references it explicitly, so
+running from either the repository root or `apps/web` works.
+
+For Cloudflare's hosted build settings, use:
+
+- Root directory: `apps/web`
+- Build command: `bun --bun run build`
+- Deploy command: `bunx --bun wrangler deploy --config ../../wrangler.jsonc --keep-vars`
+- Preview/version-upload command: `bunx --bun wrangler versions upload --config ../../wrangler.jsonc`
+
+Ensure the configured deployment branch contains these changes. Build-time
+`VITE_*` settings must be configured in Cloudflare because ignored `.env.local`
+files are not in the repository.

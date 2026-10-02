@@ -1,2 +1,4 @@
 node_modules
 .turbo
+# Wrangler local state at the repository root
+.wrangler
