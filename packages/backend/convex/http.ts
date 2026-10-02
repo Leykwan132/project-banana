@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { authComponent, createAuth } from "./auth";
 import { generateWebhookSignature, generateChecksumSHA512 } from "./utils";
 import { PLAN_TYPE_LABELS, type PlanType } from "./constants";
+import { Resend } from "@convex-dev/resend";
 
 
 type StripePlanDetails = {
@@ -81,6 +82,16 @@ const sendSubscriptionUpdateEmail = async (
 };
 
 const http = httpRouter();
+
+http.route({
+    path: "/webhooks/resend",
+    method: "POST",
+    handler: httpAction(async (ctx, request) => {
+        if (!process.env.RESEND_WEBHOOK_SECRET) return new Response("Email webhook is not configured", { status: 503 });
+        try { return await new Resend(components.resend, { webhookSecret: process.env.RESEND_WEBHOOK_SECRET }).handleResendEventWebhook(ctx, request); }
+        catch { return new Response("Invalid email webhook", { status: 400 }); }
+    }),
+});
 
 authComponent.registerRoutes(http, createAuth, { cors: true });
 

@@ -6,7 +6,10 @@
   },
   "packageManager": "bun@1.2.0",
   "workspaces": [
-    "apps/web/*",
+    "apps/web",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "deploy": "bun run --cwd apps/web deploy"
+  }
 }

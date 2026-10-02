@@ -4,6 +4,7 @@ import { ErrorType } from "./errors";
 import { internal } from "./_generated/api";
 import { posthog } from "./posthog";
 import { paginationOptsValidator } from "convex/server";
+import { requireInvitation } from "./creatorInvitations";
 
 export const getCreatorById = query({
     args: { creatorId: v.id("creators") },
@@ -69,7 +70,9 @@ export const completeOnboarding = mutation({
         username: v.string(),
         signupGoal: v.array(v.string()),
         referralSource: v.string(),
+        invitationToken: v.optional(v.string()),
     },
+    returns: v.id("creators"),
     handler: async (ctx, args) => {
         const user = await ctx.auth.getUserIdentity();
         if (!user) {
@@ -83,8 +86,11 @@ export const completeOnboarding = mutation({
             .unique();
 
         if (existingCreator) {
+            if (existingCreator.is_deleted) throw new Error("This creator profile has been deleted. Contact support.");
             return existingCreator._id;
         }
+
+        const invitation = await requireInvitation(ctx, args.invitationToken);
 
         // Check username uniqueness
         const usernameLower = args.username.toLowerCase();
@@ -107,6 +113,11 @@ export const completeOnboarding = mutation({
             total_views: 0,
             total_earnings: 0,
             balance: 0,
+        });
+
+        await ctx.db.patch(invitation._id, {
+            status: "accepted", accepted_by: user.subject, creator_id: creatorId,
+            magic_token_hash: undefined, updated_at: Date.now(),
         });
 
         // Fire welcome email asynchronously.

@@ -168,6 +168,24 @@ export default defineSchema({
     // user & APPLICATIONS
     // ============================================================
 
+    creator_invitations: defineTable({
+        email: v.string(),
+        name: v.optional(v.string()),
+        invited_by: v.string(),
+        status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("revoked")),
+        delivery_status: v.union(v.literal("sending"), v.literal("queued"), v.literal("failed")),
+        expires_at: v.number(),
+        generation: v.string(),
+        secret_hash: v.string(),
+        magic_token_hash: v.optional(v.string()),
+        email_id: v.optional(v.string()),
+        accepted_by: v.optional(v.string()),
+        creator_id: v.optional(v.id("creators")),
+        updated_at: v.number(),
+    }).index("by_email", ["email"])
+        .index("by_secret_hash", ["secret_hash"])
+        .index("by_magic_token_hash", ["magic_token_hash"]),
+
     creators: defineTable({
         user_id: v.string(),
         name: v.string(),

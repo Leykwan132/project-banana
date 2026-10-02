@@ -1,0 +1,324 @@
+import { ChevronDown, ArrowRight, Menu, X } from 'lucide-react';
+import { FaInstagram, FaLinkedinIn, FaTiktok } from 'react-icons/fa6';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { authClient } from './lib/auth-client';
+import PlanSelector from './components/PlanSelector';
+import BusinessLanding from './landing/business/BusinessLanding';
+import CreatorLanding from './landing/creator/CreatorLanding';
+import iconLight from './assets/icon.svg';
+import AboutPage from './pages/public/About';
+import SupportPage from './pages/public/Support';
+import PrivacyPolicyPage from './pages/public/PrivacyPolicy';
+import TermsAndConditionsPage from './pages/public/TermsAndConditions';
+
+type PricingFaq = {
+    question: string;
+    answer: string;
+};
+
+type NavLink = {
+    label: string;
+    to: string;
+    isActive: boolean;
+    isPrimary?: boolean;
+    show?: boolean;
+};
+
+const pricingFaqs: PricingFaq[] = [
+    {
+        question: 'Are there creator fees?',
+        answer: "There are no creator fees. New creator accounts are by invitation.",
+    },
+    {
+        question: 'Does it cost money to create a campaign?',
+        answer: 'Yes it depends on which plans you are on. The Pay As You Go plan requires a one-time RM100 payment for each campaign.',
+    },
+    {
+        question: 'Can we change plans later?',
+        answer: 'Yes you can do that.',
+    },
+    {
+        question: 'Can I refund my credits?',
+        answer: 'Yes there will be a RM1.10 gateway service fee charge by the payment gateway provider.',
+    },
+
+];
+
+const socialLinks = [
+    { ariaLabel: 'Instagram', href: '#', icon: FaInstagram },
+    { ariaLabel: 'TikTok', href: '#', icon: FaTiktok },
+    { ariaLabel: 'LinkedIn', href: '#', icon: FaLinkedinIn },
+];
+
+function getMobileMenuLinkClassName(link: NavLink) {
+    if (link.isPrimary) {
+        return 'inline-flex self-start items-center rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800';
+    }
+
+    return `block w-full rounded-2xl px-4 py-3 text-base font-semibold transition-colors ${link.isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        }`;
+}
+
+function Footer() {
+    const { data: session } = authClient.useSession();
+    const isAuthenticated = !!session?.user;
+
+    return (
+        <footer className="border-t border-gray-100 bg-white py-12 text-sm text-gray-500">
+            <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 md:grid-cols-4">
+                <div className="col-span-2 space-y-4">
+                    <div className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
+                        <img src={iconLight} alt="Lumina" className="h-6 w-6 object-contain" />
+                        <span className="text-lg tracking-tight">Lumina</span>
+                    </div>
+                    <p className="max-w-xs leading-relaxed">The operating layer for modern UGC execution, from brief to payout.</p>
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 pt-2">
+                        {socialLinks.map((link) => (
+                            <a key={link.ariaLabel} href={link.href} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-900" aria-label={link.ariaLabel}>
+                                <link.icon className="h-4.5 w-4.5" />
+                            </a>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 className="mb-4 font-semibold text-gray-900">Navigation</h4>
+                    <ul className="space-y-3">
+                        <li>
+                            <Link to="/business" className="transition-colors hover:text-gray-900">
+                                For Business
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/" className="transition-colors hover:text-gray-900">
+                                For Creators
+                            </Link>
+                        </li>
+                        {!isAuthenticated && (
+                            <li>
+                                <Link to="/business/login" className="transition-colors hover:text-gray-900">
+                                    Business login
+                                </Link>
+                                <Link to="/creator/login" className="ml-4 transition-colors hover:text-gray-900">Creator login</Link>
+                            </li>
+                        )}
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 className="mb-4 font-semibold text-gray-900">Company</h4>
+                    <ul className="space-y-3">
+                        <li>
+                            <Link to="/about" className="transition-colors hover:text-gray-900">
+                                About
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/support" className="transition-colors hover:text-gray-900">
+                                Support
+                            </Link>
+                        </li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 className="mb-4 font-semibold text-gray-900">Legal</h4>
+                    <ul className="space-y-3">
+                        <li>
+                            <Link to="/privacy-policy" className="transition-colors hover:text-gray-900">
+                                Privacy Policy
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/terms-and-conditions" className="transition-colors hover:text-gray-900">
+                                Terms & Conditions
+                            </Link>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div className="mx-auto mt-12 flex max-w-6xl flex-col items-center justify-between gap-4 border-t border-gray-100 px-6 pt-12 md:flex-row">
+                <p>© {new Date().getFullYear()} Lumina. All rights reserved.</p>
+            </div>
+        </footer>
+    );
+}
+
+function PricingFaqSection() {
+    const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+    return (
+        <section className="mx-auto max-w-3xl px-6 py-12">
+            <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">Pricing FAQs</h2>
+            <div className="mt-10 space-y-4">
+                {pricingFaqs.map((faq, index) => {
+                    const isOpen = openIndex === index;
+                    return (
+                        <article key={faq.question} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                            <button onClick={() => setOpenIndex(isOpen ? null : index)} className="flex w-full items-center justify-between px-6 py-5 text-left">
+                                <span className="font-semibold text-gray-900">{faq.question}</span>
+                                <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            <div className={`px-6 text-gray-600 transition-all duration-300 ${isOpen ? 'max-h-40 pb-5 opacity-100' : 'max-h-0 pb-0 opacity-0'}`}>
+                                {faq.answer}
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function PricingPage() {
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+    const navigate = useNavigate();
+
+    return (
+        <div className="min-h-screen animate-in fade-in pb-12 pt-24">
+            <div className="mx-auto max-w-6xl px-6 text-center">
+                <h1 className="text-5xl font-bold tracking-tight text-gray-900 md:text-6xl">Pricing</h1>
+            </div>
+
+            <div className="mx-auto mt-14 w-full max-w-[1400px] px-6">
+                <PlanSelector
+                    billingCycle={billingCycle}
+                    onBillingCycleChange={setBillingCycle}
+                    onSelectPlan={() => navigate('/business/login')}
+                    isLandingPage={true}
+                />
+            </div>
+
+            <div className="mt-16 border-t border-gray-100 pt-10">
+                <PricingFaqSection />
+            </div>
+        </div>
+    );
+}
+
+export default function App() {
+    const location = useLocation();
+    const pathname = location.pathname;
+    const isBusiness = pathname.startsWith('/business');
+    const isPricing = pathname.startsWith('/pricing');
+    const isAbout = pathname.startsWith('/about');
+    const isSupport = pathname.startsWith('/support');
+    const isPrivacy = pathname.startsWith('/privacy-policy');
+    const isTerms = pathname.startsWith('/terms-and-conditions');
+    const { data: session } = authClient.useSession();
+    const isAuthenticated = !!session?.user;
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    useEffect(() => {
+        setIsMenuOpen(false);
+    }, [pathname]);
+
+    const topNavLinks: NavLink[] = [
+        {
+            label: 'For Creators',
+            to: '/',
+            show: isBusiness || isPricing || isAbout || isSupport || isPrivacy || isTerms,
+            isActive: pathname === '/',
+        },
+        {
+            label: 'For Business',
+            to: '/business',
+            show: !isBusiness,
+            isActive: isBusiness,
+        },
+        {
+            label: 'Pricing',
+            to: '/pricing',
+            show: isBusiness || isPricing,
+            isActive: isPricing,
+        },
+        {
+            label: 'About',
+            to: '/about',
+            show: true,
+            isActive: isAbout,
+        },
+    ].filter((link) => link.show);
+
+    const workspace = isBusiness || isPricing ? 'business' : 'creator';
+    const workspaceEntry = isAuthenticated ? `/auth-redirect?workspace=${workspace}` : `/${workspace}/login`;
+    const mobileMenuLinks: NavLink[] = [
+        ...topNavLinks,
+        { label: isAuthenticated ? 'Open workspace' : `${workspace === 'business' ? 'Business' : 'Creator'} login`, to: workspaceEntry, isActive: false, isPrimary: true },
+    ];
+
+    let content = <CreatorLanding />;
+    if (isPricing) content = <PricingPage />;
+    else if (isBusiness) content = <BusinessLanding />;
+    else if (isAbout) content = <AboutPage />;
+    else if (isSupport) content = <SupportPage />;
+    else if (isPrivacy) content = <PrivacyPolicyPage />;
+    else if (isTerms) content = <TermsAndConditionsPage />;
+
+    return (
+        <div className="flex min-h-screen flex-col bg-white font-sans text-gray-900">
+            <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
+                <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+                    <Link to="/" className="flex items-center gap-2 font-semibold">
+                        <img src={iconLight} alt="Lumina" className="h-8 w-8 object-contain" />
+                        <span className="text-xl tracking-tight">Lumina</span>
+                    </Link>
+
+                    <div className="hidden items-center gap-6 md:flex">
+                        {topNavLinks.map((link) => (
+                            <Link
+                                key={link.to}
+                                to={link.to}
+                                className={`text-sm font-semibold transition-colors ${link.isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                            >
+                                {link.label}
+                            </Link>
+                        ))}
+
+                        <div className="h-4 w-px bg-gray-200" />
+
+                        {(isAuthenticated ? (
+                                <Link to={workspaceEntry} className="flex items-center gap-1.5 rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+                                    Open workspace
+                                    <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            ) : (
+                                <Link to={workspaceEntry} className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+                                    {workspace === 'business' ? 'Business login' : 'Creator login'}
+                                </Link>
+                            ))}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setIsMenuOpen((open) => !open)}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-900 transition-colors hover:bg-gray-100 md:hidden"
+                        aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                        aria-expanded={isMenuOpen}
+                        aria-controls="mobile-navigation-menu"
+                    >
+                        {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    </button>
+                </div>
+
+                {isMenuOpen && (
+                    <div id="mobile-navigation-menu" className="fixed inset-x-0 top-16 z-40 border-t border-gray-100 bg-white md:hidden">
+                        <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col gap-3 px-6 py-6">
+                            {mobileMenuLinks.map((link) => (
+                                <Link key={link.to} to={link.to} onClick={() => setIsMenuOpen(false)} className={getMobileMenuLinkClassName(link)}>
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </header>
+
+            <main className="flex-1">{content}</main>
+
+            <Footer />
+        </div>
+    );
+}

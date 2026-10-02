@@ -8,28 +8,12 @@ import { WithdrawalSourceType } from "./constants";
 import { NotificationCopy, NotificationType } from "./notificationConstants";
 import { createBillplzPaymentOrder } from "./payouts";
 import { authComponent } from "./auth";
+import { assertAdmin } from "./lib/adminAccess";
 import { notificationPool } from "./workpools";
 
 // ============================================================
 // ADMIN AUTH HELPER
 // ============================================================
-
-async function assertAdmin(ctx: { auth: { getUserIdentity: () => Promise<any> } }) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
-    let adminIds: string[] = [];
-    try {
-        adminIds = JSON.parse(process.env.ADMIN_USER_IDS || "[]");
-    } catch (e) {
-        console.error("Failed to parse ADMIN_USER_IDS", e);
-    }
-
-    if (!identity.email || !adminIds.includes(identity.email)) {
-        throw new Error("Unauthorized: not an admin");
-    }
-    return identity;
-}
 
 // ============================================================
 // ADMIN QUERIES

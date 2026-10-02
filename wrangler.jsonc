@@ -1,0 +1,9 @@
+{
+  "$schema": "./apps/web/node_modules/wrangler/config-schema.json",
+  "name": "lumina-web",
+  "compatibility_date": "2026-10-02",
+  "assets": {
+    "directory": "./apps/web/dist",
+    "not_found_handling": "single-page-application"
+  }
+}
