@@ -6,16 +6,46 @@ export const PRODUCT_TOUR_STATE_EVENT = 'lumina:product-tour-state';
 
 const readStorageBoolean = (key: string) => {
     if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(key) === 'true';
+    try {
+        return window.localStorage.getItem(key) === 'true';
+    } catch {
+        return false;
+    }
 };
 
 const writeStorageBoolean = (key: string, value: boolean) => {
     if (typeof window === 'undefined') return;
-    if (value) {
-        window.localStorage.setItem(key, 'true');
-        return;
+    try {
+        if (value) {
+            window.localStorage.setItem(key, 'true');
+            return;
+        }
+        window.localStorage.removeItem(key);
+    } catch {
+        // Tour preferences are optional and must not block app navigation.
     }
-    window.localStorage.removeItem(key);
+};
+
+const readSessionStorageBoolean = (key: string) => {
+    if (typeof window === 'undefined') return false;
+    try {
+        return window.sessionStorage.getItem(key) === 'true';
+    } catch {
+        return false;
+    }
+};
+
+const writeSessionStorageBoolean = (key: string, value: boolean) => {
+    if (typeof window === 'undefined') return;
+    try {
+        if (value) {
+            window.sessionStorage.setItem(key, 'true');
+            return;
+        }
+        window.sessionStorage.removeItem(key);
+    } catch {
+        // Tour preferences are optional and must not block app navigation.
+    }
 };
 
 export const hasCompletedProductTour = () => readStorageBoolean(PRODUCT_TOUR_COMPLETED_KEY);
@@ -30,15 +60,27 @@ export const setProductTourBannerDismissed = (value: boolean) => {
     writeStorageBoolean(PRODUCT_TOUR_BANNER_DISMISSED_KEY, value);
 };
 
-export const isProductTourActive = () => readStorageBoolean(PRODUCT_TOUR_ACTIVE_KEY);
+export const isProductTourActive = () => readSessionStorageBoolean(PRODUCT_TOUR_ACTIVE_KEY);
 
 export const clearStaleProductTourActive = (storage?: Pick<Storage, 'removeItem'>) => {
-    const targetStorage = storage ?? (typeof window !== 'undefined' ? window.localStorage : undefined);
-    targetStorage?.removeItem(PRODUCT_TOUR_ACTIVE_KEY);
+    try {
+        const sessionStorage = storage ?? (typeof window !== 'undefined' ? window.sessionStorage : undefined);
+        sessionStorage?.removeItem(PRODUCT_TOUR_ACTIVE_KEY);
+    } catch {
+        // Storage can be unavailable in restricted browser contexts.
+    }
+
+    if (storage || typeof window === 'undefined') return;
+    try {
+        // Remove the old persistent flag once during migration to session-scoped state.
+        window.localStorage.removeItem(PRODUCT_TOUR_ACTIVE_KEY);
+    } catch {
+        // Storage can be unavailable in restricted browser contexts.
+    }
 };
 
 export const setProductTourActive = (value: boolean) => {
-    writeStorageBoolean(PRODUCT_TOUR_ACTIVE_KEY, value);
+    writeSessionStorageBoolean(PRODUCT_TOUR_ACTIVE_KEY, value);
     if (typeof window === 'undefined') return;
     window.dispatchEvent(new Event(PRODUCT_TOUR_STATE_EVENT));
 };

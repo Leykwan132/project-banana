@@ -14,4 +14,10 @@ describe('clearStaleProductTourActive', () => {
         expect(values.has(PRODUCT_TOUR_ACTIVE_KEY)).toBe(false);
         expect(values.get(PRODUCT_TOUR_COMPLETED_KEY)).toBe('true');
     });
+
+    it('does not block app startup when browser storage is unavailable', () => {
+        const storage = { removeItem: () => { throw new Error('SecurityError'); } };
+
+        expect(() => clearStaleProductTourActive(storage)).not.toThrow();
+    });
 });
