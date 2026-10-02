@@ -74,3 +74,22 @@ export default defineConfig([
   },
 ])
 ```
+
+## Deploy with Wrangler
+
+Run `bun run deploy` from the repository root or `apps/web`. The command builds
+with Vite and deploys `dist` to the Cloudflare Worker named `lumina-web`.
+The Worker serves this React app with single-page application fallback routing.
+Existing dashboard variables are preserved during deployment.
+
+The script runs Vite and Wrangler with Bun. Install dependencies from the
+repository root with `bun install --frozen-lockfile`. If running Wrangler directly
+with Node.js instead, use Node.js 22 or newer. Authenticate once with `bunx wrangler login`
+from `apps/web`, or provide `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in CI.
+Vite's `VITE_*` settings must be present during the build; Worker variables do not
+replace values compiled into the frontend.
+
+Validate without publishing using `bun run deploy --dry-run`.
+This command deploys the web app only; the Convex backend has its own release flow.
+
+Reference: [Cloudflare static assets](https://developers.cloudflare.com/workers/static-assets/).

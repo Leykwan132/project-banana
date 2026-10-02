@@ -8,5 +8,8 @@
   "workspaces": [
     "apps/web",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "deploy": "bun run --cwd apps/web deploy"
+  }
 }

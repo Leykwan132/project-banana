@@ -8,7 +8,8 @@
     "build": "vite build",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "bun --bun run build && bunx --bun wrangler deploy --keep-vars"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.10.10",
@@ -58,6 +59,7 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "wrangler": "^4.146.0"
   }
 }
