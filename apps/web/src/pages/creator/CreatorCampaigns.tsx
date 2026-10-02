@@ -40,7 +40,7 @@ export default function CreatorCampaigns() {
         {status === 'LoadingFirstPage' && <p role="status">Loading campaigns…</p>}
         {status !== 'LoadingFirstPage' && results.length === 0 && <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center"><h2 className="text-xl font-semibold">No active campaigns yet</h2><p className="mt-2 text-gray-600">New campaigns will appear here when they’re available.</p></div>}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {campaigns.map(campaign => <Link key={campaign.campaignId} to={`/creator/campaigns/${campaign.campaignId}`} className="group flex min-w-0 flex-col rounded-2xl border border-gray-100 bg-white p-4 transition hover:border-gray-200 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500">
+            {campaigns.map(campaign => <Link key={campaign.campaignId} to={`/creator/campaigns/${campaign.campaignId}`} className="group flex min-w-0 flex-col transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500">
                 <div className="relative">
                     <CampaignImage aspect="video" r2Key={campaign.cover_photo_url || campaign.cover_photo_r2_key ? campaign.cover_photo_r2_key : campaign.logo_r2_key} url={campaign.cover_photo_url || campaign.cover_photo_r2_key ? campaign.cover_photo_url : campaign.logo_url} name={campaign.name} />
                     <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
