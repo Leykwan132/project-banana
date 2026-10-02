@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Shield, CreditCard, FileVideo, Banknote } from 'lucide-react';
+import { Shield, CreditCard, FileVideo, Banknote, MailPlus } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
@@ -151,6 +151,7 @@ function AdminGate({ onUnlock }: { onUnlock: () => void }) {
 }
 
 const navItems = [
+    { label: 'Invitations', path: '/admin/invitations', icon: MailPlus },
     { label: 'Bank Approvals', path: '/admin/bank-approvals', icon: CreditCard },
     { label: 'Submissions', path: '/admin/submissions', icon: FileVideo },
     { label: 'Payouts', path: '/admin/payouts', icon: Banknote },

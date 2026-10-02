@@ -110,3 +110,9 @@ For Cloudflare's hosted build settings, use:
 Ensure the configured deployment branch contains these changes. Build-time
 `VITE_*` settings must be configured in Cloudflare because ignored `.env.local`
 files are not in the repository.
+
+## Creator invitations in development
+
+The admin portal includes `/admin/invitations` for sending, resending, and revoking creator magic-link invitations. Creator onboarding reuses the existing backend method and requires a valid invitation for new profiles; existing active creators keep their access.
+
+See [the creator invitation testing guide](../../docs/testing/creator-invitations.md) for development environment variables, real-inbox acceptance tests, Resend delivery simulation, and revoked/expired link checks. Frontend and Convex backend must be released together.

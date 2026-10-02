@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { ConvexReactClient } from "convex/react";
@@ -36,6 +36,8 @@ import { AdminLayout } from './components/AdminLayout'
 import AdminBankApprovals from './pages/admin/AdminBankApprovals'
 import AdminSubmissions from './pages/admin/AdminSubmissions'
 import AdminPayouts from './pages/admin/AdminPayouts'
+import AdminInvitations from './pages/admin/AdminInvitations'
+import CreatorInvitation from './pages/creator/CreatorInvitation'
 import { HeroUIProvider } from "@heroui/react";
 import { PostHogIdentitySync } from './components/PostHogIdentitySync';
 import { PostHogPageViewTracker } from './components/PostHogPageViewTracker';
@@ -63,15 +65,25 @@ function LegacyLogin() {
   return <Navigate to={`/business/login${location.search}`} replace />;
 }
 
+// Email links contain bearer credentials. Do not initialize analytics on this entry page.
+const invitationEntry = window.location.pathname === '/creator/invitation';
+if (invitationEntry) {
+  const referrer = document.createElement('meta');
+  referrer.name = 'referrer'; referrer.content = 'no-referrer'; document.head.appendChild(referrer);
+}
+function AnalyticsProvider({ children }: { children: ReactNode }) {
+  return invitationEntry ? children : <PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={options}>{children}</PostHogProvider>;
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={options}>
+    <AnalyticsProvider>
       <ConvexBetterAuthProvider client={convex} authClient={authClient}>
         <HeroUIProvider>
-          <PostHogIdentitySync />
+          {!invitationEntry && <PostHogIdentitySync />}
           <ToastProvider>
           <BrowserRouter>
-            <PostHogPageViewTracker />
+            {!invitationEntry && <PostHogPageViewTracker />}
             <WorkspaceBoundary><Routes>
               <Route path="/" element={<App />} />
               <Route path="/business" element={<App />} />
@@ -82,6 +94,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/terms-and-conditions" element={<App />} />
               <Route path="/login" element={<LegacyLogin />} />
               <Route path="/business/login" element={<Login workspace="business" />} />
+              <Route path="/creator/invitation" element={<CreatorInvitation />} />
               <Route path="/creator/login" element={<Login workspace="creator" />} />
               <Route path="/workspace-access" element={<WorkspaceAccess />} />
               <Route element={<CreatorLayout />}>
@@ -111,6 +124,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/admin" element={null} />
                 <Route path="/admin/bank-approvals" element={<AdminBankApprovals />} />
                 <Route path="/admin/submissions" element={<AdminSubmissions />} />
+                <Route path="/admin/invitations" element={<AdminInvitations />} />
                 <Route path="/admin/payouts" element={<AdminPayouts />} />
               </Route>
             </Routes></WorkspaceBoundary>
@@ -118,6 +132,6 @@ createRoot(document.getElementById('root')!).render(
           </ToastProvider>
         </HeroUIProvider>
       </ConvexBetterAuthProvider>
-    </PostHogProvider>
+    </AnalyticsProvider>
   </StrictMode>,
 )
