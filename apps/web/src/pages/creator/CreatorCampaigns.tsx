@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
 import { Link } from 'react-router-dom';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Skeleton } from '@heroui/react';
+import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Progress, Skeleton } from '@heroui/react';
 import { ChevronDown } from 'lucide-react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { CampaignImage } from '../../components/CampaignImage';
@@ -94,9 +94,18 @@ export default function CreatorCampaigns() {
                 </div>
                 <h2 className="mt-1 line-clamp-2 font-semibold text-gray-900 group-hover:text-gray-700">{campaign.name}</h2>
                 <div className="min-h-4 flex-1" aria-hidden="true" />
-                <div className="grid grid-cols-2 gap-3 border-t border-gray-200 pt-4">
-                    <p className="min-w-0 text-xs text-gray-500">Base pay <strong className="mt-1 block truncate text-sm font-semibold text-gray-900">{money(campaign.base_pay)}</strong></p>
-                    <p className="min-w-0 text-xs text-gray-500">Maximum payout <strong className="mt-1 block truncate text-sm font-semibold text-gray-900">{money(campaign.maximum_payout)}</strong></p>
+                <div className="border-t border-gray-200 pt-4">
+                    <Progress
+                        aria-label={`Campaign budget: ${money(campaign.budget_claimed)} claimed of ${money(campaign.total_budget)}`}
+                        label={<span className="text-xs font-medium text-gray-500">Total budget <strong className="ml-1 text-sm font-semibold text-gray-900">{money(campaign.total_budget)}</strong></span>}
+                        value={Math.max(0, Math.min(campaign.budget_claimed, campaign.total_budget))}
+                        maxValue={campaign.total_budget > 0 ? campaign.total_budget : 1}
+                        valueLabel={`${money(campaign.budget_claimed)} claimed`}
+                        showValueLabel
+                        size="sm"
+                        color="primary"
+                        classNames={{ label: 'text-xs', value: 'text-xs font-medium text-gray-500', track: 'h-2' }}
+                    />
                 </div>
             </Link>)}
         </div>

@@ -277,6 +277,7 @@ export const getActiveCampaigns = query({
                     base_pay: campaign.base_pay ?? 0,
                     maximum_payout: campaign.maximum_payout,
                     submissions: campaign.submissions,
+                    total_budget: campaign.total_budget,
                     budget_claimed: campaign.budget_claimed,
                     category: campaign.category,
                     business_name: business?.name,
