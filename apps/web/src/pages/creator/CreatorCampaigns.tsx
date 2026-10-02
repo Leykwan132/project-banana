@@ -5,6 +5,7 @@ import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Skeleton
 import { ChevronDown } from 'lucide-react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { CampaignImage } from '../../components/CampaignImage';
+import { CreatorPageHeader } from '../../components/CreatorPageHeader';
 
 const money = (amount: number) => new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(amount);
 const sorts = [
@@ -28,15 +29,14 @@ export default function CreatorCampaigns() {
     }
     const sortingMore = sort !== 'newest' && status !== 'Exhausted' && status !== 'LoadingFirstPage';
     const sortLabel = sorts.find(option => option.key === sort)?.label ?? sorts[0].label;
-    return <section>
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-5">
-            <div><h1 className="text-3xl font-semibold tracking-tight">Browse campaigns</h1><p className="mt-2 text-gray-600">Explore active campaigns and read the briefs.</p></div>
+    return <section className="animate-fadeIn p-4 text-gray-900 sm:p-8">
+        <CreatorPageHeader title="Browse campaigns" description="Explore active campaigns and read the briefs.">
             <div><p id="campaign-sort-label" className="mb-2 text-xs font-medium text-gray-500">Sort campaigns</p>
                 <Dropdown disableAnimation><DropdownTrigger><Button disableRipple disableAnimation aria-labelledby="campaign-sort-label campaign-sort-value" variant="bordered" className="w-56 min-w-56 max-w-56 shrink-0 justify-between border-gray-200" endContent={<ChevronDown size={16} />}><span id="campaign-sort-value" className="min-w-0 flex-1 truncate text-left">{sortLabel}</span></Button></DropdownTrigger>
                     <DropdownMenu aria-label="Sort campaigns" selectionMode="single" disallowEmptySelection selectedKeys={new Set([sort])} onSelectionChange={keys => { const key = Array.from(keys)[0]; if (key) setSort(String(key)); }} items={sorts}>{item => <DropdownItem key={item.key}>{item.label}</DropdownItem>}</DropdownMenu>
                 </Dropdown>
             </div>
-        </div>
+        </CreatorPageHeader>
         {status === 'LoadingFirstPage' && <div role="status" aria-label="Loading campaigns" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <span className="sr-only">Loading campaigns…</span>
             {Array.from({ length: 6 }, (_, index) => <div key={index} aria-hidden="true" className="min-w-0">

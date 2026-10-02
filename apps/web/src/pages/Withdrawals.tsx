@@ -7,6 +7,7 @@ import type { Id } from '../../../../packages/backend/convex/_generated/dataMode
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
+import { CreatorPageHeader } from '../components/CreatorPageHeader';
 
 const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -81,7 +82,7 @@ export default function Withdrawals({ workspace = 'business' }: { workspace?: 'b
 
     return (
         <div className="bg-white p-4 sm:p-8 font-sans text-gray-900 animate-fadeIn">
-            <h1 className="text-2xl font-bold mb-6">{isCreator ? 'Withdraw' : 'Withdrawals'}</h1>
+            <CreatorPageHeader title={isCreator ? 'Withdraw' : 'Withdrawals'} description="View your available balance and withdrawal history." />
 
             <div className="flex flex-col gap-8">
                 {/* Top Section: Balance & Actions */}

@@ -6,6 +6,7 @@ import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Table, TableHead
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { submissionStatuses, submissionStatus, SubmissionStatusBadge } from '../../lib/submission-status';
 import Button from '../../components/ui/Button';
+import { CreatorPageHeader } from '../../components/CreatorPageHeader';
 
 export default function CreatorSubmissions() {
     const navigate = useNavigate();
@@ -16,15 +17,14 @@ export default function CreatorSubmissions() {
     const visible = results.filter(application => filter === 'all' || application.status === filter);
     const filteringMore = filter !== 'all' && status !== 'Exhausted' && status !== 'LoadingFirstPage';
     const options = [{ key: 'all', label: 'All statuses' }, ...[...new Set([...Object.keys(submissionStatuses).filter(key => key !== 'pending_review'), ...results.map(application => application.status)])].map(key => ({ key, label: submissionStatus(key).label }))];
-    return <section>
-        <div className="flex flex-wrap items-start justify-between gap-5">
-            <div><h1 className="text-2xl font-bold">Submissions</h1><p className="mt-2 text-sm text-gray-500">Track your campaign submissions and their review status.</p></div>
+    return <section className="animate-fadeIn p-4 text-gray-900 sm:p-8">
+        <CreatorPageHeader title="Submissions" description="Track your campaign submissions and their review status.">
             <div><p id="submission-filter-label" className="mb-2 text-xs font-medium text-gray-500">Filter by status</p>
                 <Dropdown disableAnimation><DropdownTrigger><HeroButton disableRipple disableAnimation aria-labelledby="submission-filter-label submission-filter-value" variant="bordered" className="w-56 min-w-56 max-w-56 shrink-0 justify-between border-gray-200" endContent={<ChevronDown size={16} />}><span id="submission-filter-value" className="min-w-0 flex-1 truncate text-left">{filter === 'all' ? 'All statuses' : submissionStatus(filter).label}</span></HeroButton></DropdownTrigger>
                     <DropdownMenu aria-label="Filter submissions by status" selectionMode="single" disallowEmptySelection selectedKeys={new Set([filter])} onSelectionChange={keys => { const key = Array.from(keys)[0]; if (key) setFilter(String(key)); }} items={options}>{item => <DropdownItem key={item.key}>{item.label}</DropdownItem>}</DropdownMenu>
                 </Dropdown>
             </div>
-        </div>
+        </CreatorPageHeader>
         {status === 'LoadingFirstPage' ? <div role="status" aria-label="Loading submissions" className="mt-8 overflow-x-auto">
             <span className="sr-only">Loading submissions…</span>
             <div aria-hidden="true" className="min-w-[720px]">
