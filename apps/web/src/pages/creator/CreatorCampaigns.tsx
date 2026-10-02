@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
 import { Link } from 'react-router-dom';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button, Progress, Skeleton } from '@heroui/react';
-import { ChevronDown } from 'lucide-react';
+import { Progress, Skeleton } from '@heroui/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { CampaignImage } from '../../components/CampaignImage';
 import { CampaignCategoryTag } from '../../components/CampaignCategoryTag';
@@ -23,14 +21,6 @@ const campaignAge = (createdAt: number) => {
     if (months < 12) return relativeTime.format(-months, 'month');
     return relativeTime.format(-Math.floor(months / 12), 'year');
 };
-const sorts = [
-    { key: 'newest', label: 'Newest first' },
-    { key: 'base-high', label: 'Base pay: highest first' },
-    { key: 'base-low', label: 'Base pay: lowest first' },
-    { key: 'maximum-high', label: 'Maximum payout: highest first' },
-    { key: 'maximum-low', label: 'Maximum payout: lowest first' },
-];
-
 function CampaignCardSkeletons({ count }: { count: number }) {
     return <div aria-hidden="true" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: count }, (_, index) => <div key={index} className="flex h-full min-w-0 flex-col rounded-2xl bg-gray-50 p-4">
@@ -54,26 +44,10 @@ function CampaignCardSkeletons({ count }: { count: number }) {
 
 export default function CreatorCampaigns() {
     const { results, status, loadMore } = usePaginatedQuery(api.campaigns.getActiveCampaigns, {}, { initialNumItems: 12 });
-    const [sort, setSort] = useState('newest');
-    // The existing query returns newest-first pages. Load the remainder before completing
-    // payout sorting so a high-paying campaign on a later page is not left out.
-    useEffect(() => { if (sort !== 'newest' && status === 'CanLoadMore') loadMore(100); }, [sort, status, loadMore]);
-    const campaigns = [...results];
-    if (sort !== 'newest') {
-        const field = sort.startsWith('base') ? 'base_pay' : 'maximum_payout';
-        campaigns.sort((a, b) => (a[field] - b[field]) * (sort.endsWith('high') ? -1 : 1));
-    }
-    const sortingMore = sort !== 'newest' && status !== 'Exhausted' && status !== 'LoadingFirstPage';
-    const loadingMore = sortingMore || status === 'LoadingMore';
-    const sortLabel = sorts.find(option => option.key === sort)?.label ?? sorts[0].label;
+    const campaigns = results;
+    const loadingMore = status === 'LoadingMore';
     return <section className="animate-fadeIn p-4 text-gray-900 sm:p-8">
-        <CreatorPageHeader title="Browse campaigns" description="Explore active campaigns and read the briefs.">
-            <div><p id="campaign-sort-label" className="mb-2 text-xs font-medium text-gray-500">Sort campaigns</p>
-                <Dropdown disableAnimation><DropdownTrigger><Button disableRipple disableAnimation aria-labelledby="campaign-sort-label campaign-sort-value" variant="bordered" className="w-56 min-w-56 max-w-56 shrink-0 justify-between border-gray-200" endContent={<ChevronDown size={16} />}><span id="campaign-sort-value" className="min-w-0 flex-1 truncate text-left">{sortLabel}</span></Button></DropdownTrigger>
-                    <DropdownMenu aria-label="Sort campaigns" selectionMode="single" disallowEmptySelection selectedKeys={new Set([sort])} onSelectionChange={keys => { const key = Array.from(keys)[0]; if (key) setSort(String(key)); }} items={sorts}>{item => <DropdownItem key={item.key}>{item.label}</DropdownItem>}</DropdownMenu>
-                </Dropdown>
-            </div>
-        </CreatorPageHeader>
+        <CreatorPageHeader title="Browse campaigns" description="Explore active campaigns and read the briefs." />
         {status === 'LoadingFirstPage' && <div role="status" aria-label="Loading campaigns">
             <span className="sr-only">Loading campaigns…</span>
             <CampaignCardSkeletons count={6} />
@@ -110,6 +84,6 @@ export default function CreatorCampaigns() {
             </Link>)}
         </div>
         {loadingMore && <div role="status" aria-label="Loading more campaigns" className="mt-6"><span className="sr-only">Loading more campaigns…</span><CampaignCardSkeletons count={3} /></div>}
-        {sort === 'newest' && status === 'CanLoadMore' && <button onClick={() => loadMore(12)} className="mx-auto mt-8 block rounded-full border border-gray-300 bg-white px-6 py-3">Load more campaigns</button>}
+        {status === 'CanLoadMore' && <button onClick={() => loadMore(12)} className="mx-auto mt-8 block rounded-full border border-gray-300 bg-white px-6 py-3">Load more campaigns</button>}
     </section>;
 }
