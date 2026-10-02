@@ -3,7 +3,7 @@ import { useQuery, usePaginatedQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
-import { Pagination } from "@heroui/pagination";
+import { AppPagination } from "../components/ui/AppPagination";
 import iconDark from '../assets/icon-dark.svg';
 import StatusBadge from '../components/ui/StatusBadge';
 import { CreditType } from '../lib/constants';
@@ -223,9 +223,8 @@ export default function Credits() {
 
                                     {totalTopUps > ITEMS_PER_PAGE && (
                                         <div className="mt-6 flex justify-center w-[70%]">
-                                            <Pagination
+                                            <AppPagination
                                                 total={Math.ceil(totalTopUps / ITEMS_PER_PAGE)}
-                                                initialPage={1}
                                                 page={page}
                                                 onChange={handlePageChange}
                                             />
@@ -304,9 +303,8 @@ export default function Credits() {
 
                                     {totalSpending > ITEMS_PER_PAGE && (
                                         <div className="mt-6 flex justify-center w-[70%]">
-                                            <Pagination
+                                            <AppPagination
                                                 total={Math.ceil(totalSpending / ITEMS_PER_PAGE)}
-                                                initialPage={1}
                                                 page={spendingPage}
                                                 onChange={handleSpendingPageChange}
                                             />

@@ -3,7 +3,7 @@ import { useQuery, usePaginatedQuery, useMutation, useAction } from 'convex/reac
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { ArrowDown, ArrowUp, Check, ChevronRight, Loader2, Search, X } from 'lucide-react';
-import { Pagination } from '@heroui/react';
+import { AppPagination } from '../../components/ui/AppPagination';
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '../../components/ui/Modal';
 import { toast } from '../../components/ui/Toast';
 
@@ -315,13 +315,11 @@ export default function AdminBankApprovals() {
 
                     {totalPages > 1 && sortedAccounts.length > 0 && (
                         <div className="flex justify-center mt-6">
-                            <Pagination
+                            <AppPagination
                                 total={totalPages}
                                 page={page}
                                 onChange={handlePageChange}
-                                showControls
                                 size="sm"
-                                classNames={{ cursor: 'bg-gray-900' }}
                             />
                         </div>
                     )}

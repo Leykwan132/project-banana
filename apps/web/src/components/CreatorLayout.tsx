@@ -4,7 +4,7 @@ import { ArrowLeftRight, FileCheck2, Landmark, LogOut, Megaphone, Menu, ChevronD
 import { authClient } from '../lib/auth-client';
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { callbackPath, protectedWorkspacePath } from '../lib/workspace';
-import { Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
+import { Avatar, Dropdown, Label } from '@heroui/react';
 import logo from '../assets/icon.svg';
 
 const navigation = [
@@ -74,17 +74,22 @@ export function CreatorShell({ name, image, hasBusiness }: { name?: string; imag
                 {navigation.map(({ label, to, icon: Icon }) => <NavLink key={to} to={to} title={compact ? label : undefined} aria-label={compact ? label : undefined} className={({ isActive }) => `flex items-center rounded-xl py-3 text-sm font-medium transition-colors ${compact ? 'justify-center px-2' : 'gap-3 px-3'} ${isActive || (label === 'Submissions' && location.pathname.startsWith('/submissions/')) || (label === 'Withdraw' && location.pathname === '/creator/bank-accounts') ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><Icon size={20} className="shrink-0" />{!compact && label}</NavLink>)}
             </nav>
             <div className={`space-y-2 border-t border-[#F4F6F8] py-4 ${compact ? 'px-3' : 'px-4'}`}>
-                <Dropdown placement={compact ? 'right-end' : 'top-start'} portalContainer={mobile ? (dialog.current ?? undefined) : undefined}>
-                    <DropdownTrigger>
+                <Dropdown>
+                    <Dropdown.Trigger>
                         <button aria-label={`${name ?? 'Creator'} account menu`} className={`flex w-full items-center rounded-xl py-2 text-left hover:bg-gray-50 ${compact ? 'justify-center' : 'gap-3 px-2'}`}>
-                            <Avatar src={image ?? undefined} name={name ?? 'Creator'} getInitials={(value) => value.trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()} className="h-9 w-9 shrink-0 bg-amber-100 text-amber-800" />
+                            <Avatar className="h-9 w-9 shrink-0 rounded-full bg-amber-100 text-amber-800">
+                                <Avatar.Image src={image ?? undefined} alt={name ?? 'Creator'} />
+                                <Avatar.Fallback>{(name ?? 'Creator').trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</Avatar.Fallback>
+                            </Avatar>
                             {!compact && <><span className="min-w-0 flex-1 truncate text-sm font-medium">{name ?? 'Creator'}</span><ChevronDown size={16} className="shrink-0 text-gray-400" /></>}
                         </button>
-                    </DropdownTrigger>
-                    <DropdownMenu aria-label="Creator account actions" disabledKeys={signingOut ? ['sign-out'] : []}>
-                        {hasBusiness ? <DropdownItem key="business" href={callbackPath('business')} startContent={<ArrowLeftRight size={18} />}>Switch to Business</DropdownItem> : null}
-                        <DropdownItem key="sign-out" onPress={signOut} startContent={<LogOut size={18} />}>{signingOut ? 'Signing out…' : 'Sign out'}</DropdownItem>
-                    </DropdownMenu>
+                    </Dropdown.Trigger>
+                    <Dropdown.Popover placement={compact ? 'right top' : 'top start'} UNSTABLE_portalContainer={mobile ? (dialog.current ?? undefined) : undefined}>
+                        <Dropdown.Menu aria-label="Creator account actions" disabledKeys={signingOut ? ['sign-out'] : []}>
+                            {hasBusiness ? <Dropdown.Item id="business" textValue="Switch to Business" href={callbackPath('business')}><ArrowLeftRight size={18} /><Label>Switch to Business</Label></Dropdown.Item> : null}
+                            <Dropdown.Item id="sign-out" textValue={signingOut ? 'Signing out' : 'Sign out'} onAction={signOut} isDisabled={signingOut}><LogOut size={18} /><Label>{signingOut ? 'Signing out…' : 'Sign out'}</Label></Dropdown.Item>
+                        </Dropdown.Menu>
+                    </Dropdown.Popover>
                 </Dropdown>
                 {signOutError && <p role="alert" className="text-xs text-red-600">{signOutError}</p>}
             </div>

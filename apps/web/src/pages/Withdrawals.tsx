@@ -1,7 +1,7 @@
 import { Loader2, ArrowRight, Landmark } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from 'convex/react';
-import { Popover, PopoverTrigger, PopoverContent } from '@heroui/react';
+import { Popover } from '@heroui/react';
 import { useNavigate } from 'react-router-dom';
 import type { Id } from '../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../packages/backend/convex/_generated/api';
@@ -30,17 +30,17 @@ function WithdrawalAmount({ requested, gatewayFee, platformFee, finalAmount }: {
         ['Gateway fee', -gatewayFee],
         ['Platform fee', -platformFee],
     ] as const;
-    return <Popover placement="top" showArrow isOpen={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger>
+    return <Popover isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Popover.Trigger>
             <button type="button" aria-label={`Show breakdown for ${formatCurrency(finalAmount)}`} aria-expanded={isOpen} onMouseEnter={keepOpen} onMouseLeave={closeSoon} onFocus={keepOpen} onBlur={closeSoon} onClick={keepOpen} className="cursor-help border-b border-dotted border-gray-400 font-medium text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500">{formatCurrency(finalAmount)}</button>
-        </PopoverTrigger>
-        <PopoverContent>
-            <div onMouseEnter={keepOpen} onMouseLeave={closeSoon} className="w-60 space-y-3 rounded-xl bg-white p-4 text-xs text-gray-700 shadow-lg">
+        </Popover.Trigger>
+        <Popover.Content placement="top">
+            <Popover.Dialog className="w-60 space-y-3 rounded-xl bg-white p-4 text-xs text-gray-700 shadow-lg" onMouseEnter={keepOpen} onMouseLeave={closeSoon}>
                 {rows.map(([label, value]) => <div key={label} className="flex items-center justify-between gap-5"><span className="text-gray-500">{label}</span><span className="whitespace-nowrap font-medium text-gray-900">{value < 0 ? `- ${formatCurrency(Math.abs(value))}` : formatCurrency(value)}</span></div>)}
                 <div className="h-px bg-gray-100" />
                 <div className="flex items-center justify-between gap-5"><span className="text-gray-500">Final amount</span><span className="whitespace-nowrap font-semibold text-gray-900">{formatCurrency(finalAmount)}</span></div>
-            </div>
-        </PopoverContent>
+            </Popover.Dialog>
+        </Popover.Content>
     </Popover>;
 }
 

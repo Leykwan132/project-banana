@@ -5,7 +5,7 @@ import { api } from '../../../../packages/backend/convex/_generated/api';
 
 import { Rocket, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
-import { Skeleton } from "@heroui/skeleton";
+import { Skeleton } from "@heroui/react";
 import { toast } from "../components/ui/Toast";
 import StatusBadge from '../components/ui/StatusBadge';
 import { isProductTourActive, PRODUCT_TOUR_STATE_EVENT } from '../lib/productTour';

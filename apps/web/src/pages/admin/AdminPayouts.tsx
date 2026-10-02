@@ -4,7 +4,7 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { toast } from '../../components/ui/Toast';
 import { ArrowDown, ArrowUp, Banknote, Building2, Check, Loader2, Search, User, X } from 'lucide-react';
-import { Pagination } from '@heroui/react';
+import { AppPagination } from '../../components/ui/AppPagination';
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '../../components/ui/Modal';
 
 const ITEMS_PER_PAGE = 20;
@@ -322,13 +322,11 @@ export default function AdminPayouts() {
 
                     {totalPages > 1 && sortedWithdrawals.length > 0 && (
                         <div className="flex justify-center mt-6">
-                            <Pagination
+                            <AppPagination
                                 total={totalPages}
                                 page={page}
                                 onChange={handlePageChange}
-                                showControls
                                 size="sm"
-                                classNames={{ cursor: 'bg-gray-900' }}
                             />
                         </div>
                     )}

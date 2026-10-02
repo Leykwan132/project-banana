@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { usePaginatedQuery } from 'convex/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, ChevronsUpDown, FileCheck2 } from 'lucide-react';
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Skeleton } from '@heroui/react';
+import { Table, Skeleton } from '@heroui/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { SubmissionStatusBadge, submissionStatus } from '../../lib/submission-status';
 import { getNextSortDirection, sortSubmissions, type SortDirection, type SubmissionSortKey } from '../../lib/submission-sort';
@@ -52,23 +52,27 @@ export default function CreatorSubmissions() {
                 </div>
             </div>
         </div> : results.length === 0 ? <div className="mt-8 rounded-2xl border border-gray-100 p-12 text-center"><FileCheck2 className="mx-auto h-10 w-10 text-gray-300" /><h2 className="mt-4 font-semibold">No submissions yet</h2><p className="mt-2 text-sm text-gray-500">Browse campaigns to find your next opportunity.</p><Link to="/creator/campaigns" className="mt-5 inline-block rounded-xl bg-gray-900 px-5 py-3 text-sm font-medium text-white">Browse campaigns</Link></div> : <>
-            <Table aria-label="Your campaign submissions" className="mt-8" removeWrapper selectionMode="none" onRowAction={key => navigate(`/submissions/${encodeURIComponent(String(key))}`)} classNames={{ base: 'overflow-x-auto', table: 'min-w-[720px]', th: 'bg-gray-50 text-gray-500', td: 'py-4 border-b border-gray-100', tr: 'cursor-pointer hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-amber-500' }}>
-                <TableHeader>
-                    <TableColumn>CAMPAIGN</TableColumn>
-                    <TableColumn aria-sort={sortKey === 'status' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('status', 'STATUS')}</TableColumn>
-                    <TableColumn aria-sort={sortKey === 'submitted' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('submitted', 'SUBMITTED')}</TableColumn>
-                    <TableColumn aria-sort={sortKey === 'views' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('views', 'VIEWS')}</TableColumn>
-                    <TableColumn aria-sort={sortKey === 'earnings' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('earnings', 'EARNINGS')}</TableColumn>
-                </TableHeader>
-                <TableBody items={sortedResults} emptyContent="No submissions yet.">
-                    {application => <TableRow key={application._id} textValue={application.campaignName ?? 'Campaign unavailable'}>
-                        <TableCell><div className="font-semibold">{application.campaignName ?? 'Campaign unavailable'}</div><div className="mt-1 text-xs text-gray-500">{application.businessName ?? 'Brand campaign'}</div></TableCell>
-                        <TableCell><SubmissionStatusBadge status={application.status} /></TableCell>
-                        <TableCell>{new Date(application.created_at).toLocaleDateString('en-MY', { dateStyle: 'medium' })}</TableCell>
-                        <TableCell>{(application.views ?? 0).toLocaleString()}</TableCell>
-                        <TableCell>RM {(application.earnings ?? 0).toFixed(2)}</TableCell>
-                    </TableRow>}
-                </TableBody>
+            <Table variant="secondary" className="mt-8 overflow-x-auto">
+                <Table.ScrollContainer>
+                    <Table.Content aria-label="Your campaign submissions" className="min-w-[720px]" onRowAction={key => navigate(`/submissions/${encodeURIComponent(String(key))}`)}>
+                        <Table.Header>
+                            <Table.Column className="bg-gray-50 text-gray-500">CAMPAIGN</Table.Column>
+                            <Table.Column className="bg-gray-50 text-gray-500" aria-sort={sortKey === 'status' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('status', 'STATUS')}</Table.Column>
+                            <Table.Column className="bg-gray-50 text-gray-500" aria-sort={sortKey === 'submitted' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('submitted', 'SUBMITTED')}</Table.Column>
+                            <Table.Column className="bg-gray-50 text-gray-500" aria-sort={sortKey === 'views' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('views', 'VIEWS')}</Table.Column>
+                            <Table.Column className="bg-gray-50 text-gray-500" aria-sort={sortKey === 'earnings' ? (sortDirection === 'desc' ? 'descending' : 'ascending') : 'none'}>{sortControl('earnings', 'EARNINGS')}</Table.Column>
+                        </Table.Header>
+                        <Table.Body items={sortedResults} renderEmptyState={() => <div className="p-8 text-center text-gray-500">No submissions yet.</div>}>
+                            {application => <Table.Row id={application._id} textValue={application.campaignName ?? 'Campaign unavailable'} className="cursor-pointer hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-amber-500">
+                                <Table.Cell className="border-b border-gray-100 py-4"><div className="font-semibold">{application.campaignName ?? 'Campaign unavailable'}</div><div className="mt-1 text-xs text-gray-500">{application.businessName ?? 'Brand campaign'}</div></Table.Cell>
+                                <Table.Cell className="border-b border-gray-100 py-4"><SubmissionStatusBadge status={application.status} /></Table.Cell>
+                                <Table.Cell className="border-b border-gray-100 py-4">{new Date(application.created_at).toLocaleDateString('en-MY', { dateStyle: 'medium' })}</Table.Cell>
+                                <Table.Cell className="border-b border-gray-100 py-4">{(application.views ?? 0).toLocaleString()}</Table.Cell>
+                                <Table.Cell className="border-b border-gray-100 py-4">RM {(application.earnings ?? 0).toFixed(2)}</Table.Cell>
+                            </Table.Row>}
+                        </Table.Body>
+                    </Table.Content>
+                </Table.ScrollContainer>
             </Table>
             {sortKey && status !== 'Exhausted' && status !== 'LoadingFirstPage' && <p role="status" className="mt-6 text-sm text-gray-500">Loading remaining submissions to sort…</p>}
             {!sortKey && status !== 'Exhausted' && <Button className="mt-6" disabled={status === 'LoadingMore'} onClick={() => loadMore(20)}>{status === 'LoadingMore' ? 'Loading…' : 'Load more'}</Button>}

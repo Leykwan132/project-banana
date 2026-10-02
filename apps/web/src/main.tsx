@@ -40,7 +40,6 @@ import AdminSubmissions from './pages/admin/AdminSubmissions'
 import AdminPayouts from './pages/admin/AdminPayouts'
 import AdminInvitations from './pages/admin/AdminInvitations'
 import CreatorInvitation from './pages/creator/CreatorInvitation'
-import { HeroUIProvider } from "@heroui/react";
 import { PostHogIdentitySync } from './components/PostHogIdentitySync';
 import { PostHogPageViewTracker } from './components/PostHogPageViewTracker';
 import { registerBaseAnalyticsContext } from './lib/analytics';
@@ -81,7 +80,6 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AnalyticsProvider>
       <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-        <HeroUIProvider>
           {!invitationEntry && <PostHogIdentitySync />}
           <ToastProvider>
           <BrowserRouter>
@@ -137,7 +135,6 @@ createRoot(document.getElementById('root')!).render(
             </Routes></WorkspaceBoundary>
           </BrowserRouter>
           </ToastProvider>
-        </HeroUIProvider>
       </ConvexBetterAuthProvider>
     </AnalyticsProvider>
   </StrictMode>,

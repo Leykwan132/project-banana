@@ -21,5 +21,8 @@ export function submissionStatus(status: string) {
 
 export function SubmissionStatusBadge({ status }: { status: string }) {
     const { label, color } = submissionStatus(status);
-    return <Chip size="sm" variant="flat" startContent={<Circle size={8} aria-hidden="true" fill="currentColor" strokeWidth={0} className={color} />} classNames={{ base: 'w-fit gap-1.5 px-3 bg-gray-100 text-black', content: 'text-xs font-semibold text-black' }}>{label}</Chip>;
+    return <Chip size="sm" className="w-fit gap-1.5 rounded-full bg-gray-100 px-3 text-black">
+        <Circle size={8} aria-hidden="true" fill="currentColor" strokeWidth={0} className={color} />
+        <Chip.Label className="text-xs font-semibold text-black">{label}</Chip.Label>
+    </Chip>;
 }

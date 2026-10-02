@@ -4,13 +4,13 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
-import { Skeleton } from "@heroui/skeleton";
+import { Skeleton } from "@heroui/react";
 import { AnalyticsTopPostCard, AnalyticsTopPostCardSkeleton } from '../../components/analytics/TopPostCard';
 import { ArrowUpRight, DollarSign, Eye, Check, ChevronLeft, Wallet, Plus, Star, MessageSquare, Info, Upload, Building, RotateCcw, Type, Tag, Link as LinkIcon, CheckSquare, FileText, Image as ImageIcon, X, Hash, AtSign } from 'lucide-react';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { Popover, PopoverTrigger, PopoverContent, Button as HeroButton } from "@heroui/react";
+import { Popover } from "@heroui/react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '../../components/ui/Modal';
 
 import { PayoutThresholdModal, RequirementsModal, ScriptsModal, hasRequirements, normalizeCampaignDescription, normalizeRequirements, parseViews } from '../CreateCampaign';
@@ -865,27 +865,23 @@ export default function CampaignDetails() {
                                                 className={`relative flex flex-col items-center justify-center gap-3 p-4 w-36 aspect-3/4 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'border-black bg-gray-50 scale-[1.02]' : 'border-gray-100 bg-white hover:border-gray-200'}`}
                                             >
                                                 <div className="absolute top-2 right-2">
-                                                    <Popover placement="top" showArrow={true} backdrop="transparent">
-                                                        <PopoverTrigger>
-                                                            <HeroButton
-                                                                isIconOnly
-                                                                variant="light"
-                                                                size="sm"
-                                                                className="text-gray-400 hover:text-gray-900 transition-colors bg-transparent border-none min-w-0 h-6 w-6"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                }}
+                                                    <Popover>
+                                                        <Popover.Trigger>
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`About ${cat.label}`}
+                                                                className="grid h-6 w-6 place-items-center rounded-full text-gray-400 transition-colors hover:text-gray-900"
+                                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                             >
                                                                 <Info className="w-4 h-4" strokeWidth={2} />
-                                                            </HeroButton>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent>
-                                                            <div className="px-1 py-2 max-w-[250px]">
-                                                                <div className="text-small font-bold mb-1">{cat.label}</div>
-                                                                <div className="text-tiny text-default-500 leading-relaxed">{cat.desc}</div>
-                                                            </div>
-                                                        </PopoverContent>
+                                                            </button>
+                                                        </Popover.Trigger>
+                                                        <Popover.Content placement="top">
+                                                            <Popover.Dialog className="max-w-[250px] rounded-xl bg-white p-3 shadow-lg">
+                                                                <Popover.Heading className="mb-1 text-sm font-bold">{cat.label}</Popover.Heading>
+                                                                <p className="text-xs leading-relaxed text-gray-500">{cat.desc}</p>
+                                                            </Popover.Dialog>
+                                                        </Popover.Content>
                                                     </Popover>
                                                 </div>
 

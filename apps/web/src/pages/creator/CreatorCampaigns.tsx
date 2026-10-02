@@ -1,6 +1,6 @@
 import { usePaginatedQuery } from 'convex/react';
 import { Link } from 'react-router-dom';
-import { Progress, Skeleton } from '@heroui/react';
+import { ProgressBar, Label, Skeleton } from '@heroui/react';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
 import { CampaignImage } from '../../components/CampaignImage';
 import { CampaignCategoryTag } from '../../components/CampaignCategoryTag';
@@ -69,17 +69,18 @@ export default function CreatorCampaigns() {
                 <h2 className="mt-1 line-clamp-2 font-semibold text-gray-900 group-hover:text-gray-700">{campaign.name}</h2>
                 <div className="min-h-4 flex-1" aria-hidden="true" />
                 <div className="border-t border-gray-200 pt-4">
-                    <Progress
+                    <ProgressBar
                         aria-label={`Campaign budget: ${money(campaign.budget_claimed)} claimed of ${money(campaign.total_budget)}`}
-                        label={<span className="text-xs font-medium text-gray-500">{money(campaign.budget_claimed)} claimed</span>}
                         value={Math.max(0, Math.min(campaign.budget_claimed, campaign.total_budget))}
                         maxValue={campaign.total_budget > 0 ? campaign.total_budget : 1}
-                        valueLabel={`Total budget ${money(campaign.total_budget)}`}
-                        showValueLabel
-                        size="sm"
-                        color="primary"
-                        classNames={{ label: 'text-xs', value: 'text-xs font-medium text-gray-500', track: 'h-2' }}
-                    />
+                        className="w-full"
+                    >
+                        <div className="mb-2 flex items-center justify-between gap-2 text-xs font-medium text-gray-500">
+                            <Label>{money(campaign.budget_claimed)} claimed</Label>
+                            <ProgressBar.Output>{money(campaign.total_budget)} budget</ProgressBar.Output>
+                        </div>
+                        <ProgressBar.Track className="h-2"><ProgressBar.Fill /></ProgressBar.Track>
+                    </ProgressBar>
                 </div>
             </Link>)}
         </div>

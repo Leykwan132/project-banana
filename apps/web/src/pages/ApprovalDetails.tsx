@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ArrowUp, ArrowDown } from 'lucide-react';
 import { useQuery } from 'convex/react';
-import { Skeleton } from "@heroui/skeleton";
+import { Skeleton } from "@heroui/react";
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../packages/backend/convex/_generated/dataModel';
 import Button from '../components/ui/Button';
