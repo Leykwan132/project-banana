@@ -6,10 +6,16 @@ import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { expo } from '@better-auth/expo'
 import authConfig from "./auth.config";
+import { magicLink } from "better-auth/plugins/magic-link";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { callbackSecret, hashToken, INVITATION_TTL_MS } from "./lib/invitationAuth";
+import type { Id } from "./_generated/dataModel";
+
+type InvitationDelivery = { invitationId: Id<"creator_invitations">; generation: string; email: string };
 
 // @ts-ignore
 const authFunctions: AuthFunctions = internal.auth;
-const siteUrl = process.env.SITE_URL!;
+
 
 export const authComponent: any = createClient<DataModel>(components.betterAuth, {
     authFunctions,
@@ -70,8 +76,10 @@ export const getCurrentUser = query({
 });
 
 
-export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
+export const createAuthOptions = (ctx: GenericCtx<DataModel>, delivery?: InvitationDelivery) => {
+    const siteUrl = process.env.SITE_URL!;
     return {
+        baseURL: process.env.CONVEX_SITE_URL,
         trustedOrigins: [
             "myapp://",
             "projectbanana://",
@@ -104,7 +112,43 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
             enabled: true,
             requireEmailVerification: false,
         },
+        hooks: {
+            before: createAuthMiddleware(async (request) => {
+                if (request.path === "/sign-in/magic-link" && !delivery) {
+                    throw new APIError("FORBIDDEN", { message: "Creator invitations must be sent by an admin" });
+                }
+                if (request.path !== "/magic-link/verify") return;
+                const callback = request.query?.callbackURL;
+                const secret = callbackSecret(siteUrl, callback);
+                const query = request.query;
+                const valid = secret && typeof query?.token === "string"
+                    && query.newUserCallbackURL === callback && query.errorCallbackURL === callback
+                    && await ctx.runQuery(internal.creatorInvitations.validateMagicLink, {
+                        magicTokenHash: await hashToken(query.token), secretHash: await hashToken(secret),
+                    });
+                if (!valid) {
+                    const errorUrl = new URL('/creator/invitation', siteUrl);
+                    errorUrl.searchParams.set('error', 'INVALID_INVITATION');
+                    throw request.redirect(errorUrl.toString());
+                }
+            }),
+        },
         plugins: [
+            magicLink({
+                expiresIn: INVITATION_TTL_MS / 1000,
+                storeToken: "hashed",
+                sendMagicLink: async ({ email, token, url }) => {
+                    if (!delivery || email !== delivery.email) throw new Error("Creator invitations must be sent by an admin");
+                    if (!("runMutation" in ctx) || !("runAction" in ctx)) throw new Error("Invitation email requires an action");
+                    await ctx.runMutation(internal.creatorInvitations.bindMagicToken, {
+                        invitationId: delivery.invitationId, generation: delivery.generation, magicTokenHash: await hashToken(token),
+                    });
+                    const emailId = await ctx.runAction(internal.emails.sendCreatorInvitation, { email, url });
+                    await ctx.runMutation(internal.creatorInvitations.markQueued, {
+                        invitationId: delivery.invitationId, generation: delivery.generation, emailId,
+                    });
+                },
+            }),
             // The Expo and Convex plugins are required
             expo(),
             crossDomain({ siteUrl }),
@@ -113,6 +157,6 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) => {
     } satisfies BetterAuthOptions
 }
 
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
-    return betterAuth(createAuthOptions(ctx))
+export const createAuth = (ctx: GenericCtx<DataModel>, delivery?: InvitationDelivery) => {
+    return betterAuth(createAuthOptions(ctx, delivery))
 }

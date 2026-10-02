@@ -266,3 +266,20 @@ export const sendSubscriptionUpdatesEmail = internalAction({
         });
     },
 });
+
+/** Invitation URLs are bearer credentials: send only to the invited recipient. */
+export const sendCreatorInvitation = internalAction({
+    args: { email: v.string(), url: v.string() },
+    returns: v.string(),
+    handler: async (ctx, args) => {
+        const from = process.env.RESEND_FROM_EMAIL;
+        if (!from || !process.env.RESEND_API_KEY) throw new Error('Invitation email is not configured');
+        const { invitationEmail } = await import('./lib/invitationEmail');
+        const escapedUrl = args.url.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return await invitationEmail.sendEmail(ctx, {
+            from, to: args.email, subject: 'Your invitation to join Lumina',
+            text: `You have been invited to join Lumina as a creator. Open this link to verify your email and set up your account:\n\n${args.url}\n\nThis link expires in 24 hours and can be used once. If you did not expect this invitation, you can ignore this email.`,
+            html: `<h1>You're invited to Lumina</h1><p>Verify your email and set up your creator account.</p><p><a href="${escapedUrl}">Accept invitation</a></p><p>This link expires in 24 hours and can be used once. If you did not expect this invitation, you can ignore this email.</p>`,
+        });
+    },
+});
