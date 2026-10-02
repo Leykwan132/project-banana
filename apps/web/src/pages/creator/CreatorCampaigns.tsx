@@ -32,7 +32,7 @@ export default function CreatorCampaigns() {
         <div className="mb-8 flex flex-wrap items-start justify-between gap-5">
             <div><h1 className="text-3xl font-semibold tracking-tight">Browse campaigns</h1><p className="mt-2 text-gray-600">Explore active campaigns and read the briefs.</p></div>
             <div><p id="campaign-sort-label" className="mb-2 text-xs font-medium text-gray-500">Sort campaigns</p>
-                <Dropdown disableAnimation><DropdownTrigger><Button disableRipple disableAnimation aria-labelledby="campaign-sort-label campaign-sort-value" variant="bordered" className="min-w-56 justify-between border-gray-200" endContent={<ChevronDown size={16} />}><span id="campaign-sort-value">{sortLabel}</span></Button></DropdownTrigger>
+                <Dropdown disableAnimation><DropdownTrigger><Button disableRipple disableAnimation aria-labelledby="campaign-sort-label campaign-sort-value" variant="bordered" className="w-56 min-w-56 max-w-56 shrink-0 justify-between border-gray-200" endContent={<ChevronDown size={16} />}><span id="campaign-sort-value" className="min-w-0 flex-1 truncate text-left">{sortLabel}</span></Button></DropdownTrigger>
                     <DropdownMenu aria-label="Sort campaigns" selectionMode="single" disallowEmptySelection selectedKeys={new Set([sort])} onSelectionChange={keys => { const key = Array.from(keys)[0]; if (key) setSort(String(key)); }} items={sorts}>{item => <DropdownItem key={item.key}>{item.label}</DropdownItem>}</DropdownMenu>
                 </Dropdown>
             </div>
