@@ -21,5 +21,5 @@ export function submissionStatus(status: string) {
 export function SubmissionStatusBadge({ status }: { status: string }) {
     const { label, color } = submissionStatus(status);
     const Icon = status === 'earning' ? CheckCircle2 : ['changes_requested', 'changes_required'].includes(status) ? RotateCcw : status === 'action_required' ? AlertCircle : status === 'ready_to_post' ? Send : status === 'verifying' ? ScanEye : ['reviewing', 'pending_review', 'pending_submission'].includes(status) ? Clock3 : Circle;
-    return <Chip size="sm" variant="flat" startContent={<Icon size={13} aria-hidden="true" className={color} />} classNames={{ base: 'w-fit gap-1 bg-gray-100 text-black', content: 'text-xs font-semibold text-black' }}>{label}</Chip>;
+    return <Chip size="sm" variant="flat" startContent={<Icon size={13} aria-hidden="true" className={color} />} classNames={{ base: 'w-fit gap-1 px-3 bg-gray-100 text-black', content: 'text-xs font-semibold text-black' }}>{label}</Chip>;
 }
