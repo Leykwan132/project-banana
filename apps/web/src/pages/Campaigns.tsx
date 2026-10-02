@@ -117,7 +117,7 @@ function CampaignTable({
                         <Table.Cell className={`${businessTableCellClassName} font-medium`}>{campaign.submissions}</Table.Cell>
                         <Table.Cell className={businessTableCellClassName}>
                             <div className="flex min-w-36 flex-col gap-1">
-                                <span className={`font-semibold ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'text-green-600' : 'text-gray-900'}`}>{campaign.claimed}</span>
+                                <span className={`font-semibold ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'text-green-600' : 'text-gray-900'}`}>{campaign.claimed} claimed</span>
                                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                                     <div className={`h-full rounded-full transition-all duration-300 ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'bg-green-500' : 'bg-gray-900'}`} style={{ width: `${Math.min(100, Math.max(0, (campaign.rawClaimed / (campaign.rawBudget || 1)) * 100))}%` }} />
                                 </div>

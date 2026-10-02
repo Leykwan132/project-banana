@@ -2,9 +2,11 @@ export type CreatorSubmissionAction = 'upload-video' | 'submit-links' | 'waiting
 
 export function getCreatorCampaignSubmissionState<T extends { status: string }>(applications?: readonly T[]) {
     const history = applications ?? [];
+    const isLoading = applications === undefined;
     return {
-        currentApplication: history.find(application => application.status !== 'earning') ?? null,
+        currentApplication: isLoading ? undefined : history.find(application => application.status !== 'earning') ?? null,
         history,
+        isLoading,
     };
 }
 

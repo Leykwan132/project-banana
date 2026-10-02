@@ -15,7 +15,7 @@ export default function CreatorCampaignDetails() {
     const navigate = useNavigate();
     const campaign = useQuery(api.campaigns.getCampaign, campaignId ? { campaignId: campaignId as Id<'campaigns'> } : 'skip');
     const campaignApplications = useQuery(api.applications.getMyApplicationsByCampaignWithStats, campaignId ? { campaignId: campaignId as Id<'campaigns'> } : 'skip');
-    const { currentApplication: existingApplication, history: submissions } = getCreatorCampaignSubmissionState(campaignApplications);
+    const { currentApplication: existingApplication, history: submissions, isLoading: isLoadingSubmissions } = getCreatorCampaignSubmissionState(campaignApplications);
     const createApplication = useMutation(api.applications.createApplication);
     const [isCreatingSubmission, setIsCreatingSubmission] = useState(false);
     const [submissionError, setSubmissionError] = useState('');
@@ -57,11 +57,11 @@ export default function CreatorCampaignDetails() {
                     <p className="mt-6 whitespace-pre-wrap leading-relaxed">{campaign.description}</p>
                     <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-gray-50 p-5">
                         <div>
-                            <h2 className="font-semibold">{existingApplication ? 'Your campaign submission' : 'Ready to join this campaign?'}</h2>
-                            <p className="mt-1 text-sm text-gray-500">{existingApplication ? 'Continue your submission and review its history.' : 'Create an application to submit your video and track its review.'}</p>
+                            <h2 className="font-semibold">{isLoadingSubmissions ? 'Checking your campaign submissions…' : existingApplication ? 'Your campaign submission' : 'Ready to join this campaign?'}</h2>
+                            <p className="mt-1 text-sm text-gray-500">{isLoadingSubmissions ? 'Just a moment.' : existingApplication ? 'Continue your submission and review its history.' : 'Create an application to submit your video and track its review.'}</p>
                         </div>
-                        <button type="button" onClick={openSubmission} disabled={isCreatingSubmission || existingApplication === undefined} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:cursor-wait disabled:opacity-60">
-                            {isCreatingSubmission ? <><Loader2 className="h-4 w-4 animate-spin" />Creating…</> : <>{existingApplication ? 'Continue submission' : 'Create submission'}<ArrowRight className="h-4 w-4" /></>}
+                        <button type="button" onClick={openSubmission} disabled={isCreatingSubmission || isLoadingSubmissions} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:cursor-wait disabled:opacity-60">
+                            {isCreatingSubmission ? <><Loader2 className="h-4 w-4 animate-spin" />Creating…</> : isLoadingSubmissions ? 'Checking…' : <>{existingApplication ? 'Continue submission' : 'Create submission'}<ArrowRight className="h-4 w-4" /></>}
                         </button>
                         {submissionError && <p role="alert" className="w-full text-sm text-red-600">{submissionError}</p>}
                     </section>
