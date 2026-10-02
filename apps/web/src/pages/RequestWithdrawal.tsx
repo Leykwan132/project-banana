@@ -269,7 +269,7 @@ export default function RequestWithdrawal({ workspace = 'business' }: { workspac
                                     aria-expanded={showAllBankAccounts}
                                     aria-controls="withdrawal-bank-accounts"
                                     onClick={() => setShowAllBankAccounts((showAll) => !showAll)}
-                                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-gray-600 transition-colors hover:text-gray-900"
+                                    className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-full bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                                 >
                                     {showAllBankAccounts ? 'Show less' : 'Show all'}
                                     <ChevronDown className={`h-4 w-4 transition-transform ${showAllBankAccounts ? 'rotate-180' : ''}`} />
