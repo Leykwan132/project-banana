@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useAction, useQuery } from 'convex/react';
+import { useAction, useQuery, usePaginatedQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
 import type { Doc } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../../packages/backend/convex/_generated/api';
-import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from '@heroui/react';
+import { Link, useParams } from 'react-router-dom';
 import { SubmissionStatusBadge } from '../../lib/submission-status';
 
 export type CreatorApplication = FunctionReturnType<typeof api.applications.getMyApplications>['page'][number];
@@ -52,8 +52,19 @@ function Details({ application }: { application: CreatorApplication }) {
     </>;
 }
 
-export default function CreatorSubmissionDetails({ application, onClose }: { application: CreatorApplication | null; onClose: () => void }) {
-    return <Drawer isOpen={Boolean(application)} onOpenChange={open => { if (!open) onClose(); }} placement="right" size="lg">
-        <DrawerContent>{application && <><DrawerHeader className="flex flex-col gap-1 pr-12"><h1 className="text-xl">{application.campaignName ?? 'Campaign unavailable'}</h1><p className="text-sm font-normal text-gray-500">{application.businessName ?? 'Brand campaign'}</p></DrawerHeader><DrawerBody className="gap-5 pb-8"><Details key={application._id} application={application} /></DrawerBody></>}</DrawerContent>
-    </Drawer>;
+export default function CreatorSubmissionDetails() {
+    const { applicationId } = useParams();
+    const { results, status, loadMore } = usePaginatedQuery(api.applications.getMyApplications, {}, { initialNumItems: 20 });
+    const application = results.find(item => item._id === applicationId);
+    // Resolve shared/reloaded URLs through the authenticated list. The legacy getApplication
+    // query does not check ownership; never expose another creator's application through it.
+    useEffect(() => { if (!application && status === 'CanLoadMore') loadMore(100); }, [application, status, loadMore]);
+    return <section className="mx-auto max-w-4xl">
+        <Link to="/creator/submissions" className="mb-6 inline-block text-sm text-gray-500 hover:text-gray-900">← Back to submissions</Link>
+        {!application ? (status === 'Exhausted' ? <div><h1 className="text-2xl font-bold">Submission unavailable</h1><p className="mt-3 text-gray-500">This submission could not be found in your account.</p></div> : <p role="status" className="py-8 text-gray-500">Loading submission…</p>) : <>
+            <h1 className="text-2xl font-bold">{application.campaignName ?? 'Campaign unavailable'}</h1>
+            <p className="mt-2 text-gray-500">{application.businessName ?? 'Brand campaign'}</p>
+            <div className="mt-6 flex flex-col gap-5"><Details key={application._id} application={application} /></div>
+        </>}
+    </section>;
 }

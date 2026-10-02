@@ -1,3 +1,5 @@
+import { Chip } from '@heroui/react';
+import { CheckCircle2, Circle, Clock3, AlertCircle, RotateCcw, ScanEye, Send } from 'lucide-react';
 export const submissionStatuses: Record<string, { label: string; color: string }> = {
     pending_submission: { label: 'Pending submission', color: 'bg-slate-100 text-slate-700' },
     reviewing: { label: 'Reviewing', color: 'bg-blue-100 text-blue-700' },
@@ -18,5 +20,6 @@ export function submissionStatus(status: string) {
 
 export function SubmissionStatusBadge({ status }: { status: string }) {
     const { label, color } = submissionStatus(status);
-    return <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${color}`}><span className="mr-2 h-1.5 w-1.5 rounded-full bg-current" />{label}</span>;
+    const Icon = status === 'earning' ? CheckCircle2 : status === 'changes_requested' ? RotateCcw : status === 'action_required' ? AlertCircle : status === 'ready_to_post' ? Send : status === 'verifying' ? ScanEye : ['reviewing', 'pending_review', 'pending_submission'].includes(status) ? Clock3 : Circle;
+    return <Chip size="sm" variant="flat" startContent={<Icon size={13} aria-hidden="true" />} classNames={{ base: `w-fit gap-1 ${color}`, content: 'text-xs font-semibold' }}>{label}</Chip>;
 }
