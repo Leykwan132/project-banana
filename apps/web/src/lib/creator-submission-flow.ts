@@ -1,5 +1,13 @@
 export type CreatorSubmissionAction = 'upload-video' | 'submit-links' | 'waiting' | 'create-another' | 'closed';
 
+export function getCreatorCampaignSubmissionState<T extends { status: string }>(applications?: readonly T[]) {
+    const history = applications ?? [];
+    return {
+        currentApplication: history.find(application => application.status !== 'earning') ?? null,
+        history,
+    };
+}
+
 export function getCreatorSubmissionAction(applicationStatus: string, campaignStatus: string): CreatorSubmissionAction {
     if (campaignStatus === 'completed' || campaignStatus === 'cancelled') return 'closed';
 

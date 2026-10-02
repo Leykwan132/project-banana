@@ -121,7 +121,7 @@ function CampaignTable({
                                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
                                     <div className={`h-full rounded-full transition-all duration-300 ${campaign.rawClaimed >= campaign.rawBudget && campaign.rawBudget > 0 ? 'bg-green-500' : 'bg-gray-900'}`} style={{ width: `${Math.min(100, Math.max(0, (campaign.rawClaimed / (campaign.rawBudget || 1)) * 100))}%` }} />
                                 </div>
-                                <span className="text-right text-xs font-medium text-gray-400">{campaign.budget}</span>
+                                <span className="text-right text-xs font-medium text-gray-400">Total budget {campaign.budget}</span>
                             </div>
                         </Table.Cell>
                     </Table.Row>}

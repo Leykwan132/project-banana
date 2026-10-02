@@ -7,12 +7,15 @@ import type { Id } from '../../../../../packages/backend/convex/_generated/dataM
 import { CampaignImage } from '../../components/CampaignImage';
 import { CampaignCategoryTag } from '../../components/CampaignCategoryTag';
 import Button from '../../components/ui/Button';
+import { SubmissionStatusBadge } from '../../lib/submission-status';
+import { getCreatorCampaignSubmissionState } from '../../lib/creator-submission-flow';
 
 export default function CreatorCampaignDetails() {
     const { campaignId } = useParams();
     const navigate = useNavigate();
     const campaign = useQuery(api.campaigns.getCampaign, campaignId ? { campaignId: campaignId as Id<'campaigns'> } : 'skip');
-    const existingApplication = useQuery(api.applications.getNonEarningApplicationByCampaignId, campaignId ? { campaignId: campaignId as Id<'campaigns'> } : 'skip');
+    const campaignApplications = useQuery(api.applications.getMyApplicationsByCampaignWithStats, campaignId ? { campaignId: campaignId as Id<'campaigns'> } : 'skip');
+    const { currentApplication: existingApplication, history: submissions } = getCreatorCampaignSubmissionState(campaignApplications);
     const createApplication = useMutation(api.applications.createApplication);
     const [isCreatingSubmission, setIsCreatingSubmission] = useState(false);
     const [submissionError, setSubmissionError] = useState('');
@@ -62,6 +65,21 @@ export default function CreatorCampaignDetails() {
                         </button>
                         {submissionError && <p role="alert" className="w-full text-sm text-red-600">{submissionError}</p>}
                     </section>
+                    {submissions.length > 0 && <section className="mt-8">
+                        <h2 className="text-lg font-semibold">Your submissions</h2>
+                        <div className="mt-3 divide-y divide-gray-200 overflow-hidden rounded-2xl bg-gray-50">
+                            {submissions.map(submission => <button key={submission._id} type="button" onClick={() => navigate(`/submissions/${submission._id}`)} className="flex w-full flex-wrap items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-gray-100">
+                                <span>
+                                    <span className="block font-medium text-gray-900">{submission.title}</span>
+                                    <span className="mt-1 block text-sm text-gray-500">Submitted {new Date(submission.created_at).toLocaleDateString('en-MY', { dateStyle: 'medium' })}</span>
+                                </span>
+                                <span className="flex flex-wrap items-center gap-3">
+                                    <span className="text-sm text-gray-500">{submission.views.toLocaleString()} views · RM {submission.earnings.toFixed(2)}</span>
+                                    <SubmissionStatusBadge status={submission.status} />
+                                </span>
+                            </button>)}
+                        </div>
+                    </section>}
                     <div className="mt-8 grid gap-4 md:grid-cols-2">
                         <section className="rounded-3xl bg-[#F8F9FA] p-6"><h2 className="text-base font-semibold">Requirements</h2><ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-gray-600">{campaign.requirements.map((requirement, index) => <li key={index}>{requirement}</li>)}</ul>{campaign.requires_both_platform_posts && <p className="mt-4 text-sm text-gray-600">Posts on both Instagram and TikTok are required.</p>}</section>
                         <section className="rounded-3xl bg-[#F8F9FA] p-6">
