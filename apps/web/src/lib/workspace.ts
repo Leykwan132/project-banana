@@ -1,5 +1,16 @@
 export type Workspace = 'business' | 'creator';
 export type Membership = { businessId: string | null; creatorId: string | null };
+type WorkspaceStorage = Pick<Storage, 'getItem' | 'setItem'>;
+
+const workspaceStorageKey = (userId: string) => `lumina:last-workspace:${encodeURIComponent(userId)}`;
+
+function getBrowserStorage(): WorkspaceStorage | null {
+    try {
+        return typeof window === 'undefined' ? null : window.localStorage;
+    } catch {
+        return null;
+    }
+}
 
 export function parseWorkspace(value: string | null): Workspace {
     return value === 'creator' ? 'creator' : 'business';
@@ -13,7 +24,33 @@ export function callbackPath(workspace: Workspace) {
     return `/auth-redirect?workspace=${workspace}`;
 }
 
-export function resolveWorkspace(workspace: Workspace, membership: Membership) {
+export function switchWorkspacePath(workspace: Workspace) {
+    return `${callbackPath(workspace)}&switch=true`;
+}
+
+export function getLastWorkspace(userId: string | undefined, storage: WorkspaceStorage | null = getBrowserStorage()): Workspace | undefined {
+    if (!userId || !storage) return undefined;
+    try {
+        const workspace = storage.getItem(workspaceStorageKey(userId));
+        return workspace === 'business' || workspace === 'creator' ? workspace : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+export function rememberWorkspace(userId: string | undefined, workspace: Workspace, storage: WorkspaceStorage | null = getBrowserStorage()) {
+    if (!userId || !storage) return;
+    try {
+        storage.setItem(workspaceStorageKey(userId), workspace);
+    } catch {
+        // Keep workspace navigation working when browser storage is unavailable.
+    }
+}
+
+export function resolveWorkspace(workspace: Workspace, membership: Membership, lastUsedWorkspace?: Workspace) {
+    if (membership.businessId && membership.creatorId) {
+        return (lastUsedWorkspace ?? workspace) === 'creator' ? '/creator/campaigns' : '/overview';
+    }
     if (workspace === 'creator') {
         return membership.creatorId ? '/creator/campaigns' : '/workspace-access?workspace=creator';
     }

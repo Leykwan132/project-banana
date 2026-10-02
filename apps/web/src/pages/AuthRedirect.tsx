@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
-import { loginPath, parseWorkspace, resolveWorkspace } from '../lib/workspace';
+import { getLastWorkspace, loginPath, parseWorkspace, resolveWorkspace } from '../lib/workspace';
 import iconDark from "../assets/icon-dark.svg";
 
 export default function AuthRedirect() {
@@ -11,15 +11,17 @@ export default function AuthRedirect() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const workspace = parseWorkspace(searchParams.get('workspace'));
+    const isSwitchingWorkspace = searchParams.get('switch') === 'true';
     const authError = searchParams.get('error') ?? searchParams.get('error_description');
     useEffect(() => {
         if (loading) return;
         if (authError || !session?.user) {
             navigate(loginPath(workspace, authError ?? undefined), { replace: true });
         } else if (membership) {
-            navigate(resolveWorkspace(workspace, membership), { replace: true });
+            const lastUsedWorkspace = isSwitchingWorkspace ? workspace : getLastWorkspace(session.user.id);
+            navigate(resolveWorkspace(workspace, membership, lastUsedWorkspace), { replace: true });
         }
-    }, [authError, loading, membership, navigate, session?.user, workspace]);
+    }, [authError, isSwitchingWorkspace, loading, membership, navigate, session?.user, workspace]);
 
     return (
         <div className="min-h-screen bg-white">
@@ -34,9 +36,13 @@ export default function AuthRedirect() {
                 <div className="flex flex-1 items-center justify-center">
                     <div className="flex max-w-sm flex-col items-center text-center">
                         <Loader2 className="mb-6 h-8 w-8 animate-spin text-gray-900" />
-                        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Logging you in</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+                            {workspace === 'creator' ? 'Switching to Creator' : 'Opening your business workspace'}
+                        </h1>
                         <p className="mt-2 text-sm text-gray-500">
-                            Checking your account and preparing your workspace.
+                            {workspace === 'creator'
+                                ? 'Checking your account and preparing your creator workspace.'
+                                : 'Checking your account and preparing your business workspace.'}
                         </p>
                     </div>
                 </div>

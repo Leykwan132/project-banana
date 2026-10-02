@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from "@heroui/card";
+import { Card } from "@heroui/react";
 import { ArrowRight, Rocket } from 'lucide-react';
 import { usePaginatedQuery, useQuery, useAction } from "convex/react";
-import { Skeleton } from "@heroui/skeleton";
+import { Skeleton } from "@heroui/react";
 import { api } from "../../../../packages/backend/convex/_generated/api";
 
 // Fallback images pool — pick one randomly per card so they feel distinct
@@ -95,6 +95,7 @@ export default function Approvals() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {Array.from({ length: 8 }).map((_, i) => (
                         <Card key={i} className="flex flex-col w-full bg-[#F4F6F8] border-none rounded-md p-6 shadow-none h-[400px]">
+                            <Card.Content className="flex h-full flex-col items-start w-full p-0">
                             <div className="flex flex-col items-start w-full space-y-4">
                                 <Skeleton className="rounded-lg w-3/4 h-7" />
                                 <div className="flex items-center gap-3 mt-3 w-full">
@@ -104,6 +105,7 @@ export default function Approvals() {
                                 <Skeleton className="rounded-lg w-24 h-4 mt-8" />
                             </div>
                             <Skeleton className="rounded-sm mt-6 w-full h-48" />
+                            </Card.Content>
                         </Card>
                     ))}
                 </div>
@@ -124,12 +126,9 @@ export default function Approvals() {
                     {sortedCampaigns.map((campaign) => {
                         const hasPending = campaign.pending_approvals && campaign.pending_approvals > 0;
                         return (
-                            <Card
-                                key={campaign._id}
-                                isPressable
-                                onPress={() => navigate(`/approvals/${campaign._id}`)}
-                                className="flex flex-col w-full bg-[#F4F6F8] border-none rounded-md p-6 hover:bg-gray-200 transition-colors duration-200 group shadow-none"
-                            >
+                            <button key={campaign._id} type="button" onClick={() => navigate(`/approvals/${campaign._id}`)} className="w-full cursor-pointer rounded-2xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
+                            <Card className="flex flex-col w-full border-none bg-[#F4F6F8] p-6 shadow-none">
+                                <Card.Content className="w-full p-0">
                                 {/* Text Content Section (Top) */}
                                 <div className="flex flex-col items-start w-full">
                                     <h4 className="text-gray-900 text-xl font-semibold leading-tight line-clamp-2 text-left">
@@ -156,7 +155,9 @@ export default function Approvals() {
 
                                 {/* Image Section (Bottom) */}
                                 <CampaignCoverImage campaign={campaign} />
+                                </Card.Content>
                             </Card>
+                            </button>
                         )
                     })}
                 </div>

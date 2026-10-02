@@ -6,7 +6,7 @@ import { authClient } from "../lib/auth-client";
 import iconDark from "../assets/icon-dark.svg";
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
-import { callbackPath, loginPath, resolveWorkspace } from '../lib/workspace';
+import { callbackPath, getLastWorkspace, loginPath, resolveWorkspace } from '../lib/workspace';
 import type { Workspace } from '../lib/workspace';
 
 export default function Login({ workspace = 'business' }: { workspace?: Workspace }) {
@@ -17,7 +17,9 @@ export default function Login({ workspace = 'business' }: { workspace?: Workspac
     const [signInError, setSignInError] = useState(false);
     const loginError = searchParams.get('error') || signInError;
     useEffect(() => {
-        if (!loading && session?.user && membership) navigate(resolveWorkspace(workspace, membership), { replace: true });
+        if (!loading && session?.user && membership) {
+            navigate(resolveWorkspace(workspace, membership, getLastWorkspace(session.user.id)), { replace: true });
+        }
     }, [loading, session?.user, membership, workspace, navigate]);
 
     const signIn = async () => {

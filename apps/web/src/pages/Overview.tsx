@@ -3,17 +3,15 @@ import { Authenticated, useQuery } from 'convex/react';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import { Skeleton } from '@heroui/react';
 import { useNavigate } from 'react-router-dom';
-import { usePostHog } from '@posthog/react';
 import { AnalyticsTopPostCard, AnalyticsTopPostCardSkeleton } from '../components/analytics/TopPostCard';
 import {
     LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { ArrowRight, ArrowUpRight, Eye, Heart, MessageCircle, Share, Wallet } from 'lucide-react';
+import { ArrowUpRight, Eye, Heart, MessageCircle, Share, Wallet } from 'lucide-react';
 import {
     isProductTourActive,
     PRODUCT_TOUR_STATE_EVENT,
-    triggerProductTourStart,
 } from '../lib/productTour';
 
 type MetricLabel = 'Views' | 'Likes' | 'Comments' | 'Shares' | 'Amount Spend';
@@ -124,7 +122,6 @@ const getMetricValueFromRow = (
 
 export default function Overview() {
     const navigate = useNavigate();
-    const posthog = usePostHog();
     const [currentMetric, setCurrentMetric] = useState<MetricLabel>('Views');
     const [isTourActive, setIsTourActive] = useState(() => isProductTourActive());
 
@@ -233,51 +230,20 @@ export default function Overview() {
 
     return (
         <div className="p-8 font-sans text-gray-900">
-            <div className="mb-8 rounded-[2rem] border border-black bg-black p-6 shadow-[0_14px_36px_rgba(17,24,39,0.25)] md:p-8">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                    <div>
-                        <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/80">
-                            2 min guide
-                        </p>
-                        <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white md:text-4xl">
-                            New to Lumina?
-                        </h2>
-                        <p className="mt-2 max-w-2xl text-sm text-white/75 md:text-base">
-                            Start this quick tour to learn the basics.
-                        </p>
-                    </div>
-                    <div className="w-full lg:w-auto">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                posthog.capture('product_tour_start_clicked', {
-                                    surface: 'overview_banner',
-                                });
-                                triggerProductTourStart();
-                            }}
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-colors hover:bg-gray-100 lg:w-auto"
-                        >
-                            Start guide
-                            <ArrowRight className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <h1 className="text-2xl font-bold mb-6">Overview</h1>
 
             <div data-tour-id="overview-performance-section">
                 <div data-tour-id="overview-metrics" className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
                     {/* Stats - Display Items (Matching Campaign Details) */}
                     {METRICS.map((label) => (
-                        <div
+                        <button
                             key={label}
-                            onClick={() => {
-                                setCurrentMetric(label);
-                            }}
-                            className={`p-6 rounded-3xl border transition-all cursor-pointer ${currentMetric === label
-                                ? 'bg-[#F9FAFB] border-black shadow-sm'
-                                : 'bg-white border-[#F4F6F8] hover:border-gray-200'
+                            type="button"
+                            onClick={() => setCurrentMetric(label)}
+                            aria-pressed={currentMetric === label}
+                            className={`w-full rounded-3xl border border-gray-200 p-6 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 ${currentMetric === label
+                                ? 'bg-gray-100'
+                                : 'bg-white hover:bg-[#F9FAFB]'
                                 }`}
                         >
                             <div className="text-gray-900 font-medium mb-4 text-sm">{label}</div>
@@ -287,7 +253,7 @@ export default function Overview() {
                             <div className="text-xs font-medium text-gray-500">
                                 As of {asOfDateLabel}
                             </div>
-                        </div>
+                        </button>
                     ))}
                 </div>
 

@@ -4,7 +4,7 @@ import { api } from '../../../../../packages/backend/convex/_generated/api';
 import type { Id } from '../../../../../packages/backend/convex/_generated/dataModel';
 import { toast } from '../../components/ui/Toast';
 import { Building2, Check, ChevronRight, Loader2, MessageSquare, Play, Search, User, X } from 'lucide-react';
-import { Pagination } from '@heroui/react';
+import { AppPagination } from '../../components/ui/AppPagination';
 import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '../../components/ui/Modal';
 import ReactPlayer from 'react-player';
 
@@ -328,13 +328,11 @@ export default function AdminSubmissions() {
 
                     {totalPages > 1 && filteredSubmissions.length > 0 && (
                         <div className="flex justify-center mt-6">
-                            <Pagination
+                            <AppPagination
                                 total={totalPages}
                                 page={page}
                                 onChange={handlePageChange}
-                                showControls
                                 size="sm"
-                                classNames={{ cursor: 'bg-gray-900' }}
                             />
                         </div>
                     )}

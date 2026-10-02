@@ -3,32 +3,42 @@ import { useAction, useQuery } from 'convex/react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../components/ui/Toast';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal';
-import { Banknote, Building2, ChevronLeft, Landmark, Loader2, ShieldCheck, Wallet } from 'lucide-react';
+import { Banknote, Building2, ChevronDown, ChevronLeft, Landmark, Loader2, ShieldCheck } from 'lucide-react';
 import type { Id } from '../../../../packages/backend/convex/_generated/dataModel';
 import { api } from '../../../../packages/backend/convex/_generated/api';
 import Button from '../components/ui/Button';
 import { BANK_OPTIONS } from '../lib/banks';
 import { BankAccountSourceType } from '../lib/constants';
+import { getWithdrawalValidationError } from '../lib/withdrawal-validation';
 
 const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export default function RequestWithdrawal() {
+export default function RequestWithdrawal({ workspace = 'business' }: { workspace?: 'business' | 'creator' }) {
+    const isCreator = workspace === 'creator';
+    const withdrawalPath = isCreator ? '/creator/withdraw' : '/withdrawals';
     const navigate = useNavigate();
-    const business = useQuery(api.businesses.getMyBusiness);
-    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: BankAccountSourceType.Business });
-    const gatewayFee = useQuery(api.payouts.getPayoutGatewayFee) ?? 0;
-    const minWithdrawalAmount = useQuery(api.payouts.getMinWithdrawalAmount) ?? 0;
+    const business = useQuery(api.businesses.getMyBusiness, isCreator ? 'skip' : {});
+    const bankAccounts = useQuery(api.bankAccounts.getUserBankAccounts, { sourceType: isCreator ? BankAccountSourceType.Creator : BankAccountSourceType.Business });
+    const businessGatewayFee = useQuery(api.payouts.getPayoutGatewayFee);
+    const platformFeeRate = useQuery(api.payouts.getPayoutPlatformFeeRate);
+    const creatorBalance = useQuery(api.users.getUserBalance, isCreator ? {} : 'skip');
+    const gatewayFee = isCreator ? 0 : (businessGatewayFee ?? 0);
+    const minimum = useQuery(api.payouts.getMinWithdrawalAmount);
+    const minWithdrawalAmount = minimum ?? 0;
 
     const requestBusinessWithdrawal = useAction(api.payouts.requestBusinessWithdrawal);
+    const requestCreatorWithdrawal = useAction(api.payouts.requestWithdrawal);
 
     const [amount, setAmount] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<Id<'bank_accounts'> | null>(null);
+    const [showAllBankAccounts, setShowAllBankAccounts] = useState(false);
     const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
     const [withdrawalError, setWithdrawalError] = useState('');
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [hasAcceptedWithdrawalPolicy, setHasAcceptedWithdrawalPolicy] = useState(false);
 
-    const availableCredits = business?.credit_balance ?? 0;
+    const availableCredits = isCreator ? (creatorBalance?.balance ?? 0) : (business?.credit_balance ?? 0);
     const verifiedBankAccounts = useMemo(
         () => ((bankAccounts ?? []) as Array<{
             _id: Id<'bank_accounts'>;
@@ -53,8 +63,11 @@ export default function RequestWithdrawal() {
         () => verifiedBankAccounts.find((account) => account._id === selectedBankId),
         [verifiedBankAccounts, selectedBankId]
     );
+    const visibleBankAccounts = showAllBankAccounts
+        ? verifiedBankAccounts
+        : verifiedBankAccounts.slice(0, 5);
 
-    if (business === undefined || bankAccounts === undefined) {
+    if ((isCreator ? creatorBalance === undefined : business === undefined) || bankAccounts === undefined || businessGatewayFee === undefined || platformFeeRate === undefined || minimum === undefined) {
         return (
             <div className="flex min-h-[50vh] items-center justify-center">
                 <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
@@ -62,13 +75,22 @@ export default function RequestWithdrawal() {
         );
     }
 
-    if (business === null) {
+    if (!isCreator && business === null) {
         return <div className="p-8">Please complete onboarding first.</div>;
     }
 
     const parsedAmount = Number.parseFloat(amount);
     const normalizedAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
-    const estimatedDeposit = normalizedAmount > gatewayFee ? normalizedAmount - gatewayFee : 0;
+    const platformFee = isCreator ? Math.round(normalizedAmount * (platformFeeRate ?? 0) * 100) / 100 : 0;
+    const totalFee = gatewayFee + platformFee;
+    const estimatedDeposit = Math.max(normalizedAmount - totalFee, 0);
+    const validationError = getWithdrawalValidationError({
+        amount: parsedAmount,
+        availableBalance: availableCredits,
+        minimumAmount: minWithdrawalAmount,
+        gatewayFee,
+        hasVerifiedBank: Boolean(selectedBank),
+    });
 
     const handleMax = () => {
         setAmount(availableCredits.toFixed(2));
@@ -76,49 +98,30 @@ export default function RequestWithdrawal() {
     };
 
     const handleBack = () => {
-        navigate('/withdrawals');
+        navigate(withdrawalPath);
     };
 
     const handleWithdrawalClick = () => {
-        if (!selectedBankId) {
-            setWithdrawalError('Add and verify a bank account before requesting a withdrawal.');
-            return;
-        }
-
-        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-            setWithdrawalError('Enter a valid withdrawal amount.');
-            return;
-        }
-
-        if (minWithdrawalAmount > 0 && parsedAmount < minWithdrawalAmount) {
-            setWithdrawalError(`Minimum withdrawal amount is ${formatCurrency(minWithdrawalAmount)}.`);
-            return;
-        }
-
-        if (parsedAmount <= gatewayFee) {
-            setWithdrawalError(`Withdrawal amount must be greater than ${formatCurrency(gatewayFee)}.`);
-            return;
-        }
-
-        if (parsedAmount > availableCredits) {
-            setWithdrawalError('Withdrawal amount exceeds your available credits.');
+        if (validationError) {
+            setWithdrawalError(validationError);
             return;
         }
 
         setWithdrawalError('');
+        setHasAcceptedWithdrawalPolicy(false);
         setIsConfirmModalOpen(true);
     };
 
     const handleSubmitWithdrawal = async () => {
-        if (!selectedBankId) {
-            setWithdrawalError('Bank account must be selected.');
+        if (validationError || !selectedBankId) {
+            setWithdrawalError(validationError ?? 'Bank account must be selected.');
             return;
         }
 
         setIsSubmittingWithdrawal(true);
 
         try {
-            await requestBusinessWithdrawal({
+            await (isCreator ? requestCreatorWithdrawal : requestBusinessWithdrawal)({
                 amount: parsedAmount,
                 bankAccountId: selectedBankId,
             });
@@ -128,9 +131,9 @@ export default function RequestWithdrawal() {
                 description: 'Your request will take 3–5 business days to process.',
                 color: 'success',
             });
-            navigate('/withdrawals');
+            navigate(withdrawalPath);
         } catch (error) {
-            console.error('Failed to create business withdrawal:', error);
+            console.error('Failed to request withdrawal:', error);
             setWithdrawalError(error instanceof Error ? error.message : 'Unable to create withdrawal request.');
         } finally {
             setIsSubmittingWithdrawal(false);
@@ -138,7 +141,7 @@ export default function RequestWithdrawal() {
     };
 
     return (
-        <div className="animate-fadeIn p-8 pb-24 text-gray-900">
+        <div className="animate-fadeIn p-4 sm:p-8 pb-24 text-gray-900">
             {/* Header / Navigation */}
             <div className="flex justify-between items-center mb-6">
                 <Button
@@ -204,7 +207,7 @@ export default function RequestWithdrawal() {
                                 <label className="text-sm font-semibold text-gray-900">Bank account</label>
                                 <button
                                     type="button"
-                                    onClick={() => navigate('/bank-accounts')}
+                                    onClick={() => navigate(isCreator ? '/creator/bank-accounts' : '/bank-accounts')}
                                     className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-gray-900 transition-colors"
                                 >
                                     <span className="text-base leading-none">+</span> Add bank account
@@ -213,8 +216,8 @@ export default function RequestWithdrawal() {
                             {verifiedBankAccounts.length === 0 ? (
                                 <p className="text-sm text-gray-400">No verified bank accounts yet.</p>
                             ) : (
-                                <div className="space-y-3">
-                                    {verifiedBankAccounts.map((account) => {
+                                <div id="withdrawal-bank-accounts" className="space-y-3">
+                                    {visibleBankAccounts.map((account) => {
                                         const metadata = BANK_OPTIONS.find((option) => option.name === account.bank_name);
                                         const isSelected = selectedBankId === account._id;
 
@@ -250,11 +253,27 @@ export default function RequestWithdrawal() {
                                     })}
                                 </div>
                             )}
+                            {verifiedBankAccounts.length > 5 && (
+                                <button
+                                    type="button"
+                                    aria-expanded={showAllBankAccounts}
+                                    aria-controls="withdrawal-bank-accounts"
+                                    onClick={() => setShowAllBankAccounts((showAll) => !showAll)}
+                                    className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-full bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                                >
+                                    {showAllBankAccounts ? 'Show less' : 'Show all'}
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${showAllBankAccounts ? 'rotate-180' : ''}`} />
+                                </button>
+                            )}
                         </div>
 
                         {withdrawalError ? (
                             <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                                 {withdrawalError}
+                            </div>
+                        ) : validationError && (amount !== '' || verifiedBankAccounts.length === 0) ? (
+                            <div className="text-sm text-rose-600" role="status">
+                                {validationError}
                             </div>
                         ) : null}
 
@@ -262,37 +281,16 @@ export default function RequestWithdrawal() {
                             variant="primary"
                             onClick={handleWithdrawalClick}
                             isLoading={isSubmittingWithdrawal}
-                            disabled={verifiedBankAccounts.length === 0 || isSubmittingWithdrawal}
+                            disabled={Boolean(validationError) || isSubmittingWithdrawal}
                             className="w-full h-14 rounded-xl"
                         >
-                            {isSubmittingWithdrawal ? 'Creating payout order...' : 'Withdraw credits'}
+                            {isSubmittingWithdrawal ? 'Requesting withdrawal…' : 'Review & Continue'}
                         </Button>
                     </div>
                 </div>
 
-                {/* Right Column: Info & Summary */}
+                {/* Right Column: Withdrawal policy */}
                 <div className="space-y-6">
-                    <div className="rounded-3xl bg-[#0F172A] p-6 text-white shadow-xl">
-                        <div className="flex items-center gap-3 text-sm text-white/70">
-                            <Wallet className="h-4 w-4" />
-                            Summary
-                        </div>
-                        <div className="mt-6 space-y-4 text-sm">
-                            <div className="flex items-center justify-between">
-                                <span className="text-white/60">Requested amount</span>
-                                <span className="font-semibold">{formatCurrency(normalizedAmount)}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-white/60">Gateway fee</span>
-                                <span className="font-semibold">{formatCurrency(gatewayFee)}</span>
-                            </div>
-                            <div className="pt-4 border-t border-white/10 flex items-center justify-between text-base">
-                                <span className="text-white/80 font-medium">Final amount</span>
-                                <span className="font-bold">{formatCurrency(estimatedDeposit)}</span>
-                            </div>
-                        </div>
-                    </div>
-
                     <div className="rounded-3xl border border-gray-100 bg-gray-50 p-6">
                         <div className="flex items-center gap-3 text-sm font-semibold text-gray-900">
                             <Building2 className="h-4 w-4" />
@@ -305,7 +303,7 @@ export default function RequestWithdrawal() {
                             </li>
                             <li className="flex gap-2">
                                 <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                                Business withdrawals only include the gateway fee.
+                                {isCreator ? `Creator withdrawals include a ${((platformFeeRate ?? 0) * 100).toLocaleString()}% platform fee.` : 'Business withdrawals only include the gateway fee.'}
                             </li>
                         </ul>
                     </div>
@@ -315,7 +313,10 @@ export default function RequestWithdrawal() {
             {/* Confirmation Modal */}
             <Modal
                 isOpen={isConfirmModalOpen}
-                onOpenChange={setIsConfirmModalOpen}
+                onOpenChange={(isOpen) => {
+                    setIsConfirmModalOpen(isOpen);
+                    if (!isOpen) setHasAcceptedWithdrawalPolicy(false);
+                }}
                 size="5xl"
                 scrollBehavior="inside"
                 isDismissable={!isSubmittingWithdrawal}
@@ -357,8 +358,8 @@ export default function RequestWithdrawal() {
                                                         <span className="font-semibold text-gray-900">{formatCurrency(normalizedAmount)}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between text-base">
-                                                        <span className="text-gray-500">Gateway fee</span>
-                                                        <span className="font-semibold text-gray-900">{formatCurrency(gatewayFee)}</span>
+                                                        <span className="text-gray-500">{isCreator ? 'Platform fee' : 'Gateway fee'}</span>
+                                                        <span className="font-semibold text-gray-900">{formatCurrency(totalFee)}</span>
                                                     </div>
                                                 </div>
 
@@ -371,7 +372,7 @@ export default function RequestWithdrawal() {
 
                                                 <div className="pt-6 border-t border-gray-100">
                                                     <div className="flex items-center justify-between text-base">
-                                                        <span className="text-gray-500">Credits remaining after withdrawal</span>
+                                                        <span className="text-gray-500">Balance remaining after withdrawal</span>
                                                         <span className="font-semibold text-gray-900">
                                                             {formatCurrency(availableCredits - normalizedAmount)}
                                                         </span>
@@ -381,6 +382,32 @@ export default function RequestWithdrawal() {
                                         </div>
                                     </div>
                                 </div>
+                                <div className="mt-8 rounded-2xl bg-gray-50 p-5">
+                                    <h3 className="font-semibold text-gray-900">Withdrawal policy</h3>
+                                    <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                                        <li>Withdrawals are processed within 3–5 business days.</li>
+                                        <li>
+                                            {isCreator
+                                                ? `A ${((platformFeeRate ?? 0) * 100).toLocaleString()}% platform fee is included in this withdrawal.`
+                                                : 'The applicable gateway fee is included in this withdrawal.'}
+                                        </li>
+                                    </ul>
+                                    <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-gray-200 pt-4 text-sm text-gray-800">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasAcceptedWithdrawalPolicy}
+                                            onChange={(event) => setHasAcceptedWithdrawalPolicy(event.target.checked)}
+                                            disabled={isSubmittingWithdrawal}
+                                            className="mt-0.5 h-4 w-4 shrink-0 accent-gray-900"
+                                        />
+                                        <span>I have read and agree to the withdrawal policy above.</span>
+                                    </label>
+                                </div>
+                                {withdrawalError ? (
+                                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+                                        {withdrawalError}
+                                    </div>
+                                ) : null}
                             </ModalBody>
                             <ModalFooter className="px-8 pb-8 pt-0">
                                 <button
@@ -395,6 +422,7 @@ export default function RequestWithdrawal() {
                                     type="button"
                                     isLoading={isSubmittingWithdrawal}
                                     onClick={handleSubmitWithdrawal}
+                                    disabled={!hasAcceptedWithdrawalPolicy || isSubmittingWithdrawal}
                                     className="px-6 py-2.5 bg-black text-white hover:bg-gray-900 rounded-xl"
                                 >
                                     {isSubmittingWithdrawal ? 'Requesting...' : 'Confirm Request'}

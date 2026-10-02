@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useAction } from 'convex/react';
-import { Skeleton } from "@heroui/skeleton";
+import { Skeleton } from "@heroui/react";
 import { toast } from "../components/ui/Toast";
 import ReactPlayer from 'react-player';
 import { api } from '../../../../packages/backend/convex/_generated/api';

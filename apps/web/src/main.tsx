@@ -9,6 +9,8 @@ import { authClient } from "./lib/auth-client";
 import { PostHogProvider } from '@posthog/react'
 
 import WorkspaceAccess from './pages/WorkspaceAccess';
+import CreatorSubmissionDetails from './pages/creator/CreatorSubmissionDetails';
+import CreatorSubmissions from './pages/creator/CreatorSubmissions';
 import CreatorCampaigns from './pages/creator/CreatorCampaigns';
 import CreatorCampaignDetails from './pages/creator/CreatorCampaignDetails';
 import { CreatorLayout } from './components/CreatorLayout';
@@ -38,7 +40,6 @@ import AdminSubmissions from './pages/admin/AdminSubmissions'
 import AdminPayouts from './pages/admin/AdminPayouts'
 import AdminInvitations from './pages/admin/AdminInvitations'
 import CreatorInvitation from './pages/creator/CreatorInvitation'
-import { HeroUIProvider } from "@heroui/react";
 import { PostHogIdentitySync } from './components/PostHogIdentitySync';
 import { PostHogPageViewTracker } from './components/PostHogPageViewTracker';
 import { registerBaseAnalyticsContext } from './lib/analytics';
@@ -79,7 +80,6 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AnalyticsProvider>
       <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-        <HeroUIProvider>
           {!invitationEntry && <PostHogIdentitySync />}
           <ToastProvider>
           <BrowserRouter>
@@ -101,6 +101,11 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/creator" element={<Navigate to="/creator/campaigns" replace />} />
                 <Route path="/creator/campaigns" element={<CreatorCampaigns />} />
                 <Route path="/creator/campaigns/:campaignId" element={<CreatorCampaignDetails />} />
+                <Route path="/creator/submissions" element={<CreatorSubmissions />} />
+                <Route path="/submissions/:applicationId" element={<CreatorSubmissionDetails />} />
+                <Route path="/creator/withdraw" element={<Withdrawals workspace="creator" />} />
+                <Route path="/creator/withdraw/request" element={<RequestWithdrawal workspace="creator" />} />
+                <Route path="/creator/bank-accounts" element={<BankAccounts workspace="creator" />} />
               </Route>
               <Route path="/auth-redirect" element={<AuthRedirect />} />
               <Route path="/onboarding" element={<BusinessOnboarding />} />
@@ -130,7 +135,6 @@ createRoot(document.getElementById('root')!).render(
             </Routes></WorkspaceBoundary>
           </BrowserRouter>
           </ToastProvider>
-        </HeroUIProvider>
       </ConvexBetterAuthProvider>
     </AnalyticsProvider>
   </StrictMode>,
