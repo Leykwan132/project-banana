@@ -14,6 +14,22 @@ body {
   letter-spacing: 0.01em;
 }
 
+.creator-landing h1,
+.creator-landing h2,
+.creator-landing h3 {
+  font-family: 'Sniglet', sans-serif !important;
+  letter-spacing: 0.01em !important;
+}
+
+.creator-landing h1 span {
+  font-family: 'Sniglet', sans-serif !important;
+}
+
+.creator-landing .creator-step-title {
+  font-family: 'Google Sans', sans-serif !important;
+}
+
+
 *,
 *::before,
 *::after,

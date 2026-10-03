@@ -22,6 +22,7 @@ type NavLink = {
     to: string;
     isActive: boolean;
     isPrimary?: boolean;
+    isHashLink?: boolean;
     show?: boolean;
 };
 
@@ -229,6 +230,13 @@ export default function App() {
             isActive: isBusiness,
         },
         {
+            label: 'How it works',
+            to: '#how-lumina-works',
+            show: pathname === '/',
+            isActive: false,
+            isHashLink: true,
+        },
+        {
             label: 'Pricing',
             to: '/pricing',
             show: isBusiness || isPricing,
@@ -267,15 +275,18 @@ export default function App() {
                     </Link>
 
                     <div className="hidden items-center gap-6 md:flex">
-                        {topNavLinks.map((link) => (
-                            <Link
-                                key={link.to}
-                                to={link.to}
-                                className={`text-sm font-semibold transition-colors ${link.isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                            >
-                                {link.label}
-                            </Link>
-                        ))}
+                        {topNavLinks.map((link) => {
+                            const className = `text-sm font-semibold transition-colors ${link.isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`;
+                            return link.isHashLink ? (
+                                <a key={link.to} href={link.to} className={className}>
+                                    {link.label}
+                                </a>
+                            ) : (
+                                <Link key={link.to} to={link.to} className={className}>
+                                    {link.label}
+                                </Link>
+                            );
+                        })}
 
                         <div className="h-4 w-px bg-gray-200" />
 
@@ -306,7 +317,11 @@ export default function App() {
                 {isMenuOpen && (
                     <div id="mobile-navigation-menu" className="fixed inset-x-0 top-16 z-40 border-t border-gray-100 bg-white md:hidden">
                         <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col gap-3 px-6 py-6">
-                            {mobileMenuLinks.map((link) => (
+                            {mobileMenuLinks.map((link) => link.isHashLink ? (
+                                <a key={link.to} href={link.to} onClick={() => setIsMenuOpen(false)} className={getMobileMenuLinkClassName(link)}>
+                                    {link.label}
+                                </a>
+                            ) : (
                                 <Link key={link.to} to={link.to} onClick={() => setIsMenuOpen(false)} className={getMobileMenuLinkClassName(link)}>
                                     {link.label}
                                 </Link>

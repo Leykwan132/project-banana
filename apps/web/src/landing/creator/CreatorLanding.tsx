@@ -1,4 +1,4 @@
-import { ChevronDown, ImageIcon, Sparkles, ArrowRight } from 'lucide-react';
+import { ChevronDown, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -41,30 +41,6 @@ const creatorDashboardCards: CreatorStepCard[] = [
     },
 ];
 
-type AlternatingFeature = {
-    title: string;
-    description: string;
-    image?: string;
-};
-
-const newCreatorFeatures: AlternatingFeature[] = [
-    {
-        title: 'Open campaigns',
-        description: 'Invited creators can discover campaigns regardless of follower count.',
-        image: '/landing-creator-campaign.svg',
-    },
-    {
-        title: 'Real-time analytics',
-        description: 'Track your content performance and earnings in real-time.',
-        image: '/landing-creator-analytics.svg',
-    },
-    {
-        title: 'Secure payouts',
-        description: 'Get paid securely based on your content performance.',
-        image: '/landing-creator-payout.svg',
-    }
-];
-
 const creatorTestimonials: { quote: string; author: string; role: string }[] = [];
 
 const creatorFaqs = [
@@ -92,45 +68,16 @@ const creatorFaqs = [
 
 
 
-function CreatorAlternatingFeaturesSection() {
-    return (
-        <section className="py-24 bg-white flex flex-col gap-24 lg:gap-32">
-            {newCreatorFeatures.map((feature, index) => {
-                const isEven = index % 2 === 0;
-                return (
-                    <div key={index} className="mx-auto w-full max-w-7xl px-6">
-                        <div className={`flex flex-col gap-12 lg:items-center ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'}`}>
-                            <div className="flex-1 lg:max-w-md">
-                                <h3 className="text-3xl font-medium tracking-tight text-gray-900 md:text-[2.5rem] md:leading-tight">{feature.title}</h3>
-                                <p className="mt-6 text-xl text-gray-500">{feature.description}</p>
-                            </div>
-                            <div className="flex-1 w-full bg-[#EBEAE5] rounded-2xl flex items-center justify-center overflow-hidden">
-                                {feature.image ? (
-                                    <img src={feature.image} alt={feature.title} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full bg-white flex items-center justify-center">
-                                        <ImageIcon className="w-12 h-12 text-gray-400" />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )
-            })}
-        </section>
-    );
-}
-
 function CreatorHowItWorksSection({ title, cards }: { title: string; cards: CreatorStepCard[] }) {
     return (
-        <section className="py-20">
+        <section id="how-lumina-works" className="flex min-h-[calc(100svh-4rem)] scroll-mt-20 flex-col justify-center py-16 md:py-20">
             <div className="mx-auto max-w-[88rem] px-6">
-                <h2 className="mb-12 text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">{title}</h2>
+                <h2 className="mb-12 text-center text-3xl tracking-tight text-gray-900 md:text-5xl">{title}</h2>
                 <div className="grid grid-cols-1 gap-6 lg:gap-8 md:grid-cols-4">
                     {cards.map((card) => (
                         <article key={card.title} className="overflow-hidden rounded-[2rem] bg-[#F9FAFB] flex flex-col">
                             <div className="flex-1 pb-0 p-6 md:p-10 md:pb-0 w-full flex flex-col justify-start z-10 relative">
-                                <h3 className="text-[1.35rem] font-semibold leading-tight tracking-tight text-gray-900 mb-3">{card.title}</h3>
+                                <h3 className="creator-step-title text-[1.35rem] font-semibold leading-tight tracking-tight text-gray-900 mb-3">{card.title}</h3>
                                 <p className="text-[1.05rem] text-gray-600 leading-relaxed">{card.description}</p>
                             </div>
                             <div className="w-full aspect-4/3 overflow-hidden">
@@ -211,9 +158,9 @@ function CreatorFaqSection() {
     const [openIndex, setOpenIndex] = useState<number | null>(0);
 
     return (
-        <section className="py-20">
+        <section className="flex min-h-[calc(100svh-4rem)] flex-col justify-center py-16 md:py-20">
             <div className="mx-auto max-w-3xl px-6">
-                <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 md:text-5xl">FAQs</h2>
+                <h2 className="text-center text-3xl tracking-tight text-gray-900 md:text-5xl">FAQs</h2>
                 <div className="mt-10 space-y-4">
                     {creatorFaqs.map((faq, index) => {
                         const isOpen = openIndex === index;
@@ -240,27 +187,24 @@ function CreatorFaqSection() {
 
 export default function CreatorLanding() {
     return (
-        <div className="animate-in fade-in duration-500">
-            <section className="mx-auto w-full max-w-7xl px-6 pt-20 md:pt-24">
-                <div className="grid items-center gap-12 md:grid-cols-2 lg:gap-16">
-                    <div>
-                        <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
-                            <Sparkles className="h-3.5 w-3.5" /> Malaysia First
-                        </div>
-                        <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 md:text-6xl">
-                            Create content. Find your next campaign.
-                        </h1>
-                        <p className="mt-6 max-w-xl text-xl text-gray-600">
-                            Discover campaigns and access your creator workspace on the web. New creators join by invitation.
-                        </p>
-                        <Link to="/creator/login" className="mt-10 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white hover:bg-black">
-                            Creator login <ArrowRight className="h-5 w-5" />
-                        </Link>
-                    </div>
-
-                    <div className="flex items-center justify-center relative w-full h-full max-w-sm mx-auto">
-                        <img src="/creator-home.svg" alt="Creator Home Screen" className="w-full h-full z-10" />
-                    </div>
+        <div className="creator-landing animate-in fade-in duration-500">
+            <section className="flex min-h-[calc(100svh-4rem)] flex-col justify-center overflow-hidden bg-[#fbfaf5] px-6 py-16 md:py-20">
+                <div className="mx-auto max-w-5xl text-center">
+                    <h1 className="font-normal text-4xl leading-[1.14] text-gray-900 sm:text-5xl md:text-6xl">
+                        <span className="block">Create videos for brands you love.</span>
+                        <span className="block">Get paid when people watch.</span>
+                    </h1>
+                    <p className="mx-auto mt-7 max-w-2xl text-base leading-relaxed text-gray-600 md:mt-8 md:text-lg">
+                        <span className="block">Create for brands you love. Share on Instagram or TikTok.</span>
+                        <span className="block">Track your views and earn from your post’s performance.</span>
+                    </p>
+                </div>
+                <div className="mx-auto mt-10 w-full max-w-[1040px] md:mt-12">
+                    <img
+                        src="/creator-landing-collage.png"
+                        alt="Lumina creators share social posts, discover brand campaigns, and earn from their content"
+                        className="block h-auto w-full"
+                    />
                 </div>
             </section>
 
@@ -270,15 +214,13 @@ export default function CreatorLanding() {
 
             <CreatorHowItWorksSection title="How Lumina works" cards={creatorDashboardCards} />
 
-            <CreatorAlternatingFeaturesSection />
-
             <CreatorTestimonialSection />
 
             <CreatorFaqSection />
 
-            <section className="border-t border-gray-100 bg-gray-50 py-24 text-center">
+            <section className="flex min-h-[calc(100svh-4rem)] flex-col justify-center border-t border-gray-100 bg-gray-50 py-20 text-center">
                 <div className="mx-auto px-6">
-                    <h2 className="text-4xl font-bold tracking-tight text-gray-900 md:text-6xl">Your next campaign starts here.</h2>
+                    <h2 className="text-4xl tracking-tight text-gray-900 md:text-6xl">Your next campaign starts here.</h2>
                     <p className="mt-5 text-gray-600">Already a creator? Sign in. New creator accounts are by invitation.</p>
                     <Link to="/creator/login" className="mt-8 inline-flex items-center gap-2 rounded-full bg-gray-900 px-8 py-4 text-base font-semibold text-white hover:bg-black">
                         Creator login <ArrowRight className="h-5 w-5" />
