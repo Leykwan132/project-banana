@@ -201,13 +201,13 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                           ] as const
                         ).map(([key, label]) =>
                           a[key] === undefined ? null : (
-                            <div key={key}>
+                            <div key={key} className="text-center">
                               <p className="text-xl font-semibold">
                                 {key === "engagementRate"
                                   ? `${a[key]!.toFixed(2)}%`
                                   : number(a[key]!)}
                               </p>
-                              <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
+                              <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-gray-400">
                                 <span>{label}</span>
                                 {(key === "averageLikes" || key === "averageComments" || key === "averageVideoViews") && (
                                   <Tooltip>
