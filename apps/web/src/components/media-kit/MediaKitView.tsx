@@ -80,10 +80,10 @@ export function MediaKitView({ kit }: { kit: KitView }) {
         }
         className="w-full gap-6"
       >
-        <Tabs.ListContainer className="mx-auto w-fit max-w-full rounded-full bg-gray-100">
+        <Tabs.ListContainer className="mx-auto w-fit max-w-full rounded-full bg-[#171717]">
           <Tabs.List
             aria-label="Explore media kit"
-            className="flex min-w-0 w-fit flex-row flex-nowrap rounded-full bg-gray-100 p-1"
+            className="flex min-w-0 w-fit flex-row flex-nowrap rounded-full bg-[#171717] p-1"
           >
             {[
               { id: "instagram", label: "Instagram" },
@@ -100,10 +100,10 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 <Tabs.Tab
                   key={tab.id}
                   id={tab.id}
-                  className="h-8 min-w-0 w-auto flex-initial whitespace-nowrap rounded-full px-2 text-xs font-normal text-gray-500 opacity-80 hover:opacity-100 data-[selected=true]:text-black data-[selected=true]:opacity-100 sm:h-9 sm:px-4 sm:text-sm"
+                  className="h-8 min-w-0 w-auto flex-initial whitespace-nowrap rounded-full px-2 text-xs font-normal text-gray-400 opacity-80 hover:opacity-100 data-[selected=true]:text-black data-[selected=true]:opacity-100 sm:h-9 sm:px-4 sm:text-sm"
                 >
                   {tab.label}
-                  <Tabs.Indicator className="rounded-full bg-white shadow-none duration-[320ms] motion-reduce:duration-0" />
+                  <Tabs.Indicator className="rounded-full bg-gray-200 shadow-none duration-[320ms] motion-reduce:duration-0" />
                 </Tabs.Tab>
               ))}
           </Tabs.List>
