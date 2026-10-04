@@ -279,7 +279,7 @@ export default function CreatorMediaKit() {
           <Tabs.ListContainer className="h-auto w-fit max-w-full flex-none self-start overflow-visible rounded-xl">
             <Tabs.List
               aria-label="Media kit settings"
-              className="h-auto w-fit max-w-full flex-wrap gap-1 overflow-visible"
+              className="h-auto min-w-0 w-fit max-w-full flex-row flex-nowrap gap-0 overflow-visible"
             >
               {[
                 { id: "profile", label: "Profile" },
@@ -291,7 +291,7 @@ export default function CreatorMediaKit() {
                 <Tabs.Tab
                   key={id}
                   id={id}
-                  className="h-9 shrink-0 whitespace-nowrap font-normal text-black"
+                  className="h-9 min-w-0 w-auto flex-initial whitespace-nowrap px-1.5 text-xs font-normal text-black sm:px-4 sm:text-sm"
                 >
                   {label}
                   <Tabs.Indicator />
