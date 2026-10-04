@@ -6,11 +6,10 @@ import {
   Switch,
   Tabs,
   Modal,
-  Dropdown,
   Select,
   ListBox,
 } from "@heroui/react";
-import { Plus, Trash2, ChevronDown } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
@@ -784,31 +783,35 @@ export default function CreatorMediaKit() {
                     </Button>
                   </div>
                 ))}
-                <Dropdown>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-black"
-                    isDisabled={settings.contacts.length >= 4}
-                  >
-                    <Plus size={16} />
-                    Add contact
-                    <ChevronDown size={14} />
-                  </Button>
-                  <Dropdown.Popover>
-                    <Dropdown.Menu
-                      aria-label="Add a contact method"
-                      onAction={(key) => {
-                        const kind = String(key) as Contact["kind"];
-                        if (!settings.contacts.some((c) => c.kind === kind))
-                          edit({
-                            contacts: [
-                              ...settings.contacts,
-                              { kind, value: "", is_visible: false },
-                            ],
-                          });
-                      }}
-                    >
+                <Select
+                  aria-label="Add a contact method"
+                  className="w-full max-w-xs"
+                  placeholder="Add contact"
+                  value={null}
+                  isDisabled={settings.contacts.length >= 4}
+                  onChange={(kind) => {
+                    if (
+                      kind !== "email" &&
+                      kind !== "whatsapp" &&
+                      kind !== "website" &&
+                      kind !== "instagram"
+                    )
+                      return;
+                    if (!settings.contacts.some((c) => c.kind === kind))
+                      edit({
+                        contacts: [
+                          ...settings.contacts,
+                          { kind, value: "", is_visible: false },
+                        ],
+                      });
+                  }}
+                >
+                  <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
+                    <Select.Value />
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <ListBox>
                       {(
                         [
                           { kind: "email", label: "Email" },
@@ -824,17 +827,18 @@ export default function CreatorMediaKit() {
                             ),
                         )
                         .map((item) => (
-                          <Dropdown.Item
+                          <ListBox.Item
                             key={item.kind}
                             id={item.kind}
                             textValue={item.label}
                           >
                             <Label>{item.label}</Label>
-                          </Dropdown.Item>
+                            <ListBox.ItemIndicator />
+                          </ListBox.Item>
                         ))}
-                    </Dropdown.Menu>
-                  </Dropdown.Popover>
-                </Dropdown>
+                    </ListBox>
+                  </Select.Popover>
+                </Select>
               </section>
             ) : (
               <p className="text-sm text-gray-500 p-5">
