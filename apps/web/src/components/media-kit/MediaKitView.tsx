@@ -1,4 +1,4 @@
-import { Card, Button } from "@heroui/react";
+import { Card, Button, Tag, TagGroup } from "@heroui/react";
 import { ContactIcon } from "./ContactIcon";
 import { PlatformIcon } from "./PlatformIcon";
 import { accountProfileUrl } from "../../../../../packages/backend/convex/lib/mediaKitModel";
@@ -27,14 +27,32 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             {kit.displayName.slice(0, 1)}
           </div>
         )}
-        {kit.category && (
-          <span className="text-xs uppercase tracking-[.18em] text-gray-500">
-            {kit.category}
-          </span>
-        )}
         <h1 className="text-4xl font-semibold tracking-tight">
           {kit.displayName}
         </h1>
+        {kit.category && (
+          <TagGroup aria-label="Influencer niches">
+            <TagGroup.List className="flex flex-wrap justify-center gap-2">
+              {[
+                ...new Set(
+                  kit.category
+                    .split(",")
+                    .map((niche) => niche.trim())
+                    .filter(Boolean),
+                ),
+              ].map((niche) => (
+                <Tag
+                  key={niche}
+                  id={niche}
+                  textValue={niche}
+                  className="rounded-full bg-gray-100 px-3 py-1 text-xs font-normal text-gray-600"
+                >
+                  {niche}
+                </Tag>
+              ))}
+            </TagGroup.List>
+          </TagGroup>
+        )}
         {kit.bio && (
           <p className="max-w-lg whitespace-pre-line text-gray-500 leading-relaxed">
             {kit.bio}
