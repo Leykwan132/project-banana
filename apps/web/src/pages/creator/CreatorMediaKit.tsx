@@ -28,6 +28,7 @@ import {
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitPreview } from "../../components/media-kit/MediaKitPreview";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
+import { NicheIcon } from "../../components/media-kit/NicheIcon";
 import { ContactIcon } from "../../components/media-kit/ContactIcon";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
@@ -991,6 +992,7 @@ export default function CreatorMediaKit() {
                         >
                           {({ isSelected }) => (
                             <>
+                              <NicheIcon niche={niche} />
                               {niche}
                               {isSelected && (
                                 <Tag.RemoveButton

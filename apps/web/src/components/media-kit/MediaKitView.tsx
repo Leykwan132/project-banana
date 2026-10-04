@@ -1,4 +1,5 @@
 import { Card, Button, Tag, TagGroup, Tabs } from "@heroui/react";
+import { NicheIcon } from "./NicheIcon";
 import { ContactIcon } from "./ContactIcon";
 import { PlatformIcon } from "./PlatformIcon";
 import { accountProfileUrl } from "../../../../../packages/backend/convex/lib/mediaKitModel";
@@ -47,6 +48,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                   textValue={niche}
                   className="rounded-full bg-gray-100 px-3 py-1 text-xs font-normal text-gray-600"
                 >
+                  <NicheIcon niche={niche} />
                   {niche}
                 </Tag>
               ))}
