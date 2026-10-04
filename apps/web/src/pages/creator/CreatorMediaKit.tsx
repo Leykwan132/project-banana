@@ -248,6 +248,8 @@ function Toggle({
     </Switch>
   );
 }
+const deleteButtonClass =
+  "rounded-full [--button-bg:#dc2626] [--button-bg-hover:#b91c1c] [--button-bg-pressed:#991b1b] [--button-fg:#fff]";
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:border-gray-400 focus:ring-gray-300";
 function Field({
@@ -965,10 +967,9 @@ export default function CreatorMediaKit() {
                           </Switch.Content>
                         </Switch>
                         <Button
-                          isIconOnly
                           size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700"
+                          variant="primary"
+                          className={deleteButtonClass}
                           aria-label={`Remove @${a.handle}`}
                           isDisabled={busy}
                           onPress={() => {
@@ -981,6 +982,7 @@ export default function CreatorMediaKit() {
                           }}
                         >
                           <Trash2 size={18} />
+                          Delete
                         </Button>
                       </div>
                     </div>
@@ -1161,10 +1163,9 @@ export default function CreatorMediaKit() {
                           }
                         />
                         <Button
-                          isIconOnly
                           size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:text-red-700"
+                          variant="primary"
+                          className={deleteButtonClass}
                           aria-label={`Remove ${partner.brand_name || "partnership"}`}
                           onPress={() => {
                             setPendingRemoval({
@@ -1175,6 +1176,7 @@ export default function CreatorMediaKit() {
                           }}
                         >
                           <Trash2 size={18} />
+                          Delete
                         </Button>
                       </div>
                     </div>
@@ -1467,10 +1469,9 @@ export default function CreatorMediaKit() {
 
                     <Button
                       size="sm"
-                      isIconOnly
                       aria-label="Remove rate"
-                      variant="ghost"
-                      className="text-red-600 hover:text-red-700"
+                      variant="primary"
+                      className={deleteButtonClass}
                       onPress={() =>
                         setPendingRemoval({
                           kind: "rate",
@@ -1480,6 +1481,7 @@ export default function CreatorMediaKit() {
                       }
                     >
                       <Trash2 size={16} aria-hidden="true" />
+                      Delete
                     </Button>
                   </div>
                 ))}
@@ -1715,10 +1717,9 @@ export default function CreatorMediaKit() {
 
                     <Button
                       size="sm"
-                      isIconOnly
                       aria-label="Remove contact"
-                      variant="ghost"
-                      className="text-red-600 hover:text-red-700"
+                      variant="primary"
+                      className={deleteButtonClass}
                       onPress={() =>
                         setPendingRemoval({
                           kind: "contact",
@@ -1728,6 +1729,7 @@ export default function CreatorMediaKit() {
                       }
                     >
                       <Trash2 size={16} aria-hidden="true" />
+                      Delete
                     </Button>
                   </div>
                 ))}
