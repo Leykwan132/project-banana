@@ -9,7 +9,7 @@ import {
   Select,
   ListBox,
 } from "@heroui/react";
-import { Plus, Trash2, Inbox } from "lucide-react";
+import { Plus, Trash2, Inbox, Copy, ExternalLink } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
@@ -265,11 +265,12 @@ export default function CreatorMediaKit() {
                 )
               }
             >
-              Copy public link
+              <Copy size={16} aria-hidden="true" />
+              Copy link
             </Button>
             <Button
-              variant="ghost"
-              className="text-black"
+              variant="primary"
+              className={primaryButtonClass}
               isDisabled={!data.kit?.is_published}
               onPress={() =>
                 window.open(
@@ -279,7 +280,8 @@ export default function CreatorMediaKit() {
                 )
               }
             >
-              Open link
+              Live URL
+              <ExternalLink size={16} aria-hidden="true" />
             </Button>
           </div>
         )}
