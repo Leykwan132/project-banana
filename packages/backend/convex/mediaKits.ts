@@ -137,8 +137,8 @@ export const addAccount = mutation({
         bio: "",
         category: "",
         total_audience_visible: true,
-        rates_visible: false,
-        contacts_visible: false,
+        rates_visible: true,
+        contacts_visible: true,
         partnerships: [],
         partnerships_visible: true,
         rates: [],
@@ -233,10 +233,11 @@ export const saveSettings = mutation({
     const settings = validateSettings({
       ...args.settings,
       total_audience_visible: true,
+      rates_visible: true,
+      contacts_visible: true,
       // Older open editors omit these fields; preserve existing partnerships.
       partnerships: args.settings.partnerships ?? kit.partnerships ?? [],
-      partnerships_visible:
-        args.settings.partnerships_visible ?? kit.partnerships_visible ?? true,
+      partnerships_visible: true,
     });
     const existing = await ctx.db
       .query("media_kits")
@@ -427,34 +428,29 @@ export const getPublic = query({
             ),
           }
         : {}),
-      partnerships:
-        (kit.partnerships_visible ?? true)
-          ? (kit.partnerships ?? []).filter((p) => p.is_visible)
-          : [],
-      rates: kit.rates_visible ? kit.rates.filter((r) => r.is_visible) : [],
-      contacts: kit.contacts_visible
-        ? kit.contacts
-            .filter(
-              (c) =>
-                c.is_visible &&
-                (c.kind !== "instagram" ||
-                  shown.some(
-                    (a) =>
-                      (a.platform ?? "instagram") === "instagram" &&
-                      a.handle === normalizeInstagramHandle(c.value),
-                  )),
-            )
-            .map((c) => ({
-              kind: c.kind,
-              label:
-                c.kind === "instagram"
-                  ? "Instagram DM"
-                  : c.kind === "whatsapp"
-                    ? "WhatsApp"
-                    : c.value,
-              href: contactHref(c),
-            }))
-        : [],
+      partnerships: (kit.partnerships ?? []).filter((p) => p.is_visible),
+      rates: kit.rates.filter((r) => r.is_visible),
+      contacts: kit.contacts
+        .filter(
+          (c) =>
+            c.is_visible &&
+            (c.kind !== "instagram" ||
+              shown.some(
+                (a) =>
+                  (a.platform ?? "instagram") === "instagram" &&
+                  a.handle === normalizeInstagramHandle(c.value),
+              )),
+        )
+        .map((c) => ({
+          kind: c.kind,
+          label:
+            c.kind === "instagram"
+              ? "Instagram DM"
+              : c.kind === "whatsapp"
+                ? "WhatsApp"
+                : c.value,
+          href: contactHref(c),
+        })),
     };
   },
 });

@@ -361,10 +361,10 @@ export default function CreatorMediaKit() {
         bio: k.bio,
         category: k.category,
         total_audience_visible: true,
-        rates_visible: k.rates_visible,
-        contacts_visible: k.contacts_visible,
+        rates_visible: true,
+        contacts_visible: true,
         partnerships: k.partnerships ?? [],
-        partnerships_visible: k.partnerships_visible ?? true,
+        partnerships_visible: true,
         rates: k.rates,
         contacts: k.contacts,
       };
@@ -1202,16 +1202,6 @@ export default function CreatorMediaKit() {
                     {detailActions()}
                   </div>
                 )}
-
-                {!detail && (settings.partnerships ?? []).length > 0 && (
-                  <Toggle
-                    label="Show in Media Kit"
-                    value={settings.partnerships_visible ?? true}
-                    onChange={(partnerships_visible) =>
-                      edit({ partnerships_visible })
-                    }
-                  />
-                )}
                 {!detail &&
                   (settings.partnerships ?? []).map((partner, i) => (
                     <ItemCard
@@ -1393,14 +1383,6 @@ export default function CreatorMediaKit() {
                     <h3 className="font-medium">Rate details</h3>
                     {detailActions()}
                   </div>
-                )}
-
-                {!detail && settings.rates.length > 0 && (
-                  <Toggle
-                    label="Show in Media Kit"
-                    value={settings.rates_visible}
-                    onChange={(rates_visible) => edit({ rates_visible })}
-                  />
                 )}
                 {!detail &&
                   settings.rates.map((rate, i) => (
@@ -1658,14 +1640,6 @@ export default function CreatorMediaKit() {
                     <h3 className="font-medium">Contact details</h3>
                     {detailActions()}
                   </div>
-                )}
-
-                {!detail && settings.contacts.length > 0 && (
-                  <Toggle
-                    label="Show in Media Kit"
-                    value={settings.contacts_visible}
-                    onChange={(contacts_visible) => edit({ contacts_visible })}
-                  />
                 )}
                 {!detail &&
                   settings.contacts.map((contact, i) => (
