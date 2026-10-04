@@ -223,8 +223,11 @@ export default function CreatorMediaKit() {
           onSelectionChange={(key) => setTab(String(key))}
           className="min-w-0 w-full items-start gap-6"
         >
-          <Tabs.ListContainer className="h-11 w-fit max-w-full flex-none self-start overflow-x-auto rounded-xl">
-            <Tabs.List aria-label="Media kit settings" className="h-full w-max">
+          <Tabs.ListContainer className="h-auto w-fit max-w-full flex-none self-start overflow-visible rounded-xl">
+            <Tabs.List
+              aria-label="Media kit settings"
+              className="h-auto w-fit max-w-full flex-wrap gap-1 overflow-visible"
+            >
               {[
                 { id: "profile", label: "Profile" },
                 { id: "accounts", label: "Accounts" },

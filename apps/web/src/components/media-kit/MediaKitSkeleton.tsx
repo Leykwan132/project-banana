@@ -70,7 +70,7 @@ export function MediaKitSkeleton({ editor = false }: { editor?: boolean }) {
               </div>
             </div>
             <div className="space-y-6">
-              <div className="flex h-11 max-w-full gap-2 overflow-hidden">
+              <div className="flex max-w-full flex-wrap gap-2">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <Skeleton key={i} className="h-11 w-24 shrink-0 rounded-xl" />
                 ))}
