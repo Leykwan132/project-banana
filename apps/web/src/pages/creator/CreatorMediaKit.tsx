@@ -425,20 +425,24 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="partnerships" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-medium">Past partnerships</h2>
-                  <VisibilitySwitch
-                    label="Show past partnerships section"
-                    value={settings.partnerships_visible ?? true}
-                    onChange={(partnerships_visible) =>
-                      edit({ partnerships_visible })
-                    }
-                  />
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 space-y-2">
+                    <h2 className="font-medium">Past partnerships</h2>
+                    <p className="text-xs text-gray-500">
+                      Showcase brands you’ve worked with. Add up to ten
+                      collaborations.
+                    </p>
+                  </div>
+                  <div className="shrink-0">
+                    <VisibilitySwitch
+                      label="Show past partnerships section"
+                      value={settings.partnerships_visible ?? true}
+                      onChange={(partnerships_visible) =>
+                        edit({ partnerships_visible })
+                      }
+                    />
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Showcase brands you’ve worked with. Add up to ten
-                  collaborations.
-                </p>
                 {(settings.partnerships ?? []).map((partner, i) => (
                   <div
                     key={i}
