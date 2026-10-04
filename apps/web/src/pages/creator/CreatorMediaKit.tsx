@@ -718,8 +718,8 @@ export default function CreatorMediaKit() {
                 className="h-auto min-w-0 w-fit max-w-full flex-row flex-nowrap gap-0 overflow-visible"
               >
                 {[
-                  { id: "profile", label: "Profile" },
                   { id: "accounts", label: "Accounts" },
+                  { id: "profile", label: "Profile" },
                   { id: "partnerships", label: "Partnerships" },
                   { id: "rates", label: "Rates" },
                   { id: "contact", label: "Contact" },
