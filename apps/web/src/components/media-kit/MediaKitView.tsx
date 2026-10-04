@@ -85,10 +85,10 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             className="flex w-full flex-row flex-nowrap"
           >
             {[
-              { id: "partnerships", label: "Partnerships" },
-              { id: "rates", label: "Rates" },
               { id: "instagram", label: "Instagram" },
               { id: "tiktok", label: "TikTok" },
+              { id: "partnerships", label: "Partnerships" },
+              { id: "rates", label: "Rates" },
             ].map((tab) => (
               <Tabs.Tab
                 key={tab.id}
