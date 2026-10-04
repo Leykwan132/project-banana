@@ -383,18 +383,7 @@ export default function CreatorMediaKit() {
   const save = useMutation(api.mediaKits.saveSettings);
   const uploadLogo = useAction(api.mediaKitActions.uploadBrandLogo);
   const uploadPhoto = useAction(api.mediaKitActions.uploadProfilePhoto);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const photoInput = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (!photoFile) {
-      setPhotoPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(photoFile);
-    setPhotoPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [photoFile]);
 
   const displayMutation = useMutation(api.mediaKits.setAccountDisplay);
   const remove = useMutation(api.mediaKits.removeAccount);
@@ -673,10 +662,6 @@ export default function CreatorMediaKit() {
           ...Object.fromEntries(keys.map((key) => [key, settings[key]])),
         };
         await save({ settings: updated });
-        if (section === "profile" && photoFile) {
-          await uploadPhoto({ bytes: await photoFile.arrayBuffer() });
-          setPhotoFile(null);
-        }
         baseline.current = updated;
         setSavedSettings(updated);
       }
@@ -712,12 +697,11 @@ export default function CreatorMediaKit() {
         ? pendingAccounts.length > 0 || removedAccounts.length > 0
         : !!settings &&
           !!savedSettings &&
-          ((section === "profile" && !!photoFile) ||
-            keys.some(
-              (key) =>
-                JSON.stringify(settings[key]) !==
-                JSON.stringify(savedSettings[key]),
-            ));
+          keys.some(
+            (key) =>
+              JSON.stringify(settings[key]) !==
+              JSON.stringify(savedSettings[key]),
+          );
     const creating =
       detail?.section === section &&
       !!savedSettings &&
@@ -739,7 +723,6 @@ export default function CreatorMediaKit() {
           isDisabled={busy}
           onPress={() => {
             setDetail(null);
-            if (section === "profile") setPhotoFile(null);
             if (section === "accounts") {
               setAccountDrafts({});
               setRemovedAccounts([]);
@@ -871,9 +854,9 @@ export default function CreatorMediaKit() {
                     description="Introduce yourself with a name, bio, niche, and your public link."
                   />
                   <div className="flex items-center gap-4">
-                    {photoPreview || data.photoUrl ? (
+                    {data.photoUrl ? (
                       <img
-                        src={photoPreview ?? data.photoUrl!}
+                        src={data.photoUrl!}
                         alt="Profile"
                         className="size-20 rounded-full object-cover"
                       />
@@ -919,7 +902,11 @@ export default function CreatorMediaKit() {
                             });
                             return;
                           }
-                          setPhotoFile(file);
+                          void run(
+                            async () =>
+                              uploadPhoto({ bytes: await file.arrayBuffer() }),
+                            "Image updated",
+                          );
                         }}
                       />
                     </div>
