@@ -143,7 +143,7 @@ export const addAccount = mutation({
         partnerships_visible: true,
         rates: [],
         contacts: [],
-        is_published: false,
+        is_published: true,
         created_at: created,
         updated_at: created,
       });
@@ -258,7 +258,11 @@ export const saveSettings = mutation({
         )
       )
         throw Error("Instagram contact must match an account in your kit.");
-    await ctx.db.patch(kit._id, { ...settings, updated_at: Date.now() });
+    await ctx.db.patch(kit._id, {
+      ...settings,
+      is_published: true,
+      updated_at: Date.now(),
+    });
     return null;
   },
 });

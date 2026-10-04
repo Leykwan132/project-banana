@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
   Button,
@@ -153,7 +153,7 @@ export default function CreatorMediaKit() {
   const data = useQuery(api.mediaKits.getEditor, {});
   const add = useMutation(api.mediaKits.addAccount);
   const save = useMutation(api.mediaKits.saveSettings);
-  const publish = useMutation(api.mediaKits.setPublished);
+
   const display = useMutation(api.mediaKits.setAccountDisplay);
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
@@ -173,6 +173,9 @@ export default function CreatorMediaKit() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
+  const revision = useRef(0);
+  const saveQueue = useRef(Promise.resolve());
+  const [saveError, setSaveError] = useState<string | null>(null);
   useEffect(() => {
     if (data?.kit && !dirty) {
       const k = data.kit;
@@ -191,6 +194,30 @@ export default function CreatorMediaKit() {
       });
     }
   }, [data, dirty]);
+  useEffect(() => {
+    if (!settings || (!dirty && data?.kit?.is_published)) return;
+    const version = revision.current;
+    const timer = window.setTimeout(() => {
+      saveQueue.current = saveQueue.current.then(async () => {
+        if (version !== revision.current) return;
+        try {
+          await save({ settings });
+          if (version === revision.current) {
+            setDirty(false);
+            setSaveError(null);
+          }
+        } catch (error) {
+          if (version === revision.current)
+            setSaveError(
+              error instanceof Error
+                ? error.message
+                : "Could not save changes.",
+            );
+        }
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [settings, dirty, data?.kit?.is_published, save]);
   const run = async (fn: () => Promise<unknown>, success = "Saved") => {
     setBusy(true);
     try {
@@ -207,6 +234,8 @@ export default function CreatorMediaKit() {
     }
   };
   const edit = (patch: Partial<Settings>) => {
+    revision.current += 1;
+    setSaveError(null);
     setSettings((s) => (s ? { ...s, ...patch } : s));
     setDirty(true);
   };
@@ -239,36 +268,27 @@ export default function CreatorMediaKit() {
               Copy public link
             </Button>
             <Button
-              variant={data.kit?.is_published ? "ghost" : "primary"}
-              className={
-                data.kit?.is_published ? "text-black" : primaryButtonClass
-              }
-              isDisabled={busy || dirty}
+              variant="ghost"
+              className="text-black"
+              isDisabled={!data.kit?.is_published}
               onPress={() =>
-                run(
-                  () => publish({ published: !data.kit!.is_published }),
-                  data.kit!.is_published ? "Unpublished" : "Published",
+                window.open(
+                  `/kit/${data.kit!.slug}`,
+                  "_blank",
+                  "noopener,noreferrer",
                 )
               }
             >
-              {data.kit?.is_published ? "Unpublish" : "Publish"}
-            </Button>
-            <Button
-              variant="primary"
-              className={primaryButtonClass}
-              isDisabled={busy || !dirty}
-              onPress={() =>
-                run(async () => {
-                  await save({ settings });
-                  setDirty(false);
-                })
-              }
-            >
-              Save changes
+              Open link
             </Button>
           </div>
         )}
       </header>
+      {saveError && (
+        <p role="status" className="mb-4 text-sm text-red-600">
+          {saveError} Changes will save automatically once corrected.
+        </p>
+      )}
       <div className="w-full">
         <Tabs
           orientation="horizontal"
@@ -1091,7 +1111,8 @@ export default function CreatorMediaKit() {
                   {pendingRemoval?.kind === "partnership" ? (
                     <>
                       Remove <strong>{pendingRemoval.name}</strong> from your
-                      media kit? Save your changes to update the public page.
+                      media kit? This will update your public page
+                      automatically.
                     </>
                   ) : (
                     <>
@@ -1130,7 +1151,7 @@ export default function CreatorMediaKit() {
                       setPendingRemoval(null);
                       toast({
                         title: "Partnership removed",
-                        description: "Save changes to update your public page.",
+                        description: "Your public page updates automatically.",
                         color: "info",
                       });
                       return;
