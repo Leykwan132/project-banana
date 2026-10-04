@@ -11,7 +11,18 @@ import {
   Tag,
   TagGroup,
 } from "@heroui/react";
-import { Plus, Trash2, Inbox, Copy, ExternalLink, X } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Inbox,
+  Copy,
+  ExternalLink,
+  X,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  ChevronRight,
+} from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
@@ -72,6 +83,60 @@ const selectedNiches = (category: string) =>
     .filter(Boolean);
 const primaryButtonClass =
   "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
+
+function ItemCard({
+  title,
+  description,
+  visible,
+  onOpen,
+  onToggle,
+  onDelete,
+}: {
+  title: string;
+  description: string;
+  visible: boolean;
+  onOpen: () => void;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4">
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        onClick={onOpen}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">{title}</p>
+          <p className="mt-1 truncate text-sm text-gray-500">{description}</p>
+        </div>
+        <ChevronRight
+          size={18}
+          className="shrink-0 text-gray-400"
+          aria-hidden="true"
+        />
+      </button>
+      <Button
+        isIconOnly
+        variant="ghost"
+        aria-label={visible ? `Hide ${title}` : `Show ${title}`}
+        className="text-black"
+        onPress={onToggle}
+      >
+        {visible ? <Eye size={18} /> : <EyeOff size={18} />}
+      </Button>
+      <Button
+        isIconOnly
+        variant="ghost"
+        aria-label={`Delete ${title}`}
+        className="text-red-600"
+        onPress={onDelete}
+      >
+        <Trash2 size={18} />
+      </Button>
+    </div>
+  );
+}
 
 function SectionHeading({
   title,
@@ -256,8 +321,13 @@ export default function CreatorMediaKit() {
         platform: Platform;
       }
     | { kind: "partnership"; index: number; name: string }
+    | { kind: "rate"; index: number; name: string }
+    | { kind: "contact"; index: number; name: string }
     | null
   >(null);
+  const [detail, setDetail] = useState<{ section: string; key: string } | null>(
+    null,
+  );
   const [tab, setTab] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [savedSettings, setSavedSettings] = useState<Settings | null>(null);
@@ -317,6 +387,23 @@ export default function CreatorMediaKit() {
     }
   };
   const edit = (patch: Partial<Settings>) => {
+    if (settings) {
+      if (
+        patch.partnerships &&
+        patch.partnerships.length > (settings.partnerships ?? []).length
+      )
+        setDetail({
+          section: "partnerships",
+          key: String(patch.partnerships.length - 1),
+        });
+      if (patch.rates && patch.rates.length > settings.rates.length)
+        setDetail({ section: "rates", key: String(patch.rates.length - 1) });
+      if (patch.contacts && patch.contacts.length > settings.contacts.length)
+        setDetail({
+          section: "contact",
+          key: patch.contacts[patch.contacts.length - 1].kind,
+        });
+    }
     setSettings((s) => (s ? { ...s, ...patch } : s));
   };
   const display = async (draft: AccountDisplay) => {
@@ -364,6 +451,7 @@ export default function CreatorMediaKit() {
           className="text-black"
           isDisabled={busy}
           onPress={() => {
+            setDetail(null);
             if (section === "accounts") {
               setAccountDrafts({});
               setRemovedAccounts([]);
@@ -403,6 +491,7 @@ export default function CreatorMediaKit() {
                 baseline.current = updated;
                 setSavedSettings(updated);
               }
+              setDetail(null);
             }, "Changes saved")
           }
         >
@@ -462,7 +551,11 @@ export default function CreatorMediaKit() {
         <Tabs
           orientation="horizontal"
           selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
-          onSelectionChange={(key) => setTab(String(key))}
+          onSelectionChange={(key) => {
+            setModalOpen(false);
+            setTab(String(key));
+            setDetail(null);
+          }}
           className="min-w-0 w-full items-start gap-6"
         >
           <Tabs.ListContainer className="h-auto w-fit max-w-full flex-none self-start overflow-visible rounded-full">
@@ -593,7 +686,11 @@ export default function CreatorMediaKit() {
                 <Button
                   variant="primary"
                   className={primaryButtonClass}
-                  onPress={() => setModalOpen(true)}
+                  onPress={() => {
+                    setTab("accounts");
+                    setDetail(null);
+                    setModalOpen(true);
+                  }}
                 >
                   <Plus size={16} />
                   Add account
@@ -607,24 +704,181 @@ export default function CreatorMediaKit() {
                 title="Accounts"
                 description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
               />
-              <EmptyAction
-                empty={data.accounts.length === 0}
-                title="No accounts yet"
-                description="Add your Instagram or TikTok account to start building your media kit."
-              >
-                <Button
-                  variant="primary"
-                  className={primaryButtonClass}
-                  isDisabled={busy || data.accounts.length >= 5}
-                  onPress={() => {
-                    setModalOpen(true);
-                  }}
-                >
-                  <Plus size={16} />
-                  Add account
-                </Button>
-              </EmptyAction>
+              {modalOpen && (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      aria-label="Back to accounts"
+                      onPress={() => setModalOpen(false)}
+                    >
+                      <ArrowLeft size={18} />
+                    </Button>
+                    <h3 className="font-medium">Add account</h3>
+                  </div>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setBusy(true);
 
+                      try {
+                        const accountId = await add({ handle, platform });
+                        setDetail({ section: "accounts", key: accountId });
+                        setHandle("");
+                        setModalOpen(false);
+                        setTab("accounts");
+                      } catch (error) {
+                        toast({
+                          title: "Could not add account",
+                          description:
+                            error instanceof Error
+                              ? error.message
+                              : "Please try again.",
+                          color: "danger",
+                        });
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    <div className="space-y-5">
+                      <fieldset disabled={busy}>
+                        <legend className="mb-3 text-sm text-gray-600">
+                          Choose a platform
+                        </legend>
+                        <div className="grid grid-cols-2 gap-3">
+                          {(["instagram", "tiktok"] as const).map((value) => (
+                            <label
+                              key={value}
+                              className={`flex cursor-pointer items-center gap-2 rounded-xl border p-4 text-sm ${platform === value ? "border-black bg-gray-50" : "border-gray-200"}`}
+                            >
+                              <input
+                                type="radio"
+                                name="platform"
+                                value={value}
+                                checked={platform === value}
+                                onChange={() => {
+                                  setPlatform(value);
+                                  setHandle("");
+                                }}
+                                className="accent-black"
+                              />
+                              <PlatformIcon platform={value} />
+                              {value === "instagram" ? "Instagram" : "TikTok"}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                      <Field
+                        label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
+                        value={handle}
+                        onChange={setHandle}
+                      />
+
+                      <p className="text-xs text-gray-500">
+                        Use a public profile. Your data will import
+                        automatically and refresh every 24 hours.
+                      </p>
+                    </div>
+                    <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5">
+                      <Button
+                        variant="ghost"
+                        className="text-black"
+                        isDisabled={busy}
+                        onPress={() => setModalOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        className={primaryButtonClass}
+                        isDisabled={busy || !handle.trim()}
+                      >
+                        <Plus size={16} aria-hidden="true" />
+                        {busy ? "Adding…" : "Add account"}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+              {!detail && !modalOpen && (
+                <EmptyAction
+                  empty={data.accounts.length === 0}
+                  title="No accounts yet"
+                  description="Add your Instagram or TikTok account to start building your media kit."
+                >
+                  <Button
+                    variant="primary"
+                    className={`${primaryButtonClass} w-full`}
+                    isDisabled={busy || data.accounts.length >= 5}
+                    onPress={() => {
+                      setModalOpen(true);
+                    }}
+                  >
+                    <Plus size={16} />
+                    Add account
+                  </Button>
+                </EmptyAction>
+              )}
+
+              {detail?.section === "accounts" && (
+                <div className="flex items-center gap-3">
+                  <Button
+                    isIconOnly
+                    variant="ghost"
+                    aria-label="Back to list"
+                    className="text-black"
+                    onPress={() => setDetail(null)}
+                  >
+                    <ArrowLeft size={18} />
+                  </Button>
+                  <h3 className="font-medium">Account details</h3>
+                </div>
+              )}
+
+              {!detail &&
+                !modalOpen &&
+                data.accounts
+                  .filter(
+                    ({ account }) => !removedAccounts.includes(account._id),
+                  )
+                  .map(({ account }) => {
+                    const draft = accountDrafts[account._id];
+                    return (
+                      <ItemCard
+                        key={account._id}
+                        title={`@${account.handle}`}
+                        description={
+                          account.platform === "tiktok" ? "TikTok" : "Instagram"
+                        }
+                        visible={draft?.isVisible ?? account.is_visible}
+                        onOpen={() =>
+                          setDetail({ section: "accounts", key: account._id })
+                        }
+                        onToggle={() =>
+                          void display({
+                            accountId: account._id,
+                            isVisible: !(
+                              draft?.isVisible ?? account.is_visible
+                            ),
+                            metricVisibility:
+                              draft?.metricVisibility ??
+                              account.metric_visibility,
+                          })
+                        }
+                        onDelete={() =>
+                          setPendingRemoval({
+                            kind: "account",
+                            id: account._id,
+                            handle: account.handle,
+                            platform: account.platform ?? "instagram",
+                          })
+                        }
+                      />
+                    );
+                  })}
               {data.accounts
                 .filter(({ account }) => !removedAccounts.includes(account._id))
                 .map(({ account, job }) => ({
@@ -642,7 +896,11 @@ export default function CreatorMediaKit() {
                 .map(({ account: a, job }) => (
                   <div
                     key={a._id}
-                    className="border-t border-gray-100 pt-4 space-y-3"
+                    className={
+                      detail?.section === "accounts" && detail.key === a._id
+                        ? "space-y-5"
+                        : "hidden"
+                    }
                   >
                     <div className="flex justify-between gap-2">
                       <h3 className="flex min-w-0 items-center gap-2 font-medium">
@@ -736,7 +994,7 @@ export default function CreatorMediaKit() {
                     ))}
                   </div>
                 ))}
-              {footer("accounts")}
+              {!modalOpen && footer("accounts")}
             </section>
           </Tabs.Panel>
           <Tabs.Panel id="partnerships" className="min-w-0 w-full">
@@ -746,7 +1004,52 @@ export default function CreatorMediaKit() {
                   title="Past partnerships"
                   description="Showcase brands you’ve worked with. Add up to ten collaborations."
                 />
-                {(settings.partnerships ?? []).length > 0 && (
+                {!detail && (
+                  <EmptyAction
+                    empty={(settings.partnerships ?? []).length === 0}
+                    title="No partnerships yet"
+                    description="Showcase brands you’ve worked with by adding your first collaboration."
+                  >
+                    <Button
+                      variant="primary"
+                      className={`${primaryButtonClass} w-full`}
+                      isDisabled={(settings.partnerships ?? []).length >= 10}
+                      onPress={() =>
+                        edit({
+                          partnerships: [
+                            ...(settings.partnerships ?? []),
+                            {
+                              brand_name: "",
+                              description: "",
+                              url: "",
+                              is_visible: true,
+                            },
+                          ],
+                        })
+                      }
+                    >
+                      <Plus size={16} />
+                      Add partnership
+                    </Button>
+                  </EmptyAction>
+                )}
+
+                {detail?.section === "partnerships" && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      aria-label="Back to list"
+                      className="text-black"
+                      onPress={() => setDetail(null)}
+                    >
+                      <ArrowLeft size={18} />
+                    </Button>
+                    <h3 className="font-medium">Partnership details</h3>
+                  </div>
+                )}
+
+                {!detail && (settings.partnerships ?? []).length > 0 && (
                   <Toggle
                     label="Show in Media Kit"
                     value={settings.partnerships_visible ?? true}
@@ -755,10 +1058,44 @@ export default function CreatorMediaKit() {
                     }
                   />
                 )}
+                {!detail &&
+                  (settings.partnerships ?? []).map((partner, i) => (
+                    <ItemCard
+                      key={i}
+                      title={partner.brand_name || "New partnership"}
+                      description={
+                        partner.description || "Add collaboration details"
+                      }
+                      visible={partner.is_visible}
+                      onOpen={() =>
+                        setDetail({ section: "partnerships", key: String(i) })
+                      }
+                      onToggle={() =>
+                        edit({
+                          partnerships: (settings.partnerships ?? []).map(
+                            (p, j) =>
+                              j === i ? { ...p, is_visible: !p.is_visible } : p,
+                          ),
+                        })
+                      }
+                      onDelete={() =>
+                        setPendingRemoval({
+                          kind: "partnership",
+                          index: i,
+                          name: partner.brand_name || "partnership",
+                        })
+                      }
+                    />
+                  ))}
                 {(settings.partnerships ?? []).map((partner, i) => (
                   <div
                     key={i}
-                    className="space-y-3 border-t border-gray-100 pt-4"
+                    className={
+                      detail?.section === "partnerships" &&
+                      detail.key === String(i)
+                        ? "space-y-5"
+                        : "hidden"
+                    }
                   >
                     <div className="flex items-end gap-3">
                       <div className="min-w-0 w-full">
@@ -829,33 +1166,7 @@ export default function CreatorMediaKit() {
                     />
                   </div>
                 ))}
-                <EmptyAction
-                  empty={(settings.partnerships ?? []).length === 0}
-                  title="No partnerships yet"
-                  description="Showcase brands you’ve worked with by adding your first collaboration."
-                >
-                  <Button
-                    variant="primary"
-                    className={primaryButtonClass}
-                    isDisabled={(settings.partnerships ?? []).length >= 10}
-                    onPress={() =>
-                      edit({
-                        partnerships: [
-                          ...(settings.partnerships ?? []),
-                          {
-                            brand_name: "",
-                            description: "",
-                            url: "",
-                            is_visible: true,
-                          },
-                        ],
-                      })
-                    }
-                  >
-                    <Plus size={16} />
-                    Add partnership
-                  </Button>
-                </EmptyAction>
+
                 {footer("partnerships")}
               </section>
             ) : (
@@ -866,7 +1177,11 @@ export default function CreatorMediaKit() {
                 <Button
                   variant="primary"
                   className={primaryButtonClass}
-                  onPress={() => setModalOpen(true)}
+                  onPress={() => {
+                    setTab("accounts");
+                    setDetail(null);
+                    setModalOpen(true);
+                  }}
                 >
                   <Plus size={16} />
                   Add account
@@ -881,17 +1196,94 @@ export default function CreatorMediaKit() {
                   title="Rates"
                   description="List your services and pricing so brands know how to work with you."
                 />
-                {settings.rates.length > 0 && (
+                {!detail && (
+                  <EmptyAction
+                    empty={settings.rates.length === 0}
+                    title="No rates yet"
+                    description="Add a service and its rate so brands know how to work with you."
+                  >
+                    <Button
+                      variant="primary"
+                      className={`${primaryButtonClass} w-full`}
+                      isDisabled={settings.rates.length >= 10}
+                      onPress={() =>
+                        edit({
+                          rates: [
+                            ...settings.rates,
+                            {
+                              name: "",
+                              description: "",
+                              amount_minor: 0,
+                              currency: "MYR",
+                              starting_from: false,
+                              is_visible: false,
+                            },
+                          ],
+                        })
+                      }
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                      Add rate
+                    </Button>
+                  </EmptyAction>
+                )}
+
+                {detail?.section === "rates" && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      aria-label="Back to list"
+                      className="text-black"
+                      onPress={() => setDetail(null)}
+                    >
+                      <ArrowLeft size={18} />
+                    </Button>
+                    <h3 className="font-medium">Rate details</h3>
+                  </div>
+                )}
+
+                {!detail && settings.rates.length > 0 && (
                   <Toggle
                     label="Show in Media Kit"
                     value={settings.rates_visible}
                     onChange={(rates_visible) => edit({ rates_visible })}
                   />
                 )}
+                {!detail &&
+                  settings.rates.map((rate, i) => (
+                    <ItemCard
+                      key={i}
+                      title={rate.name || "New rate"}
+                      description={`${rate.currency} ${(rate.amount_minor / 100).toFixed(2)}`}
+                      visible={rate.is_visible}
+                      onOpen={() =>
+                        setDetail({ section: "rates", key: String(i) })
+                      }
+                      onToggle={() =>
+                        edit({
+                          rates: settings.rates.map((r, j) =>
+                            j === i ? { ...r, is_visible: !r.is_visible } : r,
+                          ),
+                        })
+                      }
+                      onDelete={() =>
+                        setPendingRemoval({
+                          kind: "rate",
+                          index: i,
+                          name: rate.name || "rate",
+                        })
+                      }
+                    />
+                  ))}
                 {settings.rates.map((rate, i) => (
                   <div
                     key={i}
-                    className="space-y-3 border-t pt-4 border-gray-100"
+                    className={
+                      detail?.section === "rates" && detail.key === String(i)
+                        ? "space-y-5"
+                        : "hidden"
+                    }
                   >
                     <div className="flex items-end gap-3">
                       <div className="min-w-0 w-full">
@@ -1017,8 +1409,10 @@ export default function CreatorMediaKit() {
                       variant="ghost"
                       className="text-red-600 hover:text-red-700"
                       onPress={() =>
-                        edit({
-                          rates: settings.rates.filter((_, j) => j !== i),
+                        setPendingRemoval({
+                          kind: "rate",
+                          index: i,
+                          name: rate.name || "rate",
                         })
                       }
                     >
@@ -1026,35 +1420,7 @@ export default function CreatorMediaKit() {
                     </Button>
                   </div>
                 ))}
-                <EmptyAction
-                  empty={settings.rates.length === 0}
-                  title="No rates yet"
-                  description="Add a service and its rate so brands know how to work with you."
-                >
-                  <Button
-                    variant="primary"
-                    className={primaryButtonClass}
-                    isDisabled={settings.rates.length >= 10}
-                    onPress={() =>
-                      edit({
-                        rates: [
-                          ...settings.rates,
-                          {
-                            name: "",
-                            description: "",
-                            amount_minor: 0,
-                            currency: "MYR",
-                            starting_from: false,
-                            is_visible: false,
-                          },
-                        ],
-                      })
-                    }
-                  >
-                    <Plus size={16} aria-hidden="true" />
-                    Add rate
-                  </Button>
-                </EmptyAction>
+
                 {footer("rates")}
               </section>
             ) : (
@@ -1065,7 +1431,11 @@ export default function CreatorMediaKit() {
                 <Button
                   variant="primary"
                   className={primaryButtonClass}
-                  onPress={() => setModalOpen(true)}
+                  onPress={() => {
+                    setTab("accounts");
+                    setDetail(null);
+                    setModalOpen(true);
+                  }}
                 >
                   <Plus size={16} />
                   Add account
@@ -1080,17 +1450,136 @@ export default function CreatorMediaKit() {
                   title="Contact"
                   description="Choose how brands can reach you and which contact details appear publicly."
                 />
-                {settings.contacts.length > 0 && (
+                {!detail && (
+                  <EmptyAction
+                    empty={settings.contacts.length === 0}
+                    title="No contact methods yet"
+                    description="Choose a contact method so brands can reach you."
+                  >
+                    <Select
+                      aria-label="Add a contact method"
+                      className="w-full"
+                      placeholder="Add contact"
+                      value={null}
+                      isDisabled={settings.contacts.length >= 4}
+                      onChange={(kind) => {
+                        if (
+                          kind !== "email" &&
+                          kind !== "whatsapp" &&
+                          kind !== "website" &&
+                          kind !== "instagram"
+                        )
+                          return;
+                        if (!settings.contacts.some((c) => c.kind === kind))
+                          edit({
+                            contacts: [
+                              ...settings.contacts,
+                              { kind, value: "", is_visible: false },
+                            ],
+                          });
+                      }}
+                    >
+                      <Select.Trigger className="min-h-10 w-full items-center justify-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
+                        <Plus size={16} aria-hidden="true" />
+                        <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
+                        <Select.Indicator className="static! size-4 text-white!" />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {(
+                            [
+                              { kind: "email", label: "Email" },
+                              { kind: "whatsapp", label: "WhatsApp" },
+                              { kind: "website", label: "Website" },
+                              { kind: "instagram", label: "Instagram DM" },
+                            ] as { kind: Contact["kind"]; label: string }[]
+                          )
+                            .filter(
+                              (item) =>
+                                !settings.contacts.some(
+                                  (c) => c.kind === item.kind,
+                                ),
+                            )
+                            .map((item) => (
+                              <ListBox.Item
+                                key={item.kind}
+                                id={item.kind}
+                                textValue={item.label}
+                              >
+                                <Label>{item.label}</Label>
+                                <ListBox.ItemIndicator />
+                              </ListBox.Item>
+                            ))}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+                  </EmptyAction>
+                )}
+
+                {detail?.section === "contact" && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      aria-label="Back to list"
+                      className="text-black"
+                      onPress={() => setDetail(null)}
+                    >
+                      <ArrowLeft size={18} />
+                    </Button>
+                    <h3 className="font-medium">Contact details</h3>
+                  </div>
+                )}
+
+                {!detail && settings.contacts.length > 0 && (
                   <Toggle
                     label="Show in Media Kit"
                     value={settings.contacts_visible}
                     onChange={(contacts_visible) => edit({ contacts_visible })}
                   />
                 )}
+                {!detail &&
+                  settings.contacts.map((contact, i) => (
+                    <ItemCard
+                      key={contact.kind}
+                      title={
+                        contact.kind === "whatsapp"
+                          ? "WhatsApp"
+                          : contact.kind === "instagram"
+                            ? "Instagram DM"
+                            : contact.kind === "email"
+                              ? "Email"
+                              : "Website"
+                      }
+                      description={contact.value || "Add contact details"}
+                      visible={contact.is_visible}
+                      onOpen={() =>
+                        setDetail({ section: "contact", key: contact.kind })
+                      }
+                      onToggle={() =>
+                        edit({
+                          contacts: settings.contacts.map((c, j) =>
+                            j === i ? { ...c, is_visible: !c.is_visible } : c,
+                          ),
+                        })
+                      }
+                      onDelete={() =>
+                        setPendingRemoval({
+                          kind: "contact",
+                          index: i,
+                          name: contact.kind,
+                        })
+                      }
+                    />
+                  ))}
                 {settings.contacts.map((c, i) => (
                   <div
                     key={c.kind}
-                    className="space-y-3 border-t pt-4 border-gray-100"
+                    className={
+                      detail?.section === "contact" && detail.key === c.kind
+                        ? "space-y-5"
+                        : "hidden"
+                    }
                   >
                     <div className="flex items-end gap-3">
                       <div className="min-w-0 w-full">
@@ -1162,8 +1651,10 @@ export default function CreatorMediaKit() {
                       variant="ghost"
                       className="text-red-600 hover:text-red-700"
                       onPress={() =>
-                        edit({
-                          contacts: settings.contacts.filter((_, j) => j !== i),
+                        setPendingRemoval({
+                          kind: "contact",
+                          index: i,
+                          name: c.kind,
                         })
                       }
                     >
@@ -1171,69 +1662,7 @@ export default function CreatorMediaKit() {
                     </Button>
                   </div>
                 ))}
-                <EmptyAction
-                  empty={settings.contacts.length === 0}
-                  title="No contact methods yet"
-                  description="Choose a contact method so brands can reach you."
-                >
-                  <Select
-                    aria-label="Add a contact method"
-                    className="w-fit"
-                    placeholder="Add contact"
-                    value={null}
-                    isDisabled={settings.contacts.length >= 4}
-                    onChange={(kind) => {
-                      if (
-                        kind !== "email" &&
-                        kind !== "whatsapp" &&
-                        kind !== "website" &&
-                        kind !== "instagram"
-                      )
-                        return;
-                      if (!settings.contacts.some((c) => c.kind === kind))
-                        edit({
-                          contacts: [
-                            ...settings.contacts,
-                            { kind, value: "", is_visible: false },
-                          ],
-                        });
-                    }}
-                  >
-                    <Select.Trigger className="min-h-10 items-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
-                      <Plus size={16} aria-hidden="true" />
-                      <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
-                      <Select.Indicator className="static! size-4 text-white!" />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        {(
-                          [
-                            { kind: "email", label: "Email" },
-                            { kind: "whatsapp", label: "WhatsApp" },
-                            { kind: "website", label: "Website" },
-                            { kind: "instagram", label: "Instagram DM" },
-                          ] as { kind: Contact["kind"]; label: string }[]
-                        )
-                          .filter(
-                            (item) =>
-                              !settings.contacts.some(
-                                (c) => c.kind === item.kind,
-                              ),
-                          )
-                          .map((item) => (
-                            <ListBox.Item
-                              key={item.kind}
-                              id={item.kind}
-                              textValue={item.label}
-                            >
-                              <Label>{item.label}</Label>
-                              <ListBox.ItemIndicator />
-                            </ListBox.Item>
-                          ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                </EmptyAction>
+
                 {footer("contact")}
               </section>
             ) : (
@@ -1244,7 +1673,11 @@ export default function CreatorMediaKit() {
                 <Button
                   variant="primary"
                   className={primaryButtonClass}
-                  onPress={() => setModalOpen(true)}
+                  onPress={() => {
+                    setTab("accounts");
+                    setDetail(null);
+                    setModalOpen(true);
+                  }}
                 >
                   <Plus size={16} />
                   Add account
@@ -1254,107 +1687,6 @@ export default function CreatorMediaKit() {
           </Tabs.Panel>
         </Tabs>
       </div>
-
-      <Modal
-        isOpen={modalOpen}
-        onOpenChange={(open) => {
-          if (!busy) setModalOpen(open);
-        }}
-      >
-        <Modal.Backdrop isDismissable={!busy}>
-          <Modal.Container size="sm">
-            <Modal.Dialog>
-              <Modal.CloseTrigger isDisabled={busy} />
-              <Modal.Header>
-                <Modal.Heading>Add an account</Modal.Heading>
-              </Modal.Header>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setBusy(true);
-
-                  try {
-                    await add({ handle, platform });
-                    setHandle("");
-                    setModalOpen(false);
-                    setTab("accounts");
-                  } catch (error) {
-                    toast({
-                      title: "Could not add account",
-                      description:
-                        error instanceof Error
-                          ? error.message
-                          : "Please try again.",
-                      color: "danger",
-                    });
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                <Modal.Body className="space-y-5">
-                  <fieldset disabled={busy}>
-                    <legend className="mb-3 text-sm text-gray-600">
-                      Choose a platform
-                    </legend>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(["instagram", "tiktok"] as const).map((value) => (
-                        <label
-                          key={value}
-                          className={`flex cursor-pointer items-center gap-2 rounded-xl border p-4 text-sm ${platform === value ? "border-black bg-gray-50" : "border-gray-200"}`}
-                        >
-                          <input
-                            type="radio"
-                            name="platform"
-                            value={value}
-                            checked={platform === value}
-                            onChange={() => {
-                              setPlatform(value);
-                              setHandle("");
-                            }}
-                            className="accent-black"
-                          />
-                          <PlatformIcon platform={value} />
-                          {value === "instagram" ? "Instagram" : "TikTok"}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                  <Field
-                    label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
-                    value={handle}
-                    onChange={setHandle}
-                  />
-
-                  <p className="text-xs text-gray-500">
-                    Use a public profile. Your data will import automatically
-                    and refresh every 24 hours.
-                  </p>
-                </Modal.Body>
-                <Modal.Footer>
-                  <Button
-                    variant="ghost"
-                    className="text-black"
-                    isDisabled={busy}
-                    onPress={() => setModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    className={primaryButtonClass}
-                    isDisabled={busy || !handle.trim()}
-                  >
-                    <Plus size={16} aria-hidden="true" />
-                    {busy ? "Adding…" : "Add account"}
-                  </Button>
-                </Modal.Footer>
-              </form>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
 
       <Modal
         isOpen={pendingRemoval !== null}
@@ -1368,14 +1700,12 @@ export default function CreatorMediaKit() {
               <Modal.CloseTrigger isDisabled={busy} />
               <Modal.Header>
                 <Modal.Heading>
-                  {pendingRemoval?.kind === "partnership"
-                    ? "Remove partnership?"
-                    : "Remove account?"}
+                  {`Remove ${pendingRemoval?.kind ?? "item"}?`}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <p className="text-sm text-gray-600">
-                  {pendingRemoval?.kind === "partnership" ? (
+                  {pendingRemoval && pendingRemoval.kind !== "account" ? (
                     <>
                       Remove <strong>{pendingRemoval.name}</strong> from your
                       media kit? Save this section to update your public page.
@@ -1408,6 +1738,26 @@ export default function CreatorMediaKit() {
                   isDisabled={busy || !pendingRemoval}
                   onPress={async () => {
                     if (!pendingRemoval) return;
+                    if (
+                      pendingRemoval.kind === "rate" ||
+                      pendingRemoval.kind === "contact"
+                    ) {
+                      if (pendingRemoval.kind === "rate")
+                        edit({
+                          rates: (settings?.rates ?? []).filter(
+                            (_, i) => i !== pendingRemoval.index,
+                          ),
+                        });
+                      else
+                        edit({
+                          contacts: (settings?.contacts ?? []).filter(
+                            (_, i) => i !== pendingRemoval.index,
+                          ),
+                        });
+                      setPendingRemoval(null);
+                      setDetail(null);
+                      return;
+                    }
                     if (pendingRemoval.kind === "partnership") {
                       edit({
                         partnerships: (settings?.partnerships ?? []).filter(
@@ -1415,6 +1765,7 @@ export default function CreatorMediaKit() {
                         ),
                       });
                       setPendingRemoval(null);
+                      setDetail(null);
                       toast({
                         title: "Partnership removed",
                         description:
@@ -1423,6 +1774,7 @@ export default function CreatorMediaKit() {
                       });
                       return;
                     }
+                    setDetail(null);
                     setRemovedAccounts((current) => [
                       ...current,
                       pendingRemoval.id,
@@ -1438,9 +1790,7 @@ export default function CreatorMediaKit() {
                 >
                   {busy
                     ? "Removing…"
-                    : pendingRemoval?.kind === "partnership"
-                      ? "Remove partnership"
-                      : "Remove account"}
+                    : `Remove ${pendingRemoval?.kind ?? "item"}`}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>
