@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Skeleton } from "@heroui/react";
-import { ExternalLink, Inbox } from "lucide-react";
+import { Skeleton } from "@heroui/react";
+import { Inbox } from "lucide-react";
 
 export function MediaKitPreview({ slug }: { slug?: string }) {
   const [loaded, setLoaded] = useState(false);
@@ -25,7 +25,10 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
     >
       <div className="relative mx-auto w-full max-w-[340px] px-4 sm:px-0">
         <div className="overflow-hidden rounded-[2rem] border border-gray-200 bg-gray-100 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
-          <div ref={container} className="relative h-[620px] overflow-hidden">
+          <div
+            ref={container}
+            className="relative aspect-[9/19.5] overflow-hidden"
+          >
             {slug ? (
               <>
                 {!loaded && (
@@ -42,7 +45,7 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
                   onLoad={() => setLoaded(true)}
                   style={{
                     width: viewport,
-                    height: 620 / scale,
+                    height: viewport * (19.5 / 9),
                     transform: `scale(${scale})`,
                     transformOrigin: "top left",
                     border: 0,
@@ -60,23 +63,6 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
             )}
           </div>
         </div>
-        {slug && (
-          <Button
-            isIconOnly
-            variant="ghost"
-            className="absolute -right-2 top-1/2 rounded-full bg-gray-200 text-black sm:-right-12"
-            aria-label="Open media kit in new tab"
-            onPress={() =>
-              window.open(
-                `/kit/${encodeURIComponent(slug)}`,
-                "_blank",
-                "noopener,noreferrer",
-              )
-            }
-          >
-            <ExternalLink size={18} />
-          </Button>
-        )}
       </div>
     </aside>
   );
