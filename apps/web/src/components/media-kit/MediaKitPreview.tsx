@@ -27,7 +27,7 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
         className="relative mx-auto w-full"
         style={{ maxWidth: "min(340px, calc((100dvh - 140px) * 9 / 19.5))" }}
       >
-        <div className="overflow-hidden rounded-[2rem] border border-gray-200 bg-gray-100 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
+        <div className="overflow-hidden rounded-[2rem] border border-gray-700 bg-[#0a0a0a] text-gray-100 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
           <div
             ref={container}
             className="relative aspect-[9/19.5] overflow-hidden"
@@ -35,7 +35,7 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
             {slug ? (
               <>
                 {!loaded && (
-                  <div className="absolute inset-0 z-10 space-y-5 bg-white p-6">
+                  <div className="absolute inset-0 z-10 space-y-5 bg-[#0a0a0a] p-6">
                     <Skeleton className="mx-auto size-20 rounded-full" />
                     <Skeleton className="h-8 w-full rounded-xl" />
                     <Skeleton className="h-56 w-full rounded-2xl" />

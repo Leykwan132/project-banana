@@ -16,16 +16,16 @@ const number = (n: number) =>
   }).format(n);
 export function MediaKitView({ kit }: { kit: KitView }) {
   return (
-    <div className="mx-auto max-w-3xl space-y-8 text-gray-900">
+    <div className="mx-auto max-w-3xl space-y-8 text-gray-100">
       <header className="flex flex-col items-center text-center pt-8 gap-4">
         {kit.photoUrl ? (
           <img
             src={kit.photoUrl}
             alt=""
-            className="size-24 rounded-full object-cover ring-4 ring-white"
+            className="size-24 rounded-full object-cover ring-4 ring-gray-800"
           />
         ) : (
-          <div className="size-24 rounded-full bg-lime-100 grid place-items-center text-3xl">
+          <div className="size-24 rounded-full bg-gray-800 grid place-items-center text-3xl">
             {kit.displayName.slice(0, 1)}
           </div>
         )}
@@ -47,7 +47,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                   key={niche}
                   id={niche}
                   textValue={niche}
-                  className="rounded-full bg-gray-100 px-3 py-1 text-xs font-normal text-gray-600"
+                  className="rounded-full bg-gray-800 px-3 py-1 text-xs font-normal text-gray-300"
                 >
                   <NicheIcon niche={niche} />
                   {niche}
@@ -57,7 +57,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           </TagGroup>
         )}
         {kit.bio && (
-          <p className="max-w-lg whitespace-pre-line text-gray-500 leading-relaxed">
+          <p className="max-w-lg whitespace-pre-line text-gray-400 leading-relaxed">
             {kit.bio}
           </p>
         )}
@@ -66,7 +66,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             <p className="text-3xl font-semibold tracking-tight">
               {number(kit.totalAudience)}
             </p>
-            <p className="text-sm text-gray-500">Combined audience</p>
+            <p className="text-sm text-gray-400">Combined audience</p>
           </div>
         )}
       </header>
@@ -116,11 +116,11 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 {kit.partnerships.map((p, i) => (
                   <Card
                     key={i}
-                    className="rounded-2xl border border-gray-100 bg-white p-5 shadow-none"
+                    className="rounded-2xl border border-gray-700 bg-[#171717] text-gray-100 p-5 shadow-none"
                   >
                     <h3 className="font-medium">{p.brand_name}</h3>
                     {p.description && (
-                      <p className="mt-2 whitespace-pre-line text-sm text-gray-500">
+                      <p className="mt-2 whitespace-pre-line text-sm text-gray-400">
                         {p.description}
                       </p>
                     )}
@@ -129,7 +129,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                         href={p.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-3 inline-flex text-sm font-medium text-black underline underline-offset-4"
+                        className="mt-3 inline-flex text-sm font-medium text-gray-100 underline underline-offset-4"
                       >
                         View collaboration ↗
                       </a>
@@ -140,7 +140,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             </section>
           )}
           {!kit.partnerships.length && (
-            <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+            <p className="rounded-2xl bg-gray-800 p-6 text-center text-sm text-gray-400">
               No partnerships to showcase yet.
             </p>
           )}
@@ -160,7 +160,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 .map((a) => (
                   <Card
                     key={a.id}
-                    className="bg-white border border-gray-100 shadow-none rounded-3xl p-6"
+                    className="bg-[#171717] text-gray-100 border border-gray-700 shadow-none rounded-3xl p-6"
                   >
                     <Card.Header className="flex-row items-center gap-3">
                       {a.avatarUrl && (
@@ -205,7 +205,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                                   ? `${a[key]!.toFixed(2)}%`
                                   : number(a[key]!)}
                               </p>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-gray-400 mt-1">
                                 {label}
                               </p>
                             </div>
@@ -241,7 +241,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                               href={p.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="aspect-square overflow-hidden rounded-xl bg-gray-50"
+                              className="aspect-square overflow-hidden rounded-xl bg-gray-800"
                               aria-label={p.caption || "View post"}
                             >
                               {p.imageUrl ? (
@@ -266,7 +266,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
               {!kit.accounts.some(
                 (account) => account.platform === platform,
               ) && (
-                <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+                <p className="rounded-2xl bg-gray-800 p-6 text-center text-sm text-gray-400">
                   No public {platform === "instagram" ? "Instagram" : "TikTok"}{" "}
                   accounts yet.
                 </p>
@@ -281,13 +281,13 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 {kit.rates.map((r, i) => (
                   <Card
                     key={i}
-                    className="bg-white shadow-none border border-gray-100 p-5 rounded-2xl"
+                    className="bg-[#171717] text-gray-100 shadow-none border border-gray-700 p-5 rounded-2xl"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <h3 className="font-medium">{r.name}</h3>
                         {r.description && (
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-400 mt-1">
                             {r.description}
                           </p>
                         )}
@@ -306,7 +306,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             </section>
           )}
           {!kit.rates.length && (
-            <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+            <p className="rounded-2xl bg-gray-800 p-6 text-center text-sm text-gray-400">
               No public rates yet.
             </p>
           )}
@@ -326,14 +326,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                   : contact.kind === "instagram"
                     ? "Instagram DM"
                     : "Website";
-            const color =
-              contact.kind === "email"
-                ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                : contact.kind === "whatsapp"
-                  ? "bg-green-100 text-green-700 hover:bg-green-200"
-                  : contact.kind === "instagram"
-                    ? "bg-pink-100 text-pink-700 hover:bg-pink-200"
-                    : "bg-violet-100 text-violet-700 hover:bg-violet-200";
+            const color = "bg-gray-800 text-gray-100 hover:bg-gray-700";
             return (
               <Button
                 key={contact.kind}
@@ -356,7 +349,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
         <a
           href="/"
           aria-label="Powered by Lumina"
-          className="inline-flex items-center gap-2 text-xs text-gray-500"
+          className="inline-flex items-center gap-2 text-xs text-gray-400"
         >
           <span>Powered by</span>
           <img src={luminaIcon} alt="Lumina" className="size-6" />

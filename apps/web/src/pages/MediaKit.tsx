@@ -17,13 +17,13 @@ export default function MediaKit() {
     };
   }, [kit]);
   return (
-    <main className="min-h-screen bg-[#fafaf8] px-5 py-8">
+    <main className="min-h-screen bg-[#0a0a0a] text-gray-100 px-5 py-8">
       {kit === undefined ? (
         <MediaKitSkeleton />
       ) : kit === null ? (
         <div className="text-center py-24">
           <h1 className="text-2xl font-semibold">Media kit unavailable</h1>
-          <p className="mt-3 text-gray-500">
+          <p className="mt-3 text-gray-400">
             This page is not published or no longer exists.
           </p>
           <a href="/" className="inline-block mt-6">
