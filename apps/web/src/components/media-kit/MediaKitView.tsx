@@ -157,17 +157,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     key={a.id}
                     className="bg-[#171717] text-gray-100 border border-gray-700 shadow-none rounded-3xl p-6"
                   >
-                    <button
-                      type="button"
-                      aria-expanded={expandedAccounts.has(a.id)}
-                      aria-controls={`account-details-${a.id}`}
-                      onClick={() => setExpandedAccounts((current) => {
-                        const next = new Set(current);
-                        if (next.has(a.id)) next.delete(a.id); else next.add(a.id);
-                        return next;
-                      })}
-                      className="flex w-full items-center gap-3 rounded-xl text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-300"
-                    >
+                    <div className="flex w-full items-center gap-3">
                       {a.avatarUrl && (
                         <img
                           src={a.avatarUrl}
@@ -176,18 +166,30 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                         />
                       )}
                       <div>
-                        <span className="inline-flex items-center gap-2 font-semibold">
+                        <a href={accountProfileUrl(a.handle, a.platform)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-sm font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-4">
                           <PlatformIcon platform={a.platform} size={17} />@{a.handle}
-                        </span>
+                        </a>
                         <p className="text-xs text-gray-400 mt-1">
                           {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·
                           Updated {new Date(a.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        aria-label={`${expandedAccounts.has(a.id) ? "Collapse" : "Expand"} account details`}
+                        aria-expanded={expandedAccounts.has(a.id)}
+                        aria-controls={`account-details-${a.id}`}
+                        onClick={() => setExpandedAccounts((current) => {
+                          const next = new Set(current);
+                          if (next.has(a.id)) next.delete(a.id); else next.add(a.id);
+                          return next;
+                        })}
+                        className="ml-auto grid size-9 shrink-0 place-items-center rounded-full text-gray-400 hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2"
+                      >
                       <ChevronDown size={18} aria-hidden="true" className={`ml-auto shrink-0 text-gray-400 transition-transform motion-reduce:transition-none ${expandedAccounts.has(a.id) ? "rotate-180" : ""}`} />
-                    </button>
+                      </button>
+                    </div>
                     <div id={`account-details-${a.id}`} hidden={!expandedAccounts.has(a.id)} className="space-y-5">
-                      <a href={accountProfileUrl(a.handle, a.platform)} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex text-xs text-gray-400 underline underline-offset-4">View profile ↗</a>
                       <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-6 sm:grid-cols-3 sm:gap-x-12 sm:gap-y-12">
                         {(
                           [
