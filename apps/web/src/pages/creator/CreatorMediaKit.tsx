@@ -381,6 +381,7 @@ export default function CreatorMediaKit() {
   }, [data, toast]);
   const add = useMutation(api.mediaKits.addAccount);
   const save = useMutation(api.mediaKits.saveSettings);
+  const uploadLogo = useAction(api.mediaKitActions.uploadBrandLogo);
   const uploadPhoto = useAction(api.mediaKitActions.uploadProfilePhoto);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -1416,6 +1417,15 @@ export default function CreatorMediaKit() {
                       <ItemCard
                         key={i}
                         title={partner.brand_name || "New partnership"}
+                        icon={
+                          partner.logo_url ? (
+                            <img
+                              src={partner.logo_url}
+                              alt=""
+                              className="size-8 rounded-lg object-contain"
+                            />
+                          ) : undefined
+                        }
                         description={
                           partner.description || "Add collaboration details"
                         }
@@ -1454,7 +1464,56 @@ export default function CreatorMediaKit() {
                             : "hidden"
                         }
                       >
-                        <div className="flex items-end gap-3">
+                        <div className="flex items-start gap-4">
+                          <div className="shrink-0 space-y-2">
+                            <Label>Logo</Label>
+                            <label className="grid size-14 cursor-pointer place-items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100">
+                              {partner.logo_url ? (
+                                <img
+                                  src={partner.logo_url}
+                                  alt={`${partner.brand_name || "Brand"} logo`}
+                                  className="size-full object-contain p-1"
+                                />
+                              ) : (
+                                <Plus size={20} aria-hidden="true" />
+                              )}
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                aria-label="Upload brand logo"
+                                className="sr-only"
+                                disabled={busy}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  event.target.value = "";
+                                  if (!file) return;
+                                  void run(async () => {
+                                    if (
+                                      ![
+                                        "image/jpeg",
+                                        "image/png",
+                                        "image/webp",
+                                      ].includes(file.type) ||
+                                      file.size > 2 * 1024 * 1024
+                                    )
+                                      throw Error(
+                                        "Choose a JPG, PNG, or WebP logo smaller than 2 MB.",
+                                      );
+                                    const logo_url = await uploadLogo({
+                                      bytes: await file.arrayBuffer(),
+                                    });
+                                    edit({
+                                      partnerships: (
+                                        settings.partnerships ?? []
+                                      ).map((p, j) =>
+                                        j === i ? { ...p, logo_url } : p,
+                                      ),
+                                    });
+                                  });
+                                }}
+                              />
+                            </label>
+                          </div>
                           <div className="min-w-0 w-full">
                             <Field
                               label="Brand name"

@@ -23,6 +23,7 @@ export type Contact = {
   is_visible: boolean;
 };
 export type Partnership = {
+  logo_url?: string;
   brand_name: string;
   description: string;
   url: string;
@@ -316,7 +317,8 @@ export function validateSettings(input: unknown): Settings {
       !p.brand_name.trim() ||
       p.brand_name.length > 100 ||
       p.description.length > 500 ||
-      p.url.length > 2048
+      p.url.length > 2048 ||
+      (p.logo_url?.length ?? 0) > 2048
     )
       throw Error(
         "Enter a brand name up to 100 characters and a description up to 500 characters.",
@@ -324,6 +326,15 @@ export function validateSettings(input: unknown): Settings {
     const url = p.url.trim();
     return {
       ...p,
+      ...(p.logo_url
+        ? {
+            logo_url: contactHref({
+              kind: "website",
+              value: p.logo_url,
+              is_visible: true,
+            }),
+          }
+        : {}),
       brand_name: p.brand_name.trim(),
       description: p.description.trim(),
       url: url

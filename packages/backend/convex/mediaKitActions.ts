@@ -256,3 +256,34 @@ export const uploadProfilePhoto = action({
     return null;
   },
 });
+
+export const uploadBrandLogo = action({
+  args: { bytes: v.bytes() },
+  returns: v.string(),
+  handler: async (ctx, { bytes }) => {
+    const editor = await ctx.runQuery(api.mediaKits.getEditor, {});
+    if (!editor.kit)
+      throw Error("Add an account before uploading a brand logo.");
+    if (bytes.byteLength === 0 || bytes.byteLength > 2 * 1024 * 1024)
+      throw Error("Choose an image smaller than 2 MB.");
+    const data = Buffer.from(bytes);
+    const type = data
+      .subarray(0, 8)
+      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      ? "image/png"
+      : data[0] === 255 && data[1] === 216 && data[2] === 255
+        ? "image/jpeg"
+        : data.toString("ascii", 0, 4) === "RIFF" &&
+            data.toString("ascii", 8, 12) === "WEBP"
+          ? "image/webp"
+          : null;
+    if (!type) throw Error("Choose a JPG, PNG, or WebP image.");
+    const storageId = await ctx.storage.store(new Blob([bytes], { type }));
+    const url = await ctx.storage.getUrl(storageId);
+    if (!url) {
+      await ctx.storage.delete(storageId);
+      throw Error("Could not upload the brand logo.");
+    }
+    return url;
+  },
+});

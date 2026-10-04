@@ -118,7 +118,16 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     key={i}
                     className="rounded-2xl border border-gray-700 bg-[#171717] text-gray-100 p-5 shadow-none"
                   >
-                    <h3 className="font-medium">{p.brand_name}</h3>
+                    <div className="flex items-center gap-3">
+                      {p.logo_url && (
+                        <img
+                          src={p.logo_url}
+                          alt={`${p.brand_name} logo`}
+                          className="size-12 shrink-0 rounded-xl bg-white object-contain p-1"
+                        />
+                      )}
+                      <h3 className="font-medium">{p.brand_name}</h3>
+                    </div>
                     {p.description && (
                       <p className="mt-2 whitespace-pre-line text-sm text-gray-400">
                         {p.description}
@@ -333,7 +342,6 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 isIconOnly
                 variant="ghost"
                 aria-label={label}
-                title={label}
                 className={`size-11 rounded-full ${color}`}
                 onPress={() =>
                   window.open(contact.href, "_blank", "noopener,noreferrer")

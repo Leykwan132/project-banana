@@ -28,6 +28,7 @@ export const contact = v.object({
   is_visible: v.boolean(),
 });
 export const partnership = v.object({
+  logo_url: v.optional(v.string()),
   brand_name: v.string(),
   description: v.string(),
   url: v.string(),
