@@ -89,8 +89,14 @@ metric, contact, and rate before returning data. Combined followers can include
 people following multiple accounts and are not a deduplicated audience count.
 Engagement and averages use sampled recent public posts, not Instagram Insights.
 
-Imports reuse `APIFY_API_TOKEN`, `apify/instagram-profile-scraper`, and the existing
-scrape Workpool. Set `MEDIA_KIT_MAX_CHARGE_USD` to override the default **USD 0.05
+The editor has Profile, Accounts, Rates and Contact tabs. Add account opens a
+platform picker and queues import immediately after submission. Imports reuse
+`APIFY_API_TOKEN` and the existing scrape Workpool: Instagram uses
+`apify/instagram-profile-scraper`; TikTok uses `clockworks/tiktok-scraper` with a
+profile username and at most 12 recent results. Stored platform is optional for
+backward compatibility; existing accounts remain Instagram. New public snapshots
+include platform-specific links and icons. TikTok slideshows are excluded from
+video-only view averages. Set `MEDIA_KIT_MAX_CHARGE_USD` to override the default **USD 0.05
 per Actor run** (allowed range: greater than zero, at most USD 1). Paid starts never
 automatically retry. An atomic backend lease limits active remote imports to three;
 runs expire after ten minutes. Successful refresh cooldown is 24 hours; failed
@@ -100,7 +106,7 @@ A Convex interval runs every 24 hours and paginates saved accounts, including
 hidden accounts and drafts. It skips fresh data, current imports, and deleted
 owners. Scraped snapshots never overwrite saved rates, contacts, visibility,
 publication, or edited identity. Avatars and up to six thumbnails are cached from
-allowlisted Instagram CDNs; previous assets are removed on replacement/removal.
+allowlisted Instagram and TikTok CDNs; previous assets are removed on replacement/removal.
 
 Release backend/schema and web together. Configure the token on the target Convex
 deployment before enabling the feature. Deploying the backend activates recurring

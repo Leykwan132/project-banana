@@ -1,5 +1,6 @@
 import { Card, Button } from "@heroui/react";
-import { Instagram } from "lucide-react";
+import { PlatformIcon } from "./PlatformIcon";
+import { accountProfileUrl } from "../../../../../packages/backend/convex/lib/mediaKitModel";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 export type KitView = NonNullable<
@@ -84,15 +85,16 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             )}
             <div>
               <a
-                href={`https://www.instagram.com/${a.handle}/`}
+                href={accountProfileUrl(a.handle, a.platform)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 font-semibold"
               >
-                <Instagram size={17} aria-hidden="true" />@{a.handle}
+                <PlatformIcon platform={a.platform} size={17} />@{a.handle}
               </a>
               <p className="text-xs text-gray-400 mt-1">
-                Instagram · Updated {new Date(a.updatedAt).toLocaleDateString()}
+                {a.platform === "tiktok" ? "TikTok" : "Instagram"} · Updated{" "}
+                {new Date(a.updatedAt).toLocaleDateString()}
               </p>
             </div>
           </Card.Header>
@@ -138,7 +140,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 {a.videoSampleSize !== undefined
                   ? ` · Video average based on ${a.videoSampleSize} videos`
                   : ""}
-                . Public data; not Instagram Insights.
+                . Public data; not platform Insights.
               </p>
             )}
             {!!a.posts?.length && (
@@ -150,7 +152,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     target="_blank"
                     rel="noreferrer"
                     className="aspect-square overflow-hidden rounded-xl bg-gray-50"
-                    aria-label={p.caption || "View Instagram post"}
+                    aria-label={p.caption || "View post"}
                   >
                     {p.imageUrl ? (
                       <img

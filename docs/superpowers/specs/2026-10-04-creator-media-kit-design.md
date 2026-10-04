@@ -182,3 +182,18 @@ Cache the primary avatar and up to six displayed post thumbnails per account in 
 ## Implementation
 
 Implemented in the creator-media-kit feature branch. See `docs/media-kit-verification.md` for automated checks and development release prerequisites.
+
+## Approved follow-up: editor navigation and platform selection
+
+The editor uses Profile, Accounts, Rates and Contact tabs, vertical on desktop
+and horizontal on mobile. Save/Publish remain above the tabs and the live preview
+stays alongside the editor. Unsaved state survives tab changes. Accounts opens
+first for a new kit; existing kits open Profile.
+
+Accounts has one Add account action that opens a HeroUI modal. Creators choose
+Instagram or TikTok, then enter the corresponding username/profile URL. Submission
+queues the appropriate Actor immediately. Existing accounts default to Instagram;
+TikTok profile imports use the existing Clockworks Actor, the same spending cap,
+remote concurrency leases and daily refresh flow. Visibility remains per account
+and per metric. Manual Refresh data and the Import queued banner are removed at
+the user's request. Primary buttons are black and secondary buttons use ghost.

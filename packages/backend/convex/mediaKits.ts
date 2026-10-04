@@ -14,6 +14,7 @@ import {
   DAY,
   defaultMetrics,
   normalizeInstagramHandle,
+  normalizeAccountHandle,
   validateSettings,
   validateSlug,
   contactHref,
@@ -109,11 +110,12 @@ async function queue(
   return importId;
 }
 export const addAccount = mutation({
-  args: { handle: v.string() },
+  args: { handle: v.string(), platform: v.optional(V.platform) },
   returns: v.id("media_kit_accounts"),
   handler: async (ctx, args) => {
     const creator = await owner(ctx);
-    const handle = normalizeInstagramHandle(args.handle);
+    const platform = args.platform ?? "instagram";
+    const handle = normalizeAccountHandle(args.handle, platform);
     let kit = await ownKit(ctx);
     if (!kit) {
       let slug = `creator-${crypto.randomUUID().slice(0, 12)}`;
@@ -149,12 +151,17 @@ export const addAccount = mutation({
       .query("media_kit_accounts")
       .withIndex("by_kit_id", (q) => q.eq("kit_id", kit._id))
       .take(6);
-    if (accounts.length >= 5) throw Error("Add up to five Instagram accounts.");
-    if (accounts.some((a) => a.handle === handle))
+    if (accounts.length >= 5) throw Error("Add up to five social accounts.");
+    if (
+      accounts.some(
+        (a) => a.handle === handle && (a.platform ?? "instagram") === platform,
+      )
+    )
       throw Error("This account is already added.");
     const id = await ctx.db.insert("media_kit_accounts", {
       kit_id: kit._id,
       handle,
+      platform,
       is_visible: true,
       metric_visibility: defaultMetrics,
       refresh_available_at: 0,
@@ -220,7 +227,7 @@ export const saveSettings = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const kit = await ownKit(ctx);
-    if (!kit) throw Error("Add an Instagram account first.");
+    if (!kit) throw Error("Add a social account first.");
     const settings = validateSettings(args.settings);
     const existing = await ctx.db
       .query("media_kits")
@@ -236,7 +243,9 @@ export const saveSettings = mutation({
       if (
         contact.kind === "instagram" &&
         !accounts.some(
-          (a) => a.handle === normalizeInstagramHandle(contact.value),
+          (a) =>
+            (a.platform ?? "instagram") === "instagram" &&
+            a.handle === normalizeInstagramHandle(contact.value),
         )
       )
         throw Error("Instagram contact must match an account in your kit.");
@@ -284,9 +293,7 @@ export const setPublished = mutation({
         .withIndex("by_kit_id", (q) => q.eq("kit_id", kit._id))
         .take(5);
       if (!accounts.some((a) => a.is_visible && a.snapshot))
-        throw Error(
-          "Import and show at least one Instagram account before publishing.",
-        );
+        throw Error("Import and show at least one account before publishing.");
     }
     await ctx.db.patch(kit._id, {
       is_published: args.published,
@@ -366,6 +373,7 @@ export const getPublic = query({
           ...p,
           id: a._id,
           handle: a.handle,
+          platform: a.platform ?? "instagram",
           updatedAt: a.last_success_at ?? 0,
           avatarUrl: a.snapshot!.avatarStorageId
             ? await ctx.storage.getUrl(a.snapshot!.avatarStorageId)
@@ -412,7 +420,9 @@ export const getPublic = query({
                 c.is_visible &&
                 (c.kind !== "instagram" ||
                   shown.some(
-                    (a) => a.handle === normalizeInstagramHandle(c.value),
+                    (a) =>
+                      (a.platform ?? "instagram") === "instagram" &&
+                      a.handle === normalizeInstagramHandle(c.value),
                   )),
             )
             .map((c) => ({

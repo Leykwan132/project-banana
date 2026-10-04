@@ -7,9 +7,15 @@ export function allowedImageUrl(input: string) {
     u.username ||
     u.password ||
     u.port ||
-    !["cdninstagram.com", "fbcdn.net"].some(
-      (host) => u.hostname === host || u.hostname.endsWith(`.${host}`),
-    )
+    ![
+      "cdninstagram.com",
+      "fbcdn.net",
+      "tiktokcdn.com",
+      "tiktokcdn-us.com",
+      "tiktokcdn-eu.com",
+      "tiktokcdn-au.com",
+      "tiktokcdn-in.com",
+    ].some((host) => u.hostname === host || u.hostname.endsWith(`.${host}`))
   )
     throw Error("Unsupported image host.");
   return u.toString();

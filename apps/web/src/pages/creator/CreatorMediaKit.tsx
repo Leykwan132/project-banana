@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Button, Card, Label, Switch } from "@heroui/react";
-import { Instagram } from "lucide-react";
+import { Button, Card, Label, Switch, Tabs, Modal } from "@heroui/react";
+import { Plus, UserRound, AtSign, Wallet, Mail } from "lucide-react";
+import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 import {
   contactHref,
@@ -10,6 +11,7 @@ import {
 import type {
   Settings,
   Contact,
+  Platform,
 } from "../../../../../packages/backend/convex/lib/mediaKitModel";
 import {
   MediaKitView,
@@ -87,6 +89,19 @@ export default function CreatorMediaKit() {
   const primary = useMutation(api.mediaKits.setPrimaryAccount);
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
+  const [platform, setPlatform] = useState<Platform>("instagram");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [tab, setTab] = useState<string | null>(null);
+  const [wide, setWide] = useState(
+    () => window.matchMedia("(min-width: 768px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setWide(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -155,6 +170,7 @@ export default function CreatorMediaKit() {
                 ...projection,
                 id: a._id,
                 handle: a.handle,
+                platform: a.platform ?? "instagram",
                 updatedAt: a.last_success_at ?? 0,
                 avatarUrl,
                 ...(a.metric_visibility.recentPosts
@@ -250,134 +266,31 @@ export default function CreatorMediaKit() {
           {message}
         </p>
       )}
-      <div className="grid lg:grid-cols-2 gap-8 items-start">
-        <div className="space-y-6">
-          <Card className="p-5 shadow-none border border-gray-100 space-y-4">
-            <h2 className="font-semibold">Instagram accounts</h2>
-            <p className="text-xs text-gray-500">
-              Add up to five public accounts. Data refreshes every 24 hours,
-              including hidden accounts.
-            </p>
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void run(async () => {
-                  await add({ handle });
-                  setHandle("");
-                }, "");
-              }}
-            >
-              <input
-                aria-label="Instagram username or profile URL"
-                placeholder="@username or Instagram profile URL"
-                value={handle}
-                onChange={(e) => setHandle(e.target.value)}
-                className={inputClass}
-              />
-              <Button
-                variant="primary"
-                className={primaryButtonClass}
-                type="submit"
-                isDisabled={busy || !handle.trim() || data.accounts.length >= 5}
-              >
-                Import
-              </Button>
-            </form>
-            {data.accounts.map(({ account: a, job }) => (
-              <div
-                key={a._id}
-                className="border-t border-gray-100 pt-4 space-y-3"
-              >
-                <div className="flex justify-between gap-2">
-                  <h3 className="flex min-w-0 items-center gap-2 font-medium">
-                    <Instagram
-                      size={18}
-                      className="shrink-0 text-gray-500"
-                      aria-hidden="true"
-                    />
-                    <span className="truncate">@{a.handle}</span>
-                  </h3>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-black"
-                    isDisabled={busy || data.kit?.primary_account_id === a._id}
-                    onPress={() => run(() => primary({ accountId: a._id }))}
-                  >
-                    {data.kit?.primary_account_id === a._id
-                      ? "Primary"
-                      : "Use as primary"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-black"
-                    isDisabled={busy}
-                    onPress={() =>
-                      run(() => remove({ accountId: a._id }), "Account removed")
-                    }
-                  >
-                    Remove
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  {job && ["queued", "running", "failed"].includes(job.status)
-                    ? `Import ${job.status}`
-                    : a.last_success_at
-                      ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
-                      : "No imported data yet"}
-                  {job?.error_message ? ` · ${job.error_message}` : ""}
-                </p>
-                <Toggle
-                  label="Show this account"
-                  value={a.is_visible}
-                  disabled={busy}
-                  onChange={(isVisible) =>
-                    run(() =>
-                      display({
-                        accountId: a._id,
-                        isVisible,
-                        metricVisibility: a.metric_visibility,
-                      }),
-                    )
-                  }
-                />
-                {(
-                  Object.entries({
-                    followers: "Followers",
-                    postCount: "Post count",
-                    engagementRate: "Engagement rate",
-                    averageLikes: "Average likes",
-                    averageComments: "Average comments",
-                    averageVideoViews: "Average video views",
-                    recentPosts: "Recent posts",
-                  }) as [keyof typeof a.metric_visibility, string][]
-                ).map(([key, label]) => (
-                  <Toggle
-                    key={key}
-                    label={label}
-                    value={a.metric_visibility[key]}
-                    disabled={busy}
-                    onChange={(value) =>
-                      run(() =>
-                        display({
-                          accountId: a._id,
-                          isVisible: a.is_visible,
-                          metricVisibility: {
-                            ...a.metric_visibility,
-                            [key]: value,
-                          },
-                        }),
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            ))}
-          </Card>
-          {settings && (
-            <>
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
+        <Tabs
+          orientation={wide ? "vertical" : "horizontal"}
+          selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
+          onSelectionChange={(key) => setTab(String(key))}
+          className="min-w-0 w-full gap-5"
+        >
+          <Tabs.ListContainer className="w-full shrink-0 overflow-x-auto md:w-32 md:overflow-visible">
+            <Tabs.List aria-label="Media kit settings" className="w-full">
+              {[
+                { id: "profile", label: "Profile", icon: UserRound },
+                { id: "accounts", label: "Accounts", icon: AtSign },
+                { id: "rates", label: "Rates", icon: Wallet },
+                { id: "contact", label: "Contact", icon: Mail },
+              ].map(({ id, label, icon: Icon }) => (
+                <Tabs.Tab key={id} id={id} className="gap-2 text-black">
+                  <Icon size={16} />
+                  {label}
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+          </Tabs.ListContainer>
+          <Tabs.Panel id="profile" className="min-w-0 flex-1">
+            {settings ? (
               <Card className="p-5 shadow-none border border-gray-100 space-y-4">
                 <h2 className="font-semibold">Your introduction</h2>
                 <Field
@@ -435,6 +348,132 @@ export default function CreatorMediaKit() {
                   }
                 />
               </Card>
+            ) : (
+              <p className="text-sm text-gray-500 p-5">
+                Add an account in Accounts to start your profile.
+              </p>
+            )}
+          </Tabs.Panel>
+          <Tabs.Panel id="accounts" className="min-w-0 flex-1">
+            <Card className="p-5 shadow-none border border-gray-100 space-y-4">
+              <h2 className="font-semibold">Accounts</h2>
+              <p className="text-xs text-gray-500">
+                Add up to five public accounts. Data refreshes every 24 hours,
+                including hidden accounts.
+              </p>
+              <Button
+                variant="primary"
+                className={primaryButtonClass}
+                isDisabled={busy || data.accounts.length >= 5}
+                onPress={() => {
+                  setImportError("");
+                  setModalOpen(true);
+                }}
+              >
+                <Plus size={16} />
+                Add account
+              </Button>
+
+              {data.accounts.map(({ account: a, job }) => (
+                <div
+                  key={a._id}
+                  className="border-t border-gray-100 pt-4 space-y-3"
+                >
+                  <div className="flex justify-between gap-2">
+                    <h3 className="flex min-w-0 items-center gap-2 font-medium">
+                      <PlatformIcon platform={a.platform ?? "instagram"} />
+                      <span className="truncate">@{a.handle}</span>
+                      <span className="sr-only">
+                        {a.platform === "tiktok" ? "TikTok" : "Instagram"}
+                      </span>
+                    </h3>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-black"
+                      isDisabled={
+                        busy || data.kit?.primary_account_id === a._id
+                      }
+                      onPress={() => run(() => primary({ accountId: a._id }))}
+                    >
+                      {data.kit?.primary_account_id === a._id
+                        ? "Primary"
+                        : "Use as primary"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-black"
+                      isDisabled={busy}
+                      onPress={() =>
+                        run(
+                          () => remove({ accountId: a._id }),
+                          "Account removed",
+                        )
+                      }
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
+                    {job && ["queued", "running", "failed"].includes(job.status)
+                      ? `Import ${job.status}`
+                      : a.last_success_at
+                        ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
+                        : "No imported data yet"}
+                    {job?.error_message ? ` · ${job.error_message}` : ""}
+                  </p>
+                  <Toggle
+                    label="Show this account"
+                    value={a.is_visible}
+                    disabled={busy}
+                    onChange={(isVisible) =>
+                      run(() =>
+                        display({
+                          accountId: a._id,
+                          isVisible,
+                          metricVisibility: a.metric_visibility,
+                        }),
+                      )
+                    }
+                  />
+                  {(
+                    Object.entries({
+                      followers: "Followers",
+                      postCount: "Post count",
+                      engagementRate: "Engagement rate",
+                      averageLikes: "Average likes",
+                      averageComments: "Average comments",
+                      averageVideoViews: "Average video views",
+                      recentPosts: "Recent posts",
+                    }) as [keyof typeof a.metric_visibility, string][]
+                  ).map(([key, label]) => (
+                    <Toggle
+                      key={key}
+                      label={label}
+                      value={a.metric_visibility[key]}
+                      disabled={busy}
+                      onChange={(value) =>
+                        run(() =>
+                          display({
+                            accountId: a._id,
+                            isVisible: a.is_visible,
+                            metricVisibility: {
+                              ...a.metric_visibility,
+                              [key]: value,
+                            },
+                          }),
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              ))}
+            </Card>
+          </Tabs.Panel>
+          <Tabs.Panel id="rates" className="min-w-0 flex-1">
+            {settings ? (
               <Card className="p-5 shadow-none border border-gray-100 space-y-4">
                 <h2 className="font-semibold">Rates</h2>
                 <Toggle
@@ -580,6 +619,14 @@ export default function CreatorMediaKit() {
                   Add rate
                 </Button>
               </Card>
+            ) : (
+              <p className="text-sm text-gray-500 p-5">
+                Add an account first, then set your rates here.
+              </p>
+            )}
+          </Tabs.Panel>
+          <Tabs.Panel id="contact" className="min-w-0 flex-1">
+            {settings ? (
               <Card className="p-5 shadow-none border border-gray-100 space-y-4">
                 <h2 className="font-semibold">Contact</h2>
                 <Toggle
@@ -668,10 +715,14 @@ export default function CreatorMediaKit() {
                     ))}
                 </div>
               </Card>
-            </>
-          )}
-        </div>
-        <aside className="lg:sticky lg:top-8 rounded-3xl border border-gray-100 bg-[#fafaf8] p-5">
+            ) : (
+              <p className="text-sm text-gray-500 p-5">
+                Add an account first, then choose your contact methods.
+              </p>
+            )}
+          </Tabs.Panel>
+        </Tabs>
+        <aside className="xl:sticky xl:top-8 rounded-3xl border border-gray-100 bg-[#fafaf8] p-5">
           <p className="text-xs uppercase tracking-widest text-gray-400 text-center">
             Live preview · save to update your public page
           </p>
@@ -684,6 +735,109 @@ export default function CreatorMediaKit() {
           )}
         </aside>
       </div>
+
+      <Modal
+        isOpen={modalOpen}
+        onOpenChange={(open) => {
+          if (!busy) setModalOpen(open);
+        }}
+      >
+        <Modal.Backdrop isDismissable={!busy}>
+          <Modal.Container size="sm">
+            <Modal.Dialog>
+              <Modal.CloseTrigger isDisabled={busy} />
+              <Modal.Header>
+                <Modal.Heading>Add an account</Modal.Heading>
+              </Modal.Header>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setBusy(true);
+                  setImportError("");
+                  setMessage("");
+                  try {
+                    await add({ handle, platform });
+                    setHandle("");
+                    setModalOpen(false);
+                    setTab("accounts");
+                  } catch (error) {
+                    setImportError(
+                      error instanceof Error
+                        ? error.message
+                        : "Could not add account.",
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                <Modal.Body className="space-y-5">
+                  <fieldset disabled={busy}>
+                    <legend className="mb-3 text-sm text-gray-600">
+                      Choose a platform
+                    </legend>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["instagram", "tiktok"] as const).map((value) => (
+                        <label
+                          key={value}
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl border p-4 text-sm ${platform === value ? "border-black bg-gray-50" : "border-gray-200"}`}
+                        >
+                          <input
+                            type="radio"
+                            name="platform"
+                            value={value}
+                            checked={platform === value}
+                            onChange={() => {
+                              setPlatform(value);
+                              setHandle("");
+                              setImportError("");
+                            }}
+                            className="accent-black"
+                          />
+                          <PlatformIcon platform={value} />
+                          {value === "instagram" ? "Instagram" : "TikTok"}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <Field
+                    label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
+                    value={handle}
+                    onChange={setHandle}
+                  />
+                  {importError && (
+                    <p role="alert" className="text-sm text-red-600">
+                      {importError}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Use a public profile. Your data will import automatically
+                    and refresh every 24 hours.
+                  </p>
+                </Modal.Body>
+                <Modal.Footer>
+                  <Button
+                    variant="ghost"
+                    className="text-black"
+                    isDisabled={busy}
+                    onPress={() => setModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className={primaryButtonClass}
+                    isDisabled={busy || !handle.trim()}
+                  >
+                    {busy ? "Adding…" : "Add account"}
+                  </Button>
+                </Modal.Footer>
+              </form>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
     </div>
   );
 }

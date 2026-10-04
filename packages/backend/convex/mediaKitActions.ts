@@ -5,11 +5,11 @@ import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { cacheInstagramImage } from "./lib/mediaKitImages";
-import { normalizeProfile } from "./lib/mediaKitModel";
+import { normalizeProfile, normalizeTikTokProfile } from "./lib/mediaKitModel";
 const jobArgs = { importId: v.id("media_kit_imports"), generation: v.string() };
 function client() {
   if (!process.env.APIFY_API_TOKEN)
-    throw Error("Instagram import is not configured.");
+    throw Error("Account import is not configured.");
   return new ApifyClient({ token: process.env.APIFY_API_TOKEN, maxRetries: 0 });
 }
 export const startImport = internalAction({
@@ -35,9 +35,23 @@ export const startImport = internalAction({
         throw Error("Invalid import budget.");
       const apify = client();
       const run = await apify
-        .actor("apify/instagram-profile-scraper")
+        .actor(
+          current.account.platform === "tiktok"
+            ? "clockworks/tiktok-scraper"
+            : "apify/instagram-profile-scraper",
+        )
         .start(
-          { usernames: [current.account.handle] },
+          current.account.platform === "tiktok"
+            ? {
+                profiles: [current.account.handle],
+                resultsPerPage: 12,
+                profileScrapeSections: ["videos"],
+                profileSorting: "latest",
+                excludePinnedPosts: true,
+                maxFollowersPerProfile: 0,
+                maxFollowingPerProfile: 0,
+              }
+            : { usernames: [current.account.handle] },
           { timeout: 600, maxTotalChargeUsd: configured },
         );
       startedRunId = run.id;
@@ -63,7 +77,7 @@ export const startImport = internalAction({
       await ctx.runMutation(internal.mediaKits.finishImport, {
         ...args,
         error:
-          "Instagram import could not start. Check the service configuration or try again later.",
+          "Account import could not start. Check the service configuration or try again later.",
       });
     }
     return null;
@@ -81,7 +95,7 @@ export const pollImport = internalAction({
     } catch {
       await ctx.runMutation(internal.mediaKits.finishImport, {
         ...key,
-        error: "Instagram import is not configured.",
+        error: "Account import is not configured.",
       });
       return null;
     }
@@ -105,8 +119,11 @@ export const pollImport = internalAction({
         completed = true;
         const data = await apify
           .dataset(run.defaultDatasetId)
-          .listItems({ limit: 1 });
-        const profile = normalizeProfile(data.items[0], state.account.handle);
+          .listItems({ limit: state.account.platform === "tiktok" ? 12 : 1 });
+        const profile =
+          state.account.platform === "tiktok"
+            ? normalizeTikTokProfile(data.items, state.account.handle)
+            : normalizeProfile(data.items[0], state.account.handle);
         const avatarStorageId = await cacheInstagramImage(
           ctx,
           profile.profileImageUrl,
@@ -161,7 +178,7 @@ export const pollImport = internalAction({
         await ctx.runMutation(internal.mediaKits.finishImport, {
           ...key,
           error:
-            "Instagram data could not be refreshed. Your last successful data is still available.",
+            "Account data could not be refreshed. Your last successful data is still available.",
         });
         return null;
       }

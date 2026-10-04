@@ -337,3 +337,102 @@ export function validateSettings(input: unknown): Settings {
     contacts: s.contacts.map((c) => ({ ...c, value: c.value.trim() })),
   };
 }
+
+export type Platform = "instagram" | "tiktok";
+export function normalizeAccountHandle(
+  input: string,
+  platform: Platform,
+): string {
+  if (platform === "instagram") return normalizeInstagramHandle(input);
+  let handle = input.trim();
+  if (/^https?:\/\//i.test(handle)) {
+    const url = new URL(handle);
+    if (
+      url.protocol !== "https:" ||
+      !["tiktok.com", "www.tiktok.com"].includes(url.hostname) ||
+      url.username ||
+      url.password ||
+      url.port ||
+      !/^\/@[a-z0-9_.]+\/?$/i.test(url.pathname)
+    )
+      throw Error("Enter a TikTok profile URL or username.");
+    handle = url.pathname.split("/")[1];
+  }
+  handle = handle.replace(/^@/, "").toLowerCase();
+  if (
+    !/^[a-z0-9_][a-z0-9_.]{0,23}$/.test(handle) ||
+    handle.endsWith(".") ||
+    handle.includes("..")
+  )
+    throw Error("Enter a valid TikTok username.");
+  return handle;
+}
+export function accountProfileUrl(handle: string, platform: Platform) {
+  return platform === "tiktok"
+    ? `https://www.tiktok.com/@${handle}`
+    : `https://www.instagram.com/${handle}/`;
+}
+export function normalizeTikTokProfile(
+  items: unknown[],
+  handle: string,
+): ProfileSnapshot {
+  const rows = items
+    .slice(0, 12)
+    .filter(
+      (item): item is Record<string, unknown> =>
+        !!item && typeof item === "object",
+    );
+  const first = rows[0];
+  const author = first?.authorMeta as Record<string, unknown> | undefined;
+  if (
+    !author ||
+    typeof author.name !== "string" ||
+    author.name.toLowerCase() !== handle ||
+    author.privateAccount === true ||
+    first.error
+  )
+    throw Error("This TikTok profile is unavailable or private.");
+  for (const row of rows) {
+    const a = row.authorMeta as Record<string, unknown> | undefined;
+    if (
+      !a ||
+      typeof a.name !== "string" ||
+      a.name.toLowerCase() !== handle ||
+      a.privateAccount === true ||
+      row.error
+    )
+      throw Error("TikTok returned an unexpected profile.");
+  }
+  const videos = rows.filter(
+    (r) => typeof r.id === "string" && /^\d+$/.test(r.id),
+  );
+  const snapshot = normalizeProfile(
+    {
+      username: handle,
+      fullName: author.nickName,
+      biography: author.signature,
+      verified: author.verified,
+      followersCount: author.fans,
+      postsCount: author.video,
+      profilePicUrlHd: author.avatar,
+      latestPosts: videos.map((r) => ({
+        id: r.id,
+        shortCode: r.id,
+        caption: r.text,
+        timestamp: r.createTimeISO,
+        likesCount: r.diggCount,
+        commentsCount: r.commentCount,
+        type: r.isSlideshow === true ? "Sidecar" : "Video",
+        videoViewCount: r.playCount,
+        displayUrl: (r.videoMeta as Record<string, unknown> | undefined)
+          ?.coverUrl,
+      })),
+    },
+    handle,
+  );
+  snapshot.posts = snapshot.posts.map((p) => ({
+    ...p,
+    url: `https://www.tiktok.com/@${handle}/video/${p.id}`,
+  }));
+  return snapshot;
+}

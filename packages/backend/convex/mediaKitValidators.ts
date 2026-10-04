@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+export const platform = v.union(v.literal("instagram"), v.literal("tiktok"));
 export const metricVisibility = v.object({
   followers: v.boolean(),
   postCount: v.boolean(),
@@ -88,6 +89,7 @@ export const kitFields = {
   updated_at: v.number(),
 };
 export const accountFields = {
+  platform: v.optional(platform),
   kit_id: v.id("media_kits"),
   handle: v.string(),
   is_visible: v.boolean(),
@@ -124,6 +126,7 @@ export const importDoc = v.object({
   ...importFields,
 });
 export const publicAccount = v.object({
+  platform,
   id: v.id("media_kit_accounts"),
   handle: v.string(),
   displayName: v.string(),
