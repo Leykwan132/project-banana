@@ -141,8 +141,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
 
             <div className={`space-y-2 border-t border-[#F4F6F8] py-4 ${collapsed ? 'px-3' : 'px-4'}`}>
                 <Dropdown>
-                    <Dropdown.Trigger>
-                        <button aria-label={`${displayName} account menu`} className={`flex w-full items-center rounded-xl py-2 text-left transition-colors hover:bg-gray-50 ${collapsed ? 'justify-center' : 'gap-3 px-2'}`}>
+                    <Dropdown.Trigger aria-label={`${displayName} account menu`} className={`flex w-full items-center rounded-xl py-2 text-left transition-colors hover:bg-gray-50 ${collapsed ? 'justify-center' : 'gap-3 px-2'}`}>
                             <Avatar className="h-9 w-9 shrink-0 rounded-full bg-amber-100 text-amber-800">
                                 <Avatar.Image src={session?.user.image ?? undefined} alt={displayName} />
                                 <Avatar.Fallback>{avatarInitials}</Avatar.Fallback>
@@ -151,7 +150,6 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                                 <span className="block truncate text-sm font-medium text-gray-900">{displayName}</span>
                                 {business !== undefined && <span className="block truncate text-xs text-gray-400">{plan.name}</span>}
                             </span>}
-                        </button>
                     </Dropdown.Trigger>
                     <Dropdown.Popover placement={collapsed ? 'right top' : 'top start'}>
                         <div className="w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
