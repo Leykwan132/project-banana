@@ -862,7 +862,7 @@ export default function CreatorMediaKit() {
                     event.preventDefault();
                     submitSection("profile", event.currentTarget);
                   }}
-                  className="space-y-5"
+                  className="space-y-8"
                 >
                   <SectionHeading
                     title="Profile"
@@ -882,11 +882,12 @@ export default function CreatorMediaKit() {
                     )}
                     <div className="space-y-2">
                       <Button
-                        variant="ghost"
-                        className="text-black"
+                        variant="primary"
+                        className={primaryButtonClass}
                         isDisabled={busy}
                         onPress={() => photoInput.current?.click()}
                       >
+                        <Plus size={16} aria-hidden="true" />
                         Upload image
                       </Button>
                       <p className="text-xs text-gray-500">
