@@ -11,7 +11,7 @@ import {
   Tag,
   TagGroup,
 } from "@heroui/react";
-import { Plus, Trash2, Inbox, Copy, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Inbox, Copy, ExternalLink, X } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
@@ -546,8 +546,8 @@ export default function CreatorMediaKit() {
                   <TagGroup.List className="flex flex-wrap gap-2">
                     {[
                       ...new Set([
-                        ...nicheOptions,
                         ...selectedNiches(settings.category),
+                        ...nicheOptions,
                       ]),
                     ].map((niche) => (
                       <Tag
@@ -562,8 +562,14 @@ export default function CreatorMediaKit() {
                             {isSelected && (
                               <Tag.RemoveButton
                                 aria-label={`Remove ${niche}`}
-                                className="ml-1 text-white"
-                              />
+                                className="ml-1 bg-transparent text-white hover:bg-transparent"
+                              >
+                                <X
+                                  size={14}
+                                  strokeWidth={2}
+                                  aria-hidden="true"
+                                />
+                              </Tag.RemoveButton>
                             )}
                           </>
                         )}
