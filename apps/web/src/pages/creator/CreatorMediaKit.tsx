@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Handshake,
 } from "lucide-react";
+import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
@@ -130,6 +131,7 @@ function Field({
   );
 }
 export default function CreatorMediaKit() {
+  const toast = useToast();
   const data = useQuery(api.mediaKits.getEditor, {});
   const add = useMutation(api.mediaKits.addAccount);
   const save = useMutation(api.mediaKits.saveSettings);
@@ -139,7 +141,6 @@ export default function CreatorMediaKit() {
   const [handle, setHandle] = useState("");
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [modalOpen, setModalOpen] = useState(false);
-  const [importError, setImportError] = useState("");
   const [pendingRemoval, setPendingRemoval] = useState<
     | {
         kind: "account";
@@ -150,12 +151,10 @@ export default function CreatorMediaKit() {
     | { kind: "partnership"; index: number; name: string }
     | null
   >(null);
-  const [removalError, setRemovalError] = useState("");
   const [tab, setTab] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
   useEffect(() => {
     if (data?.kit && !dirty) {
       const k = data.kit;
@@ -176,12 +175,15 @@ export default function CreatorMediaKit() {
   }, [data, dirty]);
   const run = async (fn: () => Promise<unknown>, success = "Saved") => {
     setBusy(true);
-    setMessage("");
     try {
       await fn();
-      setMessage(success);
+      if (success) toast({ title: success, color: "success" });
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Something went wrong.");
+      toast({
+        title: "Action failed",
+        description: e instanceof Error ? e.message : "Something went wrong.",
+        color: "danger",
+      });
     } finally {
       setBusy(false);
     }
@@ -326,14 +328,6 @@ export default function CreatorMediaKit() {
           </div>
         )}
       </header>
-      {message && (
-        <p
-          role="status"
-          className="mb-5 rounded-xl bg-gray-100 px-4 py-3 text-sm"
-        >
-          {message}
-        </p>
-      )}
       <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
         <Tabs
           orientation="horizontal"
@@ -439,7 +433,6 @@ export default function CreatorMediaKit() {
                 className={primaryButtonClass}
                 isDisabled={busy || data.accounts.length >= 5}
                 onPress={() => {
-                  setImportError("");
                   setModalOpen(true);
                 }}
               >
@@ -491,7 +484,6 @@ export default function CreatorMediaKit() {
                         aria-label={`Remove @${a.handle}`}
                         isDisabled={busy}
                         onPress={() => {
-                          setRemovalError("");
                           setPendingRemoval({
                             kind: "account",
                             id: a._id,
@@ -602,7 +594,6 @@ export default function CreatorMediaKit() {
                           className="text-red-600 hover:text-red-700"
                           aria-label={`Remove ${partner.brand_name || "partnership"}`}
                           onPress={() => {
-                            setRemovalError("");
                             setPendingRemoval({
                               kind: "partnership",
                               index: i,
@@ -1002,19 +993,21 @@ export default function CreatorMediaKit() {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   setBusy(true);
-                  setImportError("");
-                  setMessage("");
+
                   try {
                     await add({ handle, platform });
                     setHandle("");
                     setModalOpen(false);
                     setTab("accounts");
                   } catch (error) {
-                    setImportError(
-                      error instanceof Error
-                        ? error.message
-                        : "Could not add account.",
-                    );
+                    toast({
+                      title: "Could not add account",
+                      description:
+                        error instanceof Error
+                          ? error.message
+                          : "Please try again.",
+                      color: "danger",
+                    });
                   } finally {
                     setBusy(false);
                   }
@@ -1039,7 +1032,6 @@ export default function CreatorMediaKit() {
                             onChange={() => {
                               setPlatform(value);
                               setHandle("");
-                              setImportError("");
                             }}
                             className="accent-black"
                           />
@@ -1054,11 +1046,7 @@ export default function CreatorMediaKit() {
                     value={handle}
                     onChange={setHandle}
                   />
-                  {importError && (
-                    <p role="alert" className="text-sm text-red-600">
-                      {importError}
-                    </p>
-                  )}
+
                   <p className="text-xs text-gray-500">
                     Use a public profile. Your data will import automatically
                     and refresh every 24 hours.
@@ -1124,11 +1112,6 @@ export default function CreatorMediaKit() {
                     </>
                   )}
                 </p>
-                {removalError && (
-                  <p role="alert" className="mt-3 text-sm text-red-600">
-                    {removalError}
-                  </p>
-                )}
               </Modal.Body>
               <Modal.Footer>
                 <Button
@@ -1152,20 +1135,28 @@ export default function CreatorMediaKit() {
                         ),
                       });
                       setPendingRemoval(null);
+                      toast({
+                        title: "Partnership removed",
+                        description: "Save changes to update your public page.",
+                        color: "info",
+                      });
                       return;
                     }
                     setBusy(true);
-                    setRemovalError("");
+
                     try {
                       await remove({ accountId: pendingRemoval.id });
                       setPendingRemoval(null);
-                      setMessage("Account removed");
+                      toast({ title: "Account removed", color: "success" });
                     } catch (error) {
-                      setRemovalError(
-                        error instanceof Error
-                          ? error.message
-                          : "Could not remove account.",
-                      );
+                      toast({
+                        title: "Could not remove account",
+                        description:
+                          error instanceof Error
+                            ? error.message
+                            : "Please try again.",
+                        color: "danger",
+                      });
                     } finally {
                       setBusy(false);
                     }
