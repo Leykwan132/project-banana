@@ -1,4 +1,5 @@
 import { Card, Button } from "@heroui/react";
+import { ContactIcon } from "./ContactIcon";
 import { PlatformIcon } from "./PlatformIcon";
 import { accountProfileUrl } from "../../../../../packages/backend/convex/lib/mediaKitModel";
 import type { FunctionReturnType } from "convex/server";
@@ -58,6 +59,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                   window.open(c.href, "_blank", "noopener,noreferrer")
                 }
               >
+                <ContactIcon kind={c.kind} />
                 {c.kind === "email"
                   ? "Email"
                   : c.kind === "website"

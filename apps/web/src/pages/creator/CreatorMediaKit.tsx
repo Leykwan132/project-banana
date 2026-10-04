@@ -28,6 +28,7 @@ import {
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitPreview } from "../../components/media-kit/MediaKitPreview";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
+import { ContactIcon } from "../../components/media-kit/ContactIcon";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
@@ -92,6 +93,7 @@ const primaryButtonClass =
 
 function ItemCard({
   title,
+  icon,
   description,
   visible,
   onOpen,
@@ -99,6 +101,7 @@ function ItemCard({
   onDelete,
 }: {
   title: string;
+  icon?: ReactNode;
   description: string;
   visible: boolean;
   onOpen: () => void;
@@ -112,6 +115,11 @@ function ItemCard({
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
         onClick={onOpen}
       >
+        {icon && (
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gray-100 text-gray-700">
+            {icon}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{title}</p>
           <p className="mt-1 truncate text-sm text-gray-500">{description}</p>
@@ -1832,6 +1840,7 @@ export default function CreatorMediaKit() {
                                     id={item.kind}
                                     textValue={item.label}
                                   >
+                                    <ContactIcon kind={item.kind} />
                                     <Label>{item.label}</Label>
                                     <ListBox.ItemIndicator />
                                   </ListBox.Item>
@@ -1868,6 +1877,7 @@ export default function CreatorMediaKit() {
                     settings.contacts.map((contact, i) => (
                       <ItemCard
                         key={contact.kind}
+                        icon={<ContactIcon kind={contact.kind} />}
                         title={
                           contact.kind === "whatsapp"
                             ? "WhatsApp"
