@@ -448,6 +448,18 @@ export default function CreatorMediaKit() {
               JSON.stringify(settings[key]) !==
               JSON.stringify(savedSettings[key]),
           );
+    const creating =
+      detail?.section === section &&
+      !!savedSettings &&
+      (section === "partnerships"
+        ? Number(detail.key) >= (savedSettings.partnerships ?? []).length
+        : section === "rates"
+          ? Number(detail.key) >= savedSettings.rates.length
+          : section === "contact"
+            ? !savedSettings.contacts.some(
+                (contact) => contact.kind === detail.key,
+              )
+            : false);
     if (!changed) return null;
     return (
       <div className="flex justify-end gap-3 border-t border-gray-100 pt-5">
@@ -500,7 +512,13 @@ export default function CreatorMediaKit() {
             }, "Changes saved")
           }
         >
-          {busy ? "Saving…" : "Save"}
+          {busy
+            ? creating
+              ? "Confirming…"
+              : "Saving…"
+            : creating
+              ? "Confirm"
+              : "Save"}
         </Button>
       </div>
     );
@@ -843,7 +861,7 @@ export default function CreatorMediaKit() {
                         isDisabled={busy || !handle.trim()}
                       >
                         <Plus size={16} aria-hidden="true" />
-                        {busy ? "Adding…" : "Add account"}
+                        {busy ? "Confirming…" : "Confirm"}
                       </Button>
                     </div>
                   </form>
