@@ -103,7 +103,7 @@ function ItemCard({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4">
+    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-300 hover:bg-gray-50 focus-within:border-gray-300 focus-within:bg-gray-50">
       <button
         type="button"
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
