@@ -11,56 +11,7 @@ import {
   Tag,
   TagGroup,
 } from "@heroui/react";
-import {
-  Plus,
-  Trash2,
-  Inbox,
-  Copy,
-  ExternalLink,
-  X,
-  Tags,
-  Palette,
-  Medal,
-  Sparkles,
-  BriefcaseBusiness,
-  Laugh,
-  ChefHat,
-  Hammer,
-  GraduationCap,
-  Clapperboard,
-  Rocket,
-  Users,
-  Shirt,
-  ChartNoAxesCombined,
-  Dumbbell,
-  Utensils,
-  Gamepad2,
-  Landmark,
-  House,
-  Coffee,
-  BookOpen,
-  Brain,
-  Smartphone,
-  Music,
-  Trees,
-  Baby,
-  Wallet,
-  PawPrint,
-  Camera,
-  Mic,
-  Star,
-  ListChecks,
-  Heart,
-  Footprints,
-  Droplets,
-  Trophy,
-  Cpu,
-  Plane,
-  Fingerprint,
-  Leaf,
-  Flower2,
-  type LucideIcon,
-} from "lucide-react";
+import { Plus, Trash2, Inbox, Copy, ExternalLink, X } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
@@ -114,52 +65,6 @@ const nicheOptions = [
   "Wellness",
   "Yoga",
 ];
-const nicheIcons: Record<string, LucideIcon> = {
-  Art: Palette,
-  Athlete: Medal,
-  Beauty: Sparkles,
-  Business: BriefcaseBusiness,
-  Comedy: Laugh,
-  Cooking: ChefHat,
-  DIY: Hammer,
-  Education: GraduationCap,
-  Entertainment: Clapperboard,
-  Entrepreneurship: Rocket,
-  Family: Users,
-  Fashion: Shirt,
-  Finance: ChartNoAxesCombined,
-  Fitness: Dumbbell,
-  Food: Utensils,
-  Gaming: Gamepad2,
-  History: Landmark,
-  Home: House,
-  Lifestyle: Coffee,
-  Literature: BookOpen,
-  "Mental Health": Brain,
-  "Mobile Gaming": Smartphone,
-  Music: Music,
-  Outdoors: Trees,
-  Parenthood: Baby,
-  "Personal Finance": Wallet,
-  Pets: PawPrint,
-  Photography: Camera,
-  Podcast: Mic,
-  "Pop Culture": Star,
-  Productivity: ListChecks,
-  Relationship: Heart,
-  Running: Footprints,
-  Skincare: Droplets,
-  Sports: Trophy,
-  Tech: Cpu,
-  Travel: Plane,
-  "True Crime": Fingerprint,
-  Wellness: Leaf,
-  Yoga: Flower2,
-};
-function NicheIcon({ niche }: { niche: string }) {
-  const Icon = nicheIcons[niche] ?? Tags;
-  return <Icon size={16} aria-hidden="true" className="shrink-0" />;
-}
 const selectedNiches = (category: string) =>
   category
     .split(",")
@@ -653,7 +558,6 @@ export default function CreatorMediaKit() {
                       >
                         {({ isSelected }) => (
                           <>
-                            <NicheIcon niche={niche} />
                             {niche}
                             {isSelected && (
                               <Tag.RemoveButton
