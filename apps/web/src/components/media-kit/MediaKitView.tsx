@@ -367,7 +367,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
         <Modal.Backdrop isDismissable>
           <Modal.Container size="sm">
             <Modal.Dialog className="rounded-3xl border border-neutral-700 bg-neutral-900 text-gray-100">
-              <Modal.CloseTrigger className="text-gray-100" />
+              <Modal.CloseTrigger className="bg-neutral-800! text-gray-100! hover:bg-neutral-700!" />
               <Modal.Header>
                 {selectedPartnership?.logo_url && (
                   <img
