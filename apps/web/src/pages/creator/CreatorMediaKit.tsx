@@ -149,7 +149,7 @@ function Field({
   multiline?: boolean;
 }) {
   return (
-    <label className="block space-y-1.5 text-sm">
+    <label className="flex flex-col gap-2 text-sm">
       <span className="text-gray-600">{label}</span>
       {multiline ? (
         <textarea
@@ -727,7 +727,7 @@ export default function CreatorMediaKit() {
                       }
                     />
                     <div className="flex gap-3">
-                      <label className="flex-1 text-sm">
+                      <label className="flex flex-1 flex-col gap-2 text-sm">
                         Price
                         <input
                           aria-label="Price"
@@ -753,7 +753,7 @@ export default function CreatorMediaKit() {
                         />
                       </label>
                       <Select
-                        className="w-28 shrink-0"
+                        className="w-28 shrink-0 gap-2"
                         value={rate.currency}
                         onChange={(currency) => {
                           if (
