@@ -17,14 +17,6 @@ const number = (n: number) =>
 export function MediaKitView({ kit }: { kit: KitView }) {
   return (
     <div className="mx-auto max-w-3xl space-y-8 text-gray-900">
-      <a
-        href="/"
-        aria-label="Powered by Lumina"
-        className="inline-flex items-center gap-2 text-xs text-gray-500"
-      >
-        <span>Powered by</span>
-        <img src={luminaIcon} alt="Lumina" className="size-6" />
-      </a>
       <header className="flex flex-col items-center text-center pt-8 gap-4">
         {kit.photoUrl ? (
           <img
@@ -98,16 +90,22 @@ export function MediaKitView({ kit }: { kit: KitView }) {
               { id: "tiktok", label: "TikTok" },
               { id: "partnerships", label: "Partnerships" },
               { id: "rates", label: "Rates" },
-            ].map((tab) => (
-              <Tabs.Tab
-                key={tab.id}
-                id={tab.id}
-                className="min-w-0 flex-1 px-1 text-xs font-normal text-black sm:px-3 sm:text-sm"
-              >
-                {tab.label}
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            ))}
+            ]
+              .filter(
+                (tab) =>
+                  (tab.id !== "instagram" && tab.id !== "tiktok") ||
+                  kit.accounts.some((account) => account.platform === tab.id),
+              )
+              .map((tab) => (
+                <Tabs.Tab
+                  key={tab.id}
+                  id={tab.id}
+                  className="min-w-0 flex-1 px-1 text-xs font-normal text-black sm:px-3 sm:text-sm"
+                >
+                  {tab.label}
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              ))}
           </Tabs.List>
         </Tabs.ListContainer>
         <Tabs.Panel id="partnerships" className="w-full">
@@ -147,124 +145,134 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             </p>
           )}
         </Tabs.Panel>
-        {(["instagram", "tiktok"] as const).map((platform) => (
-          <Tabs.Panel key={platform} id={platform} className="w-full space-y-5">
-            {kit.accounts
-              .filter((account) => account.platform === platform)
-              .map((a) => (
-                <Card
-                  key={a.id}
-                  className="bg-white border border-gray-100 shadow-none rounded-3xl p-6"
-                >
-                  <Card.Header className="flex-row items-center gap-3">
-                    {a.avatarUrl && (
-                      <img
-                        src={a.avatarUrl}
-                        alt=""
-                        className="size-11 rounded-full object-cover"
-                      />
-                    )}
-                    <div>
-                      <a
-                        href={accountProfileUrl(a.handle, a.platform)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-2 font-semibold"
-                      >
-                        <PlatformIcon platform={a.platform} size={17} />@
-                        {a.handle}
-                      </a>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·
-                        Updated {new Date(a.updatedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </Card.Header>
-                  <Card.Content className="space-y-5">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-4">
-                      {(
-                        [
-                          ["followers", "Followers"],
-                          ["postCount", "Posts"],
-                          ["engagementRate", "Engagement"],
-                          ["averageLikes", "Average likes"],
-                          ["averageComments", "Average comments"],
-                          ["averageVideoViews", "Average video views"],
-                        ] as const
-                      ).map(([key, label]) =>
-                        a[key] === undefined ? null : (
-                          <div key={key}>
-                            <p className="text-xl font-semibold">
-                              {key === "engagementRate"
-                                ? `${a[key]!.toFixed(2)}%`
-                                : number(a[key]!)}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {label}
-                            </p>
-                          </div>
-                        ),
+        {(["instagram", "tiktok"] as const)
+          .filter((platform) =>
+            kit.accounts.some((account) => account.platform === platform),
+          )
+          .map((platform) => (
+            <Tabs.Panel
+              key={platform}
+              id={platform}
+              className="w-full space-y-5"
+            >
+              {kit.accounts
+                .filter((account) => account.platform === platform)
+                .map((a) => (
+                  <Card
+                    key={a.id}
+                    className="bg-white border border-gray-100 shadow-none rounded-3xl p-6"
+                  >
+                    <Card.Header className="flex-row items-center gap-3">
+                      {a.avatarUrl && (
+                        <img
+                          src={a.avatarUrl}
+                          alt=""
+                          className="size-11 rounded-full object-cover"
+                        />
                       )}
-                    </div>
-                    {(a.engagementSampleSize !== undefined ||
-                      a.videoSampleSize !== undefined ||
-                      a.likesSampleSize !== undefined ||
-                      a.commentsSampleSize !== undefined) && (
-                      <p className="text-xs text-gray-400">
-                        Recent sampled posts
-                        {a.likesSampleSize !== undefined
-                          ? ` · Likes based on ${a.likesSampleSize} posts`
-                          : ""}
-                        {a.commentsSampleSize !== undefined
-                          ? ` · Comments based on ${a.commentsSampleSize} posts`
-                          : ""}
-                        {a.engagementSampleSize !== undefined
-                          ? ` · Engagement based on ${a.engagementSampleSize} posts`
-                          : ""}
-                        {a.videoSampleSize !== undefined
-                          ? ` · Video average based on ${a.videoSampleSize} videos`
-                          : ""}
-                        . Public data; not platform Insights.
-                      </p>
-                    )}
-                    {!!a.posts?.length && (
-                      <div className="grid grid-cols-3 gap-2">
-                        {a.posts.map((p) => (
-                          <a
-                            key={p.id}
-                            href={p.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="aspect-square overflow-hidden rounded-xl bg-gray-50"
-                            aria-label={p.caption || "View post"}
-                          >
-                            {p.imageUrl ? (
-                              <img
-                                src={p.imageUrl}
-                                alt={p.caption.slice(0, 100)}
-                                loading="lazy"
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="grid h-full place-items-center text-xs text-gray-400 p-3">
-                                View post ↗
-                              </div>
-                            )}
-                          </a>
-                        ))}
+                      <div>
+                        <a
+                          href={accountProfileUrl(a.handle, a.platform)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 font-semibold"
+                        >
+                          <PlatformIcon platform={a.platform} size={17} />@
+                          {a.handle}
+                        </a>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·
+                          Updated {new Date(a.updatedAt).toLocaleDateString()}
+                        </p>
                       </div>
-                    )}
-                  </Card.Content>
-                </Card>
-              ))}
-            {!kit.accounts.some((account) => account.platform === platform) && (
-              <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
-                No public {platform === "instagram" ? "Instagram" : "TikTok"}{" "}
-                accounts yet.
-              </p>
-            )}
-          </Tabs.Panel>
-        ))}
+                    </Card.Header>
+                    <Card.Content className="space-y-5">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-4">
+                        {(
+                          [
+                            ["followers", "Followers"],
+                            ["postCount", "Posts"],
+                            ["engagementRate", "Engagement"],
+                            ["averageLikes", "Average likes"],
+                            ["averageComments", "Average comments"],
+                            ["averageVideoViews", "Average video views"],
+                          ] as const
+                        ).map(([key, label]) =>
+                          a[key] === undefined ? null : (
+                            <div key={key}>
+                              <p className="text-xl font-semibold">
+                                {key === "engagementRate"
+                                  ? `${a[key]!.toFixed(2)}%`
+                                  : number(a[key]!)}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {label}
+                              </p>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                      {(a.engagementSampleSize !== undefined ||
+                        a.videoSampleSize !== undefined ||
+                        a.likesSampleSize !== undefined ||
+                        a.commentsSampleSize !== undefined) && (
+                        <p className="text-xs text-gray-400">
+                          Recent sampled posts
+                          {a.likesSampleSize !== undefined
+                            ? ` · Likes based on ${a.likesSampleSize} posts`
+                            : ""}
+                          {a.commentsSampleSize !== undefined
+                            ? ` · Comments based on ${a.commentsSampleSize} posts`
+                            : ""}
+                          {a.engagementSampleSize !== undefined
+                            ? ` · Engagement based on ${a.engagementSampleSize} posts`
+                            : ""}
+                          {a.videoSampleSize !== undefined
+                            ? ` · Video average based on ${a.videoSampleSize} videos`
+                            : ""}
+                          . Public data; not platform Insights.
+                        </p>
+                      )}
+                      {!!a.posts?.length && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {a.posts.map((p) => (
+                            <a
+                              key={p.id}
+                              href={p.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="aspect-square overflow-hidden rounded-xl bg-gray-50"
+                              aria-label={p.caption || "View post"}
+                            >
+                              {p.imageUrl ? (
+                                <img
+                                  src={p.imageUrl}
+                                  alt={p.caption.slice(0, 100)}
+                                  loading="lazy"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="grid h-full place-items-center text-xs text-gray-400 p-3">
+                                  View post ↗
+                                </div>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </Card.Content>
+                  </Card>
+                ))}
+              {!kit.accounts.some(
+                (account) => account.platform === platform,
+              ) && (
+                <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+                  No public {platform === "instagram" ? "Instagram" : "TikTok"}{" "}
+                  accounts yet.
+                </p>
+              )}
+            </Tabs.Panel>
+          ))}
         <Tabs.Panel id="rates" className="w-full">
           {!!kit.rates.length && (
             <section>
@@ -342,10 +350,14 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           })}
         </nav>
       )}
-      <footer className="text-center text-xs text-gray-400 pb-8 pt-6">
-        Media kit by{" "}
-        <a href="/" className="font-semibold text-gray-700">
-          lumina
+      <footer className="pb-8 pt-6 text-center">
+        <a
+          href="/"
+          aria-label="Powered by Lumina"
+          className="inline-flex items-center gap-2 text-xs text-gray-500"
+        >
+          <span>Powered by</span>
+          <img src={luminaIcon} alt="Lumina" className="size-6" />
         </a>
       </footer>
     </div>
