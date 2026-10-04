@@ -2,10 +2,10 @@ export const DAY = 86_400_000;
 export const defaultMetrics = {
   followers: true,
   postCount: true,
-  engagementRate: false,
-  averageLikes: false,
-  averageComments: false,
-  averageVideoViews: false,
+  engagementRate: true,
+  averageLikes: true,
+  averageComments: true,
+  averageVideoViews: true,
   recentPosts: true,
 };
 export type MetricVisibility = typeof defaultMetrics;
