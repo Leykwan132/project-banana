@@ -685,7 +685,10 @@ export default function CreatorMediaKit() {
             )}
           </Tabs.Panel>
           <Tabs.Panel id="accounts" className="min-w-0 w-full">
-            <section className="space-y-5">
+            <section
+              key={modalOpen ? "new-account" : (detail?.key ?? "list")}
+              className={`space-y-5 ${detail?.section === "accounts" || modalOpen ? "media-kit-detail-enter" : ""}`}
+            >
               {!detail && !modalOpen && (
                 <SectionHeading
                   title="Accounts"
@@ -1010,7 +1013,10 @@ export default function CreatorMediaKit() {
           </Tabs.Panel>
           <Tabs.Panel id="partnerships" className="min-w-0 w-full">
             {settings ? (
-              <section className="space-y-5">
+              <section
+                key={detail?.key ?? "list"}
+                className={`space-y-5 ${detail?.section === "partnerships" ? "media-kit-detail-enter" : ""}`}
+              >
                 {!detail && (
                   <SectionHeading
                     title="Past partnerships"
@@ -1225,7 +1231,10 @@ export default function CreatorMediaKit() {
           </Tabs.Panel>
           <Tabs.Panel id="rates" className="min-w-0 w-full">
             {settings ? (
-              <section className="space-y-5">
+              <section
+                key={detail?.key ?? "list"}
+                className={`space-y-5 ${detail?.section === "rates" ? "media-kit-detail-enter" : ""}`}
+              >
                 {!detail && (
                   <SectionHeading
                     title="Rates"
@@ -1482,7 +1491,10 @@ export default function CreatorMediaKit() {
           </Tabs.Panel>
           <Tabs.Panel id="contact" className="min-w-0 w-full">
             {settings ? (
-              <section className="space-y-5">
+              <section
+                key={detail?.key ?? "list"}
+                className={`space-y-5 ${detail?.section === "contact" ? "media-kit-detail-enter" : ""}`}
+              >
                 {!detail && (
                   <SectionHeading
                     title="Contact"
