@@ -403,4 +403,6 @@ crons.cron(
     internal.crons.sendPendingBankAccountsTelegramSummary,
 );
 
+crons.interval("refresh creator media kits", { hours: 24 }, internal.mediaKitActions.refreshDaily, {});
+
 export default crons;

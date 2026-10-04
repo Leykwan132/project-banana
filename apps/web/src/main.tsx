@@ -15,6 +15,8 @@ import CreatorCampaigns from './pages/creator/CreatorCampaigns';
 import CreatorCampaignDetails from './pages/creator/CreatorCampaignDetails';
 import { CreatorLayout } from './components/CreatorLayout';
 import { WorkspaceBoundary } from './components/WorkspaceBoundary';
+import MediaKit from './pages/MediaKit';
+import CreatorMediaKit from './pages/creator/CreatorMediaKit';
 import App from './App'
 import Login from './pages/Login'
 import AuthRedirect from './pages/AuthRedirect'
@@ -50,7 +52,7 @@ clearStaleProductTourActive();
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string, {
   // Optionally pause queries until the user is authenticated
-  expectAuth: true,
+  expectAuth: !window.location.pathname.startsWith('/kit/'),
 });
 
 const options = {
@@ -90,6 +92,7 @@ createRoot(document.getElementById('root')!).render(
             {!invitationEntry && <PostHogPageViewTracker />}
             <WorkspaceBoundary><Routes>
               <Route path="/" element={<App />} />
+              <Route path="/kit/:slug" element={<MediaKit />} />
               <Route path="/business" element={<App />} />
               <Route path="/pricing" element={<App />} />
               <Route path="/about" element={<App />} />
@@ -103,6 +106,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/workspace-access" element={<WorkspaceAccess />} />
               <Route element={<CreatorLayout />}>
                 <Route path="/creator" element={<Navigate to="/creator/campaigns" replace />} />
+                <Route path="/creator/media-kit" element={<CreatorMediaKit />} />
                 <Route path="/creator/campaigns" element={<CreatorCampaigns />} />
                 <Route path="/creator/campaigns/:campaignId" element={<CreatorCampaignDetails />} />
                 <Route path="/creator/submissions" element={<CreatorSubmissions />} />

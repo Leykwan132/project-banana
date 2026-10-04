@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as mediaKits from "../mediaKits.js";
+import type * as mediaKitActions from "../mediaKitActions.js";
 import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
 import type * as applications from "../applications.js";
@@ -52,6 +54,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  mediaKits: typeof mediaKits;
+  mediaKitActions: typeof mediaKitActions;
   admin: typeof admin;
   analytics: typeof analytics;
   applications: typeof applications;

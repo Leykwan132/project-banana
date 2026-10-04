@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeftRight, FileCheck2, Landmark, LoaderCircle, LogOut, Megaphone, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { ArrowLeftRight, FileCheck2, Landmark, Contact, LoaderCircle, LogOut, Megaphone, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { protectedWorkspacePath, rememberWorkspace, switchWorkspacePath } from '../lib/workspace';
@@ -10,6 +10,7 @@ import logo from '../assets/icon.svg';
 const navigation = [
     { label: 'Campaigns', to: '/creator/campaigns', icon: Megaphone },
     { label: 'Submissions', to: '/creator/submissions', icon: FileCheck2 },
+    { label: 'Media Kit', to: '/creator/media-kit', icon: Contact },
     { label: 'Withdraw', to: '/creator/withdraw', icon: Landmark },
 ];
 

@@ -79,3 +79,34 @@ bunx convex deploy
 By default, this publishes to the project's production backend. A preview deployment key in CI targets its preview deployment instead. Configure the production deployment's environment variables first; dev settings and data do not carry over automatically. Review local backend changes before deploying.
 
 The root `bun run deploy` command deploys only the website to Cloudflare. Release new backend functions with the web pages that call them, and build the production website using that backend's public URLs.
+
+## Creator media kits
+
+Creators edit `/creator/media-kit`; published kits are anonymous at `/kit/{slug}`.
+The feature adds `media_kits`, `media_kit_accounts`, and `media_kit_imports` (see
+`convex/mediaKitValidators.ts`). Public queries explicitly filter each account,
+metric, contact, and rate before returning data. Combined followers can include
+people following multiple accounts and are not a deduplicated audience count.
+Engagement and averages use sampled recent public posts, not Instagram Insights.
+
+Imports reuse `APIFY_API_TOKEN`, `apify/instagram-profile-scraper`, and the existing
+scrape Workpool. Set `MEDIA_KIT_MAX_CHARGE_USD` to override the default **USD 0.05
+per Actor run** (allowed range: greater than zero, at most USD 1). Paid starts never
+automatically retry. An atomic backend lease limits active remote imports to three;
+runs expire after ten minutes. Successful refresh cooldown is 24 hours; failed
+refresh cooldown is ten minutes. Last successful data remains available on failure.
+
+A Convex interval runs every 24 hours and paginates saved accounts, including
+hidden accounts and drafts. It skips fresh data, current imports, and deleted
+owners. Scraped snapshots never overwrite saved rates, contacts, visibility,
+publication, or edited identity. Avatars and up to six thumbnails are cached from
+allowlisted Instagram CDNs; previous assets are removed on replacement/removal.
+
+Release backend/schema and web together. Configure the token on the target Convex
+deployment before enabling the feature. Deploying the backend activates recurring
+paid scraping for eligible saved accounts. This PR does not deploy or run a paid
+Actor. Regenerate API declarations using `convex codegen` on a configured development
+deployment; the isolated checkout has no `CONVEX_DEPLOYMENT`.
+
+Verification: `bun test packages/backend/tests`, backend TypeScript, web TypeScript,
+and `bun --bun run --cwd apps/web build`. Mocked tests never use live Apify data.
