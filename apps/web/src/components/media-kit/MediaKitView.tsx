@@ -192,7 +192,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                         {(
                           [
                             ["followers", "Followers"],
-                            ["postCount", "Posts"],
+                            ["postCount", "Lifetime Posts"],
                             ["engagementRate", "Engagement"],
                             ["averageLikes", "Average likes"],
                             ["averageComments", "Average comments"],
