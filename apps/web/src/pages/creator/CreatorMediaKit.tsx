@@ -165,7 +165,7 @@ function EmptyState({
 }: {
   title: string;
   description: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <div className="flex w-full flex-col items-center justify-center gap-4 rounded-2xl bg-gray-50 px-6 py-12 text-center">
@@ -178,23 +178,6 @@ function EmptyState({
     </div>
   );
 }
-function EmptyAction({
-  empty,
-  children,
-  ...props
-}: {
-  empty: boolean;
-  title: string;
-  description: string;
-  children: ReactNode;
-}) {
-  return empty ? (
-    <EmptyState {...props}>{children}</EmptyState>
-  ) : (
-    <>{children}</>
-  );
-}
-
 function VisibilitySwitch({
   label,
   value,
@@ -703,7 +686,21 @@ export default function CreatorMediaKit() {
               <SectionHeading
                 title="Accounts"
                 description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
-              />
+              >
+                {!detail && !modalOpen && (
+                  <Button
+                    variant="primary"
+                    className={primaryButtonClass}
+                    isDisabled={busy || data.accounts.length >= 5}
+                    onPress={() => {
+                      setModalOpen(true);
+                    }}
+                  >
+                    <Plus size={16} />
+                    Add account
+                  </Button>
+                )}
+              </SectionHeading>
               {modalOpen && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
@@ -803,24 +800,11 @@ export default function CreatorMediaKit() {
                   </form>
                 </div>
               )}
-              {!detail && !modalOpen && (
-                <EmptyAction
-                  empty={data.accounts.length === 0}
+              {!detail && !modalOpen && data.accounts.length === 0 && (
+                <EmptyState
                   title="No accounts yet"
                   description="Add your Instagram or TikTok account to start building your media kit."
-                >
-                  <Button
-                    variant="primary"
-                    className={`${primaryButtonClass} w-full`}
-                    isDisabled={busy || data.accounts.length >= 5}
-                    onPress={() => {
-                      setModalOpen(true);
-                    }}
-                  >
-                    <Plus size={16} />
-                    Add account
-                  </Button>
-                </EmptyAction>
+                />
               )}
 
               {detail?.section === "accounts" && (
@@ -1003,16 +987,11 @@ export default function CreatorMediaKit() {
                 <SectionHeading
                   title="Past partnerships"
                   description="Showcase brands you’ve worked with. Add up to ten collaborations."
-                />
-                {!detail && (
-                  <EmptyAction
-                    empty={(settings.partnerships ?? []).length === 0}
-                    title="No partnerships yet"
-                    description="Showcase brands you’ve worked with by adding your first collaboration."
-                  >
+                >
+                  {!detail && (
                     <Button
                       variant="primary"
-                      className={`${primaryButtonClass} w-full`}
+                      className={primaryButtonClass}
                       isDisabled={(settings.partnerships ?? []).length >= 10}
                       onPress={() =>
                         edit({
@@ -1031,7 +1010,13 @@ export default function CreatorMediaKit() {
                       <Plus size={16} />
                       Add partnership
                     </Button>
-                  </EmptyAction>
+                  )}
+                </SectionHeading>
+                {!detail && (settings.partnerships ?? []).length === 0 && (
+                  <EmptyState
+                    title="No partnerships yet"
+                    description="Showcase brands you’ve worked with by adding your first collaboration."
+                  />
                 )}
 
                 {detail?.section === "partnerships" && (
@@ -1195,16 +1180,11 @@ export default function CreatorMediaKit() {
                 <SectionHeading
                   title="Rates"
                   description="List your services and pricing so brands know how to work with you."
-                />
-                {!detail && (
-                  <EmptyAction
-                    empty={settings.rates.length === 0}
-                    title="No rates yet"
-                    description="Add a service and its rate so brands know how to work with you."
-                  >
+                >
+                  {!detail && (
                     <Button
                       variant="primary"
-                      className={`${primaryButtonClass} w-full`}
+                      className={primaryButtonClass}
                       isDisabled={settings.rates.length >= 10}
                       onPress={() =>
                         edit({
@@ -1225,7 +1205,13 @@ export default function CreatorMediaKit() {
                       <Plus size={16} aria-hidden="true" />
                       Add rate
                     </Button>
-                  </EmptyAction>
+                  )}
+                </SectionHeading>
+                {!detail && settings.rates.length === 0 && (
+                  <EmptyState
+                    title="No rates yet"
+                    description="Add a service and its rate so brands know how to work with you."
+                  />
                 )}
 
                 {detail?.section === "rates" && (
@@ -1449,16 +1435,11 @@ export default function CreatorMediaKit() {
                 <SectionHeading
                   title="Contact"
                   description="Choose how brands can reach you and which contact details appear publicly."
-                />
-                {!detail && (
-                  <EmptyAction
-                    empty={settings.contacts.length === 0}
-                    title="No contact methods yet"
-                    description="Choose a contact method so brands can reach you."
-                  >
+                >
+                  {!detail && (
                     <Select
                       aria-label="Add a contact method"
-                      className="w-full"
+                      className="w-fit"
                       placeholder="Add contact"
                       value={null}
                       isDisabled={settings.contacts.length >= 4}
@@ -1479,7 +1460,7 @@ export default function CreatorMediaKit() {
                           });
                       }}
                     >
-                      <Select.Trigger className="min-h-10 w-full items-center justify-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
+                      <Select.Trigger className="min-h-10 items-center justify-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
                         <Plus size={16} aria-hidden="true" />
                         <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
                         <Select.Indicator className="static! size-4 text-white!" />
@@ -1513,7 +1494,13 @@ export default function CreatorMediaKit() {
                         </ListBox>
                       </Select.Popover>
                     </Select>
-                  </EmptyAction>
+                  )}
+                </SectionHeading>
+                {!detail && settings.contacts.length === 0 && (
+                  <EmptyState
+                    title="No contact methods yet"
+                    description="Choose a contact method so brands can reach you."
+                  />
                 )}
 
                 {detail?.section === "contact" && (
