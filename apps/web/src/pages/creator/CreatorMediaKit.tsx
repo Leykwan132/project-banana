@@ -655,7 +655,7 @@ export default function CreatorMediaKit() {
   };
   if (data === undefined) return <MediaKitSkeleton editor />;
   return (
-    <div className="p-5 lg:p-8 max-w-[1500px] mx-auto [--focus:#9ca3af] [--field-border-focus:#9ca3af]">
+    <div className="min-h-screen bg-gray-50 p-5 lg:p-8 max-w-[1500px] mx-auto [--focus:#9ca3af] [--field-border-focus:#9ca3af]">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-medium tracking-tight">Media Kit</h1>
@@ -700,8 +700,8 @@ export default function CreatorMediaKit() {
           </div>
         )}
       </header>
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,460px)]">
-        <div className="min-w-0 w-full">
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
+        <div className="min-w-0 w-full rounded-3xl border border-gray-200 bg-white p-5 sm:p-8">
           <Tabs
             orientation="horizontal"
             selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
