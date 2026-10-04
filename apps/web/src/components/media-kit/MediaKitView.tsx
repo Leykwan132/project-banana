@@ -155,7 +155,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 .map((a) => (
                   <Card
                     key={a.id}
-                    className="cursor-pointer bg-[#171717] text-gray-100 border border-gray-700 shadow-none rounded-3xl p-6 transition-colors hover:bg-neutral-800"
+                    className="bg-[#171717] text-gray-100 border border-gray-700 shadow-none rounded-3xl p-6 transition-colors hover:bg-neutral-800"
                     onClick={(event) => {
                       if ((event.target as Element).closest("a, button, input, select, textarea")) return;
                       setExpandedAccounts((current) => {
