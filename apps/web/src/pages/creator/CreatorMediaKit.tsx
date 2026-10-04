@@ -135,7 +135,8 @@ function ItemCard({
         </Tooltip.Trigger>
         <Tooltip.Content
           placement="top"
-          className="rounded-lg bg-gray-900 px-3 py-2 text-xs text-white"
+          showArrow
+          className="rounded-xl bg-[#171717] px-3 py-2 text-xs font-medium text-white shadow-lg"
         >
           {visible ? "Hide in Media Kit" : "Show in Media Kit"}
         </Tooltip.Content>
