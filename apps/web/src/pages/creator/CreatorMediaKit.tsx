@@ -223,7 +223,7 @@ export default function CreatorMediaKit() {
   const add = useMutation(api.mediaKits.addAccount);
   const save = useMutation(api.mediaKits.saveSettings);
 
-  const display = useMutation(api.mediaKits.setAccountDisplay);
+  const displayMutation = useMutation(api.mediaKits.setAccountDisplay);
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
   const [platform, setPlatform] = useState<Platform>("instagram");
@@ -240,15 +240,21 @@ export default function CreatorMediaKit() {
   >(null);
   const [tab, setTab] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [savedSettings, setSavedSettings] = useState<Settings | null>(null);
+  const baseline = useRef<Settings | null>(null);
+  type AccountDisplay = Parameters<typeof displayMutation>[0];
+  const [accountDrafts, setAccountDrafts] = useState<
+    Record<string, AccountDisplay>
+  >({});
+  const [removedAccounts, setRemovedAccounts] = useState<
+    Id<"media_kit_accounts">[]
+  >([]);
   const [busy, setBusy] = useState(false);
-  const revision = useRef(0);
-  const saveQueue = useRef(Promise.resolve());
-  const [saveError, setSaveError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (data?.kit && !dirty) {
+    if (data?.kit) {
       const k = data.kit;
-      setSettings({
+      const next: Settings = {
         slug: k.slug,
         display_name: k.display_name,
         bio: k.bio,
@@ -260,34 +266,22 @@ export default function CreatorMediaKit() {
         partnerships_visible: k.partnerships_visible ?? true,
         rates: k.rates,
         contacts: k.contacts,
-      });
-    }
-  }, [data, dirty]);
-  useEffect(() => {
-    if (!settings || (!dirty && data?.kit?.is_published)) return;
-    const version = revision.current;
-    const timer = window.setTimeout(() => {
-      saveQueue.current = saveQueue.current.then(async () => {
-        if (version !== revision.current) return;
-        try {
-          await save({ settings });
-          if (version === revision.current) {
-            setDirty(false);
-            setSaveError(null);
-          }
-        } catch (error) {
-          if (version === revision.current)
-            setSaveError(
-              error instanceof Error
-                ? error.message
-                : "Could not save changes.",
-            );
+      };
+      const previous = baseline.current;
+      setSettings((current) => {
+        if (!current || !previous) return next;
+        const merged = { ...current };
+        for (const key of Object.keys(next) as (keyof Settings)[]) {
+          if (JSON.stringify(current[key]) === JSON.stringify(previous[key]))
+            Object.assign(merged, { [key]: next[key] });
         }
+        return merged;
       });
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [settings, dirty, data?.kit?.is_published, save]);
-  const run = async (fn: () => Promise<unknown>, success = "Saved") => {
+      baseline.current = next;
+      setSavedSettings(next);
+    }
+  }, [data]);
+  const run = async (fn: () => Promise<unknown>, success = "") => {
     setBusy(true);
     try {
       await fn();
@@ -303,10 +297,99 @@ export default function CreatorMediaKit() {
     }
   };
   const edit = (patch: Partial<Settings>) => {
-    revision.current += 1;
-    setSaveError(null);
     setSettings((s) => (s ? { ...s, ...patch } : s));
-    setDirty(true);
+  };
+  const display = async (draft: AccountDisplay) => {
+    setAccountDrafts((current) => ({ ...current, [draft.accountId]: draft }));
+  };
+  const footer = (
+    section: "profile" | "accounts" | "partnerships" | "rates" | "contact",
+  ) => {
+    const keys: (keyof Settings)[] =
+      section === "profile"
+        ? ["slug", "display_name", "bio", "category"]
+        : section === "partnerships"
+          ? ["partnerships", "partnerships_visible"]
+          : section === "rates"
+            ? ["rates", "rates_visible"]
+            : section === "contact"
+              ? ["contacts", "contacts_visible"]
+              : [];
+    const pendingAccounts = Object.values(accountDrafts).filter((draft) => {
+      const account = data?.accounts.find(
+        ({ account }) => account._id === draft.accountId,
+      )?.account;
+      return (
+        account &&
+        (account.is_visible !== draft.isVisible ||
+          JSON.stringify(account.metric_visibility) !==
+            JSON.stringify(draft.metricVisibility))
+      );
+    });
+    const changed =
+      section === "accounts"
+        ? pendingAccounts.length > 0 || removedAccounts.length > 0
+        : !!settings &&
+          !!savedSettings &&
+          keys.some(
+            (key) =>
+              JSON.stringify(settings[key]) !==
+              JSON.stringify(savedSettings[key]),
+          );
+    if (!changed) return null;
+    return (
+      <div className="flex justify-end gap-3 border-t border-gray-100 pt-5">
+        <Button
+          variant="ghost"
+          className="text-black"
+          isDisabled={busy}
+          onPress={() => {
+            if (section === "accounts") {
+              setAccountDrafts({});
+              setRemovedAccounts([]);
+            } else if (savedSettings)
+              edit(
+                Object.fromEntries(
+                  keys.map((key) => [key, savedSettings[key]]),
+                ),
+              );
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          className={primaryButtonClass}
+          isDisabled={busy}
+          onPress={() =>
+            run(async () => {
+              if (section === "accounts") {
+                for (const draft of pendingAccounts) {
+                  if (!removedAccounts.includes(draft.accountId))
+                    await displayMutation(draft);
+                }
+                for (const accountId of removedAccounts)
+                  await remove({ accountId });
+                setRemovedAccounts([]);
+                setAccountDrafts({});
+              } else if (settings && savedSettings) {
+                const updated = {
+                  ...savedSettings,
+                  ...Object.fromEntries(
+                    keys.map((key) => [key, settings[key]]),
+                  ),
+                };
+                await save({ settings: updated });
+                baseline.current = updated;
+                setSavedSettings(updated);
+              }
+            }, "Changes saved")
+          }
+        >
+          {busy ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    );
   };
   if (data === undefined) return <MediaKitSkeleton editor />;
   return (
@@ -355,11 +438,6 @@ export default function CreatorMediaKit() {
           </div>
         )}
       </header>
-      {saveError && (
-        <p role="status" className="mb-4 text-sm text-red-600">
-          {saveError} Changes will save automatically once corrected.
-        </p>
-      )}
       <div className="w-full">
         <Tabs
           orientation="horizontal"
@@ -489,6 +567,7 @@ export default function CreatorMediaKit() {
                   value={settings.bio}
                   onChange={(bio) => edit({ bio })}
                 />
+                {footer("profile")}
               </section>
             ) : (
               <EmptyState
@@ -530,103 +609,119 @@ export default function CreatorMediaKit() {
                 </Button>
               </EmptyAction>
 
-              {data.accounts.map(({ account: a, job }) => (
-                <div
-                  key={a._id}
-                  className="border-t border-gray-100 pt-4 space-y-3"
-                >
-                  <div className="flex justify-between gap-2">
-                    <h3 className="flex min-w-0 items-center gap-2 font-medium">
-                      <PlatformIcon platform={a.platform ?? "instagram"} />
-                      <span className="truncate">@{a.handle}</span>
-                      <span className="sr-only">
-                        {a.platform === "tiktok" ? "TikTok" : "Instagram"}
-                      </span>
-                    </h3>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Switch
-                        isSelected={a.is_visible}
-                        isDisabled={busy}
-                        onChange={(isVisible) =>
+              {data.accounts
+                .filter(({ account }) => !removedAccounts.includes(account._id))
+                .map(({ account, job }) => ({
+                  account: {
+                    ...account,
+                    is_visible:
+                      accountDrafts[account._id]?.isVisible ??
+                      account.is_visible,
+                    metric_visibility:
+                      accountDrafts[account._id]?.metricVisibility ??
+                      account.metric_visibility,
+                  },
+                  job,
+                }))
+                .map(({ account: a, job }) => (
+                  <div
+                    key={a._id}
+                    className="border-t border-gray-100 pt-4 space-y-3"
+                  >
+                    <div className="flex justify-between gap-2">
+                      <h3 className="flex min-w-0 items-center gap-2 font-medium">
+                        <PlatformIcon platform={a.platform ?? "instagram"} />
+                        <span className="truncate">@{a.handle}</span>
+                        <span className="sr-only">
+                          {a.platform === "tiktok" ? "TikTok" : "Instagram"}
+                        </span>
+                      </h3>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Switch
+                          isSelected={a.is_visible}
+                          isDisabled={busy}
+                          onChange={(isVisible) =>
+                            run(() =>
+                              display({
+                                accountId: a._id,
+                                isVisible,
+                                metricVisibility: a.metric_visibility,
+                              }),
+                            )
+                          }
+                          aria-label={`Show @${a.handle} on public media kit`}
+                        >
+                          <Switch.Content
+                            aria-label={`Show @${a.handle} on public media kit`}
+                          >
+                            <Switch.Control>
+                              <Switch.Thumb />
+                            </Switch.Control>
+                          </Switch.Content>
+                        </Switch>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:text-red-700"
+                          aria-label={`Remove @${a.handle}`}
+                          isDisabled={busy}
+                          onPress={() => {
+                            setPendingRemoval({
+                              kind: "account",
+                              id: a._id,
+                              handle: a.handle,
+                              platform: a.platform ?? "instagram",
+                            });
+                          }}
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
+                      {job &&
+                      ["queued", "running", "failed"].includes(job.status)
+                        ? `Import ${job.status}`
+                        : a.last_success_at
+                          ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
+                          : "No imported data yet"}
+                      {job?.error_message ? ` · ${job.error_message}` : ""}
+                    </p>
+                    {(
+                      Object.entries({
+                        followers: "Followers",
+                        postCount: "Post count",
+                        engagementRate: "Engagement rate",
+                        averageLikes: "Average likes",
+                        averageComments: "Average comments",
+                        averageVideoViews: "Average video views",
+                        recentPosts: "Recent posts",
+                      }) as [keyof typeof a.metric_visibility, string][]
+                    ).map(([key, label]) => (
+                      <Toggle
+                        key={key}
+                        label={label}
+                        value={a.metric_visibility[key]}
+                        disabled={busy}
+                        onChange={(value) =>
                           run(() =>
                             display({
                               accountId: a._id,
-                              isVisible,
-                              metricVisibility: a.metric_visibility,
+                              isVisible: a.is_visible,
+                              metricVisibility: {
+                                ...a.metric_visibility,
+                                [key]: value,
+                              },
                             }),
                           )
                         }
-                        aria-label={`Show @${a.handle} on public media kit`}
-                      >
-                        <Switch.Content
-                          aria-label={`Show @${a.handle} on public media kit`}
-                        >
-                          <Switch.Control>
-                            <Switch.Thumb />
-                          </Switch.Control>
-                        </Switch.Content>
-                      </Switch>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-700"
-                        aria-label={`Remove @${a.handle}`}
-                        isDisabled={busy}
-                        onPress={() => {
-                          setPendingRemoval({
-                            kind: "account",
-                            id: a._id,
-                            handle: a.handle,
-                            platform: a.platform ?? "instagram",
-                          });
-                        }}
-                      >
-                        <Trash2 size={18} />
-                      </Button>
-                    </div>
+                      />
+                    ))}
                   </div>
-                  <p className="text-xs text-gray-500">
-                    {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
-                    {job && ["queued", "running", "failed"].includes(job.status)
-                      ? `Import ${job.status}`
-                      : a.last_success_at
-                        ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
-                        : "No imported data yet"}
-                    {job?.error_message ? ` · ${job.error_message}` : ""}
-                  </p>
-                  {(
-                    Object.entries({
-                      followers: "Followers",
-                      postCount: "Post count",
-                      engagementRate: "Engagement rate",
-                      averageLikes: "Average likes",
-                      averageComments: "Average comments",
-                      averageVideoViews: "Average video views",
-                      recentPosts: "Recent posts",
-                    }) as [keyof typeof a.metric_visibility, string][]
-                  ).map(([key, label]) => (
-                    <Toggle
-                      key={key}
-                      label={label}
-                      value={a.metric_visibility[key]}
-                      disabled={busy}
-                      onChange={(value) =>
-                        run(() =>
-                          display({
-                            accountId: a._id,
-                            isVisible: a.is_visible,
-                            metricVisibility: {
-                              ...a.metric_visibility,
-                              [key]: value,
-                            },
-                          }),
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              ))}
+                ))}
+              {footer("accounts")}
             </section>
           </Tabs.Panel>
           <Tabs.Panel id="partnerships" className="min-w-0 w-full">
@@ -754,6 +849,7 @@ export default function CreatorMediaKit() {
                     Add partnership
                   </Button>
                 </EmptyAction>
+                {footer("partnerships")}
               </section>
             ) : (
               <EmptyState
@@ -953,6 +1049,7 @@ export default function CreatorMediaKit() {
                     Add rate
                   </Button>
                 </EmptyAction>
+                {footer("rates")}
               </section>
             ) : (
               <EmptyState
@@ -1104,6 +1201,7 @@ export default function CreatorMediaKit() {
                     </Select.Popover>
                   </Select>
                 </EmptyAction>
+                {footer("contact")}
               </section>
             ) : (
               <EmptyState
@@ -1246,8 +1344,7 @@ export default function CreatorMediaKit() {
                   {pendingRemoval?.kind === "partnership" ? (
                     <>
                       Remove <strong>{pendingRemoval.name}</strong> from your
-                      media kit? This will update your public page
-                      automatically.
+                      media kit? Save this section to update your public page.
                     </>
                   ) : (
                     <>
@@ -1286,29 +1383,23 @@ export default function CreatorMediaKit() {
                       setPendingRemoval(null);
                       toast({
                         title: "Partnership removed",
-                        description: "Your public page updates automatically.",
+                        description:
+                          "Save this section to update your public page.",
                         color: "info",
                       });
                       return;
                     }
-                    setBusy(true);
-
-                    try {
-                      await remove({ accountId: pendingRemoval.id });
-                      setPendingRemoval(null);
-                      toast({ title: "Account removed", color: "success" });
-                    } catch (error) {
-                      toast({
-                        title: "Could not remove account",
-                        description:
-                          error instanceof Error
-                            ? error.message
-                            : "Please try again.",
-                        color: "danger",
-                      });
-                    } finally {
-                      setBusy(false);
-                    }
+                    setRemovedAccounts((current) => [
+                      ...current,
+                      pendingRemoval.id,
+                    ]);
+                    setPendingRemoval(null);
+                    toast({
+                      title: "Account removed",
+                      description:
+                        "Save this section to update your public page.",
+                      color: "info",
+                    });
                   }}
                 >
                   {busy
