@@ -186,7 +186,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                         })}
                         className="ml-auto grid size-9 shrink-0 place-items-center rounded-full text-gray-400 hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2"
                       >
-                      <ChevronDown size={18} aria-hidden="true" className={`ml-auto shrink-0 text-gray-400 transition-transform motion-reduce:transition-none ${expandedAccounts.has(a.id) ? "rotate-180" : ""}`} />
+                      <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-gray-400 transition-transform motion-reduce:transition-none ${expandedAccounts.has(a.id) ? "rotate-180" : ""}`} />
                       </button>
                     </div>
                     <div id={`account-details-${a.id}`} hidden={!expandedAccounts.has(a.id)} className="space-y-5">
