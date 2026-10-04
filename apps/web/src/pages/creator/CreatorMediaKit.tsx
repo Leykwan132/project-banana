@@ -23,7 +23,6 @@ import {
   ArrowLeft,
   Eye,
   EyeOff,
-  ChevronRight,
 } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
@@ -115,11 +114,6 @@ function ItemCard({
           <p className="truncate font-medium">{title}</p>
           <p className="mt-1 truncate text-sm text-gray-500">{description}</p>
         </div>
-        <ChevronRight
-          size={18}
-          className="shrink-0 text-gray-400"
-          aria-hidden="true"
-        />
       </button>
 
       <Button
