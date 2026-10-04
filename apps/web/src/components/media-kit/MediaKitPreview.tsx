@@ -21,9 +21,12 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
   return (
     <aside
       aria-label="Mobile media kit preview"
-      className="min-w-0 py-6 lg:sticky lg:top-6 lg:py-10"
+      className="min-w-0 py-4 lg:sticky lg:top-6"
     >
-      <div className="relative mx-auto w-full max-w-[340px] px-4 sm:px-0">
+      <div
+        className="relative mx-auto w-full"
+        style={{ maxWidth: "min(340px, calc((100dvh - 140px) * 9 / 19.5))" }}
+      >
         <div className="overflow-hidden rounded-[2rem] border border-gray-200 bg-gray-100 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
           <div
             ref={container}
