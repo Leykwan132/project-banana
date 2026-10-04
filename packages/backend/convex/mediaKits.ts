@@ -136,7 +136,7 @@ export const addAccount = mutation({
         display_name: creator.name,
         bio: "",
         category: "",
-        total_audience_visible: false,
+        total_audience_visible: true,
         rates_visible: false,
         contacts_visible: false,
         partnerships: [],
@@ -232,6 +232,7 @@ export const saveSettings = mutation({
     if (!kit) throw Error("Add a social account first.");
     const settings = validateSettings({
       ...args.settings,
+      total_audience_visible: true,
       // Older open editors omit these fields; preserve existing partnerships.
       partnerships: args.settings.partnerships ?? kit.partnerships ?? [],
       partnerships_visible:
@@ -414,6 +415,14 @@ export const getPublic = query({
         ? await ctx.storage.getUrl(primary.snapshot.avatarStorageId)
         : null,
       accounts,
+      ...(accounts.some((account) => account.followers !== undefined)
+        ? {
+            totalAudience: accounts.reduce(
+              (total, account) => total + (account.followers ?? 0),
+              0,
+            ),
+          }
+        : {}),
       partnerships:
         (kit.partnerships_visible ?? true)
           ? (kit.partnerships ?? []).filter((p) => p.is_visible)

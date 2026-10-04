@@ -144,7 +144,7 @@ export default function CreatorMediaKit() {
         display_name: k.display_name,
         bio: k.bio,
         category: k.category,
-        total_audience_visible: false,
+        total_audience_visible: true,
         rates_visible: k.rates_visible,
         contacts_visible: k.contacts_visible,
         partnerships: k.partnerships ?? [],

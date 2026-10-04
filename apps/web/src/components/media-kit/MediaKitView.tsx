@@ -39,6 +39,14 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             {kit.bio}
           </p>
         )}
+        {kit.totalAudience !== undefined && (
+          <div>
+            <p className="text-3xl font-semibold tracking-tight">
+              {number(kit.totalAudience)}
+            </p>
+            <p className="text-sm text-gray-500">Combined audience</p>
+          </div>
+        )}
         {!!kit.contacts.length && (
           <div className="flex flex-wrap justify-center gap-2">
             {kit.contacts.map((c) => (
