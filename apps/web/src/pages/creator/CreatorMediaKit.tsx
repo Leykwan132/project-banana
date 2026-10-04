@@ -1454,7 +1454,7 @@ export default function CreatorMediaKit() {
                         <div className="flex items-start gap-4">
                           <div className="shrink-0 space-y-2">
                             <Label>Logo</Label>
-                            <label className="grid size-14 cursor-pointer place-items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100">
+                            <label className="grid size-10 cursor-pointer place-items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100">
                               {partner.logo_url ? (
                                 <img
                                   src={partner.logo_url}
@@ -1462,7 +1462,7 @@ export default function CreatorMediaKit() {
                                   className="size-full object-contain p-1"
                                 />
                               ) : (
-                                <Plus size={20} aria-hidden="true" />
+                                <Plus size={16} aria-hidden="true" />
                               )}
                               <input
                                 type="file"
