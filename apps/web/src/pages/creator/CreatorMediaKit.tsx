@@ -184,7 +184,23 @@ export default function CreatorMediaKit() {
           </p>
         </div>
         {settings && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="ghost"
+              className="text-black"
+              isDisabled={busy}
+              onPress={() =>
+                run(
+                  () =>
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/kit/${data.kit!.slug}`,
+                    ),
+                  "Link copied",
+                )
+              }
+            >
+              Copy public link
+            </Button>
             <Button
               variant={data.kit?.is_published ? "ghost" : "primary"}
               className={
@@ -265,22 +281,6 @@ export default function CreatorMediaKit() {
                     {window.location.origin}/kit/{data.kit.slug}
                   </a>
                 )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-black"
-                  onPress={() =>
-                    run(
-                      () =>
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/kit/${data.kit!.slug}`,
-                        ),
-                      "Link copied",
-                    )
-                  }
-                >
-                  Copy saved public link
-                </Button>
                 <Field
                   label="Display name"
                   value={settings.display_name}
