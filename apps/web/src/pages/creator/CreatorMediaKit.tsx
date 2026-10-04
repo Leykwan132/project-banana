@@ -2094,55 +2094,44 @@ export default function CreatorMediaKit() {
                   className={deleteButtonClass}
                   isDisabled={busy || !pendingRemoval}
                   onPress={async () => {
-                    if (!pendingRemoval) return;
-                    if (
-                      pendingRemoval.kind === "rate" ||
-                      pendingRemoval.kind === "contact"
-                    ) {
-                      if (pendingRemoval.kind === "rate")
-                        edit({
-                          rates: (settings?.rates ?? []).filter(
-                            (_, i) => i !== pendingRemoval.index,
-                          ),
+                    if (!pendingRemoval || busy) return;
+                    const removal = pendingRemoval;
+                    await run(async () => {
+                      if (removal.kind === "account") {
+                        await remove({ accountId: removal.id });
+                        setAccountDrafts((current) => {
+                          const next = { ...current };
+                          delete next[removal.id];
+                          return next;
                         });
-                      else
-                        edit({
-                          contacts: (settings?.contacts ?? []).filter(
-                            (_, i) => i !== pendingRemoval.index,
-                          ),
-                        });
-                      setPendingRemoval(null);
+                        setRemovedAccounts((current) => current.filter((id) => id !== removal.id));
+                      } else {
+                        if (!settings || !savedSettings) return;
+                        const key = removal.kind === "partnership"
+                          ? "partnerships"
+                          : removal.kind === "rate" ? "rates" : "contacts";
+                        const draftItems = settings[key] ?? [];
+                        const savedItems = savedSettings[key] ?? [];
+                        const savedIndex = key === "contacts"
+                          ? savedSettings.contacts.findIndex((contact) => contact.kind === settings.contacts[removal.index]?.kind)
+                          : removal.index;
+                        if (savedIndex >= 0 && savedIndex < savedItems.length) {
+                          const updated = {
+                            ...savedSettings,
+                            [key]: savedItems.filter((_, index) => index !== savedIndex),
+                          };
+                          await save({ settings: updated });
+                          baseline.current = updated;
+                          setSavedSettings(updated);
+                        }
+                        setSettings((current) => current ? {
+                          ...current,
+                          [key]: draftItems.filter((_, index) => index !== removal.index),
+                        } : current);
+                      }
                       setDetail(null);
-                      return;
-                    }
-                    if (pendingRemoval.kind === "partnership") {
-                      edit({
-                        partnerships: (settings?.partnerships ?? []).filter(
-                          (_, i) => i !== pendingRemoval.index,
-                        ),
-                      });
                       setPendingRemoval(null);
-                      setDetail(null);
-                      toast({
-                        title: "Partnership removed",
-                        description:
-                          "Save this section to update your public page.",
-                        color: "info",
-                      });
-                      return;
-                    }
-                    setDetail(null);
-                    setRemovedAccounts((current) => [
-                      ...current,
-                      pendingRemoval.id,
-                    ]);
-                    setPendingRemoval(null);
-                    toast({
-                      title: "Account removed",
-                      description:
-                        "Save this section to update your public page.",
-                      color: "info",
-                    });
+                    }, `${removal.kind.charAt(0).toUpperCase() + removal.kind.slice(1)} removed`);
                   }}
                 >
                   {busy
