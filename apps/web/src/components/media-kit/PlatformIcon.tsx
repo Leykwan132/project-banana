@@ -1,4 +1,5 @@
-import { Instagram, Music2 } from "lucide-react";
+import { Instagram } from "lucide-react";
+import { FaTiktok } from "react-icons/fa";
 export function PlatformIcon({
   platform = "instagram",
   size = 18,
@@ -6,6 +7,6 @@ export function PlatformIcon({
   platform?: "instagram" | "tiktok";
   size?: number;
 }) {
-  const Icon = platform === "tiktok" ? Music2 : Instagram;
+  const Icon = platform === "tiktok" ? FaTiktok : Instagram;
   return <Icon size={size} aria-hidden="true" className="shrink-0" />;
 }
