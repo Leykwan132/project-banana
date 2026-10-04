@@ -25,6 +25,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
+import { MediaKitPreview } from "../../components/media-kit/MediaKitPreview";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
@@ -654,7 +655,7 @@ export default function CreatorMediaKit() {
   };
   if (data === undefined) return <MediaKitSkeleton editor />;
   return (
-    <div className="p-5 lg:p-8 max-w-5xl mx-auto [--focus:#9ca3af] [--field-border-focus:#9ca3af]">
+    <div className="p-5 lg:p-8 max-w-[1500px] mx-auto [--focus:#9ca3af] [--field-border-focus:#9ca3af]">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-medium tracking-tight">Media Kit</h1>
@@ -699,1065 +700,1079 @@ export default function CreatorMediaKit() {
           </div>
         )}
       </header>
-      <div className="w-full">
-        <Tabs
-          orientation="horizontal"
-          selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
-          onSelectionChange={(key) => {
-            setModalOpen(false);
-            leaveDetail();
-            setTab(String(key));
-          }}
-          className="min-w-0 w-full items-start gap-6"
-        >
-          <Tabs.ListContainer className="h-auto w-fit max-w-full flex-none self-start overflow-visible rounded-full">
-            <Tabs.List
-              aria-label="Media kit settings"
-              className="h-auto min-w-0 w-fit max-w-full flex-row flex-nowrap gap-0 overflow-visible"
-            >
-              {[
-                { id: "profile", label: "Profile" },
-                { id: "accounts", label: "Accounts" },
-                { id: "partnerships", label: "Partnerships" },
-                { id: "rates", label: "Rates" },
-                { id: "contact", label: "Contact" },
-              ].map(({ id, label }) => (
-                <Tabs.Tab
-                  key={id}
-                  id={id}
-                  className="h-9 min-w-0 w-auto flex-initial whitespace-nowrap px-1.5 text-xs font-normal text-black sm:px-4 sm:text-sm"
-                >
-                  {label}
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              ))}
-            </Tabs.List>
-          </Tabs.ListContainer>
-          <Tabs.Panel id="profile" className="min-w-0 w-full">
-            {settings ? (
-              <section className="space-y-5">
-                <SectionHeading
-                  title="Profile"
-                  description="Introduce yourself with a name, bio, niche, and your public link."
-                />
-                <div className="space-y-2">
-                  <Field
-                    label="Slug"
-                    value={settings.slug}
-                    onChange={(slug) => edit({ slug })}
-                  />
-                  {data.kit?.is_published && (
-                    <p className="text-sm text-gray-500 break-all">
-                      Preview Link:{" "}
-                      <a
-                        className="text-gray-900 underline"
-                        href={`/kit/${data.kit.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {window.location.origin}/kit/{data.kit.slug}
-                      </a>
-                    </p>
-                  )}
-                </div>
-                <Field
-                  label="Display name"
-                  value={settings.display_name}
-                  onChange={(display_name) => edit({ display_name })}
-                />
-                <TagGroup
-                  aria-label="Influencer type / niche"
-                  selectionMode="multiple"
-                  selectionBehavior="toggle"
-                  selectedKeys={selectedNiches(settings.category)}
-                  onSelectionChange={(keys) =>
-                    edit({
-                      category: (keys === "all"
-                        ? nicheOptions
-                        : Array.from(keys, String)
-                      ).join(", "),
-                    })
-                  }
-                  onRemove={(keys) =>
-                    edit({
-                      category: selectedNiches(settings.category)
-                        .filter((niche) => !keys.has(niche))
-                        .join(", "),
-                    })
-                  }
-                  className="space-y-2"
-                >
-                  <Label>Influencer type / niche</Label>
-                  <TagGroup.List className="flex flex-wrap gap-2">
-                    {[
-                      ...new Set([
-                        ...selectedNiches(settings.category),
-                        ...nicheOptions,
-                      ]),
-                    ].map((niche) => (
-                      <Tag
-                        key={niche}
-                        id={niche}
-                        textValue={niche}
-                        className="min-h-10 cursor-pointer rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-600 data-[selected=true]:bg-black data-[selected=true]:text-white"
-                      >
-                        {({ isSelected }) => (
-                          <>
-                            {niche}
-                            {isSelected && (
-                              <Tag.RemoveButton
-                                aria-label={`Remove ${niche}`}
-                                className="ml-1 bg-transparent text-white hover:bg-transparent"
-                              >
-                                <X
-                                  size={14}
-                                  strokeWidth={2}
-                                  aria-hidden="true"
-                                />
-                              </Tag.RemoveButton>
-                            )}
-                          </>
-                        )}
-                      </Tag>
-                    ))}
-                  </TagGroup.List>
-                </TagGroup>
-                <Field
-                  label="Bio"
-                  multiline
-                  value={settings.bio}
-                  onChange={(bio) => edit({ bio })}
-                />
-                {footer("profile")}
-              </section>
-            ) : (
-              <EmptyState
-                title="Create your profile"
-                description="Add your first social account to start creating your media kit."
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,460px)]">
+        <div className="min-w-0 w-full">
+          <Tabs
+            orientation="horizontal"
+            selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
+            onSelectionChange={(key) => {
+              setModalOpen(false);
+              leaveDetail();
+              setTab(String(key));
+            }}
+            className="min-w-0 w-full items-start gap-6"
+          >
+            <Tabs.ListContainer className="h-auto w-fit max-w-full flex-none self-start overflow-visible rounded-full">
+              <Tabs.List
+                aria-label="Media kit settings"
+                className="h-auto min-w-0 w-fit max-w-full flex-row flex-nowrap gap-0 overflow-visible"
               >
-                <Button
-                  variant="primary"
-                  className={primaryButtonClass}
-                  onPress={() => {
-                    setTab("accounts");
-                    setDetail(null);
-                    setModalOpen(true);
-                  }}
-                >
-                  <Plus size={16} />
-                  Add account
-                </Button>
-              </EmptyState>
-            )}
-          </Tabs.Panel>
-          <Tabs.Panel id="accounts" className="min-w-0 w-full">
-            <section
-              key={modalOpen ? "new-account" : (detail?.key ?? "list")}
-              className={`space-y-5 ${detail?.section === "accounts" || modalOpen ? "media-kit-detail-enter" : ""}`}
-            >
-              {!detail && !modalOpen && (
-                <SectionHeading
-                  title="Accounts"
-                  description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
-                >
-                  {!detail && !modalOpen && (
-                    <Button
-                      variant="primary"
-                      className={primaryButtonClass}
-                      isDisabled={busy || data.accounts.length >= 5}
-                      onPress={() => {
-                        setModalOpen(true);
-                      }}
-                    >
-                      <Plus size={16} />
-                      Add account
-                    </Button>
-                  )}
-                </SectionHeading>
-              )}
-              {modalOpen && (
-                <div className="space-y-5">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      isIconOnly
-                      variant="ghost"
-                      aria-label="Back to accounts"
-                      onPress={() => {
-                        setModalOpen(false);
-                        setHandle("");
-                        setPlatform("instagram");
-                      }}
-                    >
-                      <ArrowLeft size={18} />
-                    </Button>
-                    <h3 className="font-medium">Add account</h3>
+                {[
+                  { id: "profile", label: "Profile" },
+                  { id: "accounts", label: "Accounts" },
+                  { id: "partnerships", label: "Partnerships" },
+                  { id: "rates", label: "Rates" },
+                  { id: "contact", label: "Contact" },
+                ].map(({ id, label }) => (
+                  <Tabs.Tab
+                    key={id}
+                    id={id}
+                    className="h-9 min-w-0 w-auto flex-initial whitespace-nowrap px-1.5 text-xs font-normal text-black sm:px-4 sm:text-sm"
+                  >
+                    {label}
+                    <Tabs.Indicator />
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs.ListContainer>
+            <Tabs.Panel id="profile" className="min-w-0 w-full">
+              {settings ? (
+                <section className="space-y-5">
+                  <SectionHeading
+                    title="Profile"
+                    description="Introduce yourself with a name, bio, niche, and your public link."
+                  />
+                  <div className="space-y-2">
+                    <Field
+                      label="Slug"
+                      value={settings.slug}
+                      onChange={(slug) => edit({ slug })}
+                    />
+                    {data.kit?.is_published && (
+                      <p className="text-sm text-gray-500 break-all">
+                        Preview Link:{" "}
+                        <a
+                          className="text-gray-900 underline"
+                          href={`/kit/${data.kit.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {window.location.origin}/kit/{data.kit.slug}
+                        </a>
+                      </p>
+                    )}
                   </div>
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      setBusy(true);
-
-                      try {
-                        const normalizedHandle = normalizeAccountHandle(
-                          handle,
-                          platform,
-                        );
-                        const accountId = await add({
-                          handle: normalizedHandle,
-                          platform,
-                        });
-                        setDetail({ section: "accounts", key: accountId });
-                        setHandle("");
-                        setModalOpen(false);
-                        setTab("accounts");
-                      } catch (error) {
-                        toast({
-                          title: "Could not add account",
-                          description:
-                            error instanceof Error
-                              ? error.message
-                              : "Please try again.",
-                          color: "danger",
-                        });
-                      } finally {
-                        setBusy(false);
-                      }
+                  <Field
+                    label="Display name"
+                    value={settings.display_name}
+                    onChange={(display_name) => edit({ display_name })}
+                  />
+                  <TagGroup
+                    aria-label="Influencer type / niche"
+                    selectionMode="multiple"
+                    selectionBehavior="toggle"
+                    selectedKeys={selectedNiches(settings.category)}
+                    onSelectionChange={(keys) =>
+                      edit({
+                        category: (keys === "all"
+                          ? nicheOptions
+                          : Array.from(keys, String)
+                        ).join(", "),
+                      })
+                    }
+                    onRemove={(keys) =>
+                      edit({
+                        category: selectedNiches(settings.category)
+                          .filter((niche) => !keys.has(niche))
+                          .join(", "),
+                      })
+                    }
+                    className="space-y-2"
+                  >
+                    <Label>Influencer type / niche</Label>
+                    <TagGroup.List className="flex flex-wrap gap-2">
+                      {[
+                        ...new Set([
+                          ...selectedNiches(settings.category),
+                          ...nicheOptions,
+                        ]),
+                      ].map((niche) => (
+                        <Tag
+                          key={niche}
+                          id={niche}
+                          textValue={niche}
+                          className="min-h-10 cursor-pointer rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-600 data-[selected=true]:bg-black data-[selected=true]:text-white"
+                        >
+                          {({ isSelected }) => (
+                            <>
+                              {niche}
+                              {isSelected && (
+                                <Tag.RemoveButton
+                                  aria-label={`Remove ${niche}`}
+                                  className="ml-1 bg-transparent text-white hover:bg-transparent"
+                                >
+                                  <X
+                                    size={14}
+                                    strokeWidth={2}
+                                    aria-hidden="true"
+                                  />
+                                </Tag.RemoveButton>
+                              )}
+                            </>
+                          )}
+                        </Tag>
+                      ))}
+                    </TagGroup.List>
+                  </TagGroup>
+                  <Field
+                    label="Bio"
+                    multiline
+                    value={settings.bio}
+                    onChange={(bio) => edit({ bio })}
+                  />
+                  {footer("profile")}
+                </section>
+              ) : (
+                <EmptyState
+                  title="Create your profile"
+                  description="Add your first social account to start creating your media kit."
+                >
+                  <Button
+                    variant="primary"
+                    className={primaryButtonClass}
+                    onPress={() => {
+                      setTab("accounts");
+                      setDetail(null);
+                      setModalOpen(true);
                     }}
                   >
-                    <div className="space-y-5">
-                      <fieldset disabled={busy}>
-                        <legend className="mb-3 text-sm text-gray-600">
-                          Choose a platform
-                        </legend>
-                        <div className="grid grid-cols-2 gap-3">
-                          {(["instagram", "tiktok"] as const).map((value) => (
-                            <label
-                              key={value}
-                              className={`flex cursor-pointer items-center gap-2 rounded-xl border p-4 text-sm ${platform === value ? "border-black bg-gray-50" : "border-gray-200"}`}
-                            >
-                              <input
-                                type="radio"
-                                name="platform"
-                                value={value}
-                                checked={platform === value}
-                                onChange={() => {
-                                  setPlatform(value);
-                                  setHandle("");
-                                }}
-                                className="accent-black"
-                              />
-                              <PlatformIcon platform={value} />
-                              {value === "instagram" ? "Instagram" : "TikTok"}
-                            </label>
-                          ))}
-                        </div>
-                      </fieldset>
-                      <Field
-                        label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
-                        value={handle}
-                        onChange={setHandle}
-                        onBlur={() => {
-                          if (!handle.trim()) return;
-                          try {
-                            normalizeAccountHandle(handle, platform);
-                          } catch (error) {
-                            toast({
-                              title: "Check profile link",
-                              description:
-                                error instanceof Error
-                                  ? error.message
-                                  : "Enter a valid profile URL or username.",
-                              color: "danger",
-                            });
-                          }
-                        }}
-                      />
-
-                      <p className="text-xs text-gray-500">
-                        Use a public profile. Your data will import
-                        automatically and refresh every 24 hours.
-                      </p>
-                    </div>
-                    <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5">
+                    <Plus size={16} />
+                    Add account
+                  </Button>
+                </EmptyState>
+              )}
+            </Tabs.Panel>
+            <Tabs.Panel id="accounts" className="min-w-0 w-full">
+              <section
+                key={modalOpen ? "new-account" : (detail?.key ?? "list")}
+                className={`space-y-5 ${detail?.section === "accounts" || modalOpen ? "media-kit-detail-enter" : ""}`}
+              >
+                {!detail && !modalOpen && (
+                  <SectionHeading
+                    title="Accounts"
+                    description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
+                  >
+                    {!detail && !modalOpen && (
                       <Button
+                        variant="primary"
+                        className={primaryButtonClass}
+                        isDisabled={busy || data.accounts.length >= 5}
+                        onPress={() => {
+                          setModalOpen(true);
+                        }}
+                      >
+                        <Plus size={16} />
+                        Add account
+                      </Button>
+                    )}
+                  </SectionHeading>
+                )}
+                {modalOpen && (
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-3">
+                      <Button
+                        isIconOnly
                         variant="ghost"
-                        className="text-black"
-                        isDisabled={busy}
+                        aria-label="Back to accounts"
                         onPress={() => {
                           setModalOpen(false);
                           setHandle("");
                           setPlatform("instagram");
                         }}
                       >
-                        Cancel
+                        <ArrowLeft size={18} />
                       </Button>
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        className={primaryButtonClass}
-                        isDisabled={busy || !handle.trim()}
-                      >
-                        <Plus size={16} aria-hidden="true" />
-                        {busy ? "Confirming…" : "Confirm"}
-                      </Button>
+                      <h3 className="font-medium">Add account</h3>
                     </div>
-                  </form>
-                </div>
-              )}
-              {!detail && !modalOpen && data.accounts.length === 0 && (
-                <EmptyState
-                  title="No accounts yet"
-                  description="Add your Instagram or TikTok account to start building your media kit."
-                />
-              )}
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        setBusy(true);
 
-              {detail?.section === "accounts" && (
-                <div className="flex items-center gap-3">
-                  <Button
-                    isIconOnly
-                    variant="ghost"
-                    aria-label="Back to list"
-                    className="text-black"
-                    onPress={leaveDetail}
-                  >
-                    <ArrowLeft size={18} />
-                  </Button>
-                  <h3 className="font-medium">Account details</h3>
-                  {detailActions()}
-                </div>
-              )}
-
-              {!detail &&
-                !modalOpen &&
-                data.accounts
-                  .filter(
-                    ({ account }) => !removedAccounts.includes(account._id),
-                  )
-                  .map(({ account }) => {
-                    const draft = accountDrafts[account._id];
-                    return (
-                      <ItemCard
-                        key={account._id}
-                        title={`@${account.handle}`}
-                        description={
-                          account.platform === "tiktok" ? "TikTok" : "Instagram"
-                        }
-                        visible={draft?.isVisible ?? account.is_visible}
-                        onOpen={() =>
-                          setDetail({ section: "accounts", key: account._id })
-                        }
-                        onToggle={() =>
-                          void display({
-                            accountId: account._id,
-                            isVisible: !(
-                              draft?.isVisible ?? account.is_visible
-                            ),
-                            metricVisibility:
-                              draft?.metricVisibility ??
-                              account.metric_visibility,
-                          })
-                        }
-                        onDelete={() =>
-                          setPendingRemoval({
-                            kind: "account",
-                            id: account._id,
-                            handle: account.handle,
-                            platform: account.platform ?? "instagram",
-                          })
-                        }
-                      />
-                    );
-                  })}
-              {data.accounts
-                .filter(({ account }) => !removedAccounts.includes(account._id))
-                .map(({ account, job }) => ({
-                  account: {
-                    ...account,
-                    is_visible:
-                      accountDrafts[account._id]?.isVisible ??
-                      account.is_visible,
-                    metric_visibility:
-                      accountDrafts[account._id]?.metricVisibility ??
-                      account.metric_visibility,
-                  },
-                  job,
-                }))
-                .map(({ account: a, job }) => (
-                  <div
-                    key={a._id}
-                    className={
-                      detail?.section === "accounts" && detail.key === a._id
-                        ? "space-y-5"
-                        : "hidden"
-                    }
-                  >
-                    <div className="flex justify-between gap-2">
-                      <h3 className="flex min-w-0 items-center gap-2 font-medium">
-                        <PlatformIcon platform={a.platform ?? "instagram"} />
-                        <span className="truncate">@{a.handle}</span>
-                        <span className="sr-only">
-                          {a.platform === "tiktok" ? "TikTok" : "Instagram"}
-                        </span>
-                      </h3>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
-                      {job &&
-                      ["queued", "running", "failed"].includes(job.status)
-                        ? `Import ${job.status}`
-                        : a.last_success_at
-                          ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
-                          : "No imported data yet"}
-                    </p>
-                    {(
-                      Object.entries({
-                        followers: "Followers",
-                        postCount: "Post count",
-                        engagementRate: "Engagement rate",
-                        averageLikes: "Average likes",
-                        averageComments: "Average comments",
-                        averageVideoViews: "Average video views",
-                        recentPosts: "Recent posts",
-                      }) as [keyof typeof a.metric_visibility, string][]
-                    ).map(([key, label]) => (
-                      <Toggle
-                        key={key}
-                        label={label}
-                        value={a.metric_visibility[key]}
-                        disabled={busy}
-                        onChange={(value) =>
-                          run(() =>
-                            display({
-                              accountId: a._id,
-                              isVisible: a.is_visible,
-                              metricVisibility: {
-                                ...a.metric_visibility,
-                                [key]: value,
-                              },
-                            }),
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-                ))}
-              {!modalOpen && footer("accounts")}
-            </section>
-          </Tabs.Panel>
-          <Tabs.Panel id="partnerships" className="min-w-0 w-full">
-            {settings ? (
-              <section
-                key={detail?.key ?? "list"}
-                className={`space-y-5 ${detail?.section === "partnerships" ? "media-kit-detail-enter" : ""}`}
-              >
-                {!detail && (
-                  <SectionHeading
-                    title="Past partnerships"
-                    description="Showcase brands you’ve worked with. Add up to ten collaborations."
-                  >
-                    {!detail && (
-                      <Button
-                        variant="primary"
-                        className={primaryButtonClass}
-                        isDisabled={(settings.partnerships ?? []).length >= 10}
-                        onPress={() =>
-                          edit({
-                            partnerships: [
-                              ...(settings.partnerships ?? []),
-                              {
-                                brand_name: "",
-                                description: "",
-                                url: "",
-                                is_visible: true,
-                              },
-                            ],
-                          })
-                        }
-                      >
-                        <Plus size={16} />
-                        Add partnership
-                      </Button>
-                    )}
-                  </SectionHeading>
-                )}
-                {!detail && (settings.partnerships ?? []).length === 0 && (
-                  <EmptyState
-                    title="No partnerships yet"
-                    description="Showcase brands you’ve worked with by adding your first collaboration."
-                  />
-                )}
-
-                {detail?.section === "partnerships" && (
-                  <div className="flex items-center gap-3">
-                    <Button
-                      isIconOnly
-                      variant="ghost"
-                      aria-label="Back to list"
-                      className="text-black"
-                      onPress={leaveDetail}
-                    >
-                      <ArrowLeft size={18} />
-                    </Button>
-                    <h3 className="font-medium">Partnership details</h3>
-                    {detailActions()}
-                  </div>
-                )}
-                {!detail &&
-                  (settings.partnerships ?? []).map((partner, i) => (
-                    <ItemCard
-                      key={i}
-                      title={partner.brand_name || "New partnership"}
-                      description={
-                        partner.description || "Add collaboration details"
-                      }
-                      visible={partner.is_visible}
-                      onOpen={() =>
-                        setDetail({ section: "partnerships", key: String(i) })
-                      }
-                      onToggle={() =>
-                        edit({
-                          partnerships: (settings.partnerships ?? []).map(
-                            (p, j) =>
-                              j === i ? { ...p, is_visible: !p.is_visible } : p,
-                          ),
-                        })
-                      }
-                      onDelete={() =>
-                        setPendingRemoval({
-                          kind: "partnership",
-                          index: i,
-                          name: partner.brand_name || "partnership",
-                        })
-                      }
-                    />
-                  ))}
-                {(settings.partnerships ?? []).map((partner, i) => (
-                  <div
-                    key={i}
-                    className={
-                      detail?.section === "partnerships" &&
-                      detail.key === String(i)
-                        ? "space-y-5"
-                        : "hidden"
-                    }
-                  >
-                    <div className="flex items-end gap-3">
-                      <div className="min-w-0 w-full">
-                        <Field
-                          label="Brand name"
-                          value={partner.brand_name}
-                          onChange={(brand_name) =>
-                            edit({
-                              partnerships: (settings.partnerships ?? []).map(
-                                (p, j) => (j === i ? { ...p, brand_name } : p),
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                    <Field
-                      label="Collaboration description"
-                      multiline
-                      value={partner.description}
-                      onChange={(description) =>
-                        edit({
-                          partnerships: (settings.partnerships ?? []).map(
-                            (p, j) => (j === i ? { ...p, description } : p),
-                          ),
-                        })
-                      }
-                    />
-                    <Field
-                      label="Campaign or brand link (optional, https://)"
-                      value={partner.url}
-                      type="url"
-                      onBlur={() => {
-                        if (!partner.url.trim()) return;
                         try {
-                          contactHref({
-                            kind: "website",
-                            value: partner.url,
-                            is_visible: true,
+                          const normalizedHandle = normalizeAccountHandle(
+                            handle,
+                            platform,
+                          );
+                          const accountId = await add({
+                            handle: normalizedHandle,
+                            platform,
                           });
+                          setDetail({ section: "accounts", key: accountId });
+                          setHandle("");
+                          setModalOpen(false);
+                          setTab("accounts");
                         } catch (error) {
                           toast({
-                            title: "Check partnership URL",
+                            title: "Could not add account",
                             description:
                               error instanceof Error
                                 ? error.message
-                                : "Enter a valid HTTPS URL.",
+                                : "Please try again.",
                             color: "danger",
                           });
+                        } finally {
+                          setBusy(false);
                         }
                       }}
-                      onChange={(url) =>
-                        edit({
-                          partnerships: (settings.partnerships ?? []).map(
-                            (p, j) => (j === i ? { ...p, url } : p),
-                          ),
-                        })
-                      }
-                    />
-                  </div>
-                ))}
-
-                {footer("partnerships")}
-              </section>
-            ) : (
-              <EmptyState
-                title="Showcase your partnerships"
-                description="Add your first social account to start creating your media kit."
-              >
-                <Button
-                  variant="primary"
-                  className={primaryButtonClass}
-                  onPress={() => {
-                    setTab("accounts");
-                    setDetail(null);
-                    setModalOpen(true);
-                  }}
-                >
-                  <Plus size={16} />
-                  Add account
-                </Button>
-              </EmptyState>
-            )}
-          </Tabs.Panel>
-          <Tabs.Panel id="rates" className="min-w-0 w-full">
-            {settings ? (
-              <section
-                key={detail?.key ?? "list"}
-                className={`space-y-5 ${detail?.section === "rates" ? "media-kit-detail-enter" : ""}`}
-              >
-                {!detail && (
-                  <SectionHeading
-                    title="Rates"
-                    description="List your services and pricing so brands know how to work with you."
-                  >
-                    {!detail && (
-                      <Button
-                        variant="primary"
-                        className={primaryButtonClass}
-                        isDisabled={settings.rates.length >= 10}
-                        onPress={() =>
-                          edit({
-                            rates: [
-                              ...settings.rates,
-                              {
-                                name: "",
-                                description: "",
-                                amount_minor: 0,
-                                currency: "MYR",
-                                starting_from: false,
-                                is_visible: true,
-                              },
-                            ],
-                          })
-                        }
-                      >
-                        <Plus size={16} aria-hidden="true" />
-                        Add rate
-                      </Button>
-                    )}
-                  </SectionHeading>
-                )}
-                {!detail && settings.rates.length === 0 && (
-                  <EmptyState
-                    title="No rates yet"
-                    description="Add a service and its rate so brands know how to work with you."
-                  />
-                )}
-
-                {detail?.section === "rates" && (
-                  <div className="flex items-center gap-3">
-                    <Button
-                      isIconOnly
-                      variant="ghost"
-                      aria-label="Back to list"
-                      className="text-black"
-                      onPress={leaveDetail}
                     >
-                      <ArrowLeft size={18} />
-                    </Button>
-                    <h3 className="font-medium">Rate details</h3>
-                    {detailActions()}
-                  </div>
-                )}
-                {!detail &&
-                  settings.rates.map((rate, i) => (
-                    <ItemCard
-                      key={i}
-                      title={rate.name || "New rate"}
-                      description={`${rate.currency} ${(rate.amount_minor / 100).toFixed(2)}`}
-                      visible={rate.is_visible}
-                      onOpen={() =>
-                        setDetail({ section: "rates", key: String(i) })
-                      }
-                      onToggle={() =>
-                        edit({
-                          rates: settings.rates.map((r, j) =>
-                            j === i ? { ...r, is_visible: !r.is_visible } : r,
-                          ),
-                        })
-                      }
-                      onDelete={() =>
-                        setPendingRemoval({
-                          kind: "rate",
-                          index: i,
-                          name: rate.name || "rate",
-                        })
-                      }
-                    />
-                  ))}
-                {settings.rates.map((rate, i) => (
-                  <div
-                    key={i}
-                    className={
-                      detail?.section === "rates" && detail.key === String(i)
-                        ? "space-y-5"
-                        : "hidden"
-                    }
-                  >
-                    <div className="flex items-end gap-3">
-                      <div className="min-w-0 w-full">
-                        {" "}
-                        <Field
-                          label="Service"
-                          value={rate.name}
-                          onChange={(name) =>
-                            edit({
-                              rates: settings.rates.map((r, j) =>
-                                j === i ? { ...r, name } : r,
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="pb-2"> </div>
-                    </div>
-                    <Field
-                      label="Description"
-                      value={rate.description}
-                      onChange={(description) =>
-                        edit({
-                          rates: settings.rates.map((r, j) =>
-                            j === i ? { ...r, description } : r,
-                          ),
-                        })
-                      }
-                    />
-                    <div className="flex gap-3">
-                      <label className="flex flex-1 flex-col gap-2 text-sm">
-                        Price
-                        <input
-                          aria-label="Price"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={rate.amount_minor / 100}
-                          className={inputClass}
-                          onChange={(e) =>
-                            edit({
-                              rates: settings.rates.map((r, j) =>
-                                j === i
-                                  ? {
-                                      ...r,
-                                      amount_minor: Math.round(
-                                        Number(e.target.value) * 100,
-                                      ),
-                                    }
-                                  : r,
-                              ),
-                            })
-                          }
-                        />
-                      </label>
-                      <Select
-                        className="w-28 shrink-0 gap-2"
-                        value={rate.currency}
-                        onChange={(currency) => {
-                          if (
-                            currency !== "MYR" &&
-                            currency !== "USD" &&
-                            currency !== "SGD"
-                          )
-                            return;
-                          edit({
-                            rates: settings.rates.map((r, j) =>
-                              j === i ? { ...r, currency } : r,
-                            ),
-                          });
-                        }}
-                      >
-                        <Label>Currency</Label>
-                        <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
-                          <Select.Value />
-                          <Select.Indicator />
-                        </Select.Trigger>
-                        <Select.Popover>
-                          <ListBox>
-                            {["MYR", "USD", "SGD"].map((currency) => (
-                              <ListBox.Item
-                                key={currency}
-                                id={currency}
-                                textValue={currency}
+                      <div className="space-y-5">
+                        <fieldset disabled={busy}>
+                          <legend className="mb-3 text-sm text-gray-600">
+                            Choose a platform
+                          </legend>
+                          <div className="grid grid-cols-2 gap-3">
+                            {(["instagram", "tiktok"] as const).map((value) => (
+                              <label
+                                key={value}
+                                className={`flex cursor-pointer items-center gap-2 rounded-xl border p-4 text-sm ${platform === value ? "border-black bg-gray-50" : "border-gray-200"}`}
                               >
-                                <Label>{currency}</Label>
-                                <ListBox.ItemIndicator />
-                              </ListBox.Item>
+                                <input
+                                  type="radio"
+                                  name="platform"
+                                  value={value}
+                                  checked={platform === value}
+                                  onChange={() => {
+                                    setPlatform(value);
+                                    setHandle("");
+                                  }}
+                                  className="accent-black"
+                                />
+                                <PlatformIcon platform={value} />
+                                {value === "instagram" ? "Instagram" : "TikTok"}
+                              </label>
                             ))}
-                          </ListBox>
-                        </Select.Popover>
-                      </Select>
-                    </div>
-                    <Toggle
-                      label="Starting from"
-                      value={rate.starting_from}
-                      onChange={(starting_from) =>
-                        edit({
-                          rates: settings.rates.map((r, j) =>
-                            j === i ? { ...r, starting_from } : r,
-                          ),
-                        })
-                      }
-                    />
-                  </div>
-                ))}
-
-                {footer("rates")}
-              </section>
-            ) : (
-              <EmptyState
-                title="Set your rates"
-                description="Add your first social account to start creating your media kit."
-              >
-                <Button
-                  variant="primary"
-                  className={primaryButtonClass}
-                  onPress={() => {
-                    setTab("accounts");
-                    setDetail(null);
-                    setModalOpen(true);
-                  }}
-                >
-                  <Plus size={16} />
-                  Add account
-                </Button>
-              </EmptyState>
-            )}
-          </Tabs.Panel>
-          <Tabs.Panel id="contact" className="min-w-0 w-full">
-            {settings ? (
-              <section
-                key={detail?.key ?? "list"}
-                className={`space-y-5 ${detail?.section === "contact" ? "media-kit-detail-enter" : ""}`}
-              >
-                {!detail && (
-                  <SectionHeading
-                    title="Contact"
-                    description="Choose how brands can reach you and which contact details appear publicly."
-                  >
-                    {!detail && (
-                      <Select
-                        aria-label="Add a contact method"
-                        className="w-fit"
-                        placeholder="Add contact"
-                        value={null}
-                        isDisabled={settings.contacts.length >= 4}
-                        onChange={(kind) => {
-                          if (
-                            kind !== "email" &&
-                            kind !== "whatsapp" &&
-                            kind !== "website" &&
-                            kind !== "instagram"
-                          )
-                            return;
-                          if (!settings.contacts.some((c) => c.kind === kind))
-                            edit({
-                              contacts: [
-                                ...settings.contacts,
-                                { kind, value: "", is_visible: true },
-                              ],
-                            });
-                        }}
-                      >
-                        <Select.Trigger className="min-h-10 items-center justify-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
-                          <Plus size={16} aria-hidden="true" />
-                          <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
-                          <Select.Indicator className="static! size-4 text-white!" />
-                        </Select.Trigger>
-                        <Select.Popover>
-                          <ListBox>
-                            {(
-                              [
-                                { kind: "email", label: "Email" },
-                                { kind: "whatsapp", label: "WhatsApp" },
-                                { kind: "website", label: "Website" },
-                                { kind: "instagram", label: "Instagram DM" },
-                              ] as { kind: Contact["kind"]; label: string }[]
-                            )
-                              .filter(
-                                (item) =>
-                                  !settings.contacts.some(
-                                    (c) => c.kind === item.kind,
-                                  ),
-                              )
-                              .map((item) => (
-                                <ListBox.Item
-                                  key={item.kind}
-                                  id={item.kind}
-                                  textValue={item.label}
-                                >
-                                  <Label>{item.label}</Label>
-                                  <ListBox.ItemIndicator />
-                                </ListBox.Item>
-                              ))}
-                          </ListBox>
-                        </Select.Popover>
-                      </Select>
-                    )}
-                  </SectionHeading>
-                )}
-                {!detail && settings.contacts.length === 0 && (
-                  <EmptyState
-                    title="No contact methods yet"
-                    description="Choose a contact method so brands can reach you."
-                  />
-                )}
-
-                {detail?.section === "contact" && (
-                  <div className="flex items-center gap-3">
-                    <Button
-                      isIconOnly
-                      variant="ghost"
-                      aria-label="Back to list"
-                      className="text-black"
-                      onPress={leaveDetail}
-                    >
-                      <ArrowLeft size={18} />
-                    </Button>
-                    <h3 className="font-medium">Contact details</h3>
-                    {detailActions()}
-                  </div>
-                )}
-                {!detail &&
-                  settings.contacts.map((contact, i) => (
-                    <ItemCard
-                      key={contact.kind}
-                      title={
-                        contact.kind === "whatsapp"
-                          ? "WhatsApp"
-                          : contact.kind === "instagram"
-                            ? "Instagram DM"
-                            : contact.kind === "email"
-                              ? "Email"
-                              : "Website"
-                      }
-                      description={contact.value || "Add contact details"}
-                      visible={contact.is_visible}
-                      onOpen={() =>
-                        setDetail({ section: "contact", key: contact.kind })
-                      }
-                      onToggle={() =>
-                        edit({
-                          contacts: settings.contacts.map((c, j) =>
-                            j === i ? { ...c, is_visible: !c.is_visible } : c,
-                          ),
-                        })
-                      }
-                      onDelete={() =>
-                        setPendingRemoval({
-                          kind: "contact",
-                          index: i,
-                          name: contact.kind,
-                        })
-                      }
-                    />
-                  ))}
-                {settings.contacts.map((c, i) => (
-                  <div
-                    key={c.kind}
-                    className={
-                      detail?.section === "contact" && detail.key === c.kind
-                        ? "space-y-5"
-                        : "hidden"
-                    }
-                  >
-                    <div className="flex items-end gap-3">
-                      <div className="min-w-0 w-full">
-                        {" "}
+                          </div>
+                        </fieldset>
                         <Field
-                          label={
-                            c.kind === "whatsapp"
-                              ? "WhatsApp (+country code)"
-                              : c.kind === "instagram"
-                                ? "Instagram DM username"
-                                : c.kind === "website"
-                                  ? "Website (https://)"
-                                  : "Email"
-                          }
-                          value={c.value}
-                          type={
-                            c.kind === "email"
-                              ? "email"
-                              : c.kind === "website"
-                                ? "url"
-                                : c.kind === "whatsapp"
-                                  ? "tel"
-                                  : "text"
-                          }
+                          label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
+                          value={handle}
+                          onChange={setHandle}
                           onBlur={() => {
-                            if (!c.value.trim()) return;
+                            if (!handle.trim()) return;
                             try {
-                              contactHref(c);
+                              normalizeAccountHandle(handle, platform);
                             } catch (error) {
                               toast({
-                                title: "Check contact details",
+                                title: "Check profile link",
                                 description:
                                   error instanceof Error
                                     ? error.message
-                                    : "Enter valid contact details.",
+                                    : "Enter a valid profile URL or username.",
                                 color: "danger",
                               });
                             }
                           }}
-                          onChange={(value) =>
-                            edit({
-                              contacts: settings.contacts.map((x, j) =>
-                                i === j ? { ...x, value } : x,
+                        />
+
+                        <p className="text-xs text-gray-500">
+                          Use a public profile. Your data will import
+                          automatically and refresh every 24 hours.
+                        </p>
+                      </div>
+                      <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5">
+                        <Button
+                          variant="ghost"
+                          className="text-black"
+                          isDisabled={busy}
+                          onPress={() => {
+                            setModalOpen(false);
+                            setHandle("");
+                            setPlatform("instagram");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          className={primaryButtonClass}
+                          isDisabled={busy || !handle.trim()}
+                        >
+                          <Plus size={16} aria-hidden="true" />
+                          {busy ? "Confirming…" : "Confirm"}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+                {!detail && !modalOpen && data.accounts.length === 0 && (
+                  <EmptyState
+                    title="No accounts yet"
+                    description="Add your Instagram or TikTok account to start building your media kit."
+                  />
+                )}
+
+                {detail?.section === "accounts" && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      isIconOnly
+                      variant="ghost"
+                      aria-label="Back to list"
+                      className="text-black"
+                      onPress={leaveDetail}
+                    >
+                      <ArrowLeft size={18} />
+                    </Button>
+                    <h3 className="font-medium">Account details</h3>
+                    {detailActions()}
+                  </div>
+                )}
+
+                {!detail &&
+                  !modalOpen &&
+                  data.accounts
+                    .filter(
+                      ({ account }) => !removedAccounts.includes(account._id),
+                    )
+                    .map(({ account }) => {
+                      const draft = accountDrafts[account._id];
+                      return (
+                        <ItemCard
+                          key={account._id}
+                          title={`@${account.handle}`}
+                          description={
+                            account.platform === "tiktok"
+                              ? "TikTok"
+                              : "Instagram"
+                          }
+                          visible={draft?.isVisible ?? account.is_visible}
+                          onOpen={() =>
+                            setDetail({ section: "accounts", key: account._id })
+                          }
+                          onToggle={() =>
+                            void display({
+                              accountId: account._id,
+                              isVisible: !(
+                                draft?.isVisible ?? account.is_visible
                               ),
+                              metricVisibility:
+                                draft?.metricVisibility ??
+                                account.metric_visibility,
+                            })
+                          }
+                          onDelete={() =>
+                            setPendingRemoval({
+                              kind: "account",
+                              id: account._id,
+                              handle: account.handle,
+                              platform: account.platform ?? "instagram",
                             })
                           }
                         />
+                      );
+                    })}
+                {data.accounts
+                  .filter(
+                    ({ account }) => !removedAccounts.includes(account._id),
+                  )
+                  .map(({ account, job }) => ({
+                    account: {
+                      ...account,
+                      is_visible:
+                        accountDrafts[account._id]?.isVisible ??
+                        account.is_visible,
+                      metric_visibility:
+                        accountDrafts[account._id]?.metricVisibility ??
+                        account.metric_visibility,
+                    },
+                    job,
+                  }))
+                  .map(({ account: a, job }) => (
+                    <div
+                      key={a._id}
+                      className={
+                        detail?.section === "accounts" && detail.key === a._id
+                          ? "space-y-5"
+                          : "hidden"
+                      }
+                    >
+                      <div className="flex justify-between gap-2">
+                        <h3 className="flex min-w-0 items-center gap-2 font-medium">
+                          <PlatformIcon platform={a.platform ?? "instagram"} />
+                          <span className="truncate">@{a.handle}</span>
+                          <span className="sr-only">
+                            {a.platform === "tiktok" ? "TikTok" : "Instagram"}
+                          </span>
+                        </h3>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
+                        {job &&
+                        ["queued", "running", "failed"].includes(job.status)
+                          ? `Import ${job.status}`
+                          : a.last_success_at
+                            ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
+                            : "No imported data yet"}
+                      </p>
+                      {(
+                        Object.entries({
+                          followers: "Followers",
+                          postCount: "Post count",
+                          engagementRate: "Engagement rate",
+                          averageLikes: "Average likes",
+                          averageComments: "Average comments",
+                          averageVideoViews: "Average video views",
+                          recentPosts: "Recent posts",
+                        }) as [keyof typeof a.metric_visibility, string][]
+                      ).map(([key, label]) => (
+                        <Toggle
+                          key={key}
+                          label={label}
+                          value={a.metric_visibility[key]}
+                          disabled={busy}
+                          onChange={(value) =>
+                            run(() =>
+                              display({
+                                accountId: a._id,
+                                isVisible: a.is_visible,
+                                metricVisibility: {
+                                  ...a.metric_visibility,
+                                  [key]: value,
+                                },
+                              }),
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
+                  ))}
+                {!modalOpen && footer("accounts")}
+              </section>
+            </Tabs.Panel>
+            <Tabs.Panel id="partnerships" className="min-w-0 w-full">
+              {settings ? (
+                <section
+                  key={detail?.key ?? "list"}
+                  className={`space-y-5 ${detail?.section === "partnerships" ? "media-kit-detail-enter" : ""}`}
+                >
+                  {!detail && (
+                    <SectionHeading
+                      title="Past partnerships"
+                      description="Showcase brands you’ve worked with. Add up to ten collaborations."
+                    >
+                      {!detail && (
+                        <Button
+                          variant="primary"
+                          className={primaryButtonClass}
+                          isDisabled={
+                            (settings.partnerships ?? []).length >= 10
+                          }
+                          onPress={() =>
+                            edit({
+                              partnerships: [
+                                ...(settings.partnerships ?? []),
+                                {
+                                  brand_name: "",
+                                  description: "",
+                                  url: "",
+                                  is_visible: true,
+                                },
+                              ],
+                            })
+                          }
+                        >
+                          <Plus size={16} />
+                          Add partnership
+                        </Button>
+                      )}
+                    </SectionHeading>
+                  )}
+                  {!detail && (settings.partnerships ?? []).length === 0 && (
+                    <EmptyState
+                      title="No partnerships yet"
+                      description="Showcase brands you’ve worked with by adding your first collaboration."
+                    />
+                  )}
+
+                  {detail?.section === "partnerships" && (
+                    <div className="flex items-center gap-3">
+                      <Button
+                        isIconOnly
+                        variant="ghost"
+                        aria-label="Back to list"
+                        className="text-black"
+                        onPress={leaveDetail}
+                      >
+                        <ArrowLeft size={18} />
+                      </Button>
+                      <h3 className="font-medium">Partnership details</h3>
+                      {detailActions()}
+                    </div>
+                  )}
+                  {!detail &&
+                    (settings.partnerships ?? []).map((partner, i) => (
+                      <ItemCard
+                        key={i}
+                        title={partner.brand_name || "New partnership"}
+                        description={
+                          partner.description || "Add collaboration details"
+                        }
+                        visible={partner.is_visible}
+                        onOpen={() =>
+                          setDetail({ section: "partnerships", key: String(i) })
+                        }
+                        onToggle={() =>
+                          edit({
+                            partnerships: (settings.partnerships ?? []).map(
+                              (p, j) =>
+                                j === i
+                                  ? { ...p, is_visible: !p.is_visible }
+                                  : p,
+                            ),
+                          })
+                        }
+                        onDelete={() =>
+                          setPendingRemoval({
+                            kind: "partnership",
+                            index: i,
+                            name: partner.brand_name || "partnership",
+                          })
+                        }
+                      />
+                    ))}
+                  {(settings.partnerships ?? []).map((partner, i) => (
+                    <div
+                      key={i}
+                      className={
+                        detail?.section === "partnerships" &&
+                        detail.key === String(i)
+                          ? "space-y-5"
+                          : "hidden"
+                      }
+                    >
+                      <div className="flex items-end gap-3">
+                        <div className="min-w-0 w-full">
+                          <Field
+                            label="Brand name"
+                            value={partner.brand_name}
+                            onChange={(brand_name) =>
+                              edit({
+                                partnerships: (settings.partnerships ?? []).map(
+                                  (p, j) =>
+                                    j === i ? { ...p, brand_name } : p,
+                                ),
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <Field
+                        label="Collaboration description"
+                        multiline
+                        value={partner.description}
+                        onChange={(description) =>
+                          edit({
+                            partnerships: (settings.partnerships ?? []).map(
+                              (p, j) => (j === i ? { ...p, description } : p),
+                            ),
+                          })
+                        }
+                      />
+                      <Field
+                        label="Campaign or brand link (optional, https://)"
+                        value={partner.url}
+                        type="url"
+                        onBlur={() => {
+                          if (!partner.url.trim()) return;
+                          try {
+                            contactHref({
+                              kind: "website",
+                              value: partner.url,
+                              is_visible: true,
+                            });
+                          } catch (error) {
+                            toast({
+                              title: "Check partnership URL",
+                              description:
+                                error instanceof Error
+                                  ? error.message
+                                  : "Enter a valid HTTPS URL.",
+                              color: "danger",
+                            });
+                          }
+                        }}
+                        onChange={(url) =>
+                          edit({
+                            partnerships: (settings.partnerships ?? []).map(
+                              (p, j) => (j === i ? { ...p, url } : p),
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+
+                  {footer("partnerships")}
+                </section>
+              ) : (
+                <EmptyState
+                  title="Showcase your partnerships"
+                  description="Add your first social account to start creating your media kit."
+                >
+                  <Button
+                    variant="primary"
+                    className={primaryButtonClass}
+                    onPress={() => {
+                      setTab("accounts");
+                      setDetail(null);
+                      setModalOpen(true);
+                    }}
+                  >
+                    <Plus size={16} />
+                    Add account
+                  </Button>
+                </EmptyState>
+              )}
+            </Tabs.Panel>
+            <Tabs.Panel id="rates" className="min-w-0 w-full">
+              {settings ? (
+                <section
+                  key={detail?.key ?? "list"}
+                  className={`space-y-5 ${detail?.section === "rates" ? "media-kit-detail-enter" : ""}`}
+                >
+                  {!detail && (
+                    <SectionHeading
+                      title="Rates"
+                      description="List your services and pricing so brands know how to work with you."
+                    >
+                      {!detail && (
+                        <Button
+                          variant="primary"
+                          className={primaryButtonClass}
+                          isDisabled={settings.rates.length >= 10}
+                          onPress={() =>
+                            edit({
+                              rates: [
+                                ...settings.rates,
+                                {
+                                  name: "",
+                                  description: "",
+                                  amount_minor: 0,
+                                  currency: "MYR",
+                                  starting_from: false,
+                                  is_visible: true,
+                                },
+                              ],
+                            })
+                          }
+                        >
+                          <Plus size={16} aria-hidden="true" />
+                          Add rate
+                        </Button>
+                      )}
+                    </SectionHeading>
+                  )}
+                  {!detail && settings.rates.length === 0 && (
+                    <EmptyState
+                      title="No rates yet"
+                      description="Add a service and its rate so brands know how to work with you."
+                    />
+                  )}
+
+                  {detail?.section === "rates" && (
+                    <div className="flex items-center gap-3">
+                      <Button
+                        isIconOnly
+                        variant="ghost"
+                        aria-label="Back to list"
+                        className="text-black"
+                        onPress={leaveDetail}
+                      >
+                        <ArrowLeft size={18} />
+                      </Button>
+                      <h3 className="font-medium">Rate details</h3>
+                      {detailActions()}
+                    </div>
+                  )}
+                  {!detail &&
+                    settings.rates.map((rate, i) => (
+                      <ItemCard
+                        key={i}
+                        title={rate.name || "New rate"}
+                        description={`${rate.currency} ${(rate.amount_minor / 100).toFixed(2)}`}
+                        visible={rate.is_visible}
+                        onOpen={() =>
+                          setDetail({ section: "rates", key: String(i) })
+                        }
+                        onToggle={() =>
+                          edit({
+                            rates: settings.rates.map((r, j) =>
+                              j === i ? { ...r, is_visible: !r.is_visible } : r,
+                            ),
+                          })
+                        }
+                        onDelete={() =>
+                          setPendingRemoval({
+                            kind: "rate",
+                            index: i,
+                            name: rate.name || "rate",
+                          })
+                        }
+                      />
+                    ))}
+                  {settings.rates.map((rate, i) => (
+                    <div
+                      key={i}
+                      className={
+                        detail?.section === "rates" && detail.key === String(i)
+                          ? "space-y-5"
+                          : "hidden"
+                      }
+                    >
+                      <div className="flex items-end gap-3">
+                        <div className="min-w-0 w-full">
+                          {" "}
+                          <Field
+                            label="Service"
+                            value={rate.name}
+                            onChange={(name) =>
+                              edit({
+                                rates: settings.rates.map((r, j) =>
+                                  j === i ? { ...r, name } : r,
+                                ),
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="pb-2"> </div>
+                      </div>
+                      <Field
+                        label="Description"
+                        value={rate.description}
+                        onChange={(description) =>
+                          edit({
+                            rates: settings.rates.map((r, j) =>
+                              j === i ? { ...r, description } : r,
+                            ),
+                          })
+                        }
+                      />
+                      <div className="flex gap-3">
+                        <label className="flex flex-1 flex-col gap-2 text-sm">
+                          Price
+                          <input
+                            aria-label="Price"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={rate.amount_minor / 100}
+                            className={inputClass}
+                            onChange={(e) =>
+                              edit({
+                                rates: settings.rates.map((r, j) =>
+                                  j === i
+                                    ? {
+                                        ...r,
+                                        amount_minor: Math.round(
+                                          Number(e.target.value) * 100,
+                                        ),
+                                      }
+                                    : r,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                        <Select
+                          className="w-28 shrink-0 gap-2"
+                          value={rate.currency}
+                          onChange={(currency) => {
+                            if (
+                              currency !== "MYR" &&
+                              currency !== "USD" &&
+                              currency !== "SGD"
+                            )
+                              return;
+                            edit({
+                              rates: settings.rates.map((r, j) =>
+                                j === i ? { ...r, currency } : r,
+                              ),
+                            });
+                          }}
+                        >
+                          <Label>Currency</Label>
+                          <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
+                            <Select.Value />
+                            <Select.Indicator />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {["MYR", "USD", "SGD"].map((currency) => (
+                                <ListBox.Item
+                                  key={currency}
+                                  id={currency}
+                                  textValue={currency}
+                                >
+                                  <Label>{currency}</Label>
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                      </div>
+                      <Toggle
+                        label="Starting from"
+                        value={rate.starting_from}
+                        onChange={(starting_from) =>
+                          edit({
+                            rates: settings.rates.map((r, j) =>
+                              j === i ? { ...r, starting_from } : r,
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                  ))}
+
+                  {footer("rates")}
+                </section>
+              ) : (
+                <EmptyState
+                  title="Set your rates"
+                  description="Add your first social account to start creating your media kit."
+                >
+                  <Button
+                    variant="primary"
+                    className={primaryButtonClass}
+                    onPress={() => {
+                      setTab("accounts");
+                      setDetail(null);
+                      setModalOpen(true);
+                    }}
+                  >
+                    <Plus size={16} />
+                    Add account
+                  </Button>
+                </EmptyState>
+              )}
+            </Tabs.Panel>
+            <Tabs.Panel id="contact" className="min-w-0 w-full">
+              {settings ? (
+                <section
+                  key={detail?.key ?? "list"}
+                  className={`space-y-5 ${detail?.section === "contact" ? "media-kit-detail-enter" : ""}`}
+                >
+                  {!detail && (
+                    <SectionHeading
+                      title="Contact"
+                      description="Choose how brands can reach you and which contact details appear publicly."
+                    >
+                      {!detail && (
+                        <Select
+                          aria-label="Add a contact method"
+                          className="w-fit"
+                          placeholder="Add contact"
+                          value={null}
+                          isDisabled={settings.contacts.length >= 4}
+                          onChange={(kind) => {
+                            if (
+                              kind !== "email" &&
+                              kind !== "whatsapp" &&
+                              kind !== "website" &&
+                              kind !== "instagram"
+                            )
+                              return;
+                            if (!settings.contacts.some((c) => c.kind === kind))
+                              edit({
+                                contacts: [
+                                  ...settings.contacts,
+                                  { kind, value: "", is_visible: true },
+                                ],
+                              });
+                          }}
+                        >
+                          <Select.Trigger className="min-h-10 items-center justify-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
+                            <Plus size={16} aria-hidden="true" />
+                            <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
+                            <Select.Indicator className="static! size-4 text-white!" />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {(
+                                [
+                                  { kind: "email", label: "Email" },
+                                  { kind: "whatsapp", label: "WhatsApp" },
+                                  { kind: "website", label: "Website" },
+                                  { kind: "instagram", label: "Instagram DM" },
+                                ] as { kind: Contact["kind"]; label: string }[]
+                              )
+                                .filter(
+                                  (item) =>
+                                    !settings.contacts.some(
+                                      (c) => c.kind === item.kind,
+                                    ),
+                                )
+                                .map((item) => (
+                                  <ListBox.Item
+                                    key={item.kind}
+                                    id={item.kind}
+                                    textValue={item.label}
+                                  >
+                                    <Label>{item.label}</Label>
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                      )}
+                    </SectionHeading>
+                  )}
+                  {!detail && settings.contacts.length === 0 && (
+                    <EmptyState
+                      title="No contact methods yet"
+                      description="Choose a contact method so brands can reach you."
+                    />
+                  )}
+
+                  {detail?.section === "contact" && (
+                    <div className="flex items-center gap-3">
+                      <Button
+                        isIconOnly
+                        variant="ghost"
+                        aria-label="Back to list"
+                        className="text-black"
+                        onPress={leaveDetail}
+                      >
+                        <ArrowLeft size={18} />
+                      </Button>
+                      <h3 className="font-medium">Contact details</h3>
+                      {detailActions()}
+                    </div>
+                  )}
+                  {!detail &&
+                    settings.contacts.map((contact, i) => (
+                      <ItemCard
+                        key={contact.kind}
+                        title={
+                          contact.kind === "whatsapp"
+                            ? "WhatsApp"
+                            : contact.kind === "instagram"
+                              ? "Instagram DM"
+                              : contact.kind === "email"
+                                ? "Email"
+                                : "Website"
+                        }
+                        description={contact.value || "Add contact details"}
+                        visible={contact.is_visible}
+                        onOpen={() =>
+                          setDetail({ section: "contact", key: contact.kind })
+                        }
+                        onToggle={() =>
+                          edit({
+                            contacts: settings.contacts.map((c, j) =>
+                              j === i ? { ...c, is_visible: !c.is_visible } : c,
+                            ),
+                          })
+                        }
+                        onDelete={() =>
+                          setPendingRemoval({
+                            kind: "contact",
+                            index: i,
+                            name: contact.kind,
+                          })
+                        }
+                      />
+                    ))}
+                  {settings.contacts.map((c, i) => (
+                    <div
+                      key={c.kind}
+                      className={
+                        detail?.section === "contact" && detail.key === c.kind
+                          ? "space-y-5"
+                          : "hidden"
+                      }
+                    >
+                      <div className="flex items-end gap-3">
+                        <div className="min-w-0 w-full">
+                          {" "}
+                          <Field
+                            label={
+                              c.kind === "whatsapp"
+                                ? "WhatsApp (+country code)"
+                                : c.kind === "instagram"
+                                  ? "Instagram DM username"
+                                  : c.kind === "website"
+                                    ? "Website (https://)"
+                                    : "Email"
+                            }
+                            value={c.value}
+                            type={
+                              c.kind === "email"
+                                ? "email"
+                                : c.kind === "website"
+                                  ? "url"
+                                  : c.kind === "whatsapp"
+                                    ? "tel"
+                                    : "text"
+                            }
+                            onBlur={() => {
+                              if (!c.value.trim()) return;
+                              try {
+                                contactHref(c);
+                              } catch (error) {
+                                toast({
+                                  title: "Check contact details",
+                                  description:
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Enter valid contact details.",
+                                  color: "danger",
+                                });
+                              }
+                            }}
+                            onChange={(value) =>
+                              edit({
+                                contacts: settings.contacts.map((x, j) =>
+                                  i === j ? { ...x, value } : x,
+                                ),
+                              })
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {footer("contact")}
-              </section>
-            ) : (
-              <EmptyState
-                title="Add your contact details"
-                description="Add your first social account to start creating your media kit."
-              >
-                <Button
-                  variant="primary"
-                  className={primaryButtonClass}
-                  onPress={() => {
-                    setTab("accounts");
-                    setDetail(null);
-                    setModalOpen(true);
-                  }}
+                  {footer("contact")}
+                </section>
+              ) : (
+                <EmptyState
+                  title="Add your contact details"
+                  description="Add your first social account to start creating your media kit."
                 >
-                  <Plus size={16} />
-                  Add account
-                </Button>
-              </EmptyState>
-            )}
-          </Tabs.Panel>
-        </Tabs>
+                  <Button
+                    variant="primary"
+                    className={primaryButtonClass}
+                    onPress={() => {
+                      setTab("accounts");
+                      setDetail(null);
+                      setModalOpen(true);
+                    }}
+                  >
+                    <Plus size={16} />
+                    Add account
+                  </Button>
+                </EmptyState>
+              )}
+            </Tabs.Panel>
+          </Tabs>
+        </div>
+        <MediaKitPreview
+          slug={data.kit?.is_published ? data.kit.slug : undefined}
+        />
       </div>
 
       <Modal
