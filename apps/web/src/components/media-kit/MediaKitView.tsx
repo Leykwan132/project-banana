@@ -1,4 +1,5 @@
 import { Card, Button } from "@heroui/react";
+import { Instagram } from "lucide-react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 export type KitView = NonNullable<
@@ -85,8 +86,9 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 href={`https://www.instagram.com/${a.handle}/`}
                 target="_blank"
                 rel="noreferrer"
-                className="font-semibold"
+                className="inline-flex items-center gap-2 font-semibold"
               >
+                <Instagram size={17} aria-hidden="true" />
                 @{a.handle}
               </a>
               <p className="text-xs text-gray-400 mt-1">

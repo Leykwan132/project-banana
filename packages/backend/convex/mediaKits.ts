@@ -104,7 +104,7 @@ async function queue(
     ctx,
     internal.mediaKitActions.startImport,
     { importId, generation },
-    { retry: false },
+    { retry: false, runAfter: 0 },
   );
   return importId;
 }
@@ -551,8 +551,14 @@ export const listAccounts = internalQuery({
     isDone: v.boolean(),
     continueCursor: v.string(),
   }),
-  handler: (ctx, args) =>
-    ctx.db.query("media_kit_accounts").paginate(args.paginationOpts),
+  handler: async (ctx, args) => {
+    const { page, isDone, continueCursor } = await ctx.db
+      .query("media_kit_accounts")
+      .paginate(args.paginationOpts);
+    // Convex also returns pageStatus/splitCursor; this API exposes only what
+    // the daily refresh consumes, matching its strict return validator.
+    return { page, isDone, continueCursor };
+  },
 });
 
 export const setPrimaryAccount = mutation({

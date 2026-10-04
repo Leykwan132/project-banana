@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Button, Card, Label, Switch } from "@heroui/react";
+import { Instagram } from "lucide-react";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 import {
   contactHref,
@@ -30,11 +31,11 @@ function Toggle({
       isSelected={value}
       onChange={onChange}
       isDisabled={disabled}
-      className="flex justify-between gap-3 w-full"
+      className="w-full"
     >
-      <Label>{label}</Label>
-      <Switch.Content>
-        <Switch.Control>
+      <Switch.Content className="flex w-full items-center justify-between gap-3">
+        <Label className="min-w-0">{label}</Label>
+        <Switch.Control className="shrink-0">
           <Switch.Thumb />
         </Switch.Control>
       </Switch.Content>
@@ -280,7 +281,14 @@ export default function CreatorMediaKit() {
                 className="border-t border-gray-100 pt-4 space-y-3"
               >
                 <div className="flex justify-between gap-2">
-                  <h3 className="font-medium">@{a.handle}</h3>
+                  <h3 className="flex min-w-0 items-center gap-2 font-medium">
+                    <Instagram
+                      size={18}
+                      className="shrink-0 text-gray-500"
+                      aria-hidden="true"
+                    />
+                    <span className="truncate">@{a.handle}</span>
+                  </h3>
                   <Button
                     size="sm"
                     variant="ghost"
