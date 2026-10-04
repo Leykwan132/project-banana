@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, useId, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
   Button,
+  Input,
   Label,
   Switch,
   Tabs,
@@ -264,18 +265,23 @@ function Field({
   type?: "text" | "email" | "url" | "tel";
   onBlur?: () => void;
 }) {
+  const id = useId();
   return (
-    <label className="flex flex-col gap-2 text-sm">
-      <span className="text-gray-600">{label}</span>
+    <div className="flex flex-col gap-2 text-sm">
+      <Label htmlFor={id} className="text-gray-600">
+        {label}
+      </Label>
       {multiline ? (
         <textarea
+          id={id}
           className={inputClass}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={3}
         />
       ) : (
-        <input
+        <Input
+          id={id}
           type={type}
           onBlur={onBlur}
           className={inputClass}
@@ -283,7 +289,7 @@ function Field({
           onChange={(e) => onChange(e.target.value)}
         />
       )}
-    </label>
+    </div>
   );
 }
 export default function CreatorMediaKit() {
