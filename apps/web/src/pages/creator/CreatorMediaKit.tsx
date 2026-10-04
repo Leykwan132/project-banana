@@ -1176,7 +1176,6 @@ export default function CreatorMediaKit() {
                           className={primaryButtonClass}
                           isDisabled={busy || !handle.trim()}
                         >
-                          <Plus size={16} aria-hidden="true" />
                           {busy ? "Confirming…" : "Confirm"}
                         </Button>
                       </div>
