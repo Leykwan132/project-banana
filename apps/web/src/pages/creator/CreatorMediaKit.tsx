@@ -206,7 +206,7 @@ function VisibilitySwitch({
         <Button
           isIconOnly
           variant="ghost"
-          className="text-black"
+          className="rounded-full bg-gray-100 text-black hover:bg-gray-200"
           isDisabled={disabled}
           aria-label={label}
           onPress={() => onChange(!value)}
@@ -417,6 +417,100 @@ export default function CreatorMediaKit() {
   };
   const display = async (draft: AccountDisplay) => {
     setAccountDrafts((current) => ({ ...current, [draft.accountId]: draft }));
+  };
+  const detailActions = () => {
+    if (!detail) return null;
+    let visible = false;
+    let toggle = () => {};
+    let deletion = () => {};
+    if (detail.section === "accounts") {
+      const account = data?.accounts.find(
+        ({ account }) => account._id === detail.key,
+      )?.account;
+      if (!account) return null;
+      const draft = accountDrafts[account._id];
+      visible = draft?.isVisible ?? account.is_visible;
+      toggle = () =>
+        void display({
+          accountId: account._id,
+          isVisible: !visible,
+          metricVisibility:
+            draft?.metricVisibility ?? account.metric_visibility,
+        });
+      deletion = () =>
+        setPendingRemoval({
+          kind: "account",
+          id: account._id,
+          handle: account.handle,
+          platform: account.platform ?? "instagram",
+        });
+    } else if (settings) {
+      const index =
+        detail.section === "contact"
+          ? settings.contacts.findIndex((c) => c.kind === detail.key)
+          : Number(detail.key);
+      if (detail.section === "partnerships") {
+        const item = settings.partnerships?.[index];
+        if (!item) return null;
+        visible = item.is_visible;
+        toggle = () =>
+          edit({
+            partnerships: (settings.partnerships ?? []).map((p, i) =>
+              i === index ? { ...p, is_visible: !visible } : p,
+            ),
+          });
+        deletion = () =>
+          setPendingRemoval({
+            kind: "partnership",
+            index,
+            name: item.brand_name || "partnership",
+          });
+      } else if (detail.section === "rates") {
+        const item = settings.rates[index];
+        if (!item) return null;
+        visible = item.is_visible;
+        toggle = () =>
+          edit({
+            rates: settings.rates.map((r, i) =>
+              i === index ? { ...r, is_visible: !visible } : r,
+            ),
+          });
+        deletion = () =>
+          setPendingRemoval({ kind: "rate", index, name: item.name || "rate" });
+      } else {
+        const item = settings.contacts[index];
+        if (!item) return null;
+        visible = item.is_visible;
+        toggle = () =>
+          edit({
+            contacts: settings.contacts.map((c, i) =>
+              i === index ? { ...c, is_visible: !visible } : c,
+            ),
+          });
+        deletion = () =>
+          setPendingRemoval({ kind: "contact", index, name: item.kind });
+      }
+    }
+    return (
+      <div className="ml-auto flex items-center gap-2">
+        <VisibilitySwitch
+          label={visible ? "Hide in Media Kit" : "Show in Media Kit"}
+          value={visible}
+          onChange={toggle}
+          disabled={busy}
+        />
+        <Button
+          isIconOnly
+          variant="primary"
+          className={deleteButtonClass}
+          aria-label="Delete item"
+          isDisabled={busy}
+          onPress={deletion}
+        >
+          <Trash2 size={18} aria-hidden="true" />
+        </Button>
+      </div>
+    );
   };
   const footer = (
     section: "profile" | "accounts" | "partnerships" | "rates" | "contact",
@@ -890,6 +984,7 @@ export default function CreatorMediaKit() {
                     <ArrowLeft size={18} />
                   </Button>
                   <h3 className="font-medium">Account details</h3>
+                  {detailActions()}
                 </div>
               )}
 
@@ -965,38 +1060,6 @@ export default function CreatorMediaKit() {
                           {a.platform === "tiktok" ? "TikTok" : "Instagram"}
                         </span>
                       </h3>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <VisibilitySwitch
-                          label={`Show @${a.handle} on public media kit`}
-                          value={a.is_visible}
-                          disabled={busy}
-                          onChange={(isVisible) =>
-                            void display({
-                              accountId: a._id,
-                              isVisible,
-                              metricVisibility: a.metric_visibility,
-                            })
-                          }
-                        />
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="primary"
-                          className={deleteButtonClass}
-                          aria-label={`Remove @${a.handle}`}
-                          isDisabled={busy}
-                          onPress={() => {
-                            setPendingRemoval({
-                              kind: "account",
-                              id: a._id,
-                              handle: a.handle,
-                              platform: a.platform ?? "instagram",
-                            });
-                          }}
-                        >
-                          <Trash2 size={18} />
-                        </Button>
-                      </div>
                     </div>
                     <p className="text-xs text-gray-500">
                       {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
@@ -1097,6 +1160,7 @@ export default function CreatorMediaKit() {
                       <ArrowLeft size={18} />
                     </Button>
                     <h3 className="font-medium">Partnership details</h3>
+                    {detailActions()}
                   </div>
                 )}
 
@@ -1161,35 +1225,6 @@ export default function CreatorMediaKit() {
                             })
                           }
                         />
-                      </div>
-                      <div className="flex items-center gap-2 pb-2">
-                        <VisibilitySwitch
-                          label={`Show ${partner.brand_name || "partnership"}`}
-                          value={partner.is_visible}
-                          onChange={(is_visible) =>
-                            edit({
-                              partnerships: (settings.partnerships ?? []).map(
-                                (p, j) => (j === i ? { ...p, is_visible } : p),
-                              ),
-                            })
-                          }
-                        />
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="primary"
-                          className={deleteButtonClass}
-                          aria-label={`Remove ${partner.brand_name || "partnership"}`}
-                          onPress={() => {
-                            setPendingRemoval({
-                              kind: "partnership",
-                              index: i,
-                              name: partner.brand_name || "this partnership",
-                            });
-                          }}
-                        >
-                          <Trash2 size={18} />
-                        </Button>
                       </div>
                     </div>
                     <Field
@@ -1317,6 +1352,7 @@ export default function CreatorMediaKit() {
                       <ArrowLeft size={18} />
                     </Button>
                     <h3 className="font-medium">Rate details</h3>
+                    {detailActions()}
                   </div>
                 )}
 
@@ -1377,36 +1413,7 @@ export default function CreatorMediaKit() {
                           }
                         />
                       </div>
-                      <div className="pb-2">
-                        {" "}
-                        <VisibilitySwitch
-                          label="Show this rate"
-                          value={rate.is_visible}
-                          onChange={(is_visible) =>
-                            edit({
-                              rates: settings.rates.map((r, j) =>
-                                j === i ? { ...r, is_visible } : r,
-                              ),
-                            })
-                          }
-                        />
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          aria-label="Remove rate"
-                          variant="primary"
-                          className={deleteButtonClass}
-                          onPress={() =>
-                            setPendingRemoval({
-                              kind: "rate",
-                              index: i,
-                              name: rate.name || "rate",
-                            })
-                          }
-                        >
-                          <Trash2 size={16} aria-hidden="true" />
-                        </Button>
-                      </div>
+                      <div className="pb-2"> </div>
                     </div>
                     <Field
                       label="Description"
@@ -1610,6 +1617,7 @@ export default function CreatorMediaKit() {
                       <ArrowLeft size={18} />
                     </Button>
                     <h3 className="font-medium">Contact details</h3>
+                    {detailActions()}
                   </div>
                 )}
 
@@ -1709,36 +1717,6 @@ export default function CreatorMediaKit() {
                             })
                           }
                         />
-                      </div>
-                      <div className="flex items-center gap-2 pb-2">
-                        {" "}
-                        <VisibilitySwitch
-                          label={`Show ${c.kind}`}
-                          value={c.is_visible}
-                          onChange={(is_visible) =>
-                            edit({
-                              contacts: settings.contacts.map((x, j) =>
-                                i === j ? { ...x, is_visible } : x,
-                              ),
-                            })
-                          }
-                        />
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          aria-label="Remove contact"
-                          variant="primary"
-                          className={deleteButtonClass}
-                          onPress={() =>
-                            setPendingRemoval({
-                              kind: "contact",
-                              index: i,
-                              name: c.kind,
-                            })
-                          }
-                        >
-                          <Trash2 size={16} aria-hidden="true" />
-                        </Button>
                       </div>
                     </div>
                   </div>
