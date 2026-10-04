@@ -188,7 +188,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     </button>
                     <div id={`account-details-${a.id}`} hidden={!expandedAccounts.has(a.id)} className="space-y-5">
                       <a href={accountProfileUrl(a.handle, a.platform)} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex text-xs text-gray-400 underline underline-offset-4">View profile ↗</a>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-4">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-6 sm:grid-cols-3 sm:gap-x-12 sm:gap-y-12">
                         {(
                           [
                             ["followers", "Followers"],
