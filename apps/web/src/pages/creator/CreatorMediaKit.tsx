@@ -8,6 +8,8 @@ import {
   Tabs,
   Modal,
   Dropdown,
+  Select,
+  ListBox,
 } from "@heroui/react";
 import {
   Plus,
@@ -348,7 +350,11 @@ export default function CreatorMediaKit() {
                 { id: "rates", label: "Rates", icon: Wallet },
                 { id: "contact", label: "Contact", icon: Mail },
               ].map(({ id, label, icon: Icon }) => (
-                <Tabs.Tab key={id} id={id} className="shrink-0 gap-2 whitespace-nowrap text-black">
+                <Tabs.Tab
+                  key={id}
+                  id={id}
+                  className="shrink-0 gap-2 whitespace-nowrap text-black"
+                >
                   <Icon size={16} />
                   {label}
                   <Tabs.Indicator />
@@ -744,31 +750,43 @@ export default function CreatorMediaKit() {
                           }
                         />
                       </label>
-                      <label className="text-sm">
-                        Currency
-                        <select
-                          aria-label="Currency"
-                          className={inputClass}
-                          value={rate.currency}
-                          onChange={(e) =>
-                            edit({
-                              rates: settings.rates.map((r, j) =>
-                                j === i
-                                  ? {
-                                      ...r,
-                                      currency: e.target
-                                        .value as typeof r.currency,
-                                    }
-                                  : r,
-                              ),
-                            })
-                          }
-                        >
-                          {["MYR", "USD", "SGD"].map((c) => (
-                            <option key={c}>{c}</option>
-                          ))}
-                        </select>
-                      </label>
+                      <Select
+                        className="w-28 shrink-0"
+                        value={rate.currency}
+                        onChange={(currency) => {
+                          if (
+                            currency !== "MYR" &&
+                            currency !== "USD" &&
+                            currency !== "SGD"
+                          )
+                            return;
+                          edit({
+                            rates: settings.rates.map((r, j) =>
+                              j === i ? { ...r, currency } : r,
+                            ),
+                          });
+                        }}
+                      >
+                        <Label>Currency</Label>
+                        <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
+                          <Select.Value />
+                          <Select.Indicator />
+                        </Select.Trigger>
+                        <Select.Popover>
+                          <ListBox>
+                            {["MYR", "USD", "SGD"].map((currency) => (
+                              <ListBox.Item
+                                key={currency}
+                                id={currency}
+                                textValue={currency}
+                              >
+                                <Label>{currency}</Label>
+                                <ListBox.ItemIndicator />
+                              </ListBox.Item>
+                            ))}
+                          </ListBox>
+                        </Select.Popover>
+                      </Select>
                     </div>
                     <Toggle
                       label="Starting from"
