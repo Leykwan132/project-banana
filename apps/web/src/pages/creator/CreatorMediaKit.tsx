@@ -33,7 +33,10 @@ import type {
   Contact,
   Platform,
 } from "../../../../../packages/backend/convex/lib/mediaKitModel";
-import { contactHref } from "../../../../../packages/backend/convex/lib/mediaKitModel";
+import {
+  contactHref,
+  normalizeAccountHandle,
+} from "../../../../../packages/backend/convex/lib/mediaKitModel";
 const nicheOptions = [
   "Art",
   "Athlete",
@@ -683,24 +686,26 @@ export default function CreatorMediaKit() {
           </Tabs.Panel>
           <Tabs.Panel id="accounts" className="min-w-0 w-full">
             <section className="space-y-5">
-              <SectionHeading
-                title="Accounts"
-                description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
-              >
-                {!detail && !modalOpen && (
-                  <Button
-                    variant="primary"
-                    className={primaryButtonClass}
-                    isDisabled={busy || data.accounts.length >= 5}
-                    onPress={() => {
-                      setModalOpen(true);
-                    }}
-                  >
-                    <Plus size={16} />
-                    Add account
-                  </Button>
-                )}
-              </SectionHeading>
+              {!detail && !modalOpen && (
+                <SectionHeading
+                  title="Accounts"
+                  description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
+                >
+                  {!detail && !modalOpen && (
+                    <Button
+                      variant="primary"
+                      className={primaryButtonClass}
+                      isDisabled={busy || data.accounts.length >= 5}
+                      onPress={() => {
+                        setModalOpen(true);
+                      }}
+                    >
+                      <Plus size={16} />
+                      Add account
+                    </Button>
+                  )}
+                </SectionHeading>
+              )}
               {modalOpen && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
@@ -720,7 +725,14 @@ export default function CreatorMediaKit() {
                       setBusy(true);
 
                       try {
-                        const accountId = await add({ handle, platform });
+                        const normalizedHandle = normalizeAccountHandle(
+                          handle,
+                          platform,
+                        );
+                        const accountId = await add({
+                          handle: normalizedHandle,
+                          platform,
+                        });
                         setDetail({ section: "accounts", key: accountId });
                         setHandle("");
                         setModalOpen(false);
@@ -771,6 +783,21 @@ export default function CreatorMediaKit() {
                         label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
                         value={handle}
                         onChange={setHandle}
+                        onBlur={() => {
+                          if (!handle.trim()) return;
+                          try {
+                            normalizeAccountHandle(handle, platform);
+                          } catch (error) {
+                            toast({
+                              title: "Check profile link",
+                              description:
+                                error instanceof Error
+                                  ? error.message
+                                  : "Enter a valid profile URL or username.",
+                              color: "danger",
+                            });
+                          }
+                        }}
                       />
 
                       <p className="text-xs text-gray-500">
@@ -984,34 +1011,36 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="partnerships" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <SectionHeading
-                  title="Past partnerships"
-                  description="Showcase brands you’ve worked with. Add up to ten collaborations."
-                >
-                  {!detail && (
-                    <Button
-                      variant="primary"
-                      className={primaryButtonClass}
-                      isDisabled={(settings.partnerships ?? []).length >= 10}
-                      onPress={() =>
-                        edit({
-                          partnerships: [
-                            ...(settings.partnerships ?? []),
-                            {
-                              brand_name: "",
-                              description: "",
-                              url: "",
-                              is_visible: true,
-                            },
-                          ],
-                        })
-                      }
-                    >
-                      <Plus size={16} />
-                      Add partnership
-                    </Button>
-                  )}
-                </SectionHeading>
+                {!detail && (
+                  <SectionHeading
+                    title="Past partnerships"
+                    description="Showcase brands you’ve worked with. Add up to ten collaborations."
+                  >
+                    {!detail && (
+                      <Button
+                        variant="primary"
+                        className={primaryButtonClass}
+                        isDisabled={(settings.partnerships ?? []).length >= 10}
+                        onPress={() =>
+                          edit({
+                            partnerships: [
+                              ...(settings.partnerships ?? []),
+                              {
+                                brand_name: "",
+                                description: "",
+                                url: "",
+                                is_visible: true,
+                              },
+                            ],
+                          })
+                        }
+                      >
+                        <Plus size={16} />
+                        Add partnership
+                      </Button>
+                    )}
+                  </SectionHeading>
+                )}
                 {!detail && (settings.partnerships ?? []).length === 0 && (
                   <EmptyState
                     title="No partnerships yet"
@@ -1141,6 +1170,26 @@ export default function CreatorMediaKit() {
                     <Field
                       label="Campaign or brand link (optional, https://)"
                       value={partner.url}
+                      type="url"
+                      onBlur={() => {
+                        if (!partner.url.trim()) return;
+                        try {
+                          contactHref({
+                            kind: "website",
+                            value: partner.url,
+                            is_visible: true,
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Check partnership URL",
+                            description:
+                              error instanceof Error
+                                ? error.message
+                                : "Enter a valid HTTPS URL.",
+                            color: "danger",
+                          });
+                        }
+                      }}
                       onChange={(url) =>
                         edit({
                           partnerships: (settings.partnerships ?? []).map(
@@ -1177,36 +1226,38 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="rates" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <SectionHeading
-                  title="Rates"
-                  description="List your services and pricing so brands know how to work with you."
-                >
-                  {!detail && (
-                    <Button
-                      variant="primary"
-                      className={primaryButtonClass}
-                      isDisabled={settings.rates.length >= 10}
-                      onPress={() =>
-                        edit({
-                          rates: [
-                            ...settings.rates,
-                            {
-                              name: "",
-                              description: "",
-                              amount_minor: 0,
-                              currency: "MYR",
-                              starting_from: false,
-                              is_visible: false,
-                            },
-                          ],
-                        })
-                      }
-                    >
-                      <Plus size={16} aria-hidden="true" />
-                      Add rate
-                    </Button>
-                  )}
-                </SectionHeading>
+                {!detail && (
+                  <SectionHeading
+                    title="Rates"
+                    description="List your services and pricing so brands know how to work with you."
+                  >
+                    {!detail && (
+                      <Button
+                        variant="primary"
+                        className={primaryButtonClass}
+                        isDisabled={settings.rates.length >= 10}
+                        onPress={() =>
+                          edit({
+                            rates: [
+                              ...settings.rates,
+                              {
+                                name: "",
+                                description: "",
+                                amount_minor: 0,
+                                currency: "MYR",
+                                starting_from: false,
+                                is_visible: false,
+                              },
+                            ],
+                          })
+                        }
+                      >
+                        <Plus size={16} aria-hidden="true" />
+                        Add rate
+                      </Button>
+                    )}
+                  </SectionHeading>
+                )}
                 {!detail && settings.rates.length === 0 && (
                   <EmptyState
                     title="No rates yet"
@@ -1432,70 +1483,72 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="contact" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <SectionHeading
-                  title="Contact"
-                  description="Choose how brands can reach you and which contact details appear publicly."
-                >
-                  {!detail && (
-                    <Select
-                      aria-label="Add a contact method"
-                      className="w-fit"
-                      placeholder="Add contact"
-                      value={null}
-                      isDisabled={settings.contacts.length >= 4}
-                      onChange={(kind) => {
-                        if (
-                          kind !== "email" &&
-                          kind !== "whatsapp" &&
-                          kind !== "website" &&
-                          kind !== "instagram"
-                        )
-                          return;
-                        if (!settings.contacts.some((c) => c.kind === kind))
-                          edit({
-                            contacts: [
-                              ...settings.contacts,
-                              { kind, value: "", is_visible: false },
-                            ],
-                          });
-                      }}
-                    >
-                      <Select.Trigger className="min-h-10 items-center justify-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
-                        <Plus size={16} aria-hidden="true" />
-                        <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
-                        <Select.Indicator className="static! size-4 text-white!" />
-                      </Select.Trigger>
-                      <Select.Popover>
-                        <ListBox>
-                          {(
-                            [
-                              { kind: "email", label: "Email" },
-                              { kind: "whatsapp", label: "WhatsApp" },
-                              { kind: "website", label: "Website" },
-                              { kind: "instagram", label: "Instagram DM" },
-                            ] as { kind: Contact["kind"]; label: string }[]
+                {!detail && (
+                  <SectionHeading
+                    title="Contact"
+                    description="Choose how brands can reach you and which contact details appear publicly."
+                  >
+                    {!detail && (
+                      <Select
+                        aria-label="Add a contact method"
+                        className="w-fit"
+                        placeholder="Add contact"
+                        value={null}
+                        isDisabled={settings.contacts.length >= 4}
+                        onChange={(kind) => {
+                          if (
+                            kind !== "email" &&
+                            kind !== "whatsapp" &&
+                            kind !== "website" &&
+                            kind !== "instagram"
                           )
-                            .filter(
-                              (item) =>
-                                !settings.contacts.some(
-                                  (c) => c.kind === item.kind,
-                                ),
+                            return;
+                          if (!settings.contacts.some((c) => c.kind === kind))
+                            edit({
+                              contacts: [
+                                ...settings.contacts,
+                                { kind, value: "", is_visible: false },
+                              ],
+                            });
+                        }}
+                      >
+                        <Select.Trigger className="min-h-10 items-center justify-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
+                          <Plus size={16} aria-hidden="true" />
+                          <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
+                          <Select.Indicator className="static! size-4 text-white!" />
+                        </Select.Trigger>
+                        <Select.Popover>
+                          <ListBox>
+                            {(
+                              [
+                                { kind: "email", label: "Email" },
+                                { kind: "whatsapp", label: "WhatsApp" },
+                                { kind: "website", label: "Website" },
+                                { kind: "instagram", label: "Instagram DM" },
+                              ] as { kind: Contact["kind"]; label: string }[]
                             )
-                            .map((item) => (
-                              <ListBox.Item
-                                key={item.kind}
-                                id={item.kind}
-                                textValue={item.label}
-                              >
-                                <Label>{item.label}</Label>
-                                <ListBox.ItemIndicator />
-                              </ListBox.Item>
-                            ))}
-                        </ListBox>
-                      </Select.Popover>
-                    </Select>
-                  )}
-                </SectionHeading>
+                              .filter(
+                                (item) =>
+                                  !settings.contacts.some(
+                                    (c) => c.kind === item.kind,
+                                  ),
+                              )
+                              .map((item) => (
+                                <ListBox.Item
+                                  key={item.kind}
+                                  id={item.kind}
+                                  textValue={item.label}
+                                >
+                                  <Label>{item.label}</Label>
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              ))}
+                          </ListBox>
+                        </Select.Popover>
+                      </Select>
+                    )}
+                  </SectionHeading>
+                )}
                 {!detail && settings.contacts.length === 0 && (
                   <EmptyState
                     title="No contact methods yet"
