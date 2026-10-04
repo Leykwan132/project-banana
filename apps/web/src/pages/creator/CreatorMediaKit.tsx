@@ -87,7 +87,6 @@ export default function CreatorMediaKit() {
   const save = useMutation(api.mediaKits.saveSettings);
   const publish = useMutation(api.mediaKits.setPublished);
   const display = useMutation(api.mediaKits.setAccountDisplay);
-  const primary = useMutation(api.mediaKits.setPrimaryAccount);
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
   const [platform, setPlatform] = useState<Platform>("instagram");
@@ -394,19 +393,6 @@ export default function CreatorMediaKit() {
                         {a.platform === "tiktok" ? "TikTok" : "Instagram"}
                       </span>
                     </h3>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-black"
-                      isDisabled={
-                        busy || data.kit?.primary_account_id === a._id
-                      }
-                      onPress={() => run(() => primary({ accountId: a._id }))}
-                    >
-                      {data.kit?.primary_account_id === a._id
-                        ? "Primary"
-                        : "Use as primary"}
-                    </Button>
                     <div className="flex shrink-0 items-center gap-2">
                       <Switch
                         isSelected={a.is_visible}
