@@ -86,7 +86,6 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           >
             {[
               { id: "partnerships", label: "Partnerships" },
-              { id: "contacts", label: "Contacts" },
               { id: "instagram", label: "Instagram" },
               { id: "tiktok", label: "TikTok" },
             ].map((tab) => (
@@ -135,34 +134,6 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           {!kit.partnerships.length && (
             <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
               No partnerships to showcase yet.
-            </p>
-          )}
-        </Tabs.Panel>
-        <Tabs.Panel id="contacts" className="w-full">
-          {!!kit.contacts.length && (
-            <div className="flex flex-wrap justify-center gap-2">
-              {kit.contacts.map((c) => (
-                <Button
-                  key={c.kind}
-                  variant="ghost"
-                  className="text-black"
-                  onPress={() =>
-                    window.open(c.href, "_blank", "noopener,noreferrer")
-                  }
-                >
-                  <ContactIcon kind={c.kind} />
-                  {c.kind === "email"
-                    ? "Email"
-                    : c.kind === "website"
-                      ? "Website"
-                      : c.label}
-                </Button>
-              ))}
-            </div>
-          )}
-          {!kit.contacts.length && (
-            <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
-              No public contact methods yet.
             </p>
           )}
         </Tabs.Panel>
@@ -313,6 +284,46 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             ))}
           </div>
         </section>
+      )}
+      {!!kit.contacts.length && (
+        <nav
+          aria-label="Contact methods"
+          className="flex flex-wrap justify-center gap-3 pt-4"
+        >
+          {kit.contacts.map((contact) => {
+            const label =
+              contact.kind === "email"
+                ? "Email"
+                : contact.kind === "whatsapp"
+                  ? "WhatsApp"
+                  : contact.kind === "instagram"
+                    ? "Instagram DM"
+                    : "Website";
+            const color =
+              contact.kind === "email"
+                ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                : contact.kind === "whatsapp"
+                  ? "bg-green-100 text-green-700 hover:bg-green-200"
+                  : contact.kind === "instagram"
+                    ? "bg-pink-100 text-pink-700 hover:bg-pink-200"
+                    : "bg-violet-100 text-violet-700 hover:bg-violet-200";
+            return (
+              <Button
+                key={contact.kind}
+                isIconOnly
+                variant="ghost"
+                aria-label={label}
+                title={label}
+                className={`size-11 rounded-full ${color}`}
+                onPress={() =>
+                  window.open(contact.href, "_blank", "noopener,noreferrer")
+                }
+              >
+                <ContactIcon kind={contact.kind} size={21} />
+              </Button>
+            );
+          })}
+        </nav>
       )}
       <footer className="text-center text-xs text-gray-400 pb-8 pt-6">
         Media kit by{" "}
