@@ -1,3 +1,4 @@
+import luminaIcon from "../../assets/icon.svg";
 import { Card, Button, Tag, TagGroup, Tabs } from "@heroui/react";
 import { NicheIcon } from "./NicheIcon";
 import { ContactIcon } from "./ContactIcon";
@@ -16,6 +17,13 @@ const number = (n: number) =>
 export function MediaKitView({ kit }: { kit: KitView }) {
   return (
     <div className="mx-auto max-w-3xl space-y-8 text-gray-900">
+      <a
+        href="/"
+        aria-label="Lumina home"
+        className="inline-flex size-10 items-center justify-center rounded-full bg-white shadow-sm"
+      >
+        <img src={luminaIcon} alt="Lumina" className="size-6" />
+      </a>
       <header className="flex flex-col items-center text-center pt-8 gap-4">
         {kit.photoUrl ? (
           <img
