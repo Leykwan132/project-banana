@@ -335,7 +335,7 @@ export function validateSettings(input: unknown): Settings {
     !s.display_name.trim() ||
     s.display_name.length > 100 ||
     s.bio.length > 1000 ||
-    s.category.length > 100
+    s.category.length > 1000
   )
     throw new Error(
       "Enter a name up to 100 characters, a short category, and a bio up to 1,000 characters.",

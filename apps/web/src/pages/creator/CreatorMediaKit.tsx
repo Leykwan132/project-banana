@@ -20,6 +20,53 @@ import type {
   Contact,
   Platform,
 } from "../../../../../packages/backend/convex/lib/mediaKitModel";
+const nicheOptions = [
+  "Art",
+  "Athlete",
+  "Beauty",
+  "Business",
+  "Comedy",
+  "Cooking",
+  "DIY",
+  "Education",
+  "Entertainment",
+  "Entrepreneurship",
+  "Family",
+  "Fashion",
+  "Finance",
+  "Fitness",
+  "Food",
+  "Gaming",
+  "History",
+  "Home",
+  "Lifestyle",
+  "Literature",
+  "Mental Health",
+  "Mobile Gaming",
+  "Music",
+  "Outdoors",
+  "Parenthood",
+  "Personal Finance",
+  "Pets",
+  "Photography",
+  "Podcast",
+  "Pop Culture",
+  "Productivity",
+  "Relationship",
+  "Running",
+  "Skincare",
+  "Sports",
+  "Tech",
+  "Travel",
+  "True Crime",
+  "Wellness",
+  "Yoga",
+];
+const selectedNiches = (category: string) =>
+  category
+    .split(",")
+    .map((niche) => niche.trim())
+    .filter(Boolean);
 const primaryButtonClass =
   "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
 
@@ -373,11 +420,36 @@ export default function CreatorMediaKit() {
                   value={settings.display_name}
                   onChange={(display_name) => edit({ display_name })}
                 />
-                <Field
-                  label="Influencer type / niche"
-                  value={settings.category}
-                  onChange={(category) => edit({ category })}
-                />
+                <Select
+                  className="w-full gap-2"
+                  placeholder="Select your niches"
+                  selectionMode="multiple"
+                  value={selectedNiches(settings.category)}
+                  onChange={(values) =>
+                    edit({ category: values.map(String).join(", ") })
+                  }
+                >
+                  <Label>Influencer type / niche</Label>
+                  <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
+                    <Select.Value />
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <ListBox selectionMode="multiple">
+                      {[
+                        ...new Set([
+                          ...nicheOptions,
+                          ...selectedNiches(settings.category),
+                        ]),
+                      ].map((niche) => (
+                        <ListBox.Item key={niche} id={niche} textValue={niche}>
+                          {niche}
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                      ))}
+                    </ListBox>
+                  </Select.Popover>
+                </Select>
                 <Field
                   label="Bio"
                   multiline
