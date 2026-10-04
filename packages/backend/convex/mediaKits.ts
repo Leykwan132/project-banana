@@ -139,6 +139,8 @@ export const addAccount = mutation({
         total_audience_visible: true,
         rates_visible: false,
         contacts_visible: false,
+        partnerships: [],
+        partnerships_visible: true,
         rates: [],
         contacts: [],
         is_published: false,
@@ -228,7 +230,13 @@ export const saveSettings = mutation({
   handler: async (ctx, args) => {
     const kit = await ownKit(ctx);
     if (!kit) throw Error("Add a social account first.");
-    const settings = validateSettings(args.settings);
+    const settings = validateSettings({
+      ...args.settings,
+      // Older open editors omit these fields; preserve existing partnerships.
+      partnerships: args.settings.partnerships ?? kit.partnerships ?? [],
+      partnerships_visible:
+        args.settings.partnerships_visible ?? kit.partnerships_visible ?? true,
+    });
     const existing = await ctx.db
       .query("media_kits")
       .withIndex("by_slug", (q) => q.eq("slug", settings.slug))
@@ -412,6 +420,10 @@ export const getPublic = query({
       ...(kit.total_audience_visible && audience.length
         ? { totalAudience: audience.reduce((a, b) => a + b, 0) }
         : {}),
+      partnerships:
+        (kit.partnerships_visible ?? true)
+          ? (kit.partnerships ?? []).filter((p) => p.is_visible)
+          : [],
       rates: kit.rates_visible ? kit.rates.filter((r) => r.is_visible) : [],
       contacts: kit.contacts_visible
         ? kit.contacts

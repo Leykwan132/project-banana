@@ -17,6 +17,7 @@ import {
   Mail,
   Trash2,
   ChevronDown,
+  Handshake,
 } from "lucide-react";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
@@ -137,11 +138,16 @@ export default function CreatorMediaKit() {
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [modalOpen, setModalOpen] = useState(false);
   const [importError, setImportError] = useState("");
-  const [pendingRemoval, setPendingRemoval] = useState<{
-    id: Id<"media_kit_accounts">;
-    handle: string;
-    platform: Platform;
-  } | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<
+    | {
+        kind: "account";
+        id: Id<"media_kit_accounts">;
+        handle: string;
+        platform: Platform;
+      }
+    | { kind: "partnership"; index: number; name: string }
+    | null
+  >(null);
   const [removalError, setRemovalError] = useState("");
   const [tab, setTab] = useState<string | null>(null);
   const [wide, setWide] = useState(
@@ -168,6 +174,8 @@ export default function CreatorMediaKit() {
         total_audience_visible: k.total_audience_visible,
         rates_visible: k.rates_visible,
         contacts_visible: k.contacts_visible,
+        partnerships: k.partnerships ?? [],
+        partnerships_visible: k.partnerships_visible ?? true,
         rates: k.rates,
         contacts: k.contacts,
       });
@@ -230,6 +238,27 @@ export default function CreatorMediaKit() {
               };
             })(),
           ),
+        partnerships:
+          (settings.partnerships_visible ?? true)
+            ? (settings.partnerships ?? [])
+                .filter((p) => p.is_visible)
+                .map((p) => {
+                  try {
+                    return {
+                      ...p,
+                      url: p.url.trim()
+                        ? contactHref({
+                            kind: "website",
+                            value: p.url,
+                            is_visible: true,
+                          })
+                        : "",
+                    };
+                  } catch {
+                    return { ...p, url: "" };
+                  }
+                })
+            : [],
         rates: settings.rates_visible
           ? settings.rates.filter((r) => r.is_visible)
           : [],
@@ -319,11 +348,12 @@ export default function CreatorMediaKit() {
           onSelectionChange={(key) => setTab(String(key))}
           className="min-w-0 w-full gap-5"
         >
-          <Tabs.ListContainer className="w-full shrink-0 overflow-x-auto md:w-32 md:overflow-visible">
+          <Tabs.ListContainer className="w-full shrink-0 overflow-x-auto md:w-40 md:overflow-visible">
             <Tabs.List aria-label="Media kit settings" className="w-full">
               {[
                 { id: "profile", label: "Profile", icon: UserRound },
                 { id: "accounts", label: "Accounts", icon: AtSign },
+                { id: "partnerships", label: "Partnerships", icon: Handshake },
                 { id: "rates", label: "Rates", icon: Wallet },
                 { id: "contact", label: "Contact", icon: Mail },
               ].map(({ id, label, icon: Icon }) => (
@@ -466,6 +496,7 @@ export default function CreatorMediaKit() {
                         onPress={() => {
                           setRemovalError("");
                           setPendingRemoval({
+                            kind: "account",
                             id: a._id,
                             handle: a.handle,
                             platform: a.platform ?? "instagram",
@@ -518,6 +549,126 @@ export default function CreatorMediaKit() {
                 </div>
               ))}
             </Card>
+          </Tabs.Panel>
+          <Tabs.Panel id="partnerships" className="min-w-0 flex-1">
+            {settings ? (
+              <Card className="p-5 shadow-none border border-gray-100 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-semibold">Past partnerships</h2>
+                  <VisibilitySwitch
+                    label="Show past partnerships section"
+                    value={settings.partnerships_visible ?? true}
+                    onChange={(partnerships_visible) =>
+                      edit({ partnerships_visible })
+                    }
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Showcase brands you’ve worked with. Add up to ten
+                  collaborations.
+                </p>
+                {(settings.partnerships ?? []).map((partner, i) => (
+                  <div
+                    key={i}
+                    className="space-y-3 border-t border-gray-100 pt-4"
+                  >
+                    <div className="flex items-end gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Field
+                          label="Brand name"
+                          value={partner.brand_name}
+                          onChange={(brand_name) =>
+                            edit({
+                              partnerships: (settings.partnerships ?? []).map(
+                                (p, j) => (j === i ? { ...p, brand_name } : p),
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pb-2">
+                        <VisibilitySwitch
+                          label={`Show ${partner.brand_name || "partnership"}`}
+                          value={partner.is_visible}
+                          onChange={(is_visible) =>
+                            edit({
+                              partnerships: (settings.partnerships ?? []).map(
+                                (p, j) => (j === i ? { ...p, is_visible } : p),
+                              ),
+                            })
+                          }
+                        />
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:text-red-700"
+                          aria-label={`Remove ${partner.brand_name || "partnership"}`}
+                          onPress={() => {
+                            setRemovalError("");
+                            setPendingRemoval({
+                              kind: "partnership",
+                              index: i,
+                              name: partner.brand_name || "this partnership",
+                            });
+                          }}
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      </div>
+                    </div>
+                    <Field
+                      label="Collaboration description"
+                      multiline
+                      value={partner.description}
+                      onChange={(description) =>
+                        edit({
+                          partnerships: (settings.partnerships ?? []).map(
+                            (p, j) => (j === i ? { ...p, description } : p),
+                          ),
+                        })
+                      }
+                    />
+                    <Field
+                      label="Campaign or brand link (optional, https://)"
+                      value={partner.url}
+                      onChange={(url) =>
+                        edit({
+                          partnerships: (settings.partnerships ?? []).map(
+                            (p, j) => (j === i ? { ...p, url } : p),
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  className="text-black"
+                  isDisabled={(settings.partnerships ?? []).length >= 10}
+                  onPress={() =>
+                    edit({
+                      partnerships: [
+                        ...(settings.partnerships ?? []),
+                        {
+                          brand_name: "",
+                          description: "",
+                          url: "",
+                          is_visible: true,
+                        },
+                      ],
+                    })
+                  }
+                >
+                  <Plus size={16} />
+                  Add partnership
+                </Button>
+              </Card>
+            ) : (
+              <p className="p-5 text-sm text-gray-500">
+                Add an account first, then showcase your past partnerships.
+              </p>
+            )}
           </Tabs.Panel>
           <Tabs.Panel id="rates" className="min-w-0 flex-1">
             {settings ? (
@@ -939,17 +1090,30 @@ export default function CreatorMediaKit() {
             <Modal.Dialog>
               <Modal.CloseTrigger isDisabled={busy} />
               <Modal.Header>
-                <Modal.Heading>Remove account?</Modal.Heading>
+                <Modal.Heading>
+                  {pendingRemoval?.kind === "partnership"
+                    ? "Remove partnership?"
+                    : "Remove account?"}
+                </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <p className="text-sm text-gray-600">
-                  Remove{" "}
-                  {pendingRemoval?.platform === "tiktok"
-                    ? "TikTok"
-                    : "Instagram"}{" "}
-                  <strong>@{pendingRemoval?.handle}</strong> from your media
-                  kit? Its automatic refreshes will stop. You can add it again
-                  later.
+                  {pendingRemoval?.kind === "partnership" ? (
+                    <>
+                      Remove <strong>{pendingRemoval.name}</strong> from your
+                      media kit? Save your changes to update the public page.
+                    </>
+                  ) : (
+                    <>
+                      Remove{" "}
+                      {pendingRemoval?.platform === "tiktok"
+                        ? "TikTok"
+                        : "Instagram"}{" "}
+                      <strong>@{pendingRemoval?.handle}</strong> from your media
+                      kit? Its automatic refreshes will stop. You can add it
+                      again later.
+                    </>
+                  )}
                 </p>
                 {removalError && (
                   <p role="alert" className="mt-3 text-sm text-red-600">
@@ -972,6 +1136,15 @@ export default function CreatorMediaKit() {
                   isDisabled={busy || !pendingRemoval}
                   onPress={async () => {
                     if (!pendingRemoval) return;
+                    if (pendingRemoval.kind === "partnership") {
+                      edit({
+                        partnerships: (settings?.partnerships ?? []).filter(
+                          (_, i) => i !== pendingRemoval.index,
+                        ),
+                      });
+                      setPendingRemoval(null);
+                      return;
+                    }
                     setBusy(true);
                     setRemovalError("");
                     try {
@@ -989,7 +1162,11 @@ export default function CreatorMediaKit() {
                     }
                   }}
                 >
-                  {busy ? "Removing…" : "Remove account"}
+                  {busy
+                    ? "Removing…"
+                    : pendingRemoval?.kind === "partnership"
+                      ? "Remove partnership"
+                      : "Remove account"}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

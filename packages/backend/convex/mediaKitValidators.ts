@@ -27,7 +27,15 @@ export const contact = v.object({
   value: v.string(),
   is_visible: v.boolean(),
 });
+export const partnership = v.object({
+  brand_name: v.string(),
+  description: v.string(),
+  url: v.string(),
+  is_visible: v.boolean(),
+});
 export const settingsFields = {
+  partnerships: v.optional(v.array(partnership)),
+  partnerships_visible: v.optional(v.boolean()),
   slug: v.string(),
   display_name: v.string(),
   bio: v.string(),
@@ -151,6 +159,7 @@ export const publicAccount = v.object({
   ),
 });
 export const publicKit = v.object({
+  partnerships: v.array(partnership),
   slug: v.string(),
   displayName: v.string(),
   bio: v.string(),

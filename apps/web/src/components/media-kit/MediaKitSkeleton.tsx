@@ -72,8 +72,8 @@ export function MediaKitSkeleton({ editor = false }: { editor?: boolean }) {
             </div>
             <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
               <div className="flex flex-col gap-5 md:flex-row">
-                <div className="flex shrink-0 gap-2 md:w-32 md:flex-col">
-                  {[0, 1, 2, 3].map((i) => (
+                <div className="flex shrink-0 gap-2 md:w-40 md:flex-col">
+                  {[0, 1, 2, 3, 4].map((i) => (
                     <Skeleton key={i} className="h-10 w-full rounded-xl" />
                   ))}
                 </div>

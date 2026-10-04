@@ -173,6 +173,36 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           </Card.Content>
         </Card>
       ))}
+      {!!kit.partnerships?.length && (
+        <section>
+          <h2 className="mb-4 font-semibold">Past partnerships</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {kit.partnerships.map((p, i) => (
+              <Card
+                key={i}
+                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-none"
+              >
+                <h3 className="font-medium">{p.brand_name}</h3>
+                {p.description && (
+                  <p className="mt-2 whitespace-pre-line text-sm text-gray-500">
+                    {p.description}
+                  </p>
+                )}
+                {p.url && (
+                  <a
+                    href={p.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex text-sm font-medium text-black underline underline-offset-4"
+                  >
+                    View collaboration ↗
+                  </a>
+                )}
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
       {!!kit.rates.length && (
         <section>
           <h2 className="font-semibold mb-4">Work with me</h2>

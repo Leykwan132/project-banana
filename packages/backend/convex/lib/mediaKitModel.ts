@@ -22,7 +22,15 @@ export type Contact = {
   value: string;
   is_visible: boolean;
 };
+export type Partnership = {
+  brand_name: string;
+  description: string;
+  url: string;
+  is_visible: boolean;
+};
 export type Settings = {
+  partnerships?: Partnership[];
+  partnerships_visible?: boolean;
   slug: string;
   display_name: string;
   bio: string;
@@ -301,6 +309,28 @@ export function contactHref(contact: Contact): string {
 export function validateSettings(input: unknown): Settings {
   const s = input as Settings;
   const slug = validateSlug(s.slug);
+  const partnerships = s.partnerships ?? [];
+  if (partnerships.length > 10) throw Error("Add up to ten past partnerships.");
+  const normalizedPartnerships = partnerships.map((p) => {
+    if (
+      !p.brand_name.trim() ||
+      p.brand_name.length > 100 ||
+      p.description.length > 500 ||
+      p.url.length > 2048
+    )
+      throw Error(
+        "Enter a brand name up to 100 characters and a description up to 500 characters.",
+      );
+    const url = p.url.trim();
+    return {
+      ...p,
+      brand_name: p.brand_name.trim(),
+      description: p.description.trim(),
+      url: url
+        ? contactHref({ kind: "website", value: url, is_visible: true })
+        : "",
+    };
+  });
   if (
     !s.display_name.trim() ||
     s.display_name.length > 100 ||
@@ -331,6 +361,8 @@ export function validateSettings(input: unknown): Settings {
   }
   return {
     ...s,
+    partnerships: normalizedPartnerships,
+    partnerships_visible: s.partnerships_visible ?? true,
     slug,
     display_name: s.display_name.trim(),
     category: s.category.trim(),

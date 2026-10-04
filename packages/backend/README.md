@@ -116,3 +116,10 @@ deployment; the isolated checkout has no `CONVEX_DEPLOYMENT`.
 
 Verification: `bun test packages/backend/tests`, backend TypeScript, web TypeScript,
 and `bun --bun run --cwd apps/web build`. Mocked tests never use live Apify data.
+
+Past partnerships are manually authored in the Partnerships tab (up to ten).
+Each entry has a brand name, short description, optional HTTPS link and visibility
+switch; the section also has its own switch. Only enabled entries in an enabled
+section reach the public query. These fields are optional on existing kits;
+older editors omitting them preserve stored partnerships. Account imports never
+replace partnerships. Removing an entry requires confirmation and Save changes.
