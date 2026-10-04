@@ -207,19 +207,27 @@ function VisibilitySwitch({
   disabled?: boolean;
 }) {
   return (
-    <Switch
-      className="shrink-0"
-      isSelected={value}
-      isDisabled={disabled}
-      onChange={onChange}
-      aria-label={label}
-    >
-      <Switch.Content aria-label={label}>
-        <Switch.Control>
-          <Switch.Thumb />
-        </Switch.Control>
-      </Switch.Content>
-    </Switch>
+    <Tooltip delay={300}>
+      <Tooltip.Trigger>
+        <Button
+          isIconOnly
+          variant="ghost"
+          className="text-black"
+          isDisabled={disabled}
+          aria-label={label}
+          onPress={() => onChange(!value)}
+        >
+          {value ? <Eye size={18} /> : <EyeOff size={18} />}
+        </Button>
+      </Tooltip.Trigger>
+      <Tooltip.Content
+        placement="top"
+        showArrow
+        className="rounded-xl bg-[#171717] px-3 py-2 text-xs text-white"
+      >
+        {value ? "Hide in Media Kit" : "Show in Media Kit"}
+      </Tooltip.Content>
+    </Tooltip>
   );
 }
 
@@ -964,29 +972,20 @@ export default function CreatorMediaKit() {
                         </span>
                       </h3>
                       <div className="flex shrink-0 items-center gap-2">
-                        <Switch
-                          isSelected={a.is_visible}
-                          isDisabled={busy}
+                        <VisibilitySwitch
+                          label={`Show @${a.handle} on public media kit`}
+                          value={a.is_visible}
+                          disabled={busy}
                           onChange={(isVisible) =>
-                            run(() =>
-                              display({
-                                accountId: a._id,
-                                isVisible,
-                                metricVisibility: a.metric_visibility,
-                              }),
-                            )
+                            void display({
+                              accountId: a._id,
+                              isVisible,
+                              metricVisibility: a.metric_visibility,
+                            })
                           }
-                          aria-label={`Show @${a.handle} on public media kit`}
-                        >
-                          <Switch.Content
-                            aria-label={`Show @${a.handle} on public media kit`}
-                          >
-                            <Switch.Control>
-                              <Switch.Thumb />
-                            </Switch.Control>
-                          </Switch.Content>
-                        </Switch>
+                        />
                         <Button
+                          isIconOnly
                           size="sm"
                           variant="primary"
                           className={deleteButtonClass}
@@ -1002,7 +1001,6 @@ export default function CreatorMediaKit() {
                           }}
                         >
                           <Trash2 size={18} />
-                          Delete
                         </Button>
                       </div>
                     </div>
@@ -1183,6 +1181,7 @@ export default function CreatorMediaKit() {
                           }
                         />
                         <Button
+                          isIconOnly
                           size="sm"
                           variant="primary"
                           className={deleteButtonClass}
@@ -1196,7 +1195,6 @@ export default function CreatorMediaKit() {
                           }}
                         >
                           <Trash2 size={18} />
-                          Delete
                         </Button>
                       </div>
                     </div>
@@ -1398,6 +1396,22 @@ export default function CreatorMediaKit() {
                             })
                           }
                         />
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          aria-label="Remove rate"
+                          variant="primary"
+                          className={deleteButtonClass}
+                          onPress={() =>
+                            setPendingRemoval({
+                              kind: "rate",
+                              index: i,
+                              name: rate.name || "rate",
+                            })
+                          }
+                        >
+                          <Trash2 size={16} aria-hidden="true" />
+                        </Button>
                       </div>
                     </div>
                     <Field
@@ -1486,23 +1500,6 @@ export default function CreatorMediaKit() {
                         })
                       }
                     />
-
-                    <Button
-                      size="sm"
-                      aria-label="Remove rate"
-                      variant="primary"
-                      className={deleteButtonClass}
-                      onPress={() =>
-                        setPendingRemoval({
-                          kind: "rate",
-                          index: i,
-                          name: rate.name || "rate",
-                        })
-                      }
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                      Delete
-                    </Button>
                   </div>
                 ))}
 
@@ -1719,7 +1716,7 @@ export default function CreatorMediaKit() {
                           }
                         />
                       </div>
-                      <div className="pb-2">
+                      <div className="flex items-center gap-2 pb-2">
                         {" "}
                         <VisibilitySwitch
                           label={`Show ${c.kind}`}
@@ -1732,25 +1729,24 @@ export default function CreatorMediaKit() {
                             })
                           }
                         />
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          aria-label="Remove contact"
+                          variant="primary"
+                          className={deleteButtonClass}
+                          onPress={() =>
+                            setPendingRemoval({
+                              kind: "contact",
+                              index: i,
+                              name: c.kind,
+                            })
+                          }
+                        >
+                          <Trash2 size={16} aria-hidden="true" />
+                        </Button>
                       </div>
                     </div>
-
-                    <Button
-                      size="sm"
-                      aria-label="Remove contact"
-                      variant="primary"
-                      className={deleteButtonClass}
-                      onPress={() =>
-                        setPendingRemoval({
-                          kind: "contact",
-                          index: i,
-                          name: c.kind,
-                        })
-                      }
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                      Delete
-                    </Button>
                   </div>
                 ))}
 
