@@ -829,16 +829,8 @@ export default function CreatorMediaKit() {
                   description="Showcase brands you’ve worked with by adding your first collaboration."
                 >
                   <Button
-                    variant={
-                      (settings.partnerships ?? []).length === 0
-                        ? "primary"
-                        : "ghost"
-                    }
-                    className={
-                      (settings.partnerships ?? []).length === 0
-                        ? primaryButtonClass
-                        : "text-black"
-                    }
+                    variant="primary"
+                    className={primaryButtonClass}
                     isDisabled={(settings.partnerships ?? []).length >= 10}
                     onPress={() =>
                       edit({
@@ -1032,12 +1024,8 @@ export default function CreatorMediaKit() {
                   description="Add a service and its rate so brands know how to work with you."
                 >
                   <Button
-                    variant={settings.rates.length === 0 ? "primary" : "ghost"}
-                    className={
-                      settings.rates.length === 0
-                        ? primaryButtonClass
-                        : "text-black"
-                    }
+                    variant="primary"
+                    className={primaryButtonClass}
                     isDisabled={settings.rates.length >= 10}
                     onPress={() =>
                       edit({
@@ -1055,6 +1043,7 @@ export default function CreatorMediaKit() {
                       })
                     }
                   >
+                    <Plus size={16} aria-hidden="true" />
                     Add rate
                   </Button>
                 </EmptyAction>
@@ -1200,7 +1189,8 @@ export default function CreatorMediaKit() {
                         });
                     }}
                   >
-                    <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
+                    <Select.Trigger className="rounded-xl border border-black bg-black text-white hover:bg-gray-900">
+                      <Plus size={16} aria-hidden="true" />
                       <Select.Value />
                       <Select.Indicator />
                     </Select.Trigger>
@@ -1346,6 +1336,7 @@ export default function CreatorMediaKit() {
                     className={primaryButtonClass}
                     isDisabled={busy || !handle.trim()}
                   >
+                    <Plus size={16} aria-hidden="true" />
                     {busy ? "Adding…" : "Add account"}
                   </Button>
                 </Modal.Footer>
