@@ -1,4 +1,4 @@
-import { Info } from "lucide-react";
+import { Info, Heart, MessageCircle, Play } from "lucide-react";
 import { useState } from "react";
 import luminaIcon from "../../assets/icon.svg";
 import { Card, Button, Tag, TagGroup, Tabs, Modal, Tooltip } from "@heroui/react";
@@ -218,11 +218,10 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                                     </Tooltip.Trigger>
                                     <Tooltip.Content placement="top" showArrow className="max-w-64 rounded-xl bg-neutral-800 px-3 py-2 text-xs leading-relaxed text-gray-100 shadow-lg">
                                       {key === "averageLikes"
-                                        ? `Total likes divided by ${a.likesSampleSize ?? "the number of"} sampled posts with available like counts.`
+                                        ? `Total likes divided by ${a.likesSampleSize ?? "the number of"} posts.`
                                         : key === "averageComments"
-                                          ? `Total comments divided by ${a.commentsSampleSize ?? "the number of"} sampled posts with available comment counts.`
-                                          : `Total video views divided by ${a.videoSampleSize ?? "the number of"} sampled videos with available view counts.`}
-                                      {" "}Based on up to 12 recent posts imported from {a.platform === "tiktok" ? "TikTok" : "Instagram"} through Apify. Missing counts are excluded. Data refreshes every 24 hours.
+                                          ? `Total comments divided by ${a.commentsSampleSize ?? "the number of"} posts.`
+                                          : `Total video views divided by ${a.videoSampleSize ?? "the number of"} videos.`}
                                     </Tooltip.Content>
                                   </Tooltip>
                                 )}
@@ -231,36 +230,15 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                           ),
                         )}
                       </div>
-                      {(a.engagementSampleSize !== undefined ||
-                        a.videoSampleSize !== undefined ||
-                        a.likesSampleSize !== undefined ||
-                        a.commentsSampleSize !== undefined) && (
-                        <p className="text-xs text-gray-400">
-                          Recent sampled posts
-                          {a.likesSampleSize !== undefined
-                            ? ` · Likes based on ${a.likesSampleSize} posts`
-                            : ""}
-                          {a.commentsSampleSize !== undefined
-                            ? ` · Comments based on ${a.commentsSampleSize} posts`
-                            : ""}
-                          {a.engagementSampleSize !== undefined
-                            ? ` · Engagement based on ${a.engagementSampleSize} posts`
-                            : ""}
-                          {a.videoSampleSize !== undefined
-                            ? ` · Video average based on ${a.videoSampleSize} videos`
-                            : ""}
-                          . Public data; not platform Insights.
-                        </p>
-                      )}
                       {!!a.posts?.length && (
                         <div className="grid grid-cols-3 gap-2">
-                          {a.posts.map((p) => (
+                          {a.posts.slice(0, 3).map((p) => (
                             <a
                               key={p.id}
                               href={p.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="aspect-square overflow-hidden rounded-xl bg-gray-800"
+                              className="relative aspect-[9/16] overflow-hidden rounded-xl bg-gray-800"
                               aria-label={p.caption || "View post"}
                             >
                               {p.imageUrl ? (
@@ -273,6 +251,13 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                               ) : (
                                 <div className="grid h-full place-items-center text-xs text-gray-400 p-3">
                                   View post ↗
+                                </div>
+                              )}
+                              {(p.likes !== undefined || p.comments !== undefined || p.views !== undefined) && (
+                                <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-gradient-to-t from-black/90 to-transparent px-2 pb-3 pt-8 text-[10px] font-medium text-white sm:text-xs">
+                                  {p.views !== undefined && <span aria-label={`${p.views} views`} className="inline-flex items-center gap-1"><Play size={12} aria-hidden="true" />{number(p.views)}</span>}
+                                  {p.likes !== undefined && <span aria-label={`${p.likes} likes`} className="inline-flex items-center gap-1"><Heart size={12} aria-hidden="true" />{number(p.likes)}</span>}
+                                  {p.comments !== undefined && <span aria-label={`${p.comments} comments`} className="inline-flex items-center gap-1"><MessageCircle size={12} aria-hidden="true" />{number(p.comments)}</span>}
                                 </div>
                               )}
                             </a>
