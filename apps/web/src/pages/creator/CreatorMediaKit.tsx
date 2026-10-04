@@ -1274,7 +1274,7 @@ export default function CreatorMediaKit() {
                 >
                   <Select
                     aria-label="Add a contact method"
-                    className="w-full max-w-xs"
+                    className="w-fit"
                     placeholder="Add contact"
                     value={null}
                     isDisabled={settings.contacts.length >= 4}
@@ -1295,10 +1295,10 @@ export default function CreatorMediaKit() {
                         });
                     }}
                   >
-                    <Select.Trigger className="rounded-xl border border-black bg-black text-white hover:bg-gray-900">
+                    <Select.Trigger className="min-h-10 rounded-full! border-black! bg-black! px-4 text-white! shadow-none hover:bg-gray-900!">
                       <Plus size={16} aria-hidden="true" />
-                      <Select.Value />
-                      <Select.Indicator />
+                      <Select.Value className="text-white!" />
+                      <Select.Indicator className="text-white!" />
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
