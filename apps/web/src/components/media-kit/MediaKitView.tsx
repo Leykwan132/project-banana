@@ -1,4 +1,4 @@
-import { Card, Button, Tag, TagGroup } from "@heroui/react";
+import { Card, Button, Tag, TagGroup, Tabs } from "@heroui/react";
 import { ContactIcon } from "./ContactIcon";
 import { PlatformIcon } from "./PlatformIcon";
 import { accountProfileUrl } from "../../../../../packages/backend/convex/lib/mediaKitModel";
@@ -66,161 +66,223 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             <p className="text-sm text-gray-500">Combined audience</p>
           </div>
         )}
-        {!!kit.contacts.length && (
-          <div className="flex flex-wrap justify-center gap-2">
-            {kit.contacts.map((c) => (
-              <Button
-                key={c.kind}
-                variant="ghost"
-                className="text-black"
-                onPress={() =>
-                  window.open(c.href, "_blank", "noopener,noreferrer")
-                }
-              >
-                <ContactIcon kind={c.kind} />
-                {c.kind === "email"
-                  ? "Email"
-                  : c.kind === "website"
-                    ? "Website"
-                    : c.label}
-              </Button>
-            ))}
-          </div>
-        )}
       </header>
-      {kit.accounts.map((a) => (
-        <Card
-          key={a.id}
-          className="bg-white border border-gray-100 shadow-none rounded-3xl p-6"
-        >
-          <Card.Header className="flex-row items-center gap-3">
-            {a.avatarUrl && (
-              <img
-                src={a.avatarUrl}
-                alt=""
-                className="size-11 rounded-full object-cover"
-              />
-            )}
-            <div>
-              <a
-                href={accountProfileUrl(a.handle, a.platform)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 font-semibold"
+      <Tabs
+        defaultSelectedKey={
+          kit.accounts.some((account) => account.platform === "instagram")
+            ? "instagram"
+            : kit.accounts.some((account) => account.platform === "tiktok")
+              ? "tiktok"
+              : "partnerships"
+        }
+        className="w-full gap-6"
+      >
+        <Tabs.ListContainer className="w-full rounded-full">
+          <Tabs.List
+            aria-label="Explore media kit"
+            className="flex w-full flex-row flex-nowrap"
+          >
+            {[
+              { id: "partnerships", label: "Partnerships" },
+              { id: "contacts", label: "Contacts" },
+              { id: "instagram", label: "Instagram" },
+              { id: "tiktok", label: "TikTok" },
+            ].map((tab) => (
+              <Tabs.Tab
+                key={tab.id}
+                id={tab.id}
+                className="min-w-0 flex-1 px-1 text-xs font-normal text-black sm:px-3 sm:text-sm"
               >
-                <PlatformIcon platform={a.platform} size={17} />@{a.handle}
-              </a>
-              <p className="text-xs text-gray-400 mt-1">
-                {a.platform === "tiktok" ? "TikTok" : "Instagram"} · Updated{" "}
-                {new Date(a.updatedAt).toLocaleDateString()}
-              </p>
-            </div>
-          </Card.Header>
-          <Card.Content className="space-y-5">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-4">
-              {(
-                [
-                  ["followers", "Followers"],
-                  ["postCount", "Posts"],
-                  ["engagementRate", "Engagement"],
-                  ["averageLikes", "Average likes"],
-                  ["averageComments", "Average comments"],
-                  ["averageVideoViews", "Average video views"],
-                ] as const
-              ).map(([key, label]) =>
-                a[key] === undefined ? null : (
-                  <div key={key}>
-                    <p className="text-xl font-semibold">
-                      {key === "engagementRate"
-                        ? `${a[key]!.toFixed(2)}%`
-                        : number(a[key]!)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{label}</p>
-                  </div>
-                ),
-              )}
-            </div>
-            {(a.engagementSampleSize !== undefined ||
-              a.videoSampleSize !== undefined ||
-              a.likesSampleSize !== undefined ||
-              a.commentsSampleSize !== undefined) && (
-              <p className="text-xs text-gray-400">
-                Recent sampled posts
-                {a.likesSampleSize !== undefined
-                  ? ` · Likes based on ${a.likesSampleSize} posts`
-                  : ""}
-                {a.commentsSampleSize !== undefined
-                  ? ` · Comments based on ${a.commentsSampleSize} posts`
-                  : ""}
-                {a.engagementSampleSize !== undefined
-                  ? ` · Engagement based on ${a.engagementSampleSize} posts`
-                  : ""}
-                {a.videoSampleSize !== undefined
-                  ? ` · Video average based on ${a.videoSampleSize} videos`
-                  : ""}
-                . Public data; not platform Insights.
-              </p>
-            )}
-            {!!a.posts?.length && (
-              <div className="grid grid-cols-3 gap-2">
-                {a.posts.map((p) => (
-                  <a
-                    key={p.id}
-                    href={p.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="aspect-square overflow-hidden rounded-xl bg-gray-50"
-                    aria-label={p.caption || "View post"}
+                {tab.label}
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        </Tabs.ListContainer>
+        <Tabs.Panel id="partnerships" className="w-full">
+          {!!kit.partnerships?.length && (
+            <section>
+              <h2 className="mb-4 font-semibold">Past partnerships</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {kit.partnerships.map((p, i) => (
+                  <Card
+                    key={i}
+                    className="rounded-2xl border border-gray-100 bg-white p-5 shadow-none"
                   >
-                    {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt={p.caption.slice(0, 100)}
-                        loading="lazy"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="grid h-full place-items-center text-xs text-gray-400 p-3">
-                        View post ↗
-                      </div>
+                    <h3 className="font-medium">{p.brand_name}</h3>
+                    {p.description && (
+                      <p className="mt-2 whitespace-pre-line text-sm text-gray-500">
+                        {p.description}
+                      </p>
                     )}
-                  </a>
+                    {p.url && (
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex text-sm font-medium text-black underline underline-offset-4"
+                      >
+                        View collaboration ↗
+                      </a>
+                    )}
+                  </Card>
                 ))}
               </div>
+            </section>
+          )}
+          {!kit.partnerships.length && (
+            <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+              No partnerships to showcase yet.
+            </p>
+          )}
+        </Tabs.Panel>
+        <Tabs.Panel id="contacts" className="w-full">
+          {!!kit.contacts.length && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {kit.contacts.map((c) => (
+                <Button
+                  key={c.kind}
+                  variant="ghost"
+                  className="text-black"
+                  onPress={() =>
+                    window.open(c.href, "_blank", "noopener,noreferrer")
+                  }
+                >
+                  <ContactIcon kind={c.kind} />
+                  {c.kind === "email"
+                    ? "Email"
+                    : c.kind === "website"
+                      ? "Website"
+                      : c.label}
+                </Button>
+              ))}
+            </div>
+          )}
+          {!kit.contacts.length && (
+            <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+              No public contact methods yet.
+            </p>
+          )}
+        </Tabs.Panel>
+        {(["instagram", "tiktok"] as const).map((platform) => (
+          <Tabs.Panel key={platform} id={platform} className="w-full space-y-5">
+            {kit.accounts
+              .filter((account) => account.platform === platform)
+              .map((a) => (
+                <Card
+                  key={a.id}
+                  className="bg-white border border-gray-100 shadow-none rounded-3xl p-6"
+                >
+                  <Card.Header className="flex-row items-center gap-3">
+                    {a.avatarUrl && (
+                      <img
+                        src={a.avatarUrl}
+                        alt=""
+                        className="size-11 rounded-full object-cover"
+                      />
+                    )}
+                    <div>
+                      <a
+                        href={accountProfileUrl(a.handle, a.platform)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 font-semibold"
+                      >
+                        <PlatformIcon platform={a.platform} size={17} />@
+                        {a.handle}
+                      </a>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·
+                        Updated {new Date(a.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </Card.Header>
+                  <Card.Content className="space-y-5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-4">
+                      {(
+                        [
+                          ["followers", "Followers"],
+                          ["postCount", "Posts"],
+                          ["engagementRate", "Engagement"],
+                          ["averageLikes", "Average likes"],
+                          ["averageComments", "Average comments"],
+                          ["averageVideoViews", "Average video views"],
+                        ] as const
+                      ).map(([key, label]) =>
+                        a[key] === undefined ? null : (
+                          <div key={key}>
+                            <p className="text-xl font-semibold">
+                              {key === "engagementRate"
+                                ? `${a[key]!.toFixed(2)}%`
+                                : number(a[key]!)}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {label}
+                            </p>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                    {(a.engagementSampleSize !== undefined ||
+                      a.videoSampleSize !== undefined ||
+                      a.likesSampleSize !== undefined ||
+                      a.commentsSampleSize !== undefined) && (
+                      <p className="text-xs text-gray-400">
+                        Recent sampled posts
+                        {a.likesSampleSize !== undefined
+                          ? ` · Likes based on ${a.likesSampleSize} posts`
+                          : ""}
+                        {a.commentsSampleSize !== undefined
+                          ? ` · Comments based on ${a.commentsSampleSize} posts`
+                          : ""}
+                        {a.engagementSampleSize !== undefined
+                          ? ` · Engagement based on ${a.engagementSampleSize} posts`
+                          : ""}
+                        {a.videoSampleSize !== undefined
+                          ? ` · Video average based on ${a.videoSampleSize} videos`
+                          : ""}
+                        . Public data; not platform Insights.
+                      </p>
+                    )}
+                    {!!a.posts?.length && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {a.posts.map((p) => (
+                          <a
+                            key={p.id}
+                            href={p.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="aspect-square overflow-hidden rounded-xl bg-gray-50"
+                            aria-label={p.caption || "View post"}
+                          >
+                            {p.imageUrl ? (
+                              <img
+                                src={p.imageUrl}
+                                alt={p.caption.slice(0, 100)}
+                                loading="lazy"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="grid h-full place-items-center text-xs text-gray-400 p-3">
+                                View post ↗
+                              </div>
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </Card.Content>
+                </Card>
+              ))}
+            {!kit.accounts.some((account) => account.platform === platform) && (
+              <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+                No public {platform === "instagram" ? "Instagram" : "TikTok"}{" "}
+                accounts yet.
+              </p>
             )}
-          </Card.Content>
-        </Card>
-      ))}
-      {!!kit.partnerships?.length && (
-        <section>
-          <h2 className="mb-4 font-semibold">Past partnerships</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {kit.partnerships.map((p, i) => (
-              <Card
-                key={i}
-                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-none"
-              >
-                <h3 className="font-medium">{p.brand_name}</h3>
-                {p.description && (
-                  <p className="mt-2 whitespace-pre-line text-sm text-gray-500">
-                    {p.description}
-                  </p>
-                )}
-                {p.url && (
-                  <a
-                    href={p.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex text-sm font-medium text-black underline underline-offset-4"
-                  >
-                    View collaboration ↗
-                  </a>
-                )}
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
       {!!kit.rates.length && (
         <section>
           <h2 className="font-semibold mb-4">Work with me</h2>
