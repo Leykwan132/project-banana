@@ -500,67 +500,57 @@ export default function CreatorMediaKit() {
                   value={settings.display_name}
                   onChange={(display_name) => edit({ display_name })}
                 />
-                <div className="space-y-3">
-                  <Select
-                    className="w-full gap-2"
-                    placeholder="Select your niches"
-                    selectionMode="multiple"
-                    value={selectedNiches(settings.category)}
-                    onChange={(values) =>
-                      edit({ category: values.map(String).join(", ") })
-                    }
-                  >
-                    <Label>Influencer type / niche</Label>
-                    <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
-                      <Select.Value />
-                      <Select.Indicator />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox selectionMode="multiple">
-                        {[
-                          ...new Set([
-                            ...nicheOptions,
-                            ...selectedNiches(settings.category),
-                          ]),
-                        ].map((niche) => (
-                          <ListBox.Item
-                            key={niche}
-                            id={niche}
-                            textValue={niche}
-                          >
+                <TagGroup
+                  aria-label="Influencer type / niche"
+                  selectionMode="multiple"
+                  selectionBehavior="toggle"
+                  selectedKeys={selectedNiches(settings.category)}
+                  onSelectionChange={(keys) =>
+                    edit({
+                      category: (keys === "all"
+                        ? nicheOptions
+                        : Array.from(keys, String)
+                      ).join(", "),
+                    })
+                  }
+                  onRemove={(keys) =>
+                    edit({
+                      category: selectedNiches(settings.category)
+                        .filter((niche) => !keys.has(niche))
+                        .join(", "),
+                    })
+                  }
+                  className="space-y-2"
+                >
+                  <Label>Influencer type / niche</Label>
+                  <TagGroup.List className="flex flex-wrap gap-2">
+                    {[
+                      ...new Set([
+                        ...nicheOptions,
+                        ...selectedNiches(settings.category),
+                      ]),
+                    ].map((niche) => (
+                      <Tag
+                        key={niche}
+                        id={niche}
+                        textValue={niche}
+                        className="min-h-10 cursor-pointer rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-600 data-[selected=true]:bg-black data-[selected=true]:text-white"
+                      >
+                        {({ isSelected }) => (
+                          <>
                             {niche}
-                            <ListBox.ItemIndicator />
-                          </ListBox.Item>
-                        ))}
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
-                  {selectedNiches(settings.category).length > 0 && (
-                    <TagGroup
-                      aria-label="Selected niches"
-                      onRemove={(keys) =>
-                        edit({
-                          category: selectedNiches(settings.category)
-                            .filter((niche) => !keys.has(niche))
-                            .join(", "),
-                        })
-                      }
-                    >
-                      <TagGroup.List className="flex flex-wrap gap-2">
-                        {selectedNiches(settings.category).map((niche) => (
-                          <Tag
-                            key={niche}
-                            id={niche}
-                            textValue={niche}
-                            className="bg-gray-100 text-gray-900"
-                          >
-                            {niche}
-                          </Tag>
-                        ))}
-                      </TagGroup.List>
-                    </TagGroup>
-                  )}
-                </div>
+                            {isSelected && (
+                              <Tag.RemoveButton
+                                aria-label={`Remove ${niche}`}
+                                className="ml-1 text-white"
+                              />
+                            )}
+                          </>
+                        )}
+                      </Tag>
+                    ))}
+                  </TagGroup.List>
+                </TagGroup>
                 <Field
                   label="Bio"
                   multiline
