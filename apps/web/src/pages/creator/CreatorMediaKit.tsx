@@ -323,21 +323,26 @@ export default function CreatorMediaKit() {
             {settings ? (
               <section className="space-y-5">
                 <h2 className="font-medium">Your introduction</h2>
-                <Field
-                  label="Public link — /kit/"
-                  value={settings.slug}
-                  onChange={(slug) => edit({ slug })}
-                />
-                {data.kit?.is_published && (
-                  <a
-                    className="text-sm underline break-all"
-                    href={`/kit/${data.kit.slug}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {window.location.origin}/kit/{data.kit.slug}
-                  </a>
-                )}
+                <div className="space-y-2">
+                  <Field
+                    label="Slug"
+                    value={settings.slug}
+                    onChange={(slug) => edit({ slug })}
+                  />
+                  {data.kit?.is_published && (
+                    <p className="text-sm text-gray-500 break-all">
+                      Preview Link:{" "}
+                      <a
+                        className="text-gray-900 underline"
+                        href={`/kit/${data.kit.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {window.location.origin}/kit/{data.kit.slug}
+                      </a>
+                    </p>
+                  )}
+                </div>
                 <Field
                   label="Display name"
                   value={settings.display_name}
