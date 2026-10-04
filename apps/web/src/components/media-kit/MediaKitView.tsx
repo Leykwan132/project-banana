@@ -114,27 +114,27 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           {!!kit.partnerships?.length && (
             <section>
               <h2 className="mb-4 font-semibold">Past partnerships</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex flex-wrap items-start gap-6">
                 {kit.partnerships.map((p, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={() => setSelectedPartnership(p)}
                     aria-label={`View ${p.brand_name} partnership details`}
-                    className="flex min-h-36 flex-col items-center justify-center gap-4 rounded-2xl border border-neutral-700 bg-neutral-900 p-6 text-gray-100 transition-colors hover:border-neutral-500 hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-300"
+                    className="group flex w-fit max-w-40 flex-none flex-col items-center gap-3 rounded-2xl p-2 text-gray-100 transition-colors hover:bg-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-300"
                   >
                     {p.logo_url ? (
                       <img
                         src={p.logo_url}
                         alt=""
-                        className="size-14 rounded-xl bg-white object-contain p-2"
+                        className="size-24 rounded-full bg-neutral-100 object-contain p-4 transition-transform group-hover:scale-105 motion-reduce:transform-none"
                       />
                     ) : (
-                      <span aria-hidden="true" className="grid size-14 place-items-center rounded-xl bg-neutral-800 text-xl font-semibold">
+                      <span aria-hidden="true" className="grid size-24 place-items-center rounded-full bg-neutral-800 text-3xl font-semibold transition-colors group-hover:bg-neutral-700">
                         {p.brand_name.slice(0, 1)}
                       </span>
                     )}
-                    <h3 className="font-medium">{p.brand_name}</h3>
+                    <h3 className="max-w-full break-words text-center text-sm font-medium">{p.brand_name}</h3>
                   </button>
                 ))}
               </div>
