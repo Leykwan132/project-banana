@@ -832,10 +832,10 @@ export default function CreatorMediaKit() {
             }}
             className="min-w-0 w-full items-start gap-6"
           >
-            <Tabs.ListContainer className="h-auto w-fit max-w-full flex-none self-start overflow-visible rounded-full bg-[#171717]">
+            <Tabs.ListContainer className="h-auto w-fit max-w-full flex-none self-start overflow-visible rounded-full bg-gray-100">
               <Tabs.List
                 aria-label="Media kit settings"
-                className="h-auto min-w-0 w-fit max-w-full flex-row flex-nowrap gap-0 overflow-visible rounded-full bg-[#171717] p-1"
+                className="h-auto min-w-0 w-fit max-w-full flex-row flex-nowrap gap-0 overflow-visible rounded-full bg-gray-100 p-1"
               >
                 {[
                   { id: "accounts", label: "Accounts" },
@@ -847,10 +847,10 @@ export default function CreatorMediaKit() {
                   <Tabs.Tab
                     key={id}
                     id={id}
-                    className="h-8 min-w-0 w-auto flex-initial whitespace-nowrap rounded-full px-2 text-xs font-normal text-gray-400 opacity-80 hover:opacity-100 data-[selected=true]:text-black data-[selected=true]:opacity-100 sm:h-9 sm:px-4 sm:text-sm"
+                    className="h-8 min-w-0 w-auto flex-initial whitespace-nowrap rounded-full px-2 text-xs font-normal text-gray-500 opacity-80 hover:opacity-100 data-[selected=true]:text-black data-[selected=true]:opacity-100 sm:h-9 sm:px-4 sm:text-sm"
                   >
                     {label}
-                    <Tabs.Indicator className="rounded-full bg-gray-200 shadow-none duration-[320ms] motion-reduce:duration-0" />
+                    <Tabs.Indicator className="rounded-full bg-white shadow-none duration-[320ms] motion-reduce:duration-0" />
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
