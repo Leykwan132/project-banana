@@ -86,6 +86,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           >
             {[
               { id: "partnerships", label: "Partnerships" },
+              { id: "rates", label: "Rates" },
               { id: "instagram", label: "Instagram" },
               { id: "tiktok", label: "TikTok" },
             ].map((tab) => (
@@ -255,36 +256,43 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             )}
           </Tabs.Panel>
         ))}
+        <Tabs.Panel id="rates" className="w-full">
+          {!!kit.rates.length && (
+            <section>
+              <h2 className="font-semibold mb-4">Rates</h2>
+              <div className="space-y-3">
+                {kit.rates.map((r, i) => (
+                  <Card
+                    key={i}
+                    className="bg-white shadow-none border border-gray-100 p-5 rounded-2xl"
+                  >
+                    <div className="flex justify-between gap-4">
+                      <div>
+                        <h3 className="font-medium">{r.name}</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {r.description}
+                        </p>
+                      </div>
+                      <p className="shrink-0 font-semibold text-sm">
+                        {r.starting_from ? "From " : ""}
+                        {Intl.NumberFormat("en", {
+                          style: "currency",
+                          currency: r.currency,
+                        }).format(r.amount_minor / 100)}
+                      </p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
+          {!kit.rates.length && (
+            <p className="rounded-2xl bg-gray-100 p-6 text-center text-sm text-gray-500">
+              No public rates yet.
+            </p>
+          )}
+        </Tabs.Panel>
       </Tabs>
-      {!!kit.rates.length && (
-        <section>
-          <h2 className="font-semibold mb-4">Work with me</h2>
-          <div className="space-y-3">
-            {kit.rates.map((r, i) => (
-              <Card
-                key={i}
-                className="bg-white shadow-none border border-gray-100 p-5 rounded-2xl"
-              >
-                <div className="flex justify-between gap-4">
-                  <div>
-                    <h3 className="font-medium">{r.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {r.description}
-                    </p>
-                  </div>
-                  <p className="shrink-0 font-semibold text-sm">
-                    {r.starting_from ? "From " : ""}
-                    {Intl.NumberFormat("en", {
-                      style: "currency",
-                      currency: r.currency,
-                    }).format(r.amount_minor / 100)}
-                  </p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
       {!!kit.contacts.length && (
         <nav
           aria-label="Contact methods"
