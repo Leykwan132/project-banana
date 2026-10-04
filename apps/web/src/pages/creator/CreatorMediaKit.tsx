@@ -264,52 +264,92 @@ function Field({
   onChange,
   multiline = false,
   type = "text",
-  onBlur,
   required = false,
   maxLength,
   pattern,
+  validate,
+  min,
+  max,
+  step,
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
   multiline?: boolean;
-  type?: "text" | "email" | "url" | "tel";
-  onBlur?: () => void;
+  type?: "text" | "email" | "url" | "tel" | "number";
   required?: boolean;
   maxLength?: number;
   pattern?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  validate?: () => string | null;
 }) {
   const id = useId();
+  const field = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
+  useEffect(() => {
+    const node = field.current;
+    if (!node) return;
+    const customError =
+      validate?.() ??
+      (required && !value.trim()
+        ? `Please enter ${label.toLowerCase()}.`
+        : null);
+    node.setCustomValidity(customError ?? "");
+    if (touched) setError(node.validity.valid ? null : node.validationMessage);
+  }, [value, required, label, validate, touched]);
+  const check = () => {
+    setTouched(true);
+    const node = field.current;
+    if (node) setError(node.validity.valid ? null : node.validationMessage);
+  };
+  const attributes = {
+    id,
+    name: label,
+    required,
+    maxLength,
+    value,
+    ref: (node: HTMLInputElement | HTMLTextAreaElement | null) => {
+      field.current = node;
+    },
+    onChange: (
+      event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => onChange(event.target.value),
+    onBlur: check,
+    onInvalid: (
+      event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) => {
+      event.preventDefault();
+      check();
+    },
+    "aria-invalid": !!error,
+    "aria-describedby": error ? `${id}-error` : undefined,
+    className: `${inputClass} ${error ? "border-red-500! focus:border-red-500! focus:ring-red-200" : ""}`,
+  };
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <Label htmlFor={id} className="text-gray-600">
+      <Label htmlFor={id} className={error ? "text-red-600" : "text-gray-600"}>
         {label}
         {required && <span aria-hidden="true"> *</span>}
       </Label>
       {multiline ? (
-        <textarea
-          required={required}
-          maxLength={maxLength}
-          name={label}
-          id={id}
-          className={inputClass}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-        />
+        <textarea {...attributes} rows={3} />
       ) : (
         <Input
-          required={required}
-          maxLength={maxLength}
-          name={label}
-          pattern={pattern}
-          id={id}
+          {...attributes}
           type={type}
-          onBlur={onBlur}
-          className={inputClass}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          pattern={pattern}
+          min={min}
+          max={max}
+          step={step}
         />
+      )}
+      {error && (
+        <p id={`${id}-error`} className="text-xs text-red-600" role="alert">
+          {error}
+        </p>
       )}
     </div>
   );
@@ -584,13 +624,7 @@ export default function CreatorMediaKit() {
           : false,
       ) as HTMLInputElement | HTMLTextAreaElement | undefined;
       invalid?.focus();
-      toast({
-        title: "Check your details",
-        description: invalid
-          ? `${invalid.name || "Field"}: ${invalid.validationMessage}`
-          : "Complete the required fields with valid values.",
-        color: "danger",
-      });
+
       return;
     }
     const keys: (keyof Settings)[] =
@@ -1106,20 +1140,16 @@ export default function CreatorMediaKit() {
                           required
                           maxLength={2048}
                           onChange={setHandle}
-                          onBlur={() => {
-                            if (!handle.trim()) return;
+                          validate={() => {
+                            if (!handle.trim()) return null;
                             try {
                               normalizeAccountHandle(handle, platform);
                             } catch (error) {
-                              toast({
-                                title: "Check profile link",
-                                description:
-                                  error instanceof Error
-                                    ? error.message
-                                    : "Enter a valid profile URL or username.",
-                                color: "danger",
-                              });
+                              return error instanceof Error
+                                ? error.message
+                                : "Enter a valid profile URL or username.";
                             }
+                            return null;
                           }}
                         />
 
@@ -1450,8 +1480,8 @@ export default function CreatorMediaKit() {
                           maxLength={2048}
                           value={partner.url}
                           type="url"
-                          onBlur={() => {
-                            if (!partner.url.trim()) return;
+                          validate={() => {
+                            if (!partner.url.trim()) return null;
                             try {
                               contactHref({
                                 kind: "website",
@@ -1459,15 +1489,11 @@ export default function CreatorMediaKit() {
                                 is_visible: true,
                               });
                             } catch (error) {
-                              toast({
-                                title: "Check partnership URL",
-                                description:
-                                  error instanceof Error
-                                    ? error.message
-                                    : "Enter a valid HTTPS URL.",
-                                color: "danger",
-                              });
+                              return error instanceof Error
+                                ? error.message
+                                : "Enter a valid HTTPS URL.";
                             }
+                            return null;
                           }}
                           onChange={(url) =>
                             edit({
@@ -1638,26 +1664,23 @@ export default function CreatorMediaKit() {
                           }
                         />
                         <div className="flex gap-3">
-                          <label className="flex flex-1 flex-col gap-2 text-sm">
-                            Price
-                            <input
-                              aria-label="Price"
+                          <div className="flex-1">
+                            <Field
+                              label="Price"
                               type="number"
                               required
-                              name="Price"
+                              min={0}
                               max={1000000}
-                              min="0"
-                              step="0.01"
-                              value={rate.amount_minor / 100}
-                              className={inputClass}
-                              onChange={(e) =>
+                              step={0.01}
+                              value={String(rate.amount_minor / 100)}
+                              onChange={(value) =>
                                 edit({
                                   rates: settings.rates.map((r, j) =>
                                     j === i
                                       ? {
                                           ...r,
                                           amount_minor: Math.round(
-                                            Number(e.target.value) * 100,
+                                            Number(value) * 100,
                                           ),
                                         }
                                       : r,
@@ -1665,7 +1688,7 @@ export default function CreatorMediaKit() {
                                 })
                               }
                             />
-                          </label>
+                          </div>
                           <Select
                             className="w-28 shrink-0 gap-2"
                             value={rate.currency}
@@ -1910,20 +1933,16 @@ export default function CreatorMediaKit() {
                                       ? "tel"
                                       : "text"
                               }
-                              onBlur={() => {
-                                if (!c.value.trim()) return;
+                              validate={() => {
+                                if (!c.value.trim()) return null;
                                 try {
                                   contactHref(c);
                                 } catch (error) {
-                                  toast({
-                                    title: "Check contact details",
-                                    description:
-                                      error instanceof Error
-                                        ? error.message
-                                        : "Enter valid contact details.",
-                                    color: "danger",
-                                  });
+                                  return error instanceof Error
+                                    ? error.message
+                                    : "Enter valid contact details.";
                                 }
+                                return null;
                               }}
                               onChange={(value) =>
                                 edit({
