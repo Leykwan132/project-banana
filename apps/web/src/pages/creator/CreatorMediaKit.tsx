@@ -1295,10 +1295,10 @@ export default function CreatorMediaKit() {
                         });
                     }}
                   >
-                    <Select.Trigger className="min-h-10 rounded-full! border-black! bg-black! px-4 text-white! shadow-none hover:bg-gray-900!">
+                    <Select.Trigger className="min-h-10 items-center gap-2 rounded-full! border-black! bg-black! px-4! text-white! shadow-none hover:bg-gray-900!">
                       <Plus size={16} aria-hidden="true" />
-                      <Select.Value className="text-white!" />
-                      <Select.Indicator className="text-white!" />
+                      <Select.Value className="flex-none whitespace-nowrap text-sm text-white!" />
+                      <Select.Indicator className="static! size-4 text-white!" />
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
