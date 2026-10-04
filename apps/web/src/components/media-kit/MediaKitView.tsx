@@ -263,6 +263,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                               )}
                             </a>
                           ))}
+                          <p className="col-span-3 mt-2 text-center text-xs text-gray-400">3 Latest Video</p>
                         </div>
                       )}
                     </div>
