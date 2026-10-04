@@ -185,7 +185,7 @@ function Toggle({
   );
 }
 const inputClass =
-  "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-300";
+  "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:border-gray-400 focus:ring-gray-300";
 function Field({
   label,
   value,
@@ -393,7 +393,7 @@ export default function CreatorMediaKit() {
   };
   if (data === undefined) return <MediaKitSkeleton editor />;
   return (
-    <div className="p-5 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-5 lg:p-8 max-w-5xl mx-auto [--focus:#9ca3af] [--field-border-focus:#9ca3af]">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-medium tracking-tight">Media Kit</h1>
