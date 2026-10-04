@@ -1,5 +1,4 @@
 "use node";
-import { ApifyClient } from "apify-client";
 import { action, internalAction } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { api, internal } from "./_generated/api";
@@ -7,10 +6,30 @@ import { v } from "convex/values";
 import { cacheInstagramImage } from "./lib/mediaKitImages";
 import { normalizeProfile, normalizeTikTokProfile } from "./lib/mediaKitModel";
 const jobArgs = { importId: v.id("media_kit_imports"), generation: v.string() };
-function client() {
-  if (!process.env.APIFY_API_TOKEN)
-    throw Error("Account import is not configured.");
-  return new ApifyClient({ token: process.env.APIFY_API_TOKEN, maxRetries: 0 });
+type ApifyRun = { id: string; status: string; defaultDatasetId: string };
+function apiToken() {
+  const token = process.env.APIFY_API_TOKEN;
+  if (!token) throw Error("Account import is not configured.");
+  return token;
+}
+async function apifyRequest<T>(path: string, method = "GET", input?: unknown): Promise<T> {
+  const response = await fetch(`https://api.apify.com/v2/${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${apiToken()}`, "Content-Type": "application/json" },
+    ...(input === undefined ? {} : { body: JSON.stringify(input) }),
+    signal: AbortSignal.timeout(30000),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw Object.assign(new Error(payload.error?.message ?? `Apify request failed (HTTP ${response.status})`), {
+      statusCode: response.status,
+      type: payload.error?.type,
+    });
+  }
+  return payload as T;
+}
+async function abortApifyRun(runId: string) {
+  await apifyRequest(`actor-runs/${encodeURIComponent(runId)}/abort`, "POST");
 }
 function importError(error: unknown) {
   const record = error as { name?: string; message?: string; statusCode?: number; type?: string } | null;
@@ -48,29 +67,21 @@ export const startImport = internalAction({
       if (!Number.isFinite(configured) || configured <= 0 || configured > 1)
         throw Error("Invalid import budget.");
       console.info("[Media kit import] Configuration", { importId: args.importId, tokenConfigured: Boolean(process.env.APIFY_API_TOKEN), maxTotalChargeUsd: configured, platform: current.account.platform });
-      const apify = client();
+      apiToken();
       stage = "actor.start";
       console.info("[Media kit import] Starting Apify actor", { importId: args.importId, actor: current.account.platform === "tiktok" ? "clockworks/tiktok-scraper" : "apify/instagram-profile-scraper" });
-      const run = await apify
-        .actor(
-          current.account.platform === "tiktok"
-            ? "clockworks/tiktok-scraper"
-            : "apify/instagram-profile-scraper",
-        )
-        .start(
-          current.account.platform === "tiktok"
-            ? {
-                profiles: [current.account.handle],
-                resultsPerPage: 12,
-                profileScrapeSections: ["videos"],
-                profileSorting: "latest",
-                excludePinnedPosts: true,
-                maxFollowersPerProfile: 0,
-                maxFollowingPerProfile: 0,
-              }
-            : { usernames: [current.account.handle] },
-          { timeout: 600, maxTotalChargeUsd: configured },
-        );
+      const actor = current.account.platform === "tiktok"
+        ? "clockworks~tiktok-scraper" : "apify~instagram-profile-scraper";
+      const input = current.account.platform === "tiktok"
+        ? {
+            profiles: [current.account.handle], resultsPerPage: 12,
+            profileScrapeSections: ["videos"], profileSorting: "latest",
+            excludePinnedPosts: true, maxFollowersPerProfile: 0, maxFollowingPerProfile: 0,
+          }
+        : { usernames: [current.account.handle] };
+      const { data: run } = await apifyRequest<{ data: ApifyRun }>(
+        `actors/${actor}/runs?timeout=600&maxTotalChargeUsd=${configured}`, "POST", input,
+      );
       startedRunId = run.id;
       console.info("[Media kit import] Apify run started", { importId: args.importId, runId: run.id, status: run.status });
       stage = "beginRun";
@@ -80,7 +91,7 @@ export const startImport = internalAction({
       });
       console.info("[Media kit import] Run registration", { importId: args.importId, runId: run.id, accepted });
       if (!accepted) {
-        await apify.run(run.id).abort();
+        await abortApifyRun(run.id);
         return null;
       }
       stage = "schedule polling";
@@ -94,7 +105,7 @@ export const startImport = internalAction({
       console.error("[Media kit import] Start failed", { importId: args.importId, runId: startedRunId, stage, error: importError(error) });
       if (startedRunId) {
         try {
-          await client().run(startedRunId).abort();
+          await abortApifyRun(startedRunId);
         } catch (error) {
           console.warn("[Media kit import] Abort cleanup failed", { runId: startedRunId, error: importError(error) });
         }
@@ -115,9 +126,8 @@ export const pollImport = internalAction({
     console.info("[Media kit import] Polling", { importId: args.importId, runId: args.runId, attempt: args.attempt });
     const key = { importId: args.importId, generation: args.generation };
     const state = await ctx.runQuery(internal.mediaKits.getJob, key);
-    let apify: ApifyClient;
     try {
-      apify = client();
+      apiToken();
     } catch {
       await ctx.runMutation(internal.mediaKits.finishImport, {
         ...key,
@@ -127,7 +137,7 @@ export const pollImport = internalAction({
     }
     if (!state?.active) {
       try {
-        await apify.run(args.runId).abort();
+        await abortApifyRun(args.runId);
       } catch {}
       return null;
     }
@@ -136,22 +146,22 @@ export const pollImport = internalAction({
     try {
       if (Date.now() - state.job.started_at >= 600000) {
         completed = true;
-        await apify.run(args.runId).abort();
+        await abortApifyRun(args.runId);
         throw Error("Timed out");
       }
-      const run = await apify.run(args.runId).get();
+      const { data: run } = await apifyRequest<{ data: ApifyRun }>(`actor-runs/${encodeURIComponent(args.runId)}`);
       if (!run) throw Error("Missing run");
       console.info("[Media kit import] Run status", { importId: args.importId, runId: args.runId, status: run.status });
       if (run.status === "SUCCEEDED") {
         completed = true;
-        const data = await apify
-          .dataset(run.defaultDatasetId)
-          .listItems({ limit: state.account.platform === "tiktok" ? 12 : 1 });
-        console.info("[Media kit import] Dataset fetched", { importId: args.importId, runId: args.runId, itemCount: data.items.length });
+        const items = await apifyRequest<Record<string, unknown>[]>(
+          `datasets/${encodeURIComponent(run.defaultDatasetId)}/items?format=json&limit=${state.account.platform === "tiktok" ? 12 : 1}`,
+        );
+        console.info("[Media kit import] Dataset fetched", { importId: args.importId, runId: args.runId, itemCount: items.length });
         const profile =
           state.account.platform === "tiktok"
-            ? normalizeTikTokProfile(data.items, state.account.handle)
-            : normalizeProfile(data.items[0], state.account.handle);
+            ? normalizeTikTokProfile(items, state.account.handle)
+            : normalizeProfile(items[0], state.account.handle);
         const avatarStorageId = await cacheInstagramImage(
           ctx,
           profile.profileImageUrl,
@@ -194,7 +204,7 @@ export const pollImport = internalAction({
       }
       if (Date.now() - state.job.started_at >= 600000) {
         completed = true;
-        await apify.run(args.runId).abort();
+        await abortApifyRun(args.runId);
         throw Error("Timed out");
       }
     } catch (error) {
@@ -249,7 +259,7 @@ export const abortRun = internalAction({
   returns: v.null(),
   handler: async (_ctx, args) => {
     try {
-      await client().run(args.runId).abort();
+      await abortApifyRun(args.runId);
     } catch {}
     return null;
   },
