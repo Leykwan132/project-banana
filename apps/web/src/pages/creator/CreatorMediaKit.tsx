@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
   Button,
@@ -9,7 +9,7 @@ import {
   Select,
   ListBox,
 } from "@heroui/react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Inbox } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
@@ -22,6 +22,43 @@ import type {
 } from "../../../../../packages/backend/convex/lib/mediaKitModel";
 const primaryButtonClass =
   "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
+
+function EmptyState({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex w-full flex-col items-center justify-center gap-4 rounded-2xl bg-gray-50 px-6 py-12 text-center">
+      <Inbox className="size-9 text-gray-400" aria-hidden="true" />
+      <div className="max-w-sm space-y-2">
+        <h3 className="font-medium text-gray-900">{title}</h3>
+        <p className="text-sm leading-relaxed text-gray-500">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+function EmptyAction({
+  empty,
+  children,
+  ...props
+}: {
+  empty: boolean;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return empty ? (
+    <EmptyState {...props}>{children}</EmptyState>
+  ) : (
+    <>{children}</>
+  );
+}
 
 function VisibilitySwitch({
   label,
@@ -299,9 +336,19 @@ export default function CreatorMediaKit() {
                 />
               </section>
             ) : (
-              <p className="text-sm text-gray-500 p-5">
-                Add an account in Accounts to start your profile.
-              </p>
+              <EmptyState
+                title="Create your profile"
+                description="Add your first social account to start creating your media kit."
+              >
+                <Button
+                  variant="primary"
+                  className={primaryButtonClass}
+                  onPress={() => setModalOpen(true)}
+                >
+                  <Plus size={16} />
+                  Add account
+                </Button>
+              </EmptyState>
             )}
           </Tabs.Panel>
           <Tabs.Panel id="accounts" className="min-w-0 w-full">
@@ -311,17 +358,23 @@ export default function CreatorMediaKit() {
                 Add up to five public accounts. Data refreshes every 24 hours,
                 including hidden accounts.
               </p>
-              <Button
-                variant="primary"
-                className={primaryButtonClass}
-                isDisabled={busy || data.accounts.length >= 5}
-                onPress={() => {
-                  setModalOpen(true);
-                }}
+              <EmptyAction
+                empty={data.accounts.length === 0}
+                title="No accounts yet"
+                description="Add your Instagram or TikTok account to start building your media kit."
               >
-                <Plus size={16} />
-                Add account
-              </Button>
+                <Button
+                  variant="primary"
+                  className={primaryButtonClass}
+                  isDisabled={busy || data.accounts.length >= 5}
+                  onPress={() => {
+                    setModalOpen(true);
+                  }}
+                >
+                  <Plus size={16} />
+                  Add account
+                </Button>
+              </EmptyAction>
 
               {data.accounts.map(({ account: a, job }) => (
                 <div
@@ -517,32 +570,56 @@ export default function CreatorMediaKit() {
                     />
                   </div>
                 ))}
-                <Button
-                  variant="ghost"
-                  className="text-black"
-                  isDisabled={(settings.partnerships ?? []).length >= 10}
-                  onPress={() =>
-                    edit({
-                      partnerships: [
-                        ...(settings.partnerships ?? []),
-                        {
-                          brand_name: "",
-                          description: "",
-                          url: "",
-                          is_visible: true,
-                        },
-                      ],
-                    })
-                  }
+                <EmptyAction
+                  empty={(settings.partnerships ?? []).length === 0}
+                  title="No partnerships yet"
+                  description="Showcase brands you’ve worked with by adding your first collaboration."
                 >
-                  <Plus size={16} />
-                  Add partnership
-                </Button>
+                  <Button
+                    variant={
+                      (settings.partnerships ?? []).length === 0
+                        ? "primary"
+                        : "ghost"
+                    }
+                    className={
+                      (settings.partnerships ?? []).length === 0
+                        ? primaryButtonClass
+                        : "text-black"
+                    }
+                    isDisabled={(settings.partnerships ?? []).length >= 10}
+                    onPress={() =>
+                      edit({
+                        partnerships: [
+                          ...(settings.partnerships ?? []),
+                          {
+                            brand_name: "",
+                            description: "",
+                            url: "",
+                            is_visible: true,
+                          },
+                        ],
+                      })
+                    }
+                  >
+                    <Plus size={16} />
+                    Add partnership
+                  </Button>
+                </EmptyAction>
               </section>
             ) : (
-              <p className="p-5 text-sm text-gray-500">
-                Add an account first, then showcase your past partnerships.
-              </p>
+              <EmptyState
+                title="Showcase your partnerships"
+                description="Add your first social account to start creating your media kit."
+              >
+                <Button
+                  variant="primary"
+                  className={primaryButtonClass}
+                  onPress={() => setModalOpen(true)}
+                >
+                  <Plus size={16} />
+                  Add account
+                </Button>
+              </EmptyState>
             )}
           </Tabs.Panel>
           <Tabs.Panel id="rates" className="min-w-0 w-full">
@@ -692,33 +769,53 @@ export default function CreatorMediaKit() {
                     </Button>
                   </div>
                 ))}
-                <Button
-                  variant="ghost"
-                  className="text-black"
-                  isDisabled={settings.rates.length >= 10}
-                  onPress={() =>
-                    edit({
-                      rates: [
-                        ...settings.rates,
-                        {
-                          name: "",
-                          description: "",
-                          amount_minor: 0,
-                          currency: "MYR",
-                          starting_from: false,
-                          is_visible: false,
-                        },
-                      ],
-                    })
-                  }
+                <EmptyAction
+                  empty={settings.rates.length === 0}
+                  title="No rates yet"
+                  description="Add a service and its rate so brands know how to work with you."
                 >
-                  Add rate
-                </Button>
+                  <Button
+                    variant={settings.rates.length === 0 ? "primary" : "ghost"}
+                    className={
+                      settings.rates.length === 0
+                        ? primaryButtonClass
+                        : "text-black"
+                    }
+                    isDisabled={settings.rates.length >= 10}
+                    onPress={() =>
+                      edit({
+                        rates: [
+                          ...settings.rates,
+                          {
+                            name: "",
+                            description: "",
+                            amount_minor: 0,
+                            currency: "MYR",
+                            starting_from: false,
+                            is_visible: false,
+                          },
+                        ],
+                      })
+                    }
+                  >
+                    Add rate
+                  </Button>
+                </EmptyAction>
               </section>
             ) : (
-              <p className="text-sm text-gray-500 p-5">
-                Add an account first, then set your rates here.
-              </p>
+              <EmptyState
+                title="Set your rates"
+                description="Add your first social account to start creating your media kit."
+              >
+                <Button
+                  variant="primary"
+                  className={primaryButtonClass}
+                  onPress={() => setModalOpen(true)}
+                >
+                  <Plus size={16} />
+                  Add account
+                </Button>
+              </EmptyState>
             )}
           </Tabs.Panel>
           <Tabs.Panel id="contact" className="min-w-0 w-full">
@@ -790,67 +887,83 @@ export default function CreatorMediaKit() {
                     </Button>
                   </div>
                 ))}
-                <Select
-                  aria-label="Add a contact method"
-                  className="w-full max-w-xs"
-                  placeholder="Add contact"
-                  value={null}
-                  isDisabled={settings.contacts.length >= 4}
-                  onChange={(kind) => {
-                    if (
-                      kind !== "email" &&
-                      kind !== "whatsapp" &&
-                      kind !== "website" &&
-                      kind !== "instagram"
-                    )
-                      return;
-                    if (!settings.contacts.some((c) => c.kind === kind))
-                      edit({
-                        contacts: [
-                          ...settings.contacts,
-                          { kind, value: "", is_visible: false },
-                        ],
-                      });
-                  }}
+                <EmptyAction
+                  empty={settings.contacts.length === 0}
+                  title="No contact methods yet"
+                  description="Choose a contact method so brands can reach you."
                 >
-                  <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
-                    <Select.Value />
-                    <Select.Indicator />
-                  </Select.Trigger>
-                  <Select.Popover>
-                    <ListBox>
-                      {(
-                        [
-                          { kind: "email", label: "Email" },
-                          { kind: "whatsapp", label: "WhatsApp" },
-                          { kind: "website", label: "Website" },
-                          { kind: "instagram", label: "Instagram DM" },
-                        ] as { kind: Contact["kind"]; label: string }[]
+                  <Select
+                    aria-label="Add a contact method"
+                    className="w-full max-w-xs"
+                    placeholder="Add contact"
+                    value={null}
+                    isDisabled={settings.contacts.length >= 4}
+                    onChange={(kind) => {
+                      if (
+                        kind !== "email" &&
+                        kind !== "whatsapp" &&
+                        kind !== "website" &&
+                        kind !== "instagram"
                       )
-                        .filter(
-                          (item) =>
-                            !settings.contacts.some(
-                              (c) => c.kind === item.kind,
-                            ),
+                        return;
+                      if (!settings.contacts.some((c) => c.kind === kind))
+                        edit({
+                          contacts: [
+                            ...settings.contacts,
+                            { kind, value: "", is_visible: false },
+                          ],
+                        });
+                    }}
+                  >
+                    <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
+                      <Select.Value />
+                      <Select.Indicator />
+                    </Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        {(
+                          [
+                            { kind: "email", label: "Email" },
+                            { kind: "whatsapp", label: "WhatsApp" },
+                            { kind: "website", label: "Website" },
+                            { kind: "instagram", label: "Instagram DM" },
+                          ] as { kind: Contact["kind"]; label: string }[]
                         )
-                        .map((item) => (
-                          <ListBox.Item
-                            key={item.kind}
-                            id={item.kind}
-                            textValue={item.label}
-                          >
-                            <Label>{item.label}</Label>
-                            <ListBox.ItemIndicator />
-                          </ListBox.Item>
-                        ))}
-                    </ListBox>
-                  </Select.Popover>
-                </Select>
+                          .filter(
+                            (item) =>
+                              !settings.contacts.some(
+                                (c) => c.kind === item.kind,
+                              ),
+                          )
+                          .map((item) => (
+                            <ListBox.Item
+                              key={item.kind}
+                              id={item.kind}
+                              textValue={item.label}
+                            >
+                              <Label>{item.label}</Label>
+                              <ListBox.ItemIndicator />
+                            </ListBox.Item>
+                          ))}
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
+                </EmptyAction>
               </section>
             ) : (
-              <p className="text-sm text-gray-500 p-5">
-                Add an account first, then choose your contact methods.
-              </p>
+              <EmptyState
+                title="Add your contact details"
+                description="Add your first social account to start creating your media kit."
+              >
+                <Button
+                  variant="primary"
+                  className={primaryButtonClass}
+                  onPress={() => setModalOpen(true)}
+                >
+                  <Plus size={16} />
+                  Add account
+                </Button>
+              </EmptyState>
             )}
           </Tabs.Panel>
         </Tabs>
