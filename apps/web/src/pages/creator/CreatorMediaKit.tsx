@@ -22,6 +22,7 @@ import type {
   Contact,
   Platform,
 } from "../../../../../packages/backend/convex/lib/mediaKitModel";
+import { contactHref } from "../../../../../packages/backend/convex/lib/mediaKitModel";
 const nicheOptions = [
   "Art",
   "Athlete",
@@ -191,11 +192,15 @@ function Field({
   value,
   onChange,
   multiline = false,
+  type = "text",
+  onBlur,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   multiline?: boolean;
+  type?: "text" | "email" | "url" | "tel";
+  onBlur?: () => void;
 }) {
   return (
     <label className="flex flex-col gap-2 text-sm">
@@ -209,6 +214,8 @@ function Field({
         />
       ) : (
         <input
+          type={type}
+          onBlur={onBlur}
           className={inputClass}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -220,6 +227,19 @@ function Field({
 export default function CreatorMediaKit() {
   const toast = useToast();
   const data = useQuery(api.mediaKits.getEditor, {});
+  const reportedImportErrors = useRef(new Set<string>());
+  useEffect(() => {
+    for (const { job } of data?.accounts ?? []) {
+      if (job?.error_message && !reportedImportErrors.current.has(job._id)) {
+        reportedImportErrors.current.add(job._id);
+        toast({
+          title: "Account import failed",
+          description: job.error_message,
+          color: "danger",
+        });
+      }
+    }
+  }, [data, toast]);
   const add = useMutation(api.mediaKits.addAccount);
   const save = useMutation(api.mediaKits.saveSettings);
 
@@ -677,7 +697,6 @@ export default function CreatorMediaKit() {
                         : a.last_success_at
                           ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
                           : "No imported data yet"}
-                      {job?.error_message ? ` · ${job.error_message}` : ""}
                     </p>
                     {(
                       Object.entries({
@@ -1090,6 +1109,30 @@ export default function CreatorMediaKit() {
                                   : "Email"
                           }
                           value={c.value}
+                          type={
+                            c.kind === "email"
+                              ? "email"
+                              : c.kind === "website"
+                                ? "url"
+                                : c.kind === "whatsapp"
+                                  ? "tel"
+                                  : "text"
+                          }
+                          onBlur={() => {
+                            if (!c.value.trim()) return;
+                            try {
+                              contactHref(c);
+                            } catch (error) {
+                              toast({
+                                title: "Check contact details",
+                                description:
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Enter valid contact details.",
+                                color: "danger",
+                              });
+                            }
+                          }}
                           onChange={(value) =>
                             edit({
                               contacts: settings.contacts.map((x, j) =>
