@@ -1006,15 +1006,17 @@ export default function CreatorMediaKit() {
 
                     <Button
                       size="sm"
+                      isIconOnly
+                      aria-label="Remove rate"
                       variant="ghost"
-                      className="text-black"
+                      className="text-red-600 hover:text-red-700"
                       onPress={() =>
                         edit({
                           rates: settings.rates.filter((_, j) => j !== i),
                         })
                       }
                     >
-                      Remove rate
+                      <Trash2 size={16} aria-hidden="true" />
                     </Button>
                   </div>
                 ))}
@@ -1149,15 +1151,17 @@ export default function CreatorMediaKit() {
 
                     <Button
                       size="sm"
+                      isIconOnly
+                      aria-label="Remove contact"
                       variant="ghost"
-                      className="text-black"
+                      className="text-red-600 hover:text-red-700"
                       onPress={() =>
                         edit({
                           contacts: settings.contacts.filter((_, j) => j !== i),
                         })
                       }
                     >
-                      Remove contact
+                      <Trash2 size={16} aria-hidden="true" />
                     </Button>
                   </div>
                 ))}
