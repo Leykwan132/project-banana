@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Button, Card, Label, Switch, Tabs, Modal } from "@heroui/react";
-import { Plus, UserRound, AtSign, Wallet, Mail, Trash2 } from "lucide-react";
+import {
+  Button,
+  Card,
+  Label,
+  Switch,
+  Tabs,
+  Modal,
+  Dropdown,
+} from "@heroui/react";
+import {
+  Plus,
+  UserRound,
+  AtSign,
+  Wallet,
+  Mail,
+  Trash2,
+  ChevronDown,
+} from "lucide-react";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
@@ -740,37 +756,57 @@ export default function CreatorMediaKit() {
                     </Button>
                   </div>
                 ))}
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      "email",
-                      "whatsapp",
-                      "website",
-                      "instagram",
-                    ] as Contact["kind"][]
-                  )
-                    .filter(
-                      (kind) => !settings.contacts.some((c) => c.kind === kind),
-                    )
-                    .map((kind) => (
-                      <Button
-                        key={kind}
-                        size="sm"
-                        variant="ghost"
-                        className="text-black"
-                        onPress={() =>
+                <Dropdown>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-black"
+                    isDisabled={settings.contacts.length >= 4}
+                  >
+                    <Plus size={16} />
+                    Add contact
+                    <ChevronDown size={14} />
+                  </Button>
+                  <Dropdown.Popover>
+                    <Dropdown.Menu
+                      aria-label="Add a contact method"
+                      onAction={(key) => {
+                        const kind = String(key) as Contact["kind"];
+                        if (!settings.contacts.some((c) => c.kind === kind))
                           edit({
                             contacts: [
                               ...settings.contacts,
                               { kind, value: "", is_visible: false },
                             ],
-                          })
-                        }
-                      >
-                        Add {kind}
-                      </Button>
-                    ))}
-                </div>
+                          });
+                      }}
+                    >
+                      {(
+                        [
+                          { kind: "email", label: "Email" },
+                          { kind: "whatsapp", label: "WhatsApp" },
+                          { kind: "website", label: "Website" },
+                          { kind: "instagram", label: "Instagram DM" },
+                        ] as { kind: Contact["kind"]; label: string }[]
+                      )
+                        .filter(
+                          (item) =>
+                            !settings.contacts.some(
+                              (c) => c.kind === item.kind,
+                            ),
+                        )
+                        .map((item) => (
+                          <Dropdown.Item
+                            key={item.kind}
+                            id={item.kind}
+                            textValue={item.label}
+                          >
+                            <Label>{item.label}</Label>
+                          </Dropdown.Item>
+                        ))}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown>
               </Card>
             ) : (
               <p className="text-sm text-gray-500 p-5">
