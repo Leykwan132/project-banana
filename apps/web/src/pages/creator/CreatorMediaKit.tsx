@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import {
   Button,
   Input,
+  Form,
   Label,
   Switch,
   Tabs,
@@ -264,6 +265,9 @@ function Field({
   multiline = false,
   type = "text",
   onBlur,
+  required = false,
+  maxLength,
+  pattern,
 }: {
   label: string;
   value: string;
@@ -271,15 +275,22 @@ function Field({
   multiline?: boolean;
   type?: "text" | "email" | "url" | "tel";
   onBlur?: () => void;
+  required?: boolean;
+  maxLength?: number;
+  pattern?: string;
 }) {
   const id = useId();
   return (
     <div className="flex flex-col gap-2 text-sm">
       <Label htmlFor={id} className="text-gray-600">
         {label}
+        {required && <span aria-hidden="true"> *</span>}
       </Label>
       {multiline ? (
         <textarea
+          required={required}
+          maxLength={maxLength}
+          name={label}
           id={id}
           className={inputClass}
           value={value}
@@ -288,6 +299,10 @@ function Field({
         />
       ) : (
         <Input
+          required={required}
+          maxLength={maxLength}
+          name={label}
+          pattern={pattern}
           id={id}
           type={type}
           onBlur={onBlur}
@@ -544,6 +559,69 @@ export default function CreatorMediaKit() {
       </div>
     );
   };
+  const submitSection = (
+    section: "profile" | "accounts" | "partnerships" | "rates" | "contact",
+    form?: HTMLFormElement | null,
+  ) => {
+    if (form && !form.checkValidity()) {
+      const invalid = Array.from(form.elements).find((element) =>
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement
+          ? !element.validity.valid
+          : false,
+      ) as HTMLInputElement | HTMLTextAreaElement | undefined;
+      invalid?.focus();
+      toast({
+        title: "Check your details",
+        description: invalid
+          ? `${invalid.name || "Field"}: ${invalid.validationMessage}`
+          : "Complete the required fields with valid values.",
+        color: "danger",
+      });
+      return;
+    }
+    const keys: (keyof Settings)[] =
+      section === "profile"
+        ? ["slug", "display_name", "bio", "category"]
+        : section === "partnerships"
+          ? ["partnerships", "partnerships_visible"]
+          : section === "rates"
+            ? ["rates", "rates_visible"]
+            : section === "contact"
+              ? ["contacts", "contacts_visible"]
+              : [];
+    const pendingAccounts = Object.values(accountDrafts).filter((draft) => {
+      const account = data?.accounts.find(
+        ({ account }) => account._id === draft.accountId,
+      )?.account;
+      return (
+        account &&
+        (account.is_visible !== draft.isVisible ||
+          JSON.stringify(account.metric_visibility) !==
+            JSON.stringify(draft.metricVisibility))
+      );
+    });
+    return run(async () => {
+      if (section === "accounts") {
+        for (const draft of pendingAccounts) {
+          if (!removedAccounts.includes(draft.accountId))
+            await displayMutation(draft);
+        }
+        for (const accountId of removedAccounts) await remove({ accountId });
+        setRemovedAccounts([]);
+        setAccountDrafts({});
+      } else if (settings && savedSettings) {
+        const updated = {
+          ...savedSettings,
+          ...Object.fromEntries(keys.map((key) => [key, settings[key]])),
+        };
+        await save({ settings: updated });
+        baseline.current = updated;
+        setSavedSettings(updated);
+      }
+      setDetail(null);
+    }, "Changes saved");
+  };
   const footer = (
     section: "profile" | "accounts" | "partnerships" | "rates" | "contact",
   ) => {
@@ -616,30 +694,9 @@ export default function CreatorMediaKit() {
           variant="primary"
           className={primaryButtonClass}
           isDisabled={busy}
-          onPress={() =>
-            run(async () => {
-              if (section === "accounts") {
-                for (const draft of pendingAccounts) {
-                  if (!removedAccounts.includes(draft.accountId))
-                    await displayMutation(draft);
-                }
-                for (const accountId of removedAccounts)
-                  await remove({ accountId });
-                setRemovedAccounts([]);
-                setAccountDrafts({});
-              } else if (settings && savedSettings) {
-                const updated = {
-                  ...savedSettings,
-                  ...Object.fromEntries(
-                    keys.map((key) => [key, settings[key]]),
-                  ),
-                };
-                await save({ settings: updated });
-                baseline.current = updated;
-                setSavedSettings(updated);
-              }
-              setDetail(null);
-            }, "Changes saved")
+          type={section === "accounts" ? "button" : "submit"}
+          onPress={
+            section === "accounts" ? () => submitSection(section) : undefined
           }
         >
           {busy
@@ -737,7 +794,15 @@ export default function CreatorMediaKit() {
             </Tabs.ListContainer>
             <Tabs.Panel id="profile" className="min-w-0 w-full">
               {settings ? (
-                <section className="space-y-5">
+                <Form
+                  validationBehavior="aria"
+                  aria-label="profile details"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitSection("profile", event.currentTarget);
+                  }}
+                  className="space-y-5"
+                >
                   <SectionHeading
                     title="Profile"
                     description="Introduce yourself with a name, bio, niche, and your public link."
@@ -745,6 +810,9 @@ export default function CreatorMediaKit() {
                   <div className="space-y-2">
                     <Field
                       label="Slug"
+                      required
+                      maxLength={40}
+                      pattern="[a-z0-9][a-z0-9-]{1,38}[a-z0-9]"
                       value={settings.slug}
                       onChange={(slug) => edit({ slug })}
                     />
@@ -764,6 +832,8 @@ export default function CreatorMediaKit() {
                   </div>
                   <Field
                     label="Display name"
+                    required
+                    maxLength={100}
                     value={settings.display_name}
                     onChange={(display_name) => edit({ display_name })}
                   />
@@ -826,12 +896,13 @@ export default function CreatorMediaKit() {
                   </TagGroup>
                   <Field
                     label="Bio"
+                    maxLength={1000}
                     multiline
                     value={settings.bio}
                     onChange={(bio) => edit({ bio })}
                   />
                   {footer("profile")}
-                </section>
+                </Form>
               ) : (
                 <EmptyState
                   title="Create your profile"
@@ -894,7 +965,9 @@ export default function CreatorMediaKit() {
                       </Button>
                       <h3 className="font-medium">Add account</h3>
                     </div>
-                    <form
+                    <Form
+                      validationBehavior="aria"
+                      aria-label="Create account"
                       onSubmit={async (e) => {
                         e.preventDefault();
                         setBusy(true);
@@ -957,6 +1030,8 @@ export default function CreatorMediaKit() {
                         <Field
                           label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
                           value={handle}
+                          required
+                          maxLength={2048}
                           onChange={setHandle}
                           onBlur={() => {
                             if (!handle.trim()) return;
@@ -1003,7 +1078,7 @@ export default function CreatorMediaKit() {
                           {busy ? "Confirming…" : "Confirm"}
                         </Button>
                       </div>
-                    </form>
+                    </Form>
                   </div>
                 )}
                 {!detail && !modalOpen && data.accounts.length === 0 && (
@@ -1089,7 +1164,13 @@ export default function CreatorMediaKit() {
                     job,
                   }))
                   .map(({ account: a, job }) => (
-                    <div
+                    <Form
+                      aria-label="Account details"
+                      validationBehavior="aria"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        submitSection("accounts", event.currentTarget);
+                      }}
                       key={a._id}
                       className={
                         detail?.section === "accounts" && detail.key === a._id
@@ -1145,14 +1226,20 @@ export default function CreatorMediaKit() {
                           }
                         />
                       ))}
-                    </div>
+                    </Form>
                   ))}
                 {!modalOpen && footer("accounts")}
               </section>
             </Tabs.Panel>
             <Tabs.Panel id="partnerships" className="min-w-0 w-full">
               {settings ? (
-                <section
+                <Form
+                  validationBehavior="aria"
+                  aria-label="partnerships details"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitSection("partnerships", event.currentTarget);
+                  }}
                   key={detail?.key ?? "list"}
                   className={`space-y-5 ${detail?.section === "partnerships" ? "media-kit-detail-enter" : ""}`}
                 >
@@ -1241,80 +1328,88 @@ export default function CreatorMediaKit() {
                         }
                       />
                     ))}
-                  {(settings.partnerships ?? []).map((partner, i) => (
-                    <div
-                      key={i}
-                      className={
-                        detail?.section === "partnerships" &&
-                        detail.key === String(i)
-                          ? "space-y-5"
-                          : "hidden"
-                      }
-                    >
-                      <div className="flex items-end gap-3">
-                        <div className="min-w-0 w-full">
-                          <Field
-                            label="Brand name"
-                            value={partner.brand_name}
-                            onChange={(brand_name) =>
-                              edit({
-                                partnerships: (settings.partnerships ?? []).map(
-                                  (p, j) =>
+                  {(settings.partnerships ?? []).map((partner, i) =>
+                    detail?.section === "partnerships" &&
+                    detail.key === String(i) ? (
+                      <div
+                        key={i}
+                        className={
+                          detail?.section === "partnerships" &&
+                          detail.key === String(i)
+                            ? "space-y-5"
+                            : "hidden"
+                        }
+                      >
+                        <div className="flex items-end gap-3">
+                          <div className="min-w-0 w-full">
+                            <Field
+                              label="Brand name"
+                              required
+                              maxLength={100}
+                              value={partner.brand_name}
+                              onChange={(brand_name) =>
+                                edit({
+                                  partnerships: (
+                                    settings.partnerships ?? []
+                                  ).map((p, j) =>
                                     j === i ? { ...p, brand_name } : p,
-                                ),
-                              })
-                            }
-                          />
+                                  ),
+                                })
+                              }
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <Field
-                        label="Collaboration description"
-                        multiline
-                        value={partner.description}
-                        onChange={(description) =>
-                          edit({
-                            partnerships: (settings.partnerships ?? []).map(
-                              (p, j) => (j === i ? { ...p, description } : p),
-                            ),
-                          })
-                        }
-                      />
-                      <Field
-                        label="Campaign or brand link (optional, https://)"
-                        value={partner.url}
-                        type="url"
-                        onBlur={() => {
-                          if (!partner.url.trim()) return;
-                          try {
-                            contactHref({
-                              kind: "website",
-                              value: partner.url,
-                              is_visible: true,
-                            });
-                          } catch (error) {
-                            toast({
-                              title: "Check partnership URL",
-                              description:
-                                error instanceof Error
-                                  ? error.message
-                                  : "Enter a valid HTTPS URL.",
-                              color: "danger",
-                            });
+                        <Field
+                          label="Collaboration description"
+                          maxLength={500}
+                          multiline
+                          value={partner.description}
+                          onChange={(description) =>
+                            edit({
+                              partnerships: (settings.partnerships ?? []).map(
+                                (p, j) => (j === i ? { ...p, description } : p),
+                              ),
+                            })
                           }
-                        }}
-                        onChange={(url) =>
-                          edit({
-                            partnerships: (settings.partnerships ?? []).map(
-                              (p, j) => (j === i ? { ...p, url } : p),
-                            ),
-                          })
-                        }
-                      />
-                    </div>
-                  ))}
+                        />
+                        <Field
+                          label="Campaign or brand link (optional, https://)"
+                          maxLength={2048}
+                          value={partner.url}
+                          type="url"
+                          onBlur={() => {
+                            if (!partner.url.trim()) return;
+                            try {
+                              contactHref({
+                                kind: "website",
+                                value: partner.url,
+                                is_visible: true,
+                              });
+                            } catch (error) {
+                              toast({
+                                title: "Check partnership URL",
+                                description:
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Enter a valid HTTPS URL.",
+                                color: "danger",
+                              });
+                            }
+                          }}
+                          onChange={(url) =>
+                            edit({
+                              partnerships: (settings.partnerships ?? []).map(
+                                (p, j) => (j === i ? { ...p, url } : p),
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    ) : null,
+                  )}
 
                   {footer("partnerships")}
-                </section>
+                </Form>
               ) : (
                 <EmptyState
                   title="Showcase your partnerships"
@@ -1337,7 +1432,13 @@ export default function CreatorMediaKit() {
             </Tabs.Panel>
             <Tabs.Panel id="rates" className="min-w-0 w-full">
               {settings ? (
-                <section
+                <Form
+                  validationBehavior="aria"
+                  aria-label="rates details"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitSection("rates", event.currentTarget);
+                  }}
                   key={detail?.key ?? "list"}
                   className={`space-y-5 ${detail?.section === "rates" ? "media-kit-detail-enter" : ""}`}
                 >
@@ -1421,123 +1522,132 @@ export default function CreatorMediaKit() {
                         }
                       />
                     ))}
-                  {settings.rates.map((rate, i) => (
-                    <div
-                      key={i}
-                      className={
-                        detail?.section === "rates" && detail.key === String(i)
-                          ? "space-y-5"
-                          : "hidden"
-                      }
-                    >
-                      <div className="flex items-end gap-3">
-                        <div className="min-w-0 w-full">
-                          {" "}
-                          <Field
-                            label="Service"
-                            value={rate.name}
-                            onChange={(name) =>
-                              edit({
-                                rates: settings.rates.map((r, j) =>
-                                  j === i ? { ...r, name } : r,
-                                ),
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="pb-2"> </div>
-                      </div>
-                      <Field
-                        label="Description"
-                        value={rate.description}
-                        onChange={(description) =>
-                          edit({
-                            rates: settings.rates.map((r, j) =>
-                              j === i ? { ...r, description } : r,
-                            ),
-                          })
+                  {settings.rates.map((rate, i) =>
+                    detail?.section === "rates" && detail.key === String(i) ? (
+                      <div
+                        key={i}
+                        className={
+                          detail?.section === "rates" &&
+                          detail.key === String(i)
+                            ? "space-y-5"
+                            : "hidden"
                         }
-                      />
-                      <div className="flex gap-3">
-                        <label className="flex flex-1 flex-col gap-2 text-sm">
-                          Price
-                          <input
-                            aria-label="Price"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={rate.amount_minor / 100}
-                            className={inputClass}
-                            onChange={(e) =>
-                              edit({
-                                rates: settings.rates.map((r, j) =>
-                                  j === i
-                                    ? {
-                                        ...r,
-                                        amount_minor: Math.round(
-                                          Number(e.target.value) * 100,
-                                        ),
-                                      }
-                                    : r,
-                                ),
-                              })
-                            }
-                          />
-                        </label>
-                        <Select
-                          className="w-28 shrink-0 gap-2"
-                          value={rate.currency}
-                          onChange={(currency) => {
-                            if (
-                              currency !== "MYR" &&
-                              currency !== "USD" &&
-                              currency !== "SGD"
-                            )
-                              return;
+                      >
+                        <div className="flex items-end gap-3">
+                          <div className="min-w-0 w-full">
+                            {" "}
+                            <Field
+                              label="Service"
+                              required
+                              maxLength={100}
+                              value={rate.name}
+                              onChange={(name) =>
+                                edit({
+                                  rates: settings.rates.map((r, j) =>
+                                    j === i ? { ...r, name } : r,
+                                  ),
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="pb-2"> </div>
+                        </div>
+                        <Field
+                          label="Description"
+                          maxLength={500}
+                          value={rate.description}
+                          onChange={(description) =>
                             edit({
                               rates: settings.rates.map((r, j) =>
-                                j === i ? { ...r, currency } : r,
+                                j === i ? { ...r, description } : r,
                               ),
-                            });
-                          }}
-                        >
-                          <Label>Currency</Label>
-                          <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
-                            <Select.Value />
-                            <Select.Indicator />
-                          </Select.Trigger>
-                          <Select.Popover>
-                            <ListBox>
-                              {["MYR", "USD", "SGD"].map((currency) => (
-                                <ListBox.Item
-                                  key={currency}
-                                  id={currency}
-                                  textValue={currency}
-                                >
-                                  <Label>{currency}</Label>
-                                  <ListBox.ItemIndicator />
-                                </ListBox.Item>
-                              ))}
-                            </ListBox>
-                          </Select.Popover>
-                        </Select>
+                            })
+                          }
+                        />
+                        <div className="flex gap-3">
+                          <label className="flex flex-1 flex-col gap-2 text-sm">
+                            Price
+                            <input
+                              aria-label="Price"
+                              type="number"
+                              required
+                              name="Price"
+                              max={1000000}
+                              min="0"
+                              step="0.01"
+                              value={rate.amount_minor / 100}
+                              className={inputClass}
+                              onChange={(e) =>
+                                edit({
+                                  rates: settings.rates.map((r, j) =>
+                                    j === i
+                                      ? {
+                                          ...r,
+                                          amount_minor: Math.round(
+                                            Number(e.target.value) * 100,
+                                          ),
+                                        }
+                                      : r,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                          <Select
+                            className="w-28 shrink-0 gap-2"
+                            value={rate.currency}
+                            onChange={(currency) => {
+                              if (
+                                currency !== "MYR" &&
+                                currency !== "USD" &&
+                                currency !== "SGD"
+                              )
+                                return;
+                              edit({
+                                rates: settings.rates.map((r, j) =>
+                                  j === i ? { ...r, currency } : r,
+                                ),
+                              });
+                            }}
+                          >
+                            <Label>Currency</Label>
+                            <Select.Trigger className="rounded-xl border border-gray-200 bg-white text-black">
+                              <Select.Value />
+                              <Select.Indicator />
+                            </Select.Trigger>
+                            <Select.Popover>
+                              <ListBox>
+                                {["MYR", "USD", "SGD"].map((currency) => (
+                                  <ListBox.Item
+                                    key={currency}
+                                    id={currency}
+                                    textValue={currency}
+                                  >
+                                    <Label>{currency}</Label>
+                                    <ListBox.ItemIndicator />
+                                  </ListBox.Item>
+                                ))}
+                              </ListBox>
+                            </Select.Popover>
+                          </Select>
+                        </div>
+                        <Toggle
+                          label="Starting from"
+                          value={rate.starting_from}
+                          onChange={(starting_from) =>
+                            edit({
+                              rates: settings.rates.map((r, j) =>
+                                j === i ? { ...r, starting_from } : r,
+                              ),
+                            })
+                          }
+                        />
                       </div>
-                      <Toggle
-                        label="Starting from"
-                        value={rate.starting_from}
-                        onChange={(starting_from) =>
-                          edit({
-                            rates: settings.rates.map((r, j) =>
-                              j === i ? { ...r, starting_from } : r,
-                            ),
-                          })
-                        }
-                      />
-                    </div>
-                  ))}
+                    ) : null,
+                  )}
 
                   {footer("rates")}
-                </section>
+                </Form>
               ) : (
                 <EmptyState
                   title="Set your rates"
@@ -1560,7 +1670,13 @@ export default function CreatorMediaKit() {
             </Tabs.Panel>
             <Tabs.Panel id="contact" className="min-w-0 w-full">
               {settings ? (
-                <section
+                <Form
+                  validationBehavior="aria"
+                  aria-label="contact details"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitSection("contact", event.currentTarget);
+                  }}
                   key={detail?.key ?? "list"}
                   className={`space-y-5 ${detail?.section === "contact" ? "media-kit-detail-enter" : ""}`}
                 >
@@ -1686,68 +1802,72 @@ export default function CreatorMediaKit() {
                         }
                       />
                     ))}
-                  {settings.contacts.map((c, i) => (
-                    <div
-                      key={c.kind}
-                      className={
-                        detail?.section === "contact" && detail.key === c.kind
-                          ? "space-y-5"
-                          : "hidden"
-                      }
-                    >
-                      <div className="flex items-end gap-3">
-                        <div className="min-w-0 w-full">
-                          {" "}
-                          <Field
-                            label={
-                              c.kind === "whatsapp"
-                                ? "WhatsApp (+country code)"
-                                : c.kind === "instagram"
-                                  ? "Instagram DM username"
-                                  : c.kind === "website"
-                                    ? "Website (https://)"
-                                    : "Email"
-                            }
-                            value={c.value}
-                            type={
-                              c.kind === "email"
-                                ? "email"
-                                : c.kind === "website"
-                                  ? "url"
-                                  : c.kind === "whatsapp"
-                                    ? "tel"
-                                    : "text"
-                            }
-                            onBlur={() => {
-                              if (!c.value.trim()) return;
-                              try {
-                                contactHref(c);
-                              } catch (error) {
-                                toast({
-                                  title: "Check contact details",
-                                  description:
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Enter valid contact details.",
-                                  color: "danger",
-                                });
+                  {settings.contacts.map((c, i) =>
+                    detail?.section === "contact" && detail.key === c.kind ? (
+                      <div
+                        key={c.kind}
+                        className={
+                          detail?.section === "contact" && detail.key === c.kind
+                            ? "space-y-5"
+                            : "hidden"
+                        }
+                      >
+                        <div className="flex items-end gap-3">
+                          <div className="min-w-0 w-full">
+                            {" "}
+                            <Field
+                              label={
+                                c.kind === "whatsapp"
+                                  ? "WhatsApp (+country code)"
+                                  : c.kind === "instagram"
+                                    ? "Instagram DM username"
+                                    : c.kind === "website"
+                                      ? "Website (https://)"
+                                      : "Email"
                               }
-                            }}
-                            onChange={(value) =>
-                              edit({
-                                contacts: settings.contacts.map((x, j) =>
-                                  i === j ? { ...x, value } : x,
-                                ),
-                              })
-                            }
-                          />
+                              value={c.value}
+                              required
+                              maxLength={2048}
+                              type={
+                                c.kind === "email"
+                                  ? "email"
+                                  : c.kind === "website"
+                                    ? "url"
+                                    : c.kind === "whatsapp"
+                                      ? "tel"
+                                      : "text"
+                              }
+                              onBlur={() => {
+                                if (!c.value.trim()) return;
+                                try {
+                                  contactHref(c);
+                                } catch (error) {
+                                  toast({
+                                    title: "Check contact details",
+                                    description:
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Enter valid contact details.",
+                                    color: "danger",
+                                  });
+                                }
+                              }}
+                              onChange={(value) =>
+                                edit({
+                                  contacts: settings.contacts.map((x, j) =>
+                                    i === j ? { ...x, value } : x,
+                                  ),
+                                })
+                              }
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ) : null,
+                  )}
 
                   {footer("contact")}
-                </section>
+                </Form>
               ) : (
                 <EmptyState
                   title="Add your contact details"
