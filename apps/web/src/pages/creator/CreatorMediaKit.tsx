@@ -10,6 +10,7 @@ import {
   ListBox,
   Tag,
   TagGroup,
+  Tooltip,
 } from "@heroui/react";
 import {
   Plus,
@@ -119,15 +120,25 @@ function ItemCard({
           aria-hidden="true"
         />
       </button>
-      <Button
-        isIconOnly
-        variant="ghost"
-        aria-label={visible ? `Hide ${title}` : `Show ${title}`}
-        className="text-black"
-        onPress={onToggle}
-      >
-        {visible ? <Eye size={18} /> : <EyeOff size={18} />}
-      </Button>
+      <Tooltip delay={300}>
+        <Tooltip.Trigger>
+          <Button
+            isIconOnly
+            variant="ghost"
+            aria-label={visible ? `Hide ${title}` : `Show ${title}`}
+            className="text-black"
+            onPress={onToggle}
+          >
+            {visible ? <Eye size={18} /> : <EyeOff size={18} />}
+          </Button>
+        </Tooltip.Trigger>
+        <Tooltip.Content
+          placement="top"
+          className="rounded-lg bg-gray-900 px-3 py-2 text-xs text-white"
+        >
+          {visible ? "Hide in Media Kit" : "Show in Media Kit"}
+        </Tooltip.Content>
+      </Tooltip>
       <Button
         isIconOnly
         variant="ghost"
