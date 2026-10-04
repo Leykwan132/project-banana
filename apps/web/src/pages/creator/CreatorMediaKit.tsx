@@ -258,7 +258,7 @@ export default function CreatorMediaKit() {
                 void run(async () => {
                   await add({ handle });
                   setHandle("");
-                }, "Import queued");
+                }, "");
               }}
             >
               <input
