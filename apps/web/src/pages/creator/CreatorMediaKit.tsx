@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Button, Card, Label, Switch, Tabs, Modal } from "@heroui/react";
-import { Plus, UserRound, AtSign, Wallet, Mail } from "lucide-react";
+import { Plus, UserRound, AtSign, Wallet, Mail, Trash2 } from "lucide-react";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
+import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 import {
   contactHref,
@@ -92,6 +93,12 @@ export default function CreatorMediaKit() {
   const [platform, setPlatform] = useState<Platform>("instagram");
   const [modalOpen, setModalOpen] = useState(false);
   const [importError, setImportError] = useState("");
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    id: Id<"media_kit_accounts">;
+    handle: string;
+    platform: Platform;
+  } | null>(null);
+  const [removalError, setRemovalError] = useState("");
   const [tab, setTab] = useState<string | null>(null);
   const [wide, setWide] = useState(
     () => window.matchMedia("(min-width: 768px)").matches,
@@ -400,20 +407,48 @@ export default function CreatorMediaKit() {
                         ? "Primary"
                         : "Use as primary"}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-black"
-                      isDisabled={busy}
-                      onPress={() =>
-                        run(
-                          () => remove({ accountId: a._id }),
-                          "Account removed",
-                        )
-                      }
-                    >
-                      Remove
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Switch
+                        isSelected={a.is_visible}
+                        isDisabled={busy}
+                        onChange={(isVisible) =>
+                          run(() =>
+                            display({
+                              accountId: a._id,
+                              isVisible,
+                              metricVisibility: a.metric_visibility,
+                            }),
+                          )
+                        }
+                        aria-label={`Show @${a.handle} on public media kit`}
+                      >
+                        <Switch.Content
+                          aria-label={`Show @${a.handle} on public media kit`}
+                        >
+                          <Switch.Control>
+                            <Switch.Thumb />
+                          </Switch.Control>
+                        </Switch.Content>
+                      </Switch>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-600 hover:text-red-700"
+                        aria-label={`Remove @${a.handle}`}
+                        isDisabled={busy}
+                        onPress={() => {
+                          setRemovalError("");
+                          setPendingRemoval({
+                            id: a._id,
+                            handle: a.handle,
+                            platform: a.platform ?? "instagram",
+                          });
+                        }}
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-xs text-gray-500">
                     {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
@@ -424,20 +459,6 @@ export default function CreatorMediaKit() {
                         : "No imported data yet"}
                     {job?.error_message ? ` · ${job.error_message}` : ""}
                   </p>
-                  <Toggle
-                    label="Show this account"
-                    value={a.is_visible}
-                    disabled={busy}
-                    onChange={(isVisible) =>
-                      run(() =>
-                        display({
-                          accountId: a._id,
-                          isVisible,
-                          metricVisibility: a.metric_visibility,
-                        }),
-                      )
-                    }
-                  />
                   {(
                     Object.entries({
                       followers: "Followers",
@@ -834,6 +855,75 @@ export default function CreatorMediaKit() {
                   </Button>
                 </Modal.Footer>
               </form>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
+
+      <Modal
+        isOpen={pendingRemoval !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setPendingRemoval(null);
+        }}
+      >
+        <Modal.Backdrop isDismissable={!busy}>
+          <Modal.Container size="sm">
+            <Modal.Dialog>
+              <Modal.CloseTrigger isDisabled={busy} />
+              <Modal.Header>
+                <Modal.Heading>Remove account?</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <p className="text-sm text-gray-600">
+                  Remove{" "}
+                  {pendingRemoval?.platform === "tiktok"
+                    ? "TikTok"
+                    : "Instagram"}{" "}
+                  <strong>@{pendingRemoval?.handle}</strong> from your media
+                  kit? Its automatic refreshes will stop. You can add it again
+                  later.
+                </p>
+                {removalError && (
+                  <p role="alert" className="mt-3 text-sm text-red-600">
+                    {removalError}
+                  </p>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button
+                  variant="ghost"
+                  className="text-black"
+                  isDisabled={busy}
+                  onPress={() => setPendingRemoval(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  className={primaryButtonClass}
+                  isDisabled={busy || !pendingRemoval}
+                  onPress={async () => {
+                    if (!pendingRemoval) return;
+                    setBusy(true);
+                    setRemovalError("");
+                    try {
+                      await remove({ accountId: pendingRemoval.id });
+                      setPendingRemoval(null);
+                      setMessage("Account removed");
+                    } catch (error) {
+                      setRemovalError(
+                        error instanceof Error
+                          ? error.message
+                          : "Could not remove account.",
+                      );
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {busy ? "Removing…" : "Remove account"}
+                </Button>
+              </Modal.Footer>
             </Modal.Dialog>
           </Modal.Container>
         </Modal.Backdrop>
