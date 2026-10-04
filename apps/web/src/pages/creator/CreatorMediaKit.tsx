@@ -23,6 +23,26 @@ import type {
 const primaryButtonClass =
   "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
 
+function SectionHeading({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 space-y-1">
+        <h2 className="font-medium text-gray-900">{title}</h2>
+        <p className="text-sm leading-relaxed text-gray-500">{description}</p>
+      </div>
+      {children && <div className="shrink-0">{children}</div>}
+    </div>
+  );
+}
+
 function EmptyState({
   title,
   description,
@@ -324,7 +344,10 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="profile" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <h2 className="font-medium">Your introduction</h2>
+                <SectionHeading
+                  title="Profile"
+                  description="Introduce yourself with a name, bio, niche, and your public link."
+                />
                 <div className="space-y-2">
                   <Field
                     label="Slug"
@@ -380,11 +403,10 @@ export default function CreatorMediaKit() {
           </Tabs.Panel>
           <Tabs.Panel id="accounts" className="min-w-0 w-full">
             <section className="space-y-5">
-              <h2 className="font-medium">Accounts</h2>
-              <p className="text-xs text-gray-500">
-                Add up to five public accounts. Data refreshes every 24 hours,
-                including hidden accounts.
-              </p>
+              <SectionHeading
+                title="Accounts"
+                description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
+              />
               <EmptyAction
                 empty={data.accounts.length === 0}
                 title="No accounts yet"
@@ -505,24 +527,18 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="partnerships" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 space-y-2">
-                    <h2 className="font-medium">Past partnerships</h2>
-                    <p className="text-xs text-gray-500">
-                      Showcase brands you’ve worked with. Add up to ten
-                      collaborations.
-                    </p>
-                  </div>
-                  <div className="shrink-0">
-                    <VisibilitySwitch
-                      label="Show past partnerships section"
-                      value={settings.partnerships_visible ?? true}
-                      onChange={(partnerships_visible) =>
-                        edit({ partnerships_visible })
-                      }
-                    />
-                  </div>
-                </div>
+                <SectionHeading
+                  title="Past partnerships"
+                  description="Showcase brands you’ve worked with. Add up to ten collaborations."
+                >
+                  <VisibilitySwitch
+                    label="Show past partnerships section"
+                    value={settings.partnerships_visible ?? true}
+                    onChange={(partnerships_visible) =>
+                      edit({ partnerships_visible })
+                    }
+                  />
+                </SectionHeading>
                 {(settings.partnerships ?? []).map((partner, i) => (
                   <div
                     key={i}
@@ -652,14 +668,16 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="rates" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-medium">Rates</h2>
+                <SectionHeading
+                  title="Rates"
+                  description="List your services and pricing so brands know how to work with you."
+                >
                   <VisibilitySwitch
                     label="Show rates section"
                     value={settings.rates_visible}
                     onChange={(rates_visible) => edit({ rates_visible })}
                   />
-                </div>
+                </SectionHeading>
                 {settings.rates.map((rate, i) => (
                   <div
                     key={i}
@@ -848,14 +866,16 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="contact" className="min-w-0 w-full">
             {settings ? (
               <section className="space-y-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-medium">Contact</h2>
+                <SectionHeading
+                  title="Contact"
+                  description="Choose how brands can reach you and which contact details appear publicly."
+                >
                   <VisibilitySwitch
                     label="Show contact section"
                     value={settings.contacts_visible}
                     onChange={(contacts_visible) => edit({ contacts_visible })}
                   />
-                </div>
+                </SectionHeading>
                 {settings.contacts.map((c, i) => (
                   <div
                     key={c.kind}
