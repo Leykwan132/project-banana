@@ -530,15 +530,16 @@ export default function CreatorMediaKit() {
                 <SectionHeading
                   title="Past partnerships"
                   description="Showcase brands you’ve worked with. Add up to ten collaborations."
-                >
-                  <VisibilitySwitch
-                    label="Show past partnerships section"
+                />
+                {(settings.partnerships ?? []).length > 0 && (
+                  <Toggle
+                    label="Show in Media Kit"
                     value={settings.partnerships_visible ?? true}
                     onChange={(partnerships_visible) =>
                       edit({ partnerships_visible })
                     }
                   />
-                </SectionHeading>
+                )}
                 {(settings.partnerships ?? []).map((partner, i) => (
                   <div
                     key={i}
@@ -671,13 +672,14 @@ export default function CreatorMediaKit() {
                 <SectionHeading
                   title="Rates"
                   description="List your services and pricing so brands know how to work with you."
-                >
-                  <VisibilitySwitch
-                    label="Show rates section"
+                />
+                {settings.rates.length > 0 && (
+                  <Toggle
+                    label="Show in Media Kit"
                     value={settings.rates_visible}
                     onChange={(rates_visible) => edit({ rates_visible })}
                   />
-                </SectionHeading>
+                )}
                 {settings.rates.map((rate, i) => (
                   <div
                     key={i}
@@ -869,13 +871,14 @@ export default function CreatorMediaKit() {
                 <SectionHeading
                   title="Contact"
                   description="Choose how brands can reach you and which contact details appear publicly."
-                >
-                  <VisibilitySwitch
-                    label="Show contact section"
+                />
+                {settings.contacts.length > 0 && (
+                  <Toggle
+                    label="Show in Media Kit"
                     value={settings.contacts_visible}
                     onChange={(contacts_visible) => edit({ contacts_visible })}
                   />
-                </SectionHeading>
+                )}
                 {settings.contacts.map((c, i) => (
                   <div
                     key={c.kind}
