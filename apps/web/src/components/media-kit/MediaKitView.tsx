@@ -1,4 +1,4 @@
-import { Info, Heart, MessageCircle, Play } from "lucide-react";
+import { Info, Heart, MessageCircle, Play, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import luminaIcon from "../../assets/icon.svg";
 import { Card, Button, Tag, TagGroup, Tabs, Modal, Tooltip } from "@heroui/react";
@@ -17,6 +17,7 @@ const number = (n: number) =>
     maximumFractionDigits: 1,
   }).format(n);
 export function MediaKitView({ kit }: { kit: KitView }) {
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const [selectedPartnership, setSelectedPartnership] = useState<KitView["partnerships"][number] | null>(null);
   return (
     <div className="mx-auto max-w-3xl space-y-8 text-gray-100">
@@ -156,7 +157,17 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     key={a.id}
                     className="bg-[#171717] text-gray-100 border border-gray-700 shadow-none rounded-3xl p-6"
                   >
-                    <Card.Header className="flex-row items-center gap-3">
+                    <button
+                      type="button"
+                      aria-expanded={expandedAccounts.has(a.id)}
+                      aria-controls={`account-details-${a.id}`}
+                      onClick={() => setExpandedAccounts((current) => {
+                        const next = new Set(current);
+                        if (next.has(a.id)) next.delete(a.id); else next.add(a.id);
+                        return next;
+                      })}
+                      className="flex w-full items-center gap-3 rounded-xl text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-300"
+                    >
                       {a.avatarUrl && (
                         <img
                           src={a.avatarUrl}
@@ -165,22 +176,18 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                         />
                       )}
                       <div>
-                        <a
-                          href={accountProfileUrl(a.handle, a.platform)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 font-semibold"
-                        >
-                          <PlatformIcon platform={a.platform} size={17} />@
-                          {a.handle}
-                        </a>
+                        <span className="inline-flex items-center gap-2 font-semibold">
+                          <PlatformIcon platform={a.platform} size={17} />@{a.handle}
+                        </span>
                         <p className="text-xs text-gray-400 mt-1">
                           {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·
                           Updated {new Date(a.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
-                    </Card.Header>
-                    <Card.Content className="space-y-5">
+                      <ChevronDown size={18} aria-hidden="true" className={`ml-auto shrink-0 text-gray-400 transition-transform motion-reduce:transition-none ${expandedAccounts.has(a.id) ? "rotate-180" : ""}`} />
+                    </button>
+                    <div id={`account-details-${a.id}`} hidden={!expandedAccounts.has(a.id)} className="space-y-5">
+                      <a href={accountProfileUrl(a.handle, a.platform)} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex text-xs text-gray-400 underline underline-offset-4">View profile ↗</a>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-4">
                         {(
                           [
@@ -256,7 +263,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                           ))}
                         </div>
                       )}
-                    </Card.Content>
+                    </div>
                   </Card>
                 ))}
               {!kit.accounts.some(
