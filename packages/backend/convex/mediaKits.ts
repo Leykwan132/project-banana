@@ -136,7 +136,7 @@ export const addAccount = mutation({
         display_name: creator.name,
         bio: "",
         category: "",
-        total_audience_visible: true,
+        total_audience_visible: false,
         rates_visible: false,
         contacts_visible: false,
         partnerships: [],
@@ -368,9 +368,6 @@ export const getPublic = query({
       .withIndex("by_kit_id", (q) => q.eq("kit_id", kit._id))
       .take(5);
     const shown = saved.filter((a) => a.is_visible && a.snapshot);
-    const audience = shown.flatMap((a) =>
-      a.snapshot!.followers === undefined ? [] : [a.snapshot!.followers],
-    );
     const accounts = await Promise.all(
       shown.map(async (a) => {
         const { posts, ...p } = projectAccount(
@@ -417,9 +414,6 @@ export const getPublic = query({
         ? await ctx.storage.getUrl(primary.snapshot.avatarStorageId)
         : null,
       accounts,
-      ...(kit.total_audience_visible && audience.length
-        ? { totalAudience: audience.reduce((a, b) => a + b, 0) }
-        : {}),
       partnerships:
         (kit.partnerships_visible ?? true)
           ? (kit.partnerships ?? []).filter((p) => p.is_visible)

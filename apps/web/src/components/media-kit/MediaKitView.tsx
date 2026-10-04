@@ -39,16 +39,6 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             {kit.bio}
           </p>
         )}
-        {kit.totalAudience !== undefined && (
-          <div className="py-3">
-            <p className="text-3xl font-semibold">
-              {number(kit.totalAudience)}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Combined followers · may include overlapping audiences
-            </p>
-          </div>
-        )}
         {!!kit.contacts.length && (
           <div className="flex flex-wrap justify-center gap-2">
             {kit.contacts.map((c) => (

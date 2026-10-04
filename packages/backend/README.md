@@ -85,11 +85,12 @@ The root `bun run deploy` command deploys only the website to Cloudflare. Releas
 Creators edit `/creator/media-kit`; published kits are anonymous at `/kit/{slug}`.
 The feature adds `media_kits`, `media_kit_accounts`, and `media_kit_imports` (see
 `convex/mediaKitValidators.ts`). Public queries explicitly filter each account,
-metric, contact, and rate before returning data. Combined followers can include
-people following multiple accounts and are not a deduplicated audience count.
+metric, contact, and rate before returning data.
 Engagement and averages use sampled recent public posts, not Instagram Insights.
 
-The editor has Profile, Accounts, Rates and Contact tabs. Add account opens a
+The editor has compact horizontal Profile, Accounts, Partnerships, Rates and
+Contact tabs, plain content sections and no live preview or combined audience.
+Add account opens a
 platform picker and queues import immediately after submission. Imports reuse
 `APIFY_API_TOKEN` and the existing scrape Workpool: Instagram uses
 `apify/instagram-profile-scraper`; TikTok uses `clockworks/tiktok-scraper` with a

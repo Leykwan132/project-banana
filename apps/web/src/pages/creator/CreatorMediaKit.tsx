@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import {
   Button,
-  Card,
   Label,
   Switch,
   Tabs,
@@ -11,34 +10,17 @@ import {
   Select,
   ListBox,
 } from "@heroui/react";
-import {
-  Plus,
-  UserRound,
-  AtSign,
-  Wallet,
-  Mail,
-  Trash2,
-  ChevronDown,
-  Handshake,
-} from "lucide-react";
+import { Plus, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
-import {
-  contactHref,
-  projectAccount,
-} from "../../../../../packages/backend/convex/lib/mediaKitModel";
 import type {
   Settings,
   Contact,
   Platform,
 } from "../../../../../packages/backend/convex/lib/mediaKitModel";
-import {
-  MediaKitView,
-  type KitView,
-} from "../../components/media-kit/MediaKitView";
 const primaryButtonClass =
   "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
 
@@ -163,7 +145,7 @@ export default function CreatorMediaKit() {
         display_name: k.display_name,
         bio: k.bio,
         category: k.category,
-        total_audience_visible: k.total_audience_visible,
+        total_audience_visible: false,
         rates_visible: k.rates_visible,
         contacts_visible: k.contacts_visible,
         partnerships: k.partnerships ?? [],
@@ -193,104 +175,11 @@ export default function CreatorMediaKit() {
     setDirty(true);
   };
   if (data === undefined) return <MediaKitSkeleton editor />;
-  const preview: KitView | null = settings
-    ? {
-        slug: settings.slug,
-        displayName: settings.display_name,
-        bio: settings.bio,
-        category: settings.category,
-        photoUrl:
-          (
-            data.accounts.find(
-              (x) =>
-                x.account.is_visible &&
-                x.account._id === data.kit?.primary_account_id,
-            ) ?? data.accounts.find((x) => x.account.is_visible)
-          )?.avatarUrl ?? null,
-        accounts: data.accounts
-          .filter((x) => x.account.is_visible && x.account.snapshot)
-          .map(({ account: a, avatarUrl, postImages }) =>
-            (() => {
-              const { posts, ...projection } = projectAccount(
-                a.snapshot!,
-                a.metric_visibility,
-              );
-              return {
-                ...projection,
-                id: a._id,
-                handle: a.handle,
-                platform: a.platform ?? "instagram",
-                updatedAt: a.last_success_at ?? 0,
-                avatarUrl,
-                ...(a.metric_visibility.recentPosts
-                  ? {
-                      posts: posts?.map((p, i) => ({
-                        ...p,
-                        imageUrl: postImages[i] ?? null,
-                      })),
-                    }
-                  : {}),
-              };
-            })(),
-          ),
-        partnerships:
-          (settings.partnerships_visible ?? true)
-            ? (settings.partnerships ?? [])
-                .filter((p) => p.is_visible)
-                .map((p) => {
-                  try {
-                    return {
-                      ...p,
-                      url: p.url.trim()
-                        ? contactHref({
-                            kind: "website",
-                            value: p.url,
-                            is_visible: true,
-                          })
-                        : "",
-                    };
-                  } catch {
-                    return { ...p, url: "" };
-                  }
-                })
-            : [],
-        rates: settings.rates_visible
-          ? settings.rates.filter((r) => r.is_visible)
-          : [],
-        contacts: settings.contacts_visible
-          ? settings.contacts
-              .filter((c) => c.is_visible)
-              .flatMap((c) => {
-                try {
-                  return [
-                    { kind: c.kind, label: c.value, href: contactHref(c) },
-                  ];
-                } catch {
-                  return [];
-                }
-              })
-          : [],
-        ...(settings.total_audience_visible &&
-        data.accounts.some(
-          (x) =>
-            x.account.is_visible && x.account.snapshot?.followers !== undefined,
-        )
-          ? {
-              totalAudience: data.accounts
-                .filter((x) => x.account.is_visible)
-                .reduce(
-                  (sum, x) => sum + (x.account.snapshot?.followers ?? 0),
-                  0,
-                ),
-            }
-          : {}),
-      }
-    : null;
   return (
-    <div className="p-5 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-5 lg:p-8 max-w-5xl mx-auto">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Media Kit</h1>
+          <h1 className="text-2xl font-medium tracking-tight">Media Kit</h1>
           <p className="mt-2 text-sm text-gray-500">
             Your audience, your work, your public introduction.
           </p>
@@ -328,38 +217,37 @@ export default function CreatorMediaKit() {
           </div>
         )}
       </header>
-      <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
+      <div className="w-full">
         <Tabs
           orientation="horizontal"
           selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
           onSelectionChange={(key) => setTab(String(key))}
-          className="min-w-0 w-full gap-5"
+          className="min-w-0 w-full items-start gap-6"
         >
-          <Tabs.ListContainer className="w-full shrink-0 overflow-x-auto">
-            <Tabs.List aria-label="Media kit settings" className="w-full">
+          <Tabs.ListContainer className="h-11 w-fit max-w-full flex-none self-start overflow-x-auto rounded-xl">
+            <Tabs.List aria-label="Media kit settings" className="h-full w-max">
               {[
-                { id: "profile", label: "Profile", icon: UserRound },
-                { id: "accounts", label: "Accounts", icon: AtSign },
-                { id: "partnerships", label: "Partnerships", icon: Handshake },
-                { id: "rates", label: "Rates", icon: Wallet },
-                { id: "contact", label: "Contact", icon: Mail },
-              ].map(({ id, label, icon: Icon }) => (
+                { id: "profile", label: "Profile" },
+                { id: "accounts", label: "Accounts" },
+                { id: "partnerships", label: "Partnerships" },
+                { id: "rates", label: "Rates" },
+                { id: "contact", label: "Contact" },
+              ].map(({ id, label }) => (
                 <Tabs.Tab
                   key={id}
                   id={id}
-                  className="shrink-0 gap-2 whitespace-nowrap text-black"
+                  className="h-9 shrink-0 whitespace-nowrap font-normal text-black"
                 >
-                  <Icon size={16} />
                   {label}
                   <Tabs.Indicator />
                 </Tabs.Tab>
               ))}
             </Tabs.List>
           </Tabs.ListContainer>
-          <Tabs.Panel id="profile" className="min-w-0 flex-1">
+          <Tabs.Panel id="profile" className="min-w-0 w-full">
             {settings ? (
-              <Card className="p-5 shadow-none border border-gray-100 space-y-4">
-                <h2 className="font-semibold">Your introduction</h2>
+              <section className="space-y-5">
+                <h2 className="font-medium">Your introduction</h2>
                 <Field
                   label="Public link — /kit/"
                   value={settings.slug}
@@ -407,23 +295,16 @@ export default function CreatorMediaKit() {
                   value={settings.bio}
                   onChange={(bio) => edit({ bio })}
                 />
-                <Toggle
-                  label="Combined audience"
-                  value={settings.total_audience_visible}
-                  onChange={(total_audience_visible) =>
-                    edit({ total_audience_visible })
-                  }
-                />
-              </Card>
+              </section>
             ) : (
               <p className="text-sm text-gray-500 p-5">
                 Add an account in Accounts to start your profile.
               </p>
             )}
           </Tabs.Panel>
-          <Tabs.Panel id="accounts" className="min-w-0 flex-1">
-            <Card className="p-5 shadow-none border border-gray-100 space-y-4">
-              <h2 className="font-semibold">Accounts</h2>
+          <Tabs.Panel id="accounts" className="min-w-0 w-full">
+            <section className="space-y-5">
+              <h2 className="font-medium">Accounts</h2>
               <p className="text-xs text-gray-500">
                 Add up to five public accounts. Data refreshes every 24 hours,
                 including hidden accounts.
@@ -537,13 +418,13 @@ export default function CreatorMediaKit() {
                   ))}
                 </div>
               ))}
-            </Card>
+            </section>
           </Tabs.Panel>
-          <Tabs.Panel id="partnerships" className="min-w-0 flex-1">
+          <Tabs.Panel id="partnerships" className="min-w-0 w-full">
             {settings ? (
-              <Card className="p-5 shadow-none border border-gray-100 space-y-4">
+              <section className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-semibold">Past partnerships</h2>
+                  <h2 className="font-medium">Past partnerships</h2>
                   <VisibilitySwitch
                     label="Show past partnerships section"
                     value={settings.partnerships_visible ?? true}
@@ -562,7 +443,7 @@ export default function CreatorMediaKit() {
                     className="space-y-3 border-t border-gray-100 pt-4"
                   >
                     <div className="flex items-end gap-3">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 w-full">
                         <Field
                           label="Brand name"
                           value={partner.brand_name}
@@ -651,18 +532,18 @@ export default function CreatorMediaKit() {
                   <Plus size={16} />
                   Add partnership
                 </Button>
-              </Card>
+              </section>
             ) : (
               <p className="p-5 text-sm text-gray-500">
                 Add an account first, then showcase your past partnerships.
               </p>
             )}
           </Tabs.Panel>
-          <Tabs.Panel id="rates" className="min-w-0 flex-1">
+          <Tabs.Panel id="rates" className="min-w-0 w-full">
             {settings ? (
-              <Card className="p-5 shadow-none border border-gray-100 space-y-4">
+              <section className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-semibold">Rates</h2>
+                  <h2 className="font-medium">Rates</h2>
                   <VisibilitySwitch
                     label="Show rates section"
                     value={settings.rates_visible}
@@ -675,7 +556,7 @@ export default function CreatorMediaKit() {
                     className="space-y-3 border-t pt-4 border-gray-100"
                   >
                     <div className="flex items-end gap-3">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 w-full">
                         {" "}
                         <Field
                           label="Service"
@@ -827,18 +708,18 @@ export default function CreatorMediaKit() {
                 >
                   Add rate
                 </Button>
-              </Card>
+              </section>
             ) : (
               <p className="text-sm text-gray-500 p-5">
                 Add an account first, then set your rates here.
               </p>
             )}
           </Tabs.Panel>
-          <Tabs.Panel id="contact" className="min-w-0 flex-1">
+          <Tabs.Panel id="contact" className="min-w-0 w-full">
             {settings ? (
-              <Card className="p-5 shadow-none border border-gray-100 space-y-4">
+              <section className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="font-semibold">Contact</h2>
+                  <h2 className="font-medium">Contact</h2>
                   <VisibilitySwitch
                     label="Show contact section"
                     value={settings.contacts_visible}
@@ -851,7 +732,7 @@ export default function CreatorMediaKit() {
                     className="space-y-3 border-t pt-4 border-gray-100"
                   >
                     <div className="flex items-end gap-3">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 w-full">
                         {" "}
                         <Field
                           label={
@@ -954,7 +835,7 @@ export default function CreatorMediaKit() {
                     </Dropdown.Menu>
                   </Dropdown.Popover>
                 </Dropdown>
-              </Card>
+              </section>
             ) : (
               <p className="text-sm text-gray-500 p-5">
                 Add an account first, then choose your contact methods.
@@ -962,18 +843,6 @@ export default function CreatorMediaKit() {
             )}
           </Tabs.Panel>
         </Tabs>
-        <aside className="xl:sticky xl:top-8 rounded-3xl border border-gray-100 bg-[#fafaf8] p-5">
-          <p className="text-xs uppercase tracking-widest text-gray-400 text-center">
-            Live preview · save to update your public page
-          </p>
-          {preview ? (
-            <MediaKitView kit={preview} />
-          ) : (
-            <p className="text-center text-sm text-gray-400 py-24">
-              Import your first account to start.
-            </p>
-          )}
-        </aside>
       </div>
 
       <Modal

@@ -107,7 +107,7 @@ test("public queries exclude drafts and independently hidden accounts, metrics, 
     metricVisibility: { ...defaultMetrics, followers: false },
   });
   const visible = await call(getPublic, ctx, { slug: kit.slug });
-  expect(visible.totalAudience).toBe(100);
+  expect(visible.totalAudience).toBeUndefined();
   expect(visible.accounts[0].followers).toBeUndefined();
   expect(visible.rates).toEqual([]);
   expect(visible.contacts).toEqual([]);
