@@ -18,6 +18,7 @@ import {
   Trash2,
   ChevronDown,
 } from "lucide-react";
+import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
@@ -188,12 +189,7 @@ export default function CreatorMediaKit() {
     setSettings((s) => (s ? { ...s, ...patch } : s));
     setDirty(true);
   };
-  if (data === undefined)
-    return (
-      <p role="status" className="p-8">
-        Loading your media kit…
-      </p>
-    );
+  if (data === undefined) return <MediaKitSkeleton editor />;
   const preview: KitView | null = settings
     ? {
         slug: settings.slug,
