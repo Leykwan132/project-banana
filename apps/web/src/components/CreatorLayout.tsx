@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeftRight, FileCheck2, Landmark, LoaderCircle, LogOut, Megaphone, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { ArrowLeftRight, FileCheck2, Landmark, Contact, LoaderCircle, LogOut, Megaphone, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { protectedWorkspacePath, rememberWorkspace, switchWorkspacePath } from '../lib/workspace';
@@ -10,6 +10,7 @@ import logo from '../assets/icon.svg';
 const navigation = [
     { label: 'Campaigns', to: '/creator/campaigns', icon: Megaphone },
     { label: 'Submissions', to: '/creator/submissions', icon: FileCheck2 },
+    { label: 'Media Kit', to: '/creator/media-kit', icon: Contact },
     { label: 'Withdraw', to: '/creator/withdraw', icon: Landmark },
 ];
 
@@ -75,14 +76,12 @@ export function CreatorShell({ name, image, hasBusiness }: { name?: string; imag
             </nav>
             <div className={`space-y-2 border-t border-[#F4F6F8] py-4 ${compact ? 'px-3' : 'px-4'}`}>
                 <Dropdown>
-                    <Dropdown.Trigger>
-                        <button aria-label={`${name ?? 'Creator'} account menu`} className={`flex w-full items-center rounded-xl py-2 text-left hover:bg-gray-50 ${compact ? 'justify-center' : 'gap-3 px-2'}`}>
+                    <Dropdown.Trigger aria-label={`${name ?? 'Creator'} account menu`} className={`flex w-full items-center rounded-xl py-2 text-left hover:bg-gray-50 ${compact ? 'justify-center' : 'gap-3 px-2'}`}>
                             <Avatar className="h-9 w-9 shrink-0 rounded-full bg-amber-100 text-amber-800">
                                 <Avatar.Image src={image ?? undefined} alt={name ?? 'Creator'} />
                                 <Avatar.Fallback>{(name ?? 'Creator').trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase()}</Avatar.Fallback>
                             </Avatar>
                             {!compact && <span className="min-w-0 flex-1 truncate text-sm font-medium">{name ?? 'Creator'}</span>}
-                        </button>
                     </Dropdown.Trigger>
                     <Dropdown.Popover placement={compact ? 'right top' : 'top start'} UNSTABLE_portalContainer={mobile ? (dialog.current ?? undefined) : undefined}>
                         <Dropdown.Menu aria-label="Creator account actions" disabledKeys={signingOut ? ['sign-out'] : []}>

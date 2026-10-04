@@ -15,7 +15,12 @@ const missingPostDescriptionValidator = v.object({
     checkedAt: v.number(),
 });
 
+import { kitFields, accountFields, importFields } from './mediaKitValidators';
+
 export default defineSchema({
+    media_kits: defineTable(kitFields).index('by_creator_id', ['creator_id']).index('by_slug', ['slug']),
+    media_kit_accounts: defineTable(accountFields).index('by_kit_id', ['kit_id']).index('by_kit_id_and_handle', ['kit_id','handle']),
+    media_kit_imports: defineTable(importFields).index('by_account_id', ['account_id']).index('by_status', ['status']),
     // ============================================================
     // NOTIFICATION USERS
     // ============================================================
