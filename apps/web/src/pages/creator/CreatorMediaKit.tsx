@@ -1114,7 +1114,7 @@ export default function CreatorMediaKit() {
                             {(["instagram", "tiktok"] as const).map((value) => (
                               <label
                                 key={value}
-                                className={`flex cursor-pointer items-center gap-2 rounded-xl border p-4 text-sm ${platform === value ? "border-black bg-gray-50" : "border-gray-200"}`}
+                                className={`flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 p-4 text-sm ${platform === value ? "bg-gray-50" : "bg-white"}`}
                               >
                                 <input
                                   type="radio"
