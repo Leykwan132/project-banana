@@ -283,12 +283,14 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     key={i}
                     className="bg-white shadow-none border border-gray-100 p-5 rounded-2xl"
                   >
-                    <div className="flex justify-between gap-4">
+                    <div className="flex items-center justify-between gap-4">
                       <div>
                         <h3 className="font-medium">{r.name}</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {r.description}
-                        </p>
+                        {r.description && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            {r.description}
+                          </p>
+                        )}
                       </div>
                       <p className="shrink-0 font-semibold text-sm">
                         {r.starting_from ? "From " : ""}
