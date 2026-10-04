@@ -150,15 +150,6 @@ export default function CreatorMediaKit() {
   >(null);
   const [removalError, setRemovalError] = useState("");
   const [tab, setTab] = useState<string | null>(null);
-  const [wide, setWide] = useState(
-    () => window.matchMedia("(min-width: 768px)").matches,
-  );
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 768px)");
-    const update = () => setWide(media.matches);
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -343,12 +334,12 @@ export default function CreatorMediaKit() {
       )}
       <div className="grid xl:grid-cols-[minmax(0,1fr)_380px] gap-8 items-start">
         <Tabs
-          orientation={wide ? "vertical" : "horizontal"}
+          orientation="horizontal"
           selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
           onSelectionChange={(key) => setTab(String(key))}
           className="min-w-0 w-full gap-5"
         >
-          <Tabs.ListContainer className="w-full shrink-0 overflow-x-auto md:w-40 md:overflow-visible">
+          <Tabs.ListContainer className="w-full shrink-0 overflow-x-auto">
             <Tabs.List aria-label="Media kit settings" className="w-full">
               {[
                 { id: "profile", label: "Profile", icon: UserRound },
@@ -357,7 +348,7 @@ export default function CreatorMediaKit() {
                 { id: "rates", label: "Rates", icon: Wallet },
                 { id: "contact", label: "Contact", icon: Mail },
               ].map(({ id, label, icon: Icon }) => (
-                <Tabs.Tab key={id} id={id} className="gap-2 text-black">
+                <Tabs.Tab key={id} id={id} className="shrink-0 gap-2 whitespace-nowrap text-black">
                   <Icon size={16} />
                   {label}
                   <Tabs.Indicator />
