@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Skeleton } from "@heroui/react";
 import { Inbox } from "lucide-react";
 
 export function MediaKitPreview({ slug }: { slug?: string }) {
-  const [loaded, setLoaded] = useState(false);
   const [width, setWidth] = useState(360);
   const container = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -15,7 +13,6 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  useEffect(() => setLoaded(false), [slug]);
   const viewport = 390;
   const scale = Math.min(1, width / viewport);
   return (
@@ -34,18 +31,10 @@ export function MediaKitPreview({ slug }: { slug?: string }) {
           >
             {slug ? (
               <>
-                {!loaded && (
-                  <div className="absolute inset-0 z-10 space-y-5 bg-[#0a0a0a] p-6">
-                    <Skeleton className="mx-auto size-20 rounded-full" />
-                    <Skeleton className="h-8 w-full rounded-xl" />
-                    <Skeleton className="h-56 w-full rounded-2xl" />
-                  </div>
-                )}
                 <iframe
                   key={slug}
                   title="Mobile media kit preview"
                   src={`/kit/${encodeURIComponent(slug)}`}
-                  onLoad={() => setLoaded(true)}
                   style={{
                     width: viewport,
                     height: viewport * (19.5 / 9),

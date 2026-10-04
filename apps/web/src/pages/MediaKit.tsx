@@ -3,7 +3,6 @@ import { useQuery } from "convex/react";
 import { useParams } from "react-router-dom";
 import { api } from "../../../../packages/backend/convex/_generated/api";
 import { MediaKitView } from "../components/media-kit/MediaKitView";
-import { MediaKitSkeleton } from "../components/media-kit/MediaKitSkeleton";
 export default function MediaKit() {
   const { slug } = useParams();
   const kit = useQuery(api.mediaKits.getPublic, { slug: slug ?? "" });
@@ -19,7 +18,7 @@ export default function MediaKit() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-gray-100 px-5 py-8">
       {kit === undefined ? (
-        <MediaKitSkeleton />
+        <span className="sr-only" role="status">Loading media kit</span>
       ) : kit === null ? (
         <div className="text-center py-24">
           <h1 className="text-2xl font-semibold">Media kit unavailable</h1>
