@@ -1,8 +1,8 @@
 "use node";
 import { ApifyClient } from "apify-client";
-import { internalAction } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { cacheInstagramImage } from "./lib/mediaKitImages";
 import { normalizeProfile, normalizeTikTokProfile } from "./lib/mediaKitModel";
@@ -221,6 +221,38 @@ export const abortRun = internalAction({
     try {
       await client().run(args.runId).abort();
     } catch {}
+    return null;
+  },
+});
+
+export const uploadProfilePhoto = action({
+  args: { bytes: v.bytes() },
+  returns: v.null(),
+  handler: async (ctx, { bytes }) => {
+    const editor = await ctx.runQuery(api.mediaKits.getEditor, {});
+    if (!editor.kit)
+      throw Error("Add an account before uploading a profile image.");
+    if (bytes.byteLength === 0 || bytes.byteLength > 2 * 1024 * 1024)
+      throw Error("Choose an image smaller than 2 MB.");
+    const data = Buffer.from(bytes);
+    const type = data
+      .subarray(0, 8)
+      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      ? "image/png"
+      : data[0] === 255 && data[1] === 216 && data[2] === 255
+        ? "image/jpeg"
+        : data.toString("ascii", 0, 4) === "RIFF" &&
+            data.toString("ascii", 8, 12) === "WEBP"
+          ? "image/webp"
+          : null;
+    if (!type) throw Error("Choose a JPG, PNG, or WebP image.");
+    const storageId = await ctx.storage.store(new Blob([bytes], { type }));
+    try {
+      await ctx.runMutation(internal.mediaKits.setProfilePhoto, { storageId });
+    } catch (error) {
+      await ctx.storage.delete(storageId);
+      throw error;
+    }
     return null;
   },
 });

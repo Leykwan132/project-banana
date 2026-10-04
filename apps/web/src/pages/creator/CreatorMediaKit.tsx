@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useId, type ReactNode } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   Button,
   Input,
@@ -332,6 +332,19 @@ export default function CreatorMediaKit() {
   }, [data, toast]);
   const add = useMutation(api.mediaKits.addAccount);
   const save = useMutation(api.mediaKits.saveSettings);
+  const uploadPhoto = useAction(api.mediaKitActions.uploadProfilePhoto);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(photoFile);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photoFile]);
 
   const displayMutation = useMutation(api.mediaKits.setAccountDisplay);
   const remove = useMutation(api.mediaKits.removeAccount);
@@ -616,6 +629,10 @@ export default function CreatorMediaKit() {
           ...Object.fromEntries(keys.map((key) => [key, settings[key]])),
         };
         await save({ settings: updated });
+        if (section === "profile" && photoFile) {
+          await uploadPhoto({ bytes: await photoFile.arrayBuffer() });
+          setPhotoFile(null);
+        }
         baseline.current = updated;
         setSavedSettings(updated);
       }
@@ -651,11 +668,12 @@ export default function CreatorMediaKit() {
         ? pendingAccounts.length > 0 || removedAccounts.length > 0
         : !!settings &&
           !!savedSettings &&
-          keys.some(
-            (key) =>
-              JSON.stringify(settings[key]) !==
-              JSON.stringify(savedSettings[key]),
-          );
+          ((section === "profile" && !!photoFile) ||
+            keys.some(
+              (key) =>
+                JSON.stringify(settings[key]) !==
+                JSON.stringify(savedSettings[key]),
+            ));
     const creating =
       detail?.section === section &&
       !!savedSettings &&
@@ -677,6 +695,7 @@ export default function CreatorMediaKit() {
           isDisabled={busy}
           onPress={() => {
             setDetail(null);
+            if (section === "profile") setPhotoFile(null);
             if (section === "accounts") {
               setAccountDrafts({});
               setRemovedAccounts([]);
@@ -807,6 +826,60 @@ export default function CreatorMediaKit() {
                     title="Profile"
                     description="Introduce yourself with a name, bio, niche, and your public link."
                   />
+                  <div className="flex items-center gap-4">
+                    {photoPreview || data.photoUrl ? (
+                      <img
+                        src={photoPreview ?? data.photoUrl!}
+                        alt="Profile"
+                        className="size-20 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid size-20 place-items-center rounded-full bg-gray-100 text-2xl font-medium">
+                        {settings.display_name.slice(0, 1)}
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Button
+                        variant="ghost"
+                        className="text-black"
+                        isDisabled={busy}
+                        onPress={() => photoInput.current?.click()}
+                      >
+                        Upload image
+                      </Button>
+                      <p className="text-xs text-gray-500">
+                        JPG, PNG or WebP, up to 2 MB.
+                      </p>
+                      <input
+                        ref={photoInput}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        aria-label="Upload profile image"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (!file) return;
+                          if (
+                            !["image/jpeg", "image/png", "image/webp"].includes(
+                              file.type,
+                            ) ||
+                            file.size > 2 * 1024 * 1024
+                          ) {
+                            toast({
+                              title: "Check profile image",
+                              description:
+                                "Choose a JPG, PNG, or WebP image smaller than 2 MB.",
+                              color: "danger",
+                            });
+                            return;
+                          }
+                          setPhotoFile(file);
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Field
                       label="Slug"

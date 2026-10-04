@@ -179,6 +179,7 @@ export const getEditor = query({
   args: {},
   returns: v.object({
     kit: v.union(V.kitDoc, v.null()),
+    photoUrl: v.union(v.string(), v.null()),
     accounts: v.array(
       v.object({
         account: V.accountDoc,
@@ -198,6 +199,9 @@ export const getEditor = query({
       : [];
     return {
       kit,
+      photoUrl: kit?.photo_storage_id
+        ? await ctx.storage.getUrl(kit.photo_storage_id)
+        : null,
       accounts: await Promise.all(
         accounts.map(async (account) => ({
           account,
@@ -416,9 +420,11 @@ export const getPublic = query({
       displayName: kit.display_name,
       bio: kit.bio,
       category: kit.category,
-      photoUrl: primary?.snapshot?.avatarStorageId
-        ? await ctx.storage.getUrl(primary.snapshot.avatarStorageId)
-        : null,
+      photoUrl: kit.photo_storage_id
+        ? await ctx.storage.getUrl(kit.photo_storage_id)
+        : primary?.snapshot?.avatarStorageId
+          ? await ctx.storage.getUrl(primary.snapshot.avatarStorageId)
+          : null,
       accounts,
       ...(accounts.some((account) => account.followers !== undefined)
         ? {
@@ -649,5 +655,21 @@ export const claimRun = internalMutation({
       return false;
     await ctx.db.patch(job._id, { status: "running" });
     return true;
+  },
+});
+
+export const setProfilePhoto = internalMutation({
+  args: { storageId: v.id("_storage") },
+  returns: v.null(),
+  handler: async (ctx, { storageId }) => {
+    const kit = await ownKit(ctx);
+    if (!kit) throw Error("Media kit unavailable.");
+    const previous = kit.photo_storage_id;
+    await ctx.db.patch(kit._id, {
+      photo_storage_id: storageId,
+      updated_at: Date.now(),
+    });
+    if (previous && previous !== storageId) await ctx.storage.delete(previous);
+    return null;
   },
 });
