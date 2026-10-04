@@ -64,14 +64,6 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             {kit.bio}
           </p>
         )}
-        {kit.totalAudience !== undefined && (
-          <div>
-            <p className="text-3xl font-semibold tracking-tight">
-              {number(kit.totalAudience)}
-            </p>
-            <p className="text-sm text-gray-400">Combined audience</p>
-          </div>
-        )}
       </header>
       <Tabs
         defaultSelectedKey={
@@ -202,7 +194,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                         ).map(([key, label]) =>
                           a[key] === undefined ? null : (
                             <div key={key} className="text-center">
-                              <p className="text-xl font-semibold">
+                              <p className="text-3xl font-semibold tracking-tight sm:text-4xl">
                                 {key === "engagementRate"
                                   ? `${a[key]!.toFixed(2)}%`
                                   : number(a[key]!)}
