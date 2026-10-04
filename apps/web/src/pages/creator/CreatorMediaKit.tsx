@@ -21,6 +21,34 @@ import {
 const primaryButtonClass =
   "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
 
+function VisibilitySwitch({
+  label,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Switch
+      className="shrink-0"
+      isSelected={value}
+      isDisabled={disabled}
+      onChange={onChange}
+      aria-label={label}
+    >
+      <Switch.Content aria-label={label}>
+        <Switch.Control>
+          <Switch.Thumb />
+        </Switch.Control>
+      </Switch.Content>
+    </Switch>
+  );
+}
+
 function Toggle({
   label,
   value,
@@ -347,7 +375,7 @@ export default function CreatorMediaKit() {
                   onChange={(bio) => edit({ bio })}
                 />
                 <Toggle
-                  label="Show combined audience"
+                  label="Combined audience"
                   value={settings.total_audience_visible}
                   onChange={(total_audience_visible) =>
                     edit({ total_audience_visible })
@@ -482,28 +510,49 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="rates" className="min-w-0 flex-1">
             {settings ? (
               <Card className="p-5 shadow-none border border-gray-100 space-y-4">
-                <h2 className="font-semibold">Rates</h2>
-                <Toggle
-                  label="Show rates section"
-                  value={settings.rates_visible}
-                  onChange={(rates_visible) => edit({ rates_visible })}
-                />
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-semibold">Rates</h2>
+                  <VisibilitySwitch
+                    label="Show rates section"
+                    value={settings.rates_visible}
+                    onChange={(rates_visible) => edit({ rates_visible })}
+                  />
+                </div>
                 {settings.rates.map((rate, i) => (
                   <div
                     key={i}
                     className="space-y-3 border-t pt-4 border-gray-100"
                   >
-                    <Field
-                      label="Service"
-                      value={rate.name}
-                      onChange={(name) =>
-                        edit({
-                          rates: settings.rates.map((r, j) =>
-                            j === i ? { ...r, name } : r,
-                          ),
-                        })
-                      }
-                    />
+                    <div className="flex items-end gap-3">
+                      <div className="min-w-0 flex-1">
+                        {" "}
+                        <Field
+                          label="Service"
+                          value={rate.name}
+                          onChange={(name) =>
+                            edit({
+                              rates: settings.rates.map((r, j) =>
+                                j === i ? { ...r, name } : r,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="pb-2">
+                        {" "}
+                        <VisibilitySwitch
+                          label="Show this rate"
+                          value={rate.is_visible}
+                          onChange={(is_visible) =>
+                            edit({
+                              rates: settings.rates.map((r, j) =>
+                                j === i ? { ...r, is_visible } : r,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
                     <Field
                       label="Description"
                       value={rate.description}
@@ -578,17 +627,7 @@ export default function CreatorMediaKit() {
                         })
                       }
                     />
-                    <Toggle
-                      label="Show this rate"
-                      value={rate.is_visible}
-                      onChange={(is_visible) =>
-                        edit({
-                          rates: settings.rates.map((r, j) =>
-                            j === i ? { ...r, is_visible } : r,
-                          ),
-                        })
-                      }
-                    />
+
                     <Button
                       size="sm"
                       variant="ghost"
@@ -635,47 +674,58 @@ export default function CreatorMediaKit() {
           <Tabs.Panel id="contact" className="min-w-0 flex-1">
             {settings ? (
               <Card className="p-5 shadow-none border border-gray-100 space-y-4">
-                <h2 className="font-semibold">Contact</h2>
-                <Toggle
-                  label="Show contact section"
-                  value={settings.contacts_visible}
-                  onChange={(contacts_visible) => edit({ contacts_visible })}
-                />
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-semibold">Contact</h2>
+                  <VisibilitySwitch
+                    label="Show contact section"
+                    value={settings.contacts_visible}
+                    onChange={(contacts_visible) => edit({ contacts_visible })}
+                  />
+                </div>
                 {settings.contacts.map((c, i) => (
                   <div
                     key={c.kind}
                     className="space-y-3 border-t pt-4 border-gray-100"
                   >
-                    <Field
-                      label={
-                        c.kind === "whatsapp"
-                          ? "WhatsApp (+country code)"
-                          : c.kind === "instagram"
-                            ? "Instagram DM username"
-                            : c.kind === "website"
-                              ? "Website (https://)"
-                              : "Email"
-                      }
-                      value={c.value}
-                      onChange={(value) =>
-                        edit({
-                          contacts: settings.contacts.map((x, j) =>
-                            i === j ? { ...x, value } : x,
-                          ),
-                        })
-                      }
-                    />
-                    <Toggle
-                      label={`Show ${c.kind}`}
-                      value={c.is_visible}
-                      onChange={(is_visible) =>
-                        edit({
-                          contacts: settings.contacts.map((x, j) =>
-                            i === j ? { ...x, is_visible } : x,
-                          ),
-                        })
-                      }
-                    />
+                    <div className="flex items-end gap-3">
+                      <div className="min-w-0 flex-1">
+                        {" "}
+                        <Field
+                          label={
+                            c.kind === "whatsapp"
+                              ? "WhatsApp (+country code)"
+                              : c.kind === "instagram"
+                                ? "Instagram DM username"
+                                : c.kind === "website"
+                                  ? "Website (https://)"
+                                  : "Email"
+                          }
+                          value={c.value}
+                          onChange={(value) =>
+                            edit({
+                              contacts: settings.contacts.map((x, j) =>
+                                i === j ? { ...x, value } : x,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="pb-2">
+                        {" "}
+                        <VisibilitySwitch
+                          label={`Show ${c.kind}`}
+                          value={c.is_visible}
+                          onChange={(is_visible) =>
+                            edit({
+                              contacts: settings.contacts.map((x, j) =>
+                                i === j ? { ...x, is_visible } : x,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
                     <Button
                       size="sm"
                       variant="ghost"
