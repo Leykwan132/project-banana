@@ -334,9 +334,11 @@ export default function CreatorMediaKit() {
     | { kind: "contact"; index: number; name: string }
     | null
   >(null);
-  const [detail, setDetail] = useState<{ section: string; key: string } | null>(
-    null,
-  );
+  const [detail, setDetail] = useState<{
+    section: string;
+    key: string;
+    isNew?: boolean;
+  } | null>(null);
   const [tab, setTab] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [savedSettings, setSavedSettings] = useState<Settings | null>(null);
@@ -404,16 +406,45 @@ export default function CreatorMediaKit() {
         setDetail({
           section: "partnerships",
           key: String(patch.partnerships.length - 1),
+          isNew: true,
         });
       if (patch.rates && patch.rates.length > settings.rates.length)
-        setDetail({ section: "rates", key: String(patch.rates.length - 1) });
+        setDetail({
+          section: "rates",
+          key: String(patch.rates.length - 1),
+          isNew: true,
+        });
       if (patch.contacts && patch.contacts.length > settings.contacts.length)
         setDetail({
           section: "contact",
           key: patch.contacts[patch.contacts.length - 1].kind,
+          isNew: true,
         });
     }
     setSettings((s) => (s ? { ...s, ...patch } : s));
+  };
+  const leaveDetail = () => {
+    if (detail?.isNew && settings) {
+      if (detail.section === "partnerships")
+        edit({
+          partnerships: (settings.partnerships ?? []).filter(
+            (_, index) => String(index) !== detail.key,
+          ),
+        });
+      else if (detail.section === "rates")
+        edit({
+          rates: settings.rates.filter(
+            (_, index) => String(index) !== detail.key,
+          ),
+        });
+      else if (detail.section === "contact")
+        edit({
+          contacts: settings.contacts.filter(
+            (contact) => contact.kind !== detail.key,
+          ),
+        });
+    }
+    setDetail(null);
   };
   const display = async (draft: AccountDisplay) => {
     setAccountDrafts((current) => ({ ...current, [draft.accountId]: draft }));
@@ -674,8 +705,8 @@ export default function CreatorMediaKit() {
           selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
           onSelectionChange={(key) => {
             setModalOpen(false);
+            leaveDetail();
             setTab(String(key));
-            setDetail(null);
           }}
           className="min-w-0 w-full items-start gap-6"
         >
@@ -851,7 +882,11 @@ export default function CreatorMediaKit() {
                       isIconOnly
                       variant="ghost"
                       aria-label="Back to accounts"
-                      onPress={() => setModalOpen(false)}
+                      onPress={() => {
+                        setModalOpen(false);
+                        setHandle("");
+                        setPlatform("instagram");
+                      }}
                     >
                       <ArrowLeft size={18} />
                     </Button>
@@ -948,7 +983,11 @@ export default function CreatorMediaKit() {
                         variant="ghost"
                         className="text-black"
                         isDisabled={busy}
-                        onPress={() => setModalOpen(false)}
+                        onPress={() => {
+                          setModalOpen(false);
+                          setHandle("");
+                          setPlatform("instagram");
+                        }}
                       >
                         Cancel
                       </Button>
@@ -979,7 +1018,7 @@ export default function CreatorMediaKit() {
                     variant="ghost"
                     aria-label="Back to list"
                     className="text-black"
-                    onPress={() => setDetail(null)}
+                    onPress={leaveDetail}
                   >
                     <ArrowLeft size={18} />
                   </Button>
@@ -1155,7 +1194,7 @@ export default function CreatorMediaKit() {
                       variant="ghost"
                       aria-label="Back to list"
                       className="text-black"
-                      onPress={() => setDetail(null)}
+                      onPress={leaveDetail}
                     >
                       <ArrowLeft size={18} />
                     </Button>
@@ -1347,7 +1386,7 @@ export default function CreatorMediaKit() {
                       variant="ghost"
                       aria-label="Back to list"
                       className="text-black"
-                      onPress={() => setDetail(null)}
+                      onPress={leaveDetail}
                     >
                       <ArrowLeft size={18} />
                     </Button>
@@ -1612,7 +1651,7 @@ export default function CreatorMediaKit() {
                       variant="ghost"
                       aria-label="Back to list"
                       className="text-black"
-                      onPress={() => setDetail(null)}
+                      onPress={leaveDetail}
                     >
                       <ArrowLeft size={18} />
                     </Button>
