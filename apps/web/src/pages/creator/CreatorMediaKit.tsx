@@ -1350,7 +1350,7 @@ export default function CreatorMediaKit() {
                                 amount_minor: 0,
                                 currency: "MYR",
                                 starting_from: false,
-                                is_visible: false,
+                                is_visible: true,
                               },
                             ],
                           })
@@ -1577,7 +1577,7 @@ export default function CreatorMediaKit() {
                             edit({
                               contacts: [
                                 ...settings.contacts,
-                                { kind, value: "", is_visible: false },
+                                { kind, value: "", is_visible: true },
                               ],
                             });
                         }}
