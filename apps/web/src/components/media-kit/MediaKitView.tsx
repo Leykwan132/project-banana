@@ -19,9 +19,10 @@ export function MediaKitView({ kit }: { kit: KitView }) {
     <div className="mx-auto max-w-3xl space-y-8 text-gray-900">
       <a
         href="/"
-        aria-label="Lumina home"
-        className="inline-flex size-10 items-center justify-center rounded-full bg-white shadow-sm"
+        aria-label="Powered by Lumina"
+        className="inline-flex items-center gap-2 text-xs text-gray-500"
       >
+        <span>Powered by</span>
         <img src={luminaIcon} alt="Lumina" className="size-6" />
       </a>
       <header className="flex flex-col items-center text-center pt-8 gap-4">
