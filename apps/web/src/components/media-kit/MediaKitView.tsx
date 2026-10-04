@@ -1,6 +1,7 @@
+import { Info } from "lucide-react";
 import { useState } from "react";
 import luminaIcon from "../../assets/icon.svg";
-import { Card, Button, Tag, TagGroup, Tabs, Modal } from "@heroui/react";
+import { Card, Button, Tag, TagGroup, Tabs, Modal, Tooltip } from "@heroui/react";
 import { NicheIcon } from "./NicheIcon";
 import { ContactIcon } from "./ContactIcon";
 import { PlatformIcon } from "./PlatformIcon";
@@ -206,9 +207,26 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                                   ? `${a[key]!.toFixed(2)}%`
                                   : number(a[key]!)}
                               </p>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {label}
-                              </p>
+                              <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
+                                <span>{label}</span>
+                                {(key === "averageLikes" || key === "averageComments" || key === "averageVideoViews") && (
+                                  <Tooltip>
+                                    <Tooltip.Trigger>
+                                      <button type="button" aria-label={`How ${label.toLowerCase()} is calculated`} className="inline-flex rounded-full text-gray-400 hover:text-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300">
+                                        <Info size={14} aria-hidden="true" />
+                                      </button>
+                                    </Tooltip.Trigger>
+                                    <Tooltip.Content placement="top" showArrow className="max-w-64 rounded-xl bg-neutral-800 px-3 py-2 text-xs leading-relaxed text-gray-100 shadow-lg">
+                                      {key === "averageLikes"
+                                        ? `Total likes divided by ${a.likesSampleSize ?? "the number of"} sampled posts with available like counts.`
+                                        : key === "averageComments"
+                                          ? `Total comments divided by ${a.commentsSampleSize ?? "the number of"} sampled posts with available comment counts.`
+                                          : `Total video views divided by ${a.videoSampleSize ?? "the number of"} sampled videos with available view counts.`}
+                                      {" "}Based on up to 12 recent posts imported from {a.platform === "tiktok" ? "TikTok" : "Instagram"} through Apify. Missing counts are excluded. Data refreshes every 24 hours.
+                                    </Tooltip.Content>
+                                  </Tooltip>
+                                )}
+                              </div>
                             </div>
                           ),
                         )}
