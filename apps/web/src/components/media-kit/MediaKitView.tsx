@@ -207,12 +207,12 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                                   ? `${a[key]!.toFixed(2)}%`
                                   : number(a[key]!)}
                               </p>
-                              <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-gray-400">
+                              <div className="mt-1 flex min-h-5 items-center justify-center gap-1.5 whitespace-nowrap text-xs leading-5 text-gray-400">
                                 <span>{label}</span>
                                 {(key === "averageLikes" || key === "averageComments" || key === "averageVideoViews") && (
                                   <Tooltip>
                                     <Tooltip.Trigger>
-                                      <button type="button" aria-label={`How ${label.toLowerCase()} is calculated`} className="inline-flex rounded-full text-gray-400 hover:text-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300">
+                                      <button type="button" aria-label={`How ${label.toLowerCase()} is calculated`} className="inline-flex size-4 shrink-0 items-center justify-center self-center rounded-full p-0 leading-none text-gray-400 hover:text-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-300">
                                         <Info size={14} aria-hidden="true" />
                                       </button>
                                     </Tooltip.Trigger>
