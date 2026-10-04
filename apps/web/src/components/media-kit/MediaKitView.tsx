@@ -1,5 +1,6 @@
+import { useState } from "react";
 import luminaIcon from "../../assets/icon.svg";
-import { Card, Button, Tag, TagGroup, Tabs } from "@heroui/react";
+import { Card, Button, Tag, TagGroup, Tabs, Modal } from "@heroui/react";
 import { NicheIcon } from "./NicheIcon";
 import { ContactIcon } from "./ContactIcon";
 import { PlatformIcon } from "./PlatformIcon";
@@ -15,6 +16,7 @@ const number = (n: number) =>
     maximumFractionDigits: 1,
   }).format(n);
 export function MediaKitView({ kit }: { kit: KitView }) {
+  const [selectedPartnership, setSelectedPartnership] = useState<KitView["partnerships"][number] | null>(null);
   return (
     <div className="mx-auto max-w-3xl space-y-8 text-gray-100">
       <header className="flex flex-col items-center text-center pt-8 gap-4">
@@ -114,36 +116,26 @@ export function MediaKitView({ kit }: { kit: KitView }) {
               <h2 className="mb-4 font-semibold">Past partnerships</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {kit.partnerships.map((p, i) => (
-                  <Card
+                  <button
                     key={i}
-                    className="rounded-2xl border border-gray-700 bg-[#171717] text-gray-100 p-5 shadow-none"
+                    type="button"
+                    onClick={() => setSelectedPartnership(p)}
+                    aria-label={`View ${p.brand_name} partnership details`}
+                    className="flex min-h-36 flex-col items-center justify-center gap-4 rounded-2xl border border-neutral-700 bg-neutral-900 p-6 text-gray-100 transition-colors hover:border-neutral-500 hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-300"
                   >
-                    <div className="flex items-center gap-3">
-                      {p.logo_url && (
-                        <img
-                          src={p.logo_url}
-                          alt={`${p.brand_name} logo`}
-                          className="size-12 shrink-0 rounded-xl bg-white object-contain p-1"
-                        />
-                      )}
-                      <h3 className="font-medium">{p.brand_name}</h3>
-                    </div>
-                    {p.description && (
-                      <p className="mt-2 whitespace-pre-line text-sm text-gray-400">
-                        {p.description}
-                      </p>
+                    {p.logo_url ? (
+                      <img
+                        src={p.logo_url}
+                        alt=""
+                        className="size-14 rounded-xl bg-white object-contain p-2"
+                      />
+                    ) : (
+                      <span aria-hidden="true" className="grid size-14 place-items-center rounded-xl bg-neutral-800 text-xl font-semibold">
+                        {p.brand_name.slice(0, 1)}
+                      </span>
                     )}
-                    {p.url && (
-                      <a
-                        href={p.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 inline-flex text-sm font-medium text-gray-100 underline underline-offset-4"
-                      >
-                        View collaboration ↗
-                      </a>
-                    )}
-                  </Card>
+                    <h3 className="font-medium">{p.brand_name}</h3>
+                  </button>
                 ))}
               </div>
             </section>
@@ -353,6 +345,43 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           })}
         </nav>
       )}
+      <Modal
+        isOpen={selectedPartnership !== null}
+        onOpenChange={(open) => { if (!open) setSelectedPartnership(null); }}
+      >
+        <Modal.Backdrop isDismissable>
+          <Modal.Container size="sm">
+            <Modal.Dialog className="rounded-3xl border border-neutral-700 bg-neutral-900 text-gray-100">
+              <Modal.CloseTrigger className="text-gray-100" />
+              <Modal.Header>
+                {selectedPartnership?.logo_url && (
+                  <img
+                    src={selectedPartnership.logo_url}
+                    alt=""
+                    className="mb-4 size-16 rounded-xl bg-white object-contain p-2"
+                  />
+                )}
+                <Modal.Heading>{selectedPartnership?.brand_name}</Modal.Heading>
+              </Modal.Header>
+              <Modal.Body>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-gray-300">
+                  {selectedPartnership?.description || "Past brand collaboration."}
+                </p>
+                {selectedPartnership?.url && (
+                  <a
+                    href={selectedPartnership.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-5 inline-flex text-sm font-medium text-gray-100 underline underline-offset-4"
+                  >
+                    View collaboration ↗
+                  </a>
+                )}
+              </Modal.Body>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>
       <footer className="pb-8 pt-6 text-center">
         <a
           href="/"
