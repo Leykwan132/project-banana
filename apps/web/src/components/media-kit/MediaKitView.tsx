@@ -53,7 +53,8 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             {kit.contacts.map((c) => (
               <Button
                 key={c.kind}
-                variant="secondary"
+                variant="ghost"
+                className="text-black"
                 onPress={() =>
                   window.open(c.href, "_blank", "noopener,noreferrer")
                 }
@@ -88,8 +89,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 font-semibold"
               >
-                <Instagram size={17} aria-hidden="true" />
-                @{a.handle}
+                <Instagram size={17} aria-hidden="true" />@{a.handle}
               </a>
               <p className="text-xs text-gray-400 mt-1">
                 Instagram · Updated {new Date(a.updatedAt).toLocaleDateString()}

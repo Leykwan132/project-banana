@@ -15,6 +15,9 @@ import {
   MediaKitView,
   type KitView,
 } from "../../components/media-kit/MediaKitView";
+const primaryButtonClass =
+  "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
+
 function Toggle({
   label,
   value,
@@ -82,7 +85,6 @@ export default function CreatorMediaKit() {
   const publish = useMutation(api.mediaKits.setPublished);
   const display = useMutation(api.mediaKits.setAccountDisplay);
   const primary = useMutation(api.mediaKits.setPrimaryAccount);
-  const refresh = useMutation(api.mediaKits.requestRefresh);
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -210,7 +212,10 @@ export default function CreatorMediaKit() {
         {settings && (
           <div className="flex gap-2">
             <Button
-              variant="secondary"
+              variant={data.kit?.is_published ? "ghost" : "primary"}
+              className={
+                data.kit?.is_published ? "text-black" : primaryButtonClass
+              }
               isDisabled={busy || dirty}
               onPress={() =>
                 run(
@@ -222,6 +227,8 @@ export default function CreatorMediaKit() {
               {data.kit?.is_published ? "Unpublish" : "Publish"}
             </Button>
             <Button
+              variant="primary"
+              className={primaryButtonClass}
               isDisabled={busy || !dirty}
               onPress={() =>
                 run(async () => {
@@ -269,6 +276,8 @@ export default function CreatorMediaKit() {
                 className={inputClass}
               />
               <Button
+                variant="primary"
+                className={primaryButtonClass}
                 type="submit"
                 isDisabled={busy || !handle.trim() || data.accounts.length >= 5}
               >
@@ -292,6 +301,7 @@ export default function CreatorMediaKit() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="text-black"
                     isDisabled={busy || data.kit?.primary_account_id === a._id}
                     onPress={() => run(() => primary({ accountId: a._id }))}
                   >
@@ -302,6 +312,7 @@ export default function CreatorMediaKit() {
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="text-black"
                     isDisabled={busy}
                     onPress={() =>
                       run(() => remove({ accountId: a._id }), "Account removed")
@@ -362,20 +373,6 @@ export default function CreatorMediaKit() {
                     }
                   />
                 ))}
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  isDisabled={
-                    busy ||
-                    !!(job && ["queued", "running"].includes(job.status)) ||
-                    Date.now() < a.refresh_available_at
-                  }
-                  onPress={() =>
-                    run(() => refresh({ accountId: a._id }), "Refresh queued")
-                  }
-                >
-                  Refresh data
-                </Button>
               </div>
             ))}
           </Card>
@@ -400,7 +397,8 @@ export default function CreatorMediaKit() {
                 )}
                 <Button
                   size="sm"
-                  variant="secondary"
+                  variant="ghost"
+                  className="text-black"
                   onPress={() =>
                     run(
                       () =>
@@ -548,6 +546,7 @@ export default function CreatorMediaKit() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="text-black"
                       onPress={() =>
                         edit({
                           rates: settings.rates.filter((_, j) => j !== i),
@@ -559,7 +558,8 @@ export default function CreatorMediaKit() {
                   </div>
                 ))}
                 <Button
-                  variant="secondary"
+                  variant="ghost"
+                  className="text-black"
                   isDisabled={settings.rates.length >= 10}
                   onPress={() =>
                     edit({
@@ -625,6 +625,7 @@ export default function CreatorMediaKit() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="text-black"
                       onPress={() =>
                         edit({
                           contacts: settings.contacts.filter((_, j) => j !== i),
@@ -651,7 +652,8 @@ export default function CreatorMediaKit() {
                       <Button
                         key={kind}
                         size="sm"
-                        variant="secondary"
+                        variant="ghost"
+                        className="text-black"
                         onPress={() =>
                           edit({
                             contacts: [
