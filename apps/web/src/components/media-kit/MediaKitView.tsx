@@ -170,8 +170,10 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                           <PlatformIcon platform={a.platform} size={17} />@{a.handle}
                         </a>
                         <p className="text-xs text-gray-400 mt-1">
-                          {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·
-                          Updated {new Date(a.updatedAt).toLocaleDateString()}
+                          {[
+                            a.followers !== undefined ? `${number(a.followers)} followers` : null,
+                            a.engagementRate !== undefined ? `${a.engagementRate.toFixed(2)}% engagement` : null,
+                          ].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                       <button
