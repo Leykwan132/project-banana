@@ -2091,7 +2091,7 @@ export default function CreatorMediaKit() {
                 </Button>
                 <Button
                   variant="primary"
-                  className={primaryButtonClass}
+                  className={deleteButtonClass}
                   isDisabled={busy || !pendingRemoval}
                   onPress={async () => {
                     if (!pendingRemoval) return;
