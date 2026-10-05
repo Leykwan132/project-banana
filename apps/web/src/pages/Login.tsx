@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { authClient } from "../lib/auth-client";
 import iconDark from "../assets/icon-dark.svg";
+import { RedirectingStatus } from "../components/RedirectingStatus";
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { callbackPath, getLastWorkspace, loginPath, resolveWorkspace } from '../lib/workspace';
@@ -50,6 +51,7 @@ export default function Login({ workspace = 'business' }: { workspace?: Workspac
             </div>
 
             <div className="w-full max-w-[320px] text-center">
+                {isSigningIn || session?.user ? <RedirectingStatus /> : <>
                 <h1 className="text-2xl font-bold tracking-tight text-gray-900">{workspace === 'business' ? 'Business login' : 'Creator login'}</h1>
                 <p className="text-[15px] text-gray-500 mb-8 mt-1">{workspace === 'business' ? 'Sign in or create your business account.' : 'Sign in to your creator workspace.'}</p>
                 {loginError ? (
@@ -87,6 +89,7 @@ export default function Login({ workspace = 'business' }: { workspace?: Workspac
                 <Link to={loginPath(workspace === 'business' ? 'creator' : 'business')} className="mt-6 inline-block text-sm text-gray-600 underline">
                     {workspace === 'business' ? 'Looking for creator login?' : 'Looking for business login?'}
                 </Link>
+                </>}
             </div>
 
             <div className="absolute bottom-6 md:bottom-8 text-center w-full">

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { protectedWorkspacePath, rememberWorkspace } from '../lib/workspace';
 import { Sidebar } from './Sidebar';
 import { ProductTour } from './ProductTour';
+import { RedirectingStatus } from './RedirectingStatus';
 
 export function DashboardLayout() {
     const { loading, membership, session } = useWorkspaces();
@@ -24,8 +24,8 @@ export function DashboardLayout() {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-white">
-                <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
+            <div className="flex min-h-screen items-center justify-center bg-white px-6">
+                <RedirectingStatus />
             </div>
         );
     }

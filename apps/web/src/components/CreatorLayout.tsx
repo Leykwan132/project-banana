@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeftRight, FileCheck2, Landmark, Contact, LoaderCircle, LogOut, Megaphone, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { ArrowLeftRight, FileCheck2, Landmark, Contact, LogOut, Megaphone, Menu, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { authClient } from '../lib/auth-client';
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { protectedWorkspacePath, rememberWorkspace, switchWorkspacePath } from '../lib/workspace';
 import { Avatar, Dropdown, Label } from '@heroui/react';
 import logo from '../assets/icon.svg';
+import { RedirectingStatus } from './RedirectingStatus';
 
 const navigation = [
     { label: 'Campaigns', to: '/creator/campaigns', icon: Megaphone },
@@ -110,11 +111,8 @@ export function CreatorLayout() {
     useEffect(() => {
         if (!loading && membership?.creatorId) rememberWorkspace(session?.user.id, 'creator');
     }, [loading, membership?.creatorId, session?.user.id]);
-    if (loading) return <main className="grid min-h-screen place-items-center bg-white" role="status" aria-busy="true">
-        <div className="flex flex-col items-center gap-3 text-gray-500">
-            <LoaderCircle className="h-9 w-9 animate-spin text-[#FF9500]" aria-hidden="true" />
-            <p className="text-sm font-medium">Loading your creator workspace…</p>
-        </div>
+    if (loading) return <main className="grid min-h-screen place-items-center bg-white px-6">
+        <RedirectingStatus />
     </main>;
     const redirect = protectedWorkspacePath('creator', membership);
     if (redirect) return <Navigate to={redirect} replace />;

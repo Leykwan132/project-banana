@@ -11,6 +11,15 @@
     rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lumina — Anyone can earn from content now</title>
+  <style>
+    .auth-boot { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; background: white; text-align: center; font-family: system-ui, sans-serif; }
+    .auth-boot[hidden] { display: none; }
+    .auth-boot-spinner { width: 32px; height: 32px; margin-bottom: 24px; border: 3px solid #e5e7eb; border-top-color: #111827; border-radius: 50%; animation: auth-boot-spin 1s linear infinite; }
+    .auth-boot h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.025em; color: #111827; }
+    .auth-boot p { margin: 8px 0 0; font-size: 14px; color: #6b7280; }
+    @keyframes auth-boot-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .auth-boot-spinner { animation: none; } }
+  </style>
   <meta name="description"
     content="Post on TikTok or Instagram, get paid for every view. No minimum followers required." />
   <meta property="og:type" content="website" />
@@ -42,7 +51,17 @@
 </script>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div id="auth-boot" class="auth-boot" role="status" aria-live="polite" aria-busy="true" hidden>
+      <div class="auth-boot-spinner" aria-hidden="true"></div>
+      <h1>Redirecting</h1>
+      <p>You are being redirected… Please wait…</p>
+    </div>
+  </div>
+  <script>
+    // Show feedback on the OAuth return before the application bundle is ready.
+    if (window.location.pathname === '/auth-redirect') document.getElementById('auth-boot').hidden = false;
+  </script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
