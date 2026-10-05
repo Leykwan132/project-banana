@@ -25,6 +25,10 @@ export function mediaKitContext(subject: string | null = "owner") {
         }
       },
       delete: async (id: string) => rows.delete(id),
+      replace: async (id: string, data: any) => {
+        const row = rows.get(id);
+        rows.set(id, { ...data, _id: id, _creationTime: row._creationTime, table: row.table });
+      },
       query: (table: string) => {
         let list = () => [...rows.values()].filter((r) => r.table === table);
         const q: any = {

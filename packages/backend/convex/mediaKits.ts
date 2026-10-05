@@ -5,7 +5,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Id, Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
@@ -21,6 +21,8 @@ import {
   projectAccount,
 } from "./lib/mediaKitModel";
 import { scrapePool } from "./workpools";
+import { instagramProvider, accountForProvider } from "./lib/instagramOfficial";
+import type { InstagramProvider } from "./lib/instagramOfficial";
 function imageIds(snapshot?: {
   avatarStorageId?: Id<"_storage">;
   posts: { imageStorageId?: Id<"_storage"> }[];
@@ -59,16 +61,28 @@ async function ownAccount(ctx: MutationCtx, id: Id<"media_kit_accounts">) {
     throw Error("Account not found.");
   return account;
 }
-async function queue(
+export async function queue(
   ctx: MutationCtx,
   accountId: Id<"media_kit_accounts">,
   daily = false,
+  providerOverride?: InstagramProvider,
+  force = false,
 ) {
   const account = await ctx.db.get(accountId);
   if (!account) return null;
   const kit = await ctx.db.get(account.kit_id);
   const creator = kit && (await ctx.db.get(kit.creator_id));
   if (!creator || creator.is_deleted) return null;
+  const provider = account.platform === "tiktok" ? "SCRAPING" : providerOverride ?? instagramProvider();
+  const selected = accountForProvider(account, provider);
+  const connection = provider === "META_OFFICIAL"
+    ? await ctx.db.query("instagram_connections").withIndex("by_account_id", q => q.eq("account_id", accountId)).unique()
+    : null;
+  if (provider === "META_OFFICIAL" && (!connection || connection.status !== "connected" || connection.expires_at <= Date.now())) {
+    if (connection && connection.expires_at <= Date.now()) await ctx.db.patch(connection._id, { status: "reconnect_required", access_token: "" });
+    if (daily) return null;
+    throw Error("Connect or reconnect Instagram to import official insights.");
+  }
   const previous =
     account.current_import_id && (await ctx.db.get(account.current_import_id));
   if (previous && ["queued", "running"].includes(previous.status)) {
@@ -84,12 +98,12 @@ async function queue(
         runId: previous.apify_run_id,
       });
   }
-  if (
-    Date.now() < account.refresh_available_at ||
+  if (!force && (
+    Date.now() < selected.refresh_available_at ||
     (daily &&
-      account.last_success_at !== undefined &&
-      Date.now() - account.last_success_at < DAY)
-  ) {
+      selected.last_success_at !== undefined &&
+      Date.now() - selected.last_success_at < DAY)
+  )) {
     if (daily) return null;
     throw Error("This account can be refreshed again after its cooldown.");
   }
@@ -97,17 +111,39 @@ async function queue(
   const importId = await ctx.db.insert("media_kit_imports", {
     account_id: accountId,
     generation,
+    provider,
+    ...(connection ? { connection_generation: connection.generation } : {}),
     status: "queued",
     started_at: Date.now(),
   });
   await ctx.db.patch(accountId, { current_import_id: importId });
-  await scrapePool.enqueueAction(
+  if (provider === "META_OFFICIAL") {
+    await ctx.scheduler.runAfter(0, internal.instagramOfficialActions.importProfile, { importId, generation });
+  } else await scrapePool.enqueueAction(
     ctx,
     internal.mediaKitActions.startImport,
     { importId, generation },
     { retry: false, runAfter: 0 },
   );
   return importId;
+}
+export async function ensureCreatorKit(ctx: MutationCtx, creator: Doc<"creators">): Promise<Doc<"media_kits">> {
+  const existing = await ctx.db.query("media_kits").withIndex("by_creator_id", q => q.eq("creator_id", creator._id)).unique();
+  if (existing) return existing;
+  let slug = `creator-${crypto.randomUUID().slice(0, 12)}`;
+  try {
+    const preferred = validateSlug(creator.username ?? "");
+    const used = await ctx.db.query("media_kits").withIndex("by_slug", q => q.eq("slug", preferred)).unique();
+    if (!used) slug = preferred;
+  } catch { /* Use an editable fallback for creators without a valid username. */ }
+  const created = Date.now();
+  const id = await ctx.db.insert("media_kits", {
+    creator_id: creator._id, slug, display_name: creator.name, bio: "", category: "",
+    total_audience_visible: true, rates_visible: true, contacts_visible: true,
+    partnerships: [], partnerships_visible: true, rates: [], contacts: [],
+    is_published: true, created_at: created, updated_at: created,
+  });
+  return (await ctx.db.get(id))!;
 }
 export const addAccount = mutation({
   args: { handle: v.string(), platform: v.optional(V.platform) },
@@ -116,39 +152,7 @@ export const addAccount = mutation({
     const creator = await owner(ctx);
     const platform = args.platform ?? "instagram";
     const handle = normalizeAccountHandle(args.handle, platform);
-    let kit = await ownKit(ctx);
-    if (!kit) {
-      let slug = `creator-${crypto.randomUUID().slice(0, 12)}`;
-      try {
-        const preferred = validateSlug(creator.username ?? "");
-        const used = await ctx.db
-          .query("media_kits")
-          .withIndex("by_slug", (q) => q.eq("slug", preferred))
-          .unique();
-        if (!used) slug = preferred;
-      } catch {
-        /* Creators without a valid username receive an editable fallback. */
-      }
-      const created = Date.now();
-      const id = await ctx.db.insert("media_kits", {
-        creator_id: creator._id,
-        slug,
-        display_name: creator.name,
-        bio: "",
-        category: "",
-        total_audience_visible: true,
-        rates_visible: true,
-        contacts_visible: true,
-        partnerships: [],
-        partnerships_visible: true,
-        rates: [],
-        contacts: [],
-        is_published: true,
-        created_at: created,
-        updated_at: created,
-      });
-      kit = (await ctx.db.get(id))!;
-    }
+    const kit = await ensureCreatorKit(ctx, creator);
     const accounts = await ctx.db
       .query("media_kit_accounts")
       .withIndex("by_kit_id", (q) => q.eq("kit_id", kit._id))
@@ -178,6 +182,8 @@ export const addAccount = mutation({
 export const getEditor = query({
   args: {},
   returns: v.object({
+    provider: V.instagramProvider,
+    instagramConfigured: v.boolean(),
     kit: v.union(V.kitDoc, v.null()),
     photoUrl: v.union(v.string(), v.null()),
     accounts: v.array(
@@ -186,10 +192,12 @@ export const getEditor = query({
         job: v.union(V.importDoc, v.null()),
         avatarUrl: v.union(v.string(), v.null()),
         postImages: v.array(v.union(v.string(), v.null())),
+        connectionStatus: v.union(v.literal("disconnected"), v.literal("connected"), v.literal("reconnect_required")),
       }),
     ),
   }),
   handler: async (ctx) => {
+    const provider = instagramProvider();
     const kit = await ownKit(ctx);
     const accounts = kit
       ? await ctx.db
@@ -198,13 +206,16 @@ export const getEditor = query({
           .take(5)
       : [];
     return {
+      provider,
+      instagramConfigured: Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET && process.env.CONVEX_SITE_URL && process.env.SITE_URL),
       kit,
       photoUrl: kit?.photo_storage_id
         ? await ctx.storage.getUrl(kit.photo_storage_id)
         : null,
       accounts: await Promise.all(
-        accounts.map(async (account) => ({
+        accounts.map(account => accountForProvider(account, provider)).map(async (account) => ({
           account,
+          connectionStatus: (await ctx.db.query("instagram_connections").withIndex("by_account_id", q => q.eq("account_id", account._id)).unique())?.status ?? ("disconnected" as const),
           avatarUrl: account.snapshot?.avatarStorageId
             ? await ctx.storage.getUrl(account.snapshot.avatarStorageId)
             : null,
@@ -310,7 +321,7 @@ export const setPublished = mutation({
         .query("media_kit_accounts")
         .withIndex("by_kit_id", (q) => q.eq("kit_id", kit._id))
         .take(5);
-      if (!accounts.some((a) => a.is_visible && a.snapshot))
+      if (!accounts.some((a) => a.is_visible && accountForProvider(a, instagramProvider()).snapshot))
         throw Error("Import and show at least one account before publishing.");
     }
     await ctx.db.patch(kit._id, {
@@ -325,6 +336,8 @@ export const removeAccount = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const account = await ownAccount(ctx, args.accountId);
+    const connection = await ctx.db.query("instagram_connections").withIndex("by_account_id", q => q.eq("account_id", account._id)).unique();
+    if (connection) await ctx.db.delete(connection._id);
     if (account.current_import_id) {
       const job = await ctx.db.get(account.current_import_id);
       if (job?.apify_run_id)
@@ -337,7 +350,7 @@ export const removeAccount = mutation({
       });
     }
     await ctx.db.delete(account._id);
-    for (const id of imageIds(account.snapshot)) await ctx.storage.delete(id);
+    for (const id of new Set([...imageIds(account.snapshot), ...imageIds(account.official_snapshot)])) await ctx.storage.delete(id);
     const kit = (await ctx.db.get(account.kit_id))!;
     if (kit.primary_account_id === account._id) {
       const next = await ctx.db
@@ -377,7 +390,7 @@ export const getPublic = query({
       .query("media_kit_accounts")
       .withIndex("by_kit_id", (q) => q.eq("kit_id", kit._id))
       .take(5);
-    const shown = saved.filter((a) => a.is_visible && a.snapshot);
+    const shown = saved.map(a => accountForProvider(a, instagramProvider())).filter((a) => a.is_visible && a.snapshot);
     const accounts = await Promise.all(
       shown.map(async (a) => {
         const { posts, ...p } = projectAccount(
@@ -386,6 +399,7 @@ export const getPublic = query({
         );
         return {
           ...p,
+          dataSource: a.platform === "tiktok" ? "SCRAPING" as const : instagramProvider(),
           id: a._id,
           handle: a.handle,
           platform: a.platform ?? "instagram",
@@ -520,6 +534,7 @@ export const finishImport = internalMutation({
     generation: v.string(),
     snapshot: v.optional(V.snapshot),
     error: v.optional(v.string()),
+    insights: v.optional(V.officialInsights),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -536,9 +551,14 @@ export const finishImport = internalMutation({
     const kit = await ctx.db.get(account.kit_id);
     const creator = kit && (await ctx.db.get(kit.creator_id));
     if (!creator || creator.is_deleted) return false;
+    const official = job.provider === "META_OFFICIAL";
+    if (official) {
+      const connection = await ctx.db.query("instagram_connections").withIndex("by_account_id", q => q.eq("account_id", account._id)).unique();
+      if (!connection || connection.generation !== job.connection_generation) return false;
+    }
     if (args.snapshot) {
       if (
-        !account.snapshot &&
+        !account.snapshot && !account.official_snapshot &&
         kit?.primary_account_id === account._id &&
         kit.updated_at === kit.created_at
       ) {
@@ -550,7 +570,7 @@ export const finishImport = internalMutation({
         });
       }
       const next = new Set(imageIds(args.snapshot));
-      for (const id of imageIds(account.snapshot))
+      for (const id of imageIds(official ? account.official_snapshot : account.snapshot))
         if (!next.has(id)) await ctx.storage.delete(id);
     }
     const now = Date.now();
@@ -567,9 +587,13 @@ export const finishImport = internalMutation({
     });
     await ctx.db.patch(account._id, {
       current_import_id: undefined,
-      refresh_available_at: now + (args.snapshot ? DAY : 600000),
+      ...(official
+        ? { official_refresh_available_at: now + (args.snapshot ? DAY : 600000) }
+        : { refresh_available_at: now + (args.snapshot ? DAY : 600000) }),
       ...(args.snapshot
-        ? { snapshot: args.snapshot, last_success_at: now }
+        ? official
+          ? { official_snapshot: args.snapshot, official_success_at: now, ...(args.insights ? { official_insights: args.insights } : {}) }
+          : { snapshot: args.snapshot, last_success_at: now }
         : {}),
     });
     return true;

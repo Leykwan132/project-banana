@@ -7,6 +7,7 @@ import { authComponent, createAuth } from "./auth";
 import { generateWebhookSignature, generateChecksumSHA512 } from "./utils";
 import { PLAN_TYPE_LABELS, type PlanType } from "./constants";
 import { Resend } from "@convex-dev/resend";
+import { oauthCallback } from "./instagramOfficialActions";
 
 
 type StripePlanDetails = {
@@ -82,6 +83,7 @@ const sendSubscriptionUpdateEmail = async (
 };
 
 const http = httpRouter();
+http.route({ path: "/oauth/instagram/callback", method: "GET", handler: oauthCallback });
 
 http.route({
     path: "/webhooks/resend",

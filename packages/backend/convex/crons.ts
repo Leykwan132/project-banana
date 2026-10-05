@@ -404,5 +404,6 @@ crons.cron(
 );
 
 crons.interval("refresh creator media kits", { hours: 24 }, internal.mediaKitActions.refreshDaily, {});
+crons.interval("cleanup Instagram login states", { hours: 1 }, internal.instagramConnections.cleanupStates, {});
 
 export default crons;

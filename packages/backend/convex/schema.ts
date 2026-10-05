@@ -16,8 +16,15 @@ const missingPostDescriptionValidator = v.object({
 });
 
 import { kitFields, accountFields, importFields } from './mediaKitValidators';
+import { connectionFields, stateFields } from './instagramValidators';
 
 export default defineSchema({
+    instagram_connections: defineTable(connectionFields)
+        .index('by_account_id', ['account_id'])
+        .index('by_instagram_user_id', ['instagram_user_id']),
+    instagram_oauth_states: defineTable(stateFields)
+        .index('by_state_hash', ['state_hash'])
+        .index('by_expires_at', ['expires_at']),
     media_kits: defineTable(kitFields).index('by_creator_id', ['creator_id']).index('by_slug', ['slug']),
     media_kit_accounts: defineTable(accountFields).index('by_kit_id', ['kit_id']).index('by_kit_id_and_handle', ['kit_id','handle']),
     media_kit_imports: defineTable(importFields).index('by_account_id', ['account_id']).index('by_status', ['status']),

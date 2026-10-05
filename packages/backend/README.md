@@ -82,6 +82,63 @@ The root `bun run deploy` command deploys only the website to Cloudflare. Releas
 
 ## Creator media kits
 
+### Instagram data provider
+
+Select the media kit Instagram provider in **Convex Dashboard → Settings → Environment Variables**:
+
+```env
+INSTAGRAM_DATA_PROVIDER=SCRAPING
+# Or: INSTAGRAM_DATA_PROVIDER=META_OFFICIAL
+```
+
+Unset defaults to `SCRAPING`. Unsupported values produce a configuration error.
+Both integrations remain available, with independent snapshots. Switching providers
+preserves accounts, creator settings, and credentials. Official mode requires the
+creator to authorize their Business or Creator account; it never silently falls
+back to scraping. TikTok and campaign tracking continue using their current flows.
+
+For official Instagram Login, configure backend-only `INSTAGRAM_APP_ID`,
+`INSTAGRAM_APP_SECRET`, `CONVEX_SITE_URL`, and `SITE_URL` (the frontend origin).
+Optional `INSTAGRAM_GRAPH_API_VERSION` defaults to `v25.0`.
+Register `${CONVEX_SITE_URL}/oauth/instagram/callback` exactly in Meta's Instagram
+Login redirect URIs. The app creates a fresh authorization link with single-use
+state and requests only `instagram_business_basic` and
+`instagram_business_manage_insights`. No Instagram webhook is required.
+
+Accounts offers Connect/Reconnect/Disconnect. Connecting queues an official
+snapshot even while scraping remains the selected presentation source, allowing
+authorization to be tested before rollout. Save unsaved editor changes first.
+Account insights cover a labeled rolling thirty-day window; recent-post insights
+show lifetime totals. These detailed insights stay private in the creator editor.
+Public fields follow the existing metric visibility controls and label their source.
+Unavailable metrics remain unavailable. Long-lived tokens refresh near expiry;
+revoked credentials show a reconnect prompt. Disconnect removes local credentials
+and prevents late imports from restoring them; creators can also revoke access in
+Instagram's app settings.
+
+The development backend in this session is `basic-mule-595`, with
+`INSTAGRAM_DATA_PROVIDER=SCRAPING`. Production deployments need their own settings,
+registered redirect, permission approvals, and a frontend release.
+
+Set production configuration from `packages/backend` (the secret command prompts
+for its value):
+
+```sh
+bunx --bun convex env set --prod INSTAGRAM_APP_ID 1451111847122256
+bunx --bun convex env set --prod INSTAGRAM_APP_SECRET
+bunx --bun convex env set --prod SITE_URL https://lumina-app.my
+bunx --bun convex env set --prod INSTAGRAM_GRAPH_API_VERSION v25.0
+bunx --bun convex deploy
+bunx --bun convex env set --prod INSTAGRAM_DATA_PROVIDER META_OFFICIAL
+bunx --bun convex run --prod instagramConnections:configurationStatus '{}'
+```
+
+Convex provides `CONVEX_SITE_URL` automatically. Register the production callback
+returned by the configuration check in Meta, then release the web app and test
+creator authorization. To return to scraping, set `INSTAGRAM_DATA_PROVIDER` to
+`SCRAPING` with the same `--prod` flag. This integration does not require
+`META_WEBHOOK_VERIFY_TOKEN`; Messenger integration is separate and is not included.
+
 Creators edit `/creator/media-kit`; published kits are anonymous at `/kit/{slug}`.
 The feature adds `media_kits`, `media_kit_accounts`, and `media_kit_imports` (see
 `convex/mediaKitValidators.ts`). Public queries explicitly filter each account,
