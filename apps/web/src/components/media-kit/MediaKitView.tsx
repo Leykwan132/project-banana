@@ -64,7 +64,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           {kit.displayName}
         </h1>
         {kit.bio && (
-          <p className="max-w-lg whitespace-pre-line text-gray-400 leading-relaxed">
+          <p className="-mt-1.5 max-w-lg whitespace-pre-line text-gray-400 leading-relaxed">
             {kit.bio}
           </p>
         )}
