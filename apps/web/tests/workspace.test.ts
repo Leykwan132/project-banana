@@ -11,9 +11,9 @@ describe('workspace selection and access', () => {
     expect(resolveWorkspace('business', business)).toBe('/overview');
     expect(resolveWorkspace('business', both)).toBe('/overview');
   });
-  test('dual-workspace accounts return to their last-used workspace when available', () => {
-    expect(resolveWorkspace('business', both, 'creator')).toBe('/creator/campaigns');
-    expect(resolveWorkspace('creator', both, 'business')).toBe('/overview');
+  test('the entry page wins over the last-used workspace for dual-role accounts', () => {
+    expect(resolveWorkspace('business', both, 'creator')).toBe('/overview');
+    expect(resolveWorkspace('creator', both, 'business')).toBe('/creator/campaigns');
     expect(resolveWorkspace('creator', both)).toBe('/creator/campaigns');
   });
   test('creator-only business login requires explicit business registration', () => {

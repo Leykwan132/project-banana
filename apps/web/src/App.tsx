@@ -7,6 +7,7 @@ import PlanSelector from './components/PlanSelector';
 import BusinessLanding from './landing/business/BusinessLanding';
 import CreatorLanding from './landing/creator/CreatorLanding';
 import iconLight from './assets/icon.svg';
+import iconDark from './assets/icon-dark.svg';
 import AboutPage from './pages/public/About';
 import SupportPage from './pages/public/Support';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicy';
@@ -269,9 +270,12 @@ export default function App() {
         <div className="flex min-h-screen flex-col bg-white font-sans text-gray-900">
             <header className="sticky top-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
                 <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-                    <Link to="/" className="flex items-center gap-2 font-semibold">
-                        <img src={iconLight} alt="Lumina" className="h-8 w-8 object-contain" />
-                        <span className="text-xl tracking-tight">Lumina</span>
+                    <Link to={workspace === 'business' ? '/business' : '/'} className="flex items-center gap-3 font-semibold">
+                        <img src={workspace === 'creator' ? iconLight : iconDark} alt="" className="h-8 w-8 shrink-0 object-contain" />
+                        <div>
+                            <span className="text-xl tracking-tight">Lumina</span>
+                            <p className="text-xs font-normal text-gray-400">{workspace === 'creator' ? 'Creator' : 'Business'}</p>
+                        </div>
                     </Link>
 
                     <div className="hidden items-center gap-6 md:flex">

@@ -4,10 +4,11 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { authClient } from "../lib/auth-client";
 import iconDark from "../assets/icon-dark.svg";
+import iconCreator from "../assets/icon.svg";
 import { RedirectingStatus } from "../components/RedirectingStatus";
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
-import { callbackPath, getLastWorkspace, loginPath, resolveWorkspace } from '../lib/workspace';
+import { callbackPath, loginPath, resolveWorkspace } from '../lib/workspace';
 import type { Workspace } from '../lib/workspace';
 
 export default function Login({ workspace = 'business' }: { workspace?: Workspace }) {
@@ -19,7 +20,7 @@ export default function Login({ workspace = 'business' }: { workspace?: Workspac
     const loginError = searchParams.get('error') || signInError;
     useEffect(() => {
         if (!loading && session?.user && membership) {
-            navigate(resolveWorkspace(workspace, membership, getLastWorkspace(session.user.id)), { replace: true });
+            navigate(resolveWorkspace(workspace, membership), { replace: true });
         }
     }, [loading, session?.user, membership, workspace, navigate]);
 
@@ -44,9 +45,12 @@ export default function Login({ workspace = 'business' }: { workspace?: Workspac
     return (
         <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500 relative">
             <div className="absolute top-6 left-6 md:top-10 md:left-10 flex items-center gap-2 font-semibold">
-                <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-                    <img src={iconDark} alt="Lumina" className="h-6 w-6 object-contain" />
-                    <span className="text-gray-900 tracking-tight text-lg">Lumina</span>
+                <Link to="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
+                    <img src={workspace === 'creator' ? iconCreator : iconDark} alt="" className="h-8 w-8 shrink-0 object-contain" />
+                    <div>
+                        <span className="text-xl font-semibold tracking-tight text-gray-900">Lumina</span>
+                        <p className="text-xs font-normal text-gray-400">{workspace === 'creator' ? 'Creator' : 'Business'}</p>
+                    </div>
                 </Link>
             </div>
 
