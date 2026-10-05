@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   Eye,
   EyeOff,
+  Facebook,
 } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitPreview } from "../../components/media-kit/MediaKitPreview";
@@ -394,7 +395,8 @@ export default function CreatorMediaKit() {
   const displayMutation = useMutation(api.mediaKits.setAccountDisplay);
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
-  const [platform, setPlatform] = useState<Platform>("instagram");
+  const [platform, setPlatform] = useState<Platform | "facebook">("instagram");
+  const [facebookPageCount, setFacebookPageCount] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<
     | {
@@ -434,6 +436,10 @@ export default function CreatorMediaKit() {
     const feedback = url.searchParams.has("facebook") ? facebookLoginFeedback(url.searchParams.get("facebook")) : instagramLoginFeedback(url.searchParams.get("instagram"));
     if (feedback) toast(feedback);
     setTab("accounts");
+    if (url.searchParams.get("facebook") === "choose_page") {
+      setPlatform("facebook");
+      setModalOpen(true);
+    }
     url.searchParams.delete("instagram");
     url.searchParams.delete("facebook");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
@@ -1061,10 +1067,6 @@ export default function CreatorMediaKit() {
               )}
             </Tabs.Panel>
             <Tabs.Panel id="accounts" className="min-w-0 w-full">
-              <p className="mb-5 text-sm text-gray-600">
-                Instagram data: {data.provider === "META_OFFICIAL" ? "Official Instagram insights" : "Public profile data"}.
-                {data.provider === "META_OFFICIAL" && " Connect a Business or Creator account to retrieve your insights."}
-              </p>
               <section
                 key={modalOpen ? "new-account" : (detail?.key ?? "list")}
                 className={`space-y-5 ${detail?.section === "accounts" || modalOpen ? "media-kit-detail-enter" : ""}`}
@@ -1072,13 +1074,13 @@ export default function CreatorMediaKit() {
                 {!detail && !modalOpen && (
                   <SectionHeading
                     title="Accounts"
-                    description="Add up to five public accounts. Data refreshes every 24 hours, including hidden accounts."
+                    description="Connect your social accounts. Data refreshes every 24 hours."
                   >
                     {!detail && !modalOpen && (
                       <Button
                         variant="primary"
                         className={primaryButtonClass}
-                        isDisabled={busy || data.accounts.length >= 5}
+                        isDisabled={busy}
                         onPress={() => {
                           setModalOpen(true);
                         }}
@@ -1114,6 +1116,7 @@ export default function CreatorMediaKit() {
                         setBusy(true);
 
                         try {
+                          if (platform === "facebook") return;
                           if (platform === "instagram" && data.provider === "META_OFFICIAL") {
                             await connectInstagram();
                             return;
@@ -1149,8 +1152,8 @@ export default function CreatorMediaKit() {
                           <legend className="mb-3 text-sm text-gray-600">
                             Choose a platform
                           </legend>
-                          <div className="grid grid-cols-2 gap-3">
-                            {(["instagram", "tiktok"] as const).map((value) => (
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            {(["instagram", "tiktok", "facebook"] as const).map((value) => (
                               <label
                                 key={value}
                                 className={`flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 p-4 text-sm ${platform === value ? "bg-gray-50" : "bg-white"}`}
@@ -1166,13 +1169,13 @@ export default function CreatorMediaKit() {
                                   }}
                                   className="accent-black"
                                 />
-                                <PlatformIcon platform={value} />
-                                {value === "instagram" ? "Instagram" : "TikTok"}
+                                {value === "facebook" ? <Facebook size={18} /> : <PlatformIcon platform={value} />}
+                                {value === "instagram" ? "Instagram" : value === "tiktok" ? "TikTok" : "Facebook Pages"}
                               </label>
                             ))}
                           </div>
                         </fieldset>
-                        {!(platform === "instagram" && data.provider === "META_OFFICIAL") && <Field
+                        {platform !== "facebook" && !(platform === "instagram" && data.provider === "META_OFFICIAL") && <Field
                           label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
                           value={handle}
                           required
@@ -1191,11 +1194,11 @@ export default function CreatorMediaKit() {
                           }}
                         />}
 
-                        <p className="text-xs text-gray-500">
+                        {platform === "facebook" ? <FacebookPagesSection mode="add" beforeConnect={ensureSavedBeforeConnect} onSelected={() => { setModalOpen(false); setPlatform("instagram"); }} /> : <p className="text-xs text-gray-500">
                           {platform === "instagram" && data.provider === "META_OFFICIAL"
                             ? "Sign in to your Instagram Business or Creator account and allow access to insights. Data refreshes every 24 hours."
                             : "Use a public profile. Your data will import automatically and refresh every 24 hours."}
-                        </p>
+                        </p>}
                       </div>
                       <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5">
                         <Button
@@ -1210,22 +1213,22 @@ export default function CreatorMediaKit() {
                         >
                           Cancel
                         </Button>
-                        <Button
+                        {platform !== "facebook" && <Button
                           type="submit"
                           variant="primary"
                           className={primaryButtonClass}
-                          isDisabled={busy || (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : !handle.trim())}
+                          isDisabled={busy || data.accounts.length >= 5 || (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : !handle.trim())}
                         >
                           {busy ? "Confirming…" : platform === "instagram" && data.provider === "META_OFFICIAL" ? "Connect Instagram" : "Confirm"}
-                        </Button>
+                        </Button>}
                       </div>
                     </Form>
                   </div>
                 )}
-                {!detail && !modalOpen && data.accounts.length === 0 && (
+                {!detail && !modalOpen && data.accounts.length === 0 && facebookPageCount === 0 && (
                   <EmptyState
                     title="No accounts yet"
-                    description="Add your Instagram or TikTok account to start building your media kit."
+                    description="Choose a platform from Add account to connect your social accounts."
                   />
                 )}
 
@@ -1406,7 +1409,7 @@ export default function CreatorMediaKit() {
                     </Form>
                   ))}
                 {!modalOpen && footer("accounts")}
-                {!modalOpen && !detail && <FacebookPagesSection beforeConnect={ensureSavedBeforeConnect} />}
+                {!modalOpen && !detail && <FacebookPagesSection mode="accounts" beforeConnect={ensureSavedBeforeConnect} onPageCountChange={setFacebookPageCount} />}
               </section>
             </Tabs.Panel>
             <Tabs.Panel id="partnerships" className="min-w-0 w-full">
