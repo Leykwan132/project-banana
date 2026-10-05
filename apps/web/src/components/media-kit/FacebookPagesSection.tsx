@@ -4,10 +4,12 @@ import { Button } from "@heroui/react";
 import { Facebook } from "lucide-react";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 
-export function FacebookPagesSection({ beforeConnect }: { beforeConnect: () => void }) {
+export function FacebookPagesSection({ beforeConnect, mode, onSelected, onPageCountChange }: { beforeConnect: () => void; mode: "add" | "accounts"; onSelected?: () => void; onPageCountChange?: (count: number) => void }) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 60000); return () => window.clearInterval(timer); }, []);
   const data = useQuery(api.facebookPages.getEditor, { now });
+  const pageCount = data?.pages.length;
+  useEffect(() => { if (pageCount !== undefined) onPageCountChange?.(pageCount); }, [pageCount, onPageCountChange]);
   const start = useMutation(api.facebookPages.startLogin);
   const select = useMutation(api.facebookPages.selectPage);
   const disconnect = useMutation(api.facebookPages.disconnect);
@@ -22,9 +24,10 @@ export function FacebookPagesSection({ beforeConnect }: { beforeConnect: () => v
     catch (failure) { setError(failure instanceof Error ? failure.message : "Please try again."); }
     finally { setBusy(false); }
   }
+  if (mode === "accounts" && !data?.pages.length) return null;
   return (
-    <section aria-label="Facebook Page insights" className="space-y-4 border-t border-gray-200 pt-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <section aria-label="Facebook Page insights" className={mode === "add" ? "space-y-4" : "space-y-4 border-t border-gray-200 pt-6"}>
+      {mode === "add" && <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 font-medium text-gray-900"><Facebook size={18} /> Facebook Pages</h2>
           <p className="mt-1 text-sm text-gray-500">Official Page insights, private to you. Refreshes daily. Connect up to five Pages.</p>
@@ -34,21 +37,21 @@ export function FacebookPagesSection({ beforeConnect }: { beforeConnect: () => v
           const { url } = await start({});
           window.location.assign(url);
         })}>Connect Facebook</Button>
-      </div>
+      </div>}
       {!data ? <p className="text-sm text-gray-500">Loading Facebook Pages…</p> : <>
         {!data.configured && <p className="text-sm text-gray-500">Facebook Page connection is awaiting app configuration.</p>}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        {data.choices.length > 0 && <div className="space-y-2 rounded-2xl bg-gray-50 p-4">
+        {mode === "add" && data.choices.length > 0 && <div className="space-y-2 rounded-2xl bg-gray-50 p-4">
           <h3 className="text-sm font-medium">Choose a Page</h3>
           <p className="text-xs text-gray-500">This selection expires after ten minutes. Connect Facebook again if it expires.</p>
           {data.choices.map(page => <div key={page.id} className="flex items-center justify-between gap-3">
             <span className="text-sm">{page.name}</span>
-            <Button type="button" size="sm" variant="secondary" isDisabled={busy} onPress={() => void run(() => select({ pageId: page.id }))}>
+            <Button type="button" size="sm" variant="secondary" isDisabled={busy} onPress={() => void run(async () => { await select({ pageId: page.id }); onSelected?.(); })}>
               {data.pages.some(connected => connected.pageId === page.id) ? "Reconnect Page" : "Connect Page"}
             </Button>
           </div>)}
         </div>}
-        {data.pages.map(page => <article key={page.id} className="space-y-3 rounded-2xl border border-gray-200 p-4">
+        {mode === "accounts" && data.pages.map(page => <article key={page.id} className="space-y-3 rounded-2xl border border-gray-200 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><h3 className="font-medium">{page.name}</h3><p className="mt-1 text-xs text-gray-500">{page.refreshing ? "Updating insights…" : page.status === "reconnect_required" ? "Reconnect required" : "Connected · Official Facebook data"}</p></div>
             <div className="flex gap-2">
@@ -72,7 +75,7 @@ export function FacebookPagesSection({ beforeConnect }: { beforeConnect: () => v
             {page.snapshot.daily_views.length > 0 && <p className="text-xs text-gray-500">Total of {page.snapshot.daily_views.length} daily values returned by Facebook within this window. Missing metrics remain unavailable.</p>}
           </>}
         </article>)}
-        {data.pages.length === 0 && data.choices.length === 0 && data.configured && <p className="text-sm text-gray-500">Connect Facebook, then choose a Page you manage to see its insights.</p>}
+        {mode === "add" && data.choices.length === 0 && data.configured && <p className="text-sm text-gray-500">Connect Facebook, then choose a Page you manage to see its insights.</p>}
       </>}
     </section>
   );
