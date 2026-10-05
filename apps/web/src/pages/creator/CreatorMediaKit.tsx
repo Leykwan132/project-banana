@@ -25,6 +25,7 @@ import {
   Eye,
   EyeOff,
   Facebook,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "../../components/ui/Toast";
 import { MediaKitPreview } from "../../components/media-kit/MediaKitPreview";
@@ -385,6 +386,7 @@ export default function CreatorMediaKit() {
   }, [data, toast]);
   const add = useMutation(api.mediaKits.addAccount);
   const startInstagramLogin = useMutation(api.instagramConnections.startLogin);
+  const startFacebookLogin = useMutation(api.facebookPages.startLogin);
   const disconnectInstagram = useMutation(api.instagramConnections.disconnect);
   const refreshAccount = useMutation(api.mediaKits.requestRefresh);
   const save = useMutation(api.mediaKits.saveSettings);
@@ -397,6 +399,9 @@ export default function CreatorMediaKit() {
   const [handle, setHandle] = useState("");
   const [platform, setPlatform] = useState<Platform | "facebook">("instagram");
   const [facebookPageCount, setFacebookPageCount] = useState<number | null>(null);
+  const [facebookConfigured, setFacebookConfigured] = useState(false);
+  const [openingLogin, setOpeningLogin] = useState<{ platform: "instagram" | "facebook"; accountId?: Id<"media_kit_accounts"> } | null>(null);
+  const navigationPending = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<
     | {
@@ -451,11 +456,22 @@ export default function CreatorMediaKit() {
     });
     if (unsavedAccounts || removedAccounts.length || (settings && savedSettings && JSON.stringify(settings) !== JSON.stringify(savedSettings))) throw Error("Save your changes before connecting a social account.");
   };
-  const connectInstagram = async (accountId?: Id<"media_kit_accounts">) => {
+  const openSocialLogin = async (provider: "instagram" | "facebook", accountId?: Id<"media_kit_accounts">) => {
     ensureSavedBeforeConnect();
-    const { url } = await startInstagramLogin(accountId ? { accountId } : {});
-    window.location.assign(url);
+    setOpeningLogin({ platform: provider, accountId });
+    try {
+      const { url } = provider === "facebook"
+        ? await startFacebookLogin({})
+        : await startInstagramLogin(accountId ? { accountId } : {});
+      navigationPending.current = true;
+      window.location.assign(url);
+    } catch (error) {
+      navigationPending.current = false;
+      setOpeningLogin(null);
+      throw error;
+    }
   };
+  const connectInstagram = (accountId?: Id<"media_kit_accounts">) => openSocialLogin("instagram", accountId);
 
   useEffect(() => {
     if (data?.kit) {
@@ -499,7 +515,7 @@ export default function CreatorMediaKit() {
         color: "danger",
       });
     } finally {
-      setBusy(false);
+      if (!navigationPending.current) setBusy(false);
     }
   };
   const edit = (patch: Partial<Settings>) => {
@@ -1098,6 +1114,7 @@ export default function CreatorMediaKit() {
                         isIconOnly
                         variant="ghost"
                         aria-label="Back to accounts"
+                        isDisabled={busy}
                         onPress={() => {
                           setModalOpen(false);
                           setHandle("");
@@ -1116,7 +1133,10 @@ export default function CreatorMediaKit() {
                         setBusy(true);
 
                         try {
-                          if (platform === "facebook") return;
+                          if (platform === "facebook") {
+                            await openSocialLogin("facebook");
+                            return;
+                          }
                           if (platform === "instagram" && data.provider === "META_OFFICIAL") {
                             await connectInstagram();
                             return;
@@ -1143,7 +1163,7 @@ export default function CreatorMediaKit() {
                             color: "danger",
                           });
                         } finally {
-                          setBusy(false);
+                          if (!navigationPending.current) setBusy(false);
                         }
                       }}
                     >
@@ -1194,7 +1214,7 @@ export default function CreatorMediaKit() {
                           }}
                         />}
 
-                        {platform === "facebook" ? <FacebookPagesSection mode="add" beforeConnect={ensureSavedBeforeConnect} onSelected={() => { setModalOpen(false); setPlatform("instagram"); }} /> : <p className="text-xs text-gray-500">
+                        {platform === "facebook" ? <FacebookPagesSection mode="add" onConfiguredChange={setFacebookConfigured} onSelected={() => { setModalOpen(false); setPlatform("instagram"); }} /> : <p className="text-xs text-gray-500">
                           {platform === "instagram" && data.provider === "META_OFFICIAL"
                             ? "Sign in to your Instagram Business or Creator account and allow access to insights. Data refreshes every 24 hours."
                             : "Use a public profile. Your data will import automatically and refresh every 24 hours."}
@@ -1213,14 +1233,16 @@ export default function CreatorMediaKit() {
                         >
                           Cancel
                         </Button>
-                        {platform !== "facebook" && <Button
+                        <Button
                           type="submit"
                           variant="primary"
                           className={primaryButtonClass}
-                          isDisabled={busy || data.accounts.length >= 5 || (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : !handle.trim())}
+                          isDisabled={busy || (platform === "facebook" ? !facebookConfigured : data.accounts.length >= 5 || (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : !handle.trim()))}
+                          aria-busy={!!openingLogin && !openingLogin.accountId}
                         >
-                          {busy ? "Confirming…" : platform === "instagram" && data.provider === "META_OFFICIAL" ? "Connect Instagram" : "Confirm"}
-                        </Button>}
+                          {openingLogin && !openingLogin.accountId && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+                          {openingLogin && !openingLogin.accountId ? `Opening ${openingLogin.platform === "facebook" ? "Facebook" : "Instagram"}…` : busy ? "Confirming…" : platform === "facebook" ? "Connect Facebook" : platform === "instagram" && data.provider === "META_OFFICIAL" ? "Connect Instagram" : "Confirm"}
+                        </Button>
                       </div>
                     </Form>
                   </div>
@@ -1348,7 +1370,8 @@ export default function CreatorMediaKit() {
                           {!data.instagramConfigured && <p className="text-xs text-red-600">Instagram connection is awaiting configuration.</p>}
                           <div className="flex flex-wrap gap-2">
                             <Button type="button" variant="ghost" isDisabled={busy || !data.instagramConfigured} onPress={() => void run(() => connectInstagram(a._id))}>
-                              {connectionStatus === "disconnected" ? "Connect Instagram" : "Reconnect Instagram"}
+                              {openingLogin?.accountId === a._id && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+                              {openingLogin?.accountId === a._id ? "Opening Instagram…" : connectionStatus === "disconnected" ? "Connect Instagram" : "Reconnect Instagram"}
                             </Button>
                             {connectionStatus !== "disconnected" && <Button type="button" variant="ghost" isDisabled={busy} onPress={() => void run(() => disconnectInstagram({ accountId: a._id }), "Instagram disconnected")}>Disconnect</Button>}
                             {data.provider === "META_OFFICIAL" && connectionStatus === "connected" && <Button type="button" variant="ghost" isDisabled={busy || !!a.current_import_id || Date.now() < a.refresh_available_at} onPress={() => void run(() => refreshAccount({ accountId: a._id }), "Insights update requested")}>Update insights</Button>}
@@ -1409,7 +1432,7 @@ export default function CreatorMediaKit() {
                     </Form>
                   ))}
                 {!modalOpen && footer("accounts")}
-                {!modalOpen && !detail && <FacebookPagesSection mode="accounts" beforeConnect={ensureSavedBeforeConnect} onPageCountChange={setFacebookPageCount} />}
+                {!modalOpen && !detail && <FacebookPagesSection mode="accounts" onPageCountChange={setFacebookPageCount} />}
               </section>
             </Tabs.Panel>
             <Tabs.Panel id="partnerships" className="min-w-0 w-full">

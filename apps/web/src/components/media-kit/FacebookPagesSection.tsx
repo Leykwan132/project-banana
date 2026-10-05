@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Button } from "@heroui/react";
-import { Facebook } from "lucide-react";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 
-export function FacebookPagesSection({ beforeConnect, mode, onSelected, onPageCountChange }: { beforeConnect: () => void; mode: "add" | "accounts"; onSelected?: () => void; onPageCountChange?: (count: number) => void }) {
+export function FacebookPagesSection({ mode, onSelected, onPageCountChange, onConfiguredChange }: { mode: "add" | "accounts"; onSelected?: () => void; onPageCountChange?: (count: number) => void; onConfiguredChange?: (configured: boolean) => void }) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 60000); return () => window.clearInterval(timer); }, []);
   const data = useQuery(api.facebookPages.getEditor, { now });
   const pageCount = data?.pages.length;
   useEffect(() => { if (pageCount !== undefined) onPageCountChange?.(pageCount); }, [pageCount, onPageCountChange]);
-  const start = useMutation(api.facebookPages.startLogin);
+  const configured = data?.configured;
+  useEffect(() => { if (configured !== undefined) onConfiguredChange?.(configured); }, [configured, onConfiguredChange]);
   const select = useMutation(api.facebookPages.selectPage);
   const disconnect = useMutation(api.facebookPages.disconnect);
   const refresh = useMutation(api.facebookPages.requestRefresh);
@@ -27,17 +27,7 @@ export function FacebookPagesSection({ beforeConnect, mode, onSelected, onPageCo
   if (mode === "accounts" && !data?.pages.length) return null;
   return (
     <section aria-label="Facebook Page insights" className={mode === "add" ? "space-y-4" : "space-y-4 border-t border-gray-200 pt-6"}>
-      {mode === "add" && <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="flex items-center gap-2 font-medium text-gray-900"><Facebook size={18} /> Facebook Pages</h2>
-          <p className="mt-1 text-sm text-gray-500">Official Page insights, private to you. Refreshes daily. Connect up to five Pages.</p>
-        </div>
-        <Button type="button" variant="secondary" isDisabled={busy || !data?.configured} onPress={() => void run(async () => {
-          beforeConnect();
-          const { url } = await start({});
-          window.location.assign(url);
-        })}>Connect Facebook</Button>
-      </div>}
+      {mode === "add" && <p className="text-xs text-gray-500">Sign in to Facebook, then choose a Page you manage to see its insights. Data refreshes every 24 hours. Connect up to five Pages.</p>}
       {!data ? <p className="text-sm text-gray-500">Loading Facebook Pages…</p> : <>
         {!data.configured && <p className="text-sm text-gray-500">Facebook Page connection is awaiting app configuration.</p>}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
@@ -75,7 +65,6 @@ export function FacebookPagesSection({ beforeConnect, mode, onSelected, onPageCo
             {page.snapshot.daily_views.length > 0 && <p className="text-xs text-gray-500">Total of {page.snapshot.daily_views.length} daily values returned by Facebook within this window. Missing metrics remain unavailable.</p>}
           </>}
         </article>)}
-        {mode === "add" && data.choices.length === 0 && data.configured && <p className="text-sm text-gray-500">Connect Facebook, then choose a Page you manage to see its insights.</p>}
       </>}
     </section>
   );
