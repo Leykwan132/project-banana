@@ -8,7 +8,7 @@ import iconCreator from "../assets/icon.svg";
 import { RedirectingStatus } from "../components/RedirectingStatus";
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
-import { callbackPath, getLastWorkspace, loginPath, resolveWorkspace } from '../lib/workspace';
+import { callbackPath, loginPath, resolveWorkspace } from '../lib/workspace';
 import type { Workspace } from '../lib/workspace';
 
 export default function Login({ workspace = 'business' }: { workspace?: Workspace }) {
@@ -20,7 +20,7 @@ export default function Login({ workspace = 'business' }: { workspace?: Workspac
     const loginError = searchParams.get('error') || signInError;
     useEffect(() => {
         if (!loading && session?.user && membership) {
-            navigate(resolveWorkspace(workspace, membership, getLastWorkspace(session.user.id)), { replace: true });
+            navigate(resolveWorkspace(workspace, membership), { replace: true });
         }
     }, [loading, session?.user, membership, workspace, navigate]);
 

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
-import { getLastWorkspace, loginPath, parseWorkspace, resolveWorkspace } from '../lib/workspace';
+import { loginPath, parseWorkspace, resolveWorkspace } from '../lib/workspace';
 import iconDark from "../assets/icon-dark.svg";
 import iconCreator from "../assets/icon.svg";
 import { RedirectingStatus } from "../components/RedirectingStatus";
@@ -12,17 +12,15 @@ export default function AuthRedirect() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const workspace = parseWorkspace(searchParams.get('workspace'));
-    const isSwitchingWorkspace = searchParams.get('switch') === 'true';
     const authError = searchParams.get('error') ?? searchParams.get('error_description');
     useEffect(() => {
         if (loading) return;
         if (authError || !session?.user) {
             navigate(loginPath(workspace, authError ?? undefined), { replace: true });
         } else if (membership) {
-            const lastUsedWorkspace = isSwitchingWorkspace ? workspace : getLastWorkspace(session.user.id);
-            navigate(resolveWorkspace(workspace, membership, lastUsedWorkspace), { replace: true });
+            navigate(resolveWorkspace(workspace, membership), { replace: true });
         }
-    }, [authError, isSwitchingWorkspace, loading, membership, navigate, session?.user, workspace]);
+    }, [authError, loading, membership, navigate, session?.user, workspace]);
 
     return (
         <div className="min-h-screen bg-white">
