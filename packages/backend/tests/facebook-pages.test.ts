@@ -89,7 +89,7 @@ test("Page views aggregate only numeric daily values and requests remain on Meta
     expect(options.headers.Authorization).toBe("Bearer PRIVATE_TOKEN");
     expect(url.searchParams.has("access_token")).toBe(false);
     if (url.pathname.endsWith("/insights")) {
-      expect(url.searchParams.get("metric")).toBe("page_media_view");
+      if (url.searchParams.get("metric") !== "page_media_view") return Response.json({ data: [] });
       return Response.json({ data: [{ name: "page_media_view", period: "day", values: [{ value: 0, end_time: "2026-10-03T00:00:00Z" }, { value: 8, end_time: "2026-10-04T00:00:00Z" }] }] });
     }
     return Response.json({ id: "123", name: "Page", followers_count: 12 });
@@ -173,5 +173,105 @@ test("revoked Page refresh stores a safe reconnect error", async () => {
     await call(refreshPage, ctx, args);
     expect(ctx.rows.get(id).status).toBe("reconnect_required");
     expect(JSON.stringify(await call(getEditor, ctx, { now: Date.now() }))).not.toContain("SECRET_RAW_ERROR");
+  } finally { globalThis.fetch = oldFetch; }
+});
+
+test("editor exposes the original Page connection date across refresh and reconnect", async () => {
+  const ctx = mediaKitContext();
+  const id = await connected(ctx);
+  const connectedAt = Date.UTC(2026, 9, 1);
+  ctx.rows.get(id)._creationTime = connectedAt;
+  expect((await call(getEditor, ctx, { now: Date.now() })).pages[0].connectedAt).toBe(connectedAt);
+  await connected(ctx);
+  expect((await call(getEditor, ctx, { now: Date.now() })).pages[0].connectedAt).toBe(connectedAt);
+});
+
+test("Page visibility is owner-only, defaults visible, and survives reconnect", async () => {
+  const { setVisibility } = await import("../convex/facebookPages");
+  const ctx = mediaKitContext();
+  const id = await connected(ctx);
+  expect((await call(getEditor, ctx, { now: Date.now() })).pages[0].isVisible).toBe(true);
+  await call(setVisibility, ctx, { connectionId: id, isVisible: false });
+  await connected(ctx);
+  expect((await call(getEditor, ctx, { now: Date.now() })).pages[0].isVisible).toBe(false);
+  ctx.auth.getUserIdentity = async () => ({ subject: "stranger" });
+  await expect(call(setVisibility, ctx, { connectionId: id, isVisible: true })).rejects.toThrow();
+});
+
+test("Facebook-only media kits publish Page metrics without credentials and respect visibility", async () => {
+  const { getPublic, setPublished } = await import("../convex/mediaKits");
+  const { setVisibility } = await import("../convex/facebookPages");
+  const ctx = mediaKitContext();
+  const id = await connected(ctx);
+  const kit = [...ctx.rows.values()].find((row: any) => row.table === "media_kits");
+  expect(kit).toBeDefined();
+  ctx.rows.get(id).snapshot = { fetched_at: 123, since: 1, until: 2, followers: 12, page_likes: 8, media_views: 0, daily_views: [], unavailable: [] };
+  await call(setPublished, ctx, { published: true });
+  const result = await call(getPublic, ctx, { slug: kit.slug });
+  expect(result.accounts).toHaveLength(1);
+  expect(result.accounts[0]).toMatchObject({ platform: "facebook", handle: "123", displayName: "My Page", followers: 12, pageLikes: 8, mediaViews: 0 });
+  expect(result.totalAudience).toBe(12);
+  expect(JSON.stringify(result)).not.toContain("PRIVATE_TOKEN");
+  await call(setVisibility, ctx, { connectionId: id, isVisible: false });
+  expect((await call(getPublic, ctx, { slug: kit.slug })).accounts).toEqual([]);
+  await expect(call(setPublished, ctx, { published: true })).rejects.toThrow();
+});
+
+test("existing Facebook-only connections can recover a missing kit", async () => {
+  const { ensureKit } = await import("../convex/facebookPages");
+  const ctx = mediaKitContext();
+  await connected(ctx);
+  const original = [...ctx.rows.values()].find((row: any) => row.table === "media_kits");
+  ctx.rows.delete(original._id);
+  await call(ensureKit, ctx);
+  expect([...ctx.rows.values()].filter((row: any) => row.table === "media_kits")).toHaveLength(1);
+  await call(ensureKit, ctx);
+  expect([...ctx.rows.values()].filter((row: any) => row.table === "media_kits")).toHaveLength(1);
+  await expect(call(ensureKit, mediaKitContext(null))).rejects.toThrow();
+});
+
+test("Page statistics use complete post samples and lifetime country distribution", async () => {
+  configure();
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: any) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/posts')) return Response.json({ data: [
+      { likes: { summary: { total_count: 2 } }, reactions: { summary: { total_count: 3 } }, comments: { summary: { total_count: 1 } }, shares: { count: 0 } },
+      { likes: { summary: { total_count: 4 } }, reactions: { summary: { total_count: 5 } }, comments: { summary: { total_count: 0 } } },
+    ] });
+    if (url.searchParams.get('metric') === 'page_follows_country') {
+      expect(url.searchParams.get('period')).toBe('lifetime');
+      expect(url.searchParams.has('since')).toBe(false);
+      return Response.json({ data: [{ name: 'page_follows_country', values: [{ value: { MY: 6, US: 4 } }] }] });
+    }
+    if (url.pathname.endsWith('/insights')) return Response.json({data: []});
+    return Response.json({ id: '123', followers_count: 100, fan_count: 90 });
+  }) as typeof fetch;
+  try {
+    const result = await fetchPageInsights('123','PRIVATE_TOKEN');
+    expect(result.average_likes).toBe(3);
+    expect(result.average_reactions).toBe(4);
+    expect(result.engagement_rate).toBe(4.5);
+    expect(result.post_sample_size).toBe(2);
+    expect(result.audience_country).toEqual([{ country: 'MY', value: 6 }, { country: 'US', value: 4 }]);
+  } finally { globalThis.fetch = oldFetch; }
+});
+
+test("missing reaction summaries do not become zero averages or engagement", async () => {
+  configure();
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: any) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/posts')) return Response.json({ data: [{ likes: { summary: { total_count: 0 } } }] });
+    if (url.pathname.endsWith('/insights')) return Response.json({ data: [] });
+    return Response.json({ id: '123', followers_count: 100 });
+  }) as typeof fetch;
+  try {
+    const result = await fetchPageInsights('123','PRIVATE_TOKEN');
+    expect(result.average_likes).toBe(0);
+    expect(result.average_reactions).toBeUndefined();
+    expect(result.engagement_rate).toBeUndefined();
+    expect(result.audience_country).toBeUndefined();
+    expect(result.unavailable).toContain('average_reactions');
   } finally { globalThis.fetch = oldFetch; }
 });

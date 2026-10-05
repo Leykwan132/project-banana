@@ -35,6 +35,8 @@ import { ContactIcon } from "../../components/media-kit/ContactIcon";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import { instagramLoginFeedback } from "../../lib/instagramConnection";
 import { facebookLoginFeedback } from "../../lib/facebookConnection";
+import { ItemCard } from "../../components/media-kit/ItemCard";
+import { connectionAge } from "../../lib/accountConnectionAge";
 import { FacebookPagesSection } from "../../components/media-kit/FacebookPagesSection";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
@@ -97,73 +99,6 @@ const selectedNiches = (category: string) =>
 const primaryButtonClass =
   "[--button-bg:#000] [--button-bg-hover:#171717] [--button-bg-pressed:#262626] [--button-fg:#fff]";
 
-function ItemCard({
-  title,
-  icon,
-  description,
-  visible,
-  onOpen,
-  onToggle,
-  onDelete,
-}: {
-  title: string;
-  icon?: ReactNode;
-  description: string;
-  visible: boolean;
-  onOpen: () => void;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-300 hover:bg-gray-50 focus-within:border-gray-300 focus-within:bg-gray-50">
-      <button
-        type="button"
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        onClick={onOpen}
-      >
-        {icon && (
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gray-100 text-gray-700">
-            {icon}
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{title}</p>
-          <p className="mt-1 truncate text-sm text-gray-500">{description}</p>
-        </div>
-      </button>
-
-      <Tooltip delay={300}>
-        <Tooltip.Trigger>
-          <Button
-            isIconOnly
-            variant="ghost"
-            aria-label={visible ? `Hide ${title}` : `Show ${title}`}
-            className="text-black"
-            onPress={onToggle}
-          >
-            {visible ? <Eye size={18} /> : <EyeOff size={18} />}
-          </Button>
-        </Tooltip.Trigger>
-        <Tooltip.Content
-          placement="top"
-          showArrow
-          className="rounded-xl bg-[#171717] px-3 py-2 text-xs font-medium text-white shadow-lg"
-        >
-          {visible ? "Hide in Media Kit" : "Show in Media Kit"}
-        </Tooltip.Content>
-      </Tooltip>
-      <Button
-        isIconOnly
-        variant="ghost"
-        aria-label={`Delete ${title}`}
-        className="text-red-600"
-        onPress={onDelete}
-      >
-        <Trash2 size={18} />
-      </Button>
-    </div>
-  );
-}
 
 function SectionHeading({
   title,
@@ -371,6 +306,27 @@ function Field({
 export default function CreatorMediaKit() {
   const toast = useToast();
   const data = useQuery(api.mediaKits.getEditor, {});
+  const [facebookNow, setFacebookNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setFacebookNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const facebookData = useQuery(api.facebookPages.getEditor, { now: facebookNow });
+  const facebookPageCount = facebookData?.pages.length ?? null;
+  const facebookConfigured = facebookData?.configured ?? false;
+  const ensureFacebookKit = useMutation(api.facebookPages.ensureKit);
+  useEffect(() => {
+    if (data?.kit !== null || !facebookPageCount) return;
+    let cancelled = false;
+    void ensureFacebookKit({}).catch((error: unknown) => {
+      if (!cancelled) toast({
+        title: "Could not prepare your media kit",
+        description: error instanceof Error ? error.message : "Please try again.",
+        color: "danger",
+      });
+    });
+    return () => { cancelled = true; };
+  }, [data?.kit, facebookPageCount, ensureFacebookKit, toast]);
   const reportedImportErrors = useRef(new Set<string>());
   useEffect(() => {
     for (const { job } of data?.accounts ?? []) {
@@ -387,8 +343,8 @@ export default function CreatorMediaKit() {
   const add = useMutation(api.mediaKits.addAccount);
   const startInstagramLogin = useMutation(api.instagramConnections.startLogin);
   const startFacebookLogin = useMutation(api.facebookPages.startLogin);
-  const disconnectInstagram = useMutation(api.instagramConnections.disconnect);
-  const refreshAccount = useMutation(api.mediaKits.requestRefresh);
+  const setFacebookVisibility = useMutation(api.facebookPages.setVisibility);
+  const disconnectFacebook = useMutation(api.facebookPages.disconnect);
   const save = useMutation(api.mediaKits.saveSettings);
   const uploadLogo = useAction(api.mediaKitActions.uploadBrandLogo);
   const uploadPhoto = useAction(api.mediaKitActions.uploadProfilePhoto);
@@ -398,8 +354,6 @@ export default function CreatorMediaKit() {
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
   const [platform, setPlatform] = useState<Platform | "facebook">("instagram");
-  const [facebookPageCount, setFacebookPageCount] = useState<number | null>(null);
-  const [facebookConfigured, setFacebookConfigured] = useState(false);
   const [openingLogin, setOpeningLogin] = useState<{ platform: "instagram" | "facebook"; accountId?: Id<"media_kit_accounts"> } | null>(null);
   const navigationPending = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -410,6 +364,7 @@ export default function CreatorMediaKit() {
         handle: string;
         platform: Platform;
       }
+    | { kind: "facebook"; id: Id<"facebook_page_connections">; name: string }
     | { kind: "partnership"; index: number; name: string }
     | { kind: "rate"; index: number; name: string }
     | { kind: "contact"; index: number; name: string }
@@ -575,7 +530,13 @@ export default function CreatorMediaKit() {
     let visible = false;
     let toggle = () => {};
     let deletion = () => {};
-    if (detail.section === "accounts") {
+    if (detail.section === "accounts" && detail.key.startsWith("facebook:")) {
+      const page = facebookData?.pages.find(page => page.id === detail.key.slice(9));
+      if (!page) return null;
+      visible = page.isVisible ?? true;
+      toggle = () => void run(() => setFacebookVisibility({ connectionId: page.id, isVisible: !visible }));
+      deletion = () => setPendingRemoval({ kind: "facebook", id: page.id, name: page.name });
+    } else if (detail.section === "accounts") {
       const account = data?.accounts.find(
         ({ account }) => account._id === detail.key,
       )?.account;
@@ -860,7 +821,7 @@ export default function CreatorMediaKit() {
         <div className="min-w-0 w-full">
           <Tabs
             orientation="horizontal"
-            selectedKey={tab ?? (data.accounts.length ? "profile" : "accounts")}
+            selectedKey={tab ?? "accounts"}
             onSelectionChange={(key) => {
               setModalOpen(false);
               leaveDetail();
@@ -1214,7 +1175,7 @@ export default function CreatorMediaKit() {
                           }}
                         />}
 
-                        {platform === "facebook" ? <FacebookPagesSection mode="add" onConfiguredChange={setFacebookConfigured} onSelected={() => { setModalOpen(false); setPlatform("instagram"); }} /> : <p className="text-xs text-gray-500">
+                        {platform === "facebook" ? <FacebookPagesSection mode="add" data={facebookData} now={facebookNow} onSelected={() => { setModalOpen(false); setPlatform("instagram"); }} /> : <p className="text-xs text-gray-500">
                           {platform === "instagram" && data.provider === "META_OFFICIAL"
                             ? "Sign in to your Instagram Business or Creator account and allow access to insights. Data refreshes every 24 hours."
                             : "Use a public profile. Your data will import automatically and refresh every 24 hours."}
@@ -1237,7 +1198,7 @@ export default function CreatorMediaKit() {
                           type="submit"
                           variant="primary"
                           className={primaryButtonClass}
-                          isDisabled={busy || (platform === "facebook" ? !facebookConfigured : data.accounts.length >= 5 || (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : !handle.trim()))}
+                          isDisabled={busy || (platform === "facebook" ? !facebookConfigured : (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : data.accounts.length >= 5 || !handle.trim()))}
                           aria-busy={!!openingLogin && !openingLogin.accountId}
                         >
                           {openingLogin && !openingLogin.accountId && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
@@ -1282,11 +1243,9 @@ export default function CreatorMediaKit() {
                         <ItemCard
                           key={account._id}
                           title={`@${account.handle}`}
-                          description={
-                            account.platform === "tiktok"
-                              ? "TikTok"
-                              : "Instagram"
-                          }
+                          titleIcon={<PlatformIcon platform={account.platform} />}
+                          platformLabel={account.platform === "tiktok" ? "TikTok" : "Instagram"}
+                          description={connectionAge(account.created_at)}
                           visible={draft?.isVisible ?? account.is_visible}
                           onOpen={() =>
                             setDetail({ section: "accounts", key: account._id })
@@ -1318,7 +1277,6 @@ export default function CreatorMediaKit() {
                     ({ account }) => !removedAccounts.includes(account._id),
                   )
                   .map(({ account, job }) => ({
-                    connectionStatus: data.accounts.find(row => row.account._id === account._id)?.connectionStatus ?? "disconnected",
                     account: {
                       ...account,
                       is_visible:
@@ -1330,7 +1288,7 @@ export default function CreatorMediaKit() {
                     },
                     job,
                   }))
-                  .map(({ account: a, job, connectionStatus }) => (
+                  .map(({ account: a }) => (
                     <Form
                       aria-label="Account details"
                       validationBehavior="aria"
@@ -1355,52 +1313,20 @@ export default function CreatorMediaKit() {
                         </h3>
                       </div>
                       <p className="text-xs text-gray-500">
-                        {a.platform === "tiktok" ? "TikTok" : "Instagram"} ·{" "}
-                        {job &&
-                        ["queued", "running", "failed"].includes(job.status)
-                          ? `Import ${job.status}`
-                          : a.last_success_at
-                            ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
-                            : "No imported data yet"}
+                        {connectionAge(a.created_at)}
                       </p>
-                      {(a.platform ?? "instagram") === "instagram" && (
-                        <div className="space-y-3 rounded-xl border border-gray-200 p-4">
-                          <p className="text-sm font-medium">Official Instagram connection</p>
-                          <p className="text-xs text-gray-600">{connectionStatus === "connected" ? "Connected" : connectionStatus === "reconnect_required" ? "Reconnect to renew insights access" : "Connect a Business or Creator account"}</p>
-                          {!data.instagramConfigured && <p className="text-xs text-red-600">Instagram connection is awaiting configuration.</p>}
-                          <div className="flex flex-wrap gap-2">
-                            <Button type="button" variant="ghost" isDisabled={busy || !data.instagramConfigured} onPress={() => void run(() => connectInstagram(a._id))}>
-                              {openingLogin?.accountId === a._id && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
-                              {openingLogin?.accountId === a._id ? "Opening Instagram…" : connectionStatus === "disconnected" ? "Connect Instagram" : "Reconnect Instagram"}
-                            </Button>
-                            {connectionStatus !== "disconnected" && <Button type="button" variant="ghost" isDisabled={busy} onPress={() => void run(() => disconnectInstagram({ accountId: a._id }), "Instagram disconnected")}>Disconnect</Button>}
-                            {data.provider === "META_OFFICIAL" && connectionStatus === "connected" && <Button type="button" variant="ghost" isDisabled={busy || !!a.current_import_id || Date.now() < a.refresh_available_at} onPress={() => void run(() => refreshAccount({ accountId: a._id }), "Insights update requested")}>Update insights</Button>}
-                          </div>
-                          {a.official_insights && (
-                            <div className="space-y-2">
-                              <p className="text-xs text-gray-600">Official account insights · {new Date(a.official_insights.since * 1000).toLocaleDateString()} – {new Date(a.official_insights.until * 1000).toLocaleDateString()} · Updated {new Date(a.official_insights.fetched_at).toLocaleString()}</p>
-                              <dl className="grid grid-cols-2 gap-3 text-sm">
-                                {([['views', 'Views'], ['reach', 'Reach'], ['accounts_engaged', 'Accounts engaged'], ['total_interactions', 'Interactions']] as const).map(([key, label]) => <div key={key}><dt className="text-xs text-gray-600">{label}</dt><dd className="font-medium">{a.official_insights?.[key]?.toLocaleString() ?? "Unavailable"}</dd></div>)}
-                              </dl>
-                              {a.official_insights.media.length > 0 && (
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-left text-xs">
-                                    <caption className="mb-2 text-left text-gray-600">Recent post insights · Lifetime totals</caption>
-                                    <thead><tr>{["Post", "Views", "Reach", "Shares", "Saves"].map(label => <th key={label} className="p-2 font-medium">{label}</th>)}</tr></thead>
-                                    <tbody>{a.official_insights.media.map((media, index) => {
-                                      const post = a.official_snapshot?.posts.find(item => item.id === media.id);
-                                      return <tr key={media.id} className="border-t border-gray-100"><td className="p-2">{post ? <a href={post.url} target="_blank" rel="noopener noreferrer" className="underline">Post {index + 1}</a> : `Post ${index + 1}`}</td>{(["views", "reach", "shares", "saved"] as const).map(key => <td key={key} className="p-2">{media[key]?.toLocaleString() ?? "Unavailable"}</td>)}</tr>;
-                                    })}</tbody>
-                                  </table>
-                                </div>
-                              )}
-                              <p className="text-xs text-gray-500">These account insights are visible only to you. Your public kit follows the display controls below.</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
                       {(
                         Object.entries({
+                          ...((a.platform ?? "instagram") === "instagram" && data.provider === "META_OFFICIAL" ? {
+                          views: "Views",
+                          reach: "Reach",
+                          accountsEngaged: "Accounts engaged",
+                          totalInteractions: "Total interactions",
+                          likes: "Likes",
+                          comments: "Comments",
+                          shares: "Shares",
+                          saves: "Saves",
+                          } : {}),
                           followers: "Followers",
                           postCount: "Post count",
                           engagementRate: "Engagement rate",
@@ -1413,7 +1339,7 @@ export default function CreatorMediaKit() {
                         <Toggle
                           key={key}
                           label={label}
-                          value={a.metric_visibility[key]}
+                          value={a.metric_visibility[key] ?? true}
                           disabled={busy}
                           onChange={(value) =>
                             run(() =>
@@ -1431,8 +1357,17 @@ export default function CreatorMediaKit() {
                       ))}
                     </Form>
                   ))}
-                {!modalOpen && footer("accounts")}
-                {!modalOpen && !detail && <FacebookPagesSection mode="accounts" onPageCountChange={setFacebookPageCount} />}
+                {!modalOpen && (!detail || detail.key.startsWith("facebook:")) && (
+                  <FacebookPagesSection
+                    mode="accounts"
+                    data={facebookData}
+                    now={facebookNow}
+                    selectedPageId={detail?.key.startsWith("facebook:") ? detail.key.slice(9) : undefined}
+                    onOpen={(id) => setDetail({ section: "accounts", key: `facebook:${id}` })}
+                    onDisconnected={leaveDetail}
+                  />
+                )}
+                {!modalOpen && !detail?.key.startsWith("facebook:") && footer("accounts")}
               </section>
             </Tabs.Panel>
             <Tabs.Panel id="partnerships" className="min-w-0 w-full">
@@ -2168,7 +2103,7 @@ export default function CreatorMediaKit() {
                   {pendingRemoval && pendingRemoval.kind !== "account" ? (
                     <>
                       Remove <strong>{pendingRemoval.name}</strong> from your
-                      media kit? Save this section to update your public page.
+                      media kit? {pendingRemoval.kind === "facebook" ? "Its saved insights and connection will be removed." : "Save this section to update your public page."}
                     </>
                   ) : (
                     <>
@@ -2200,7 +2135,9 @@ export default function CreatorMediaKit() {
                     if (!pendingRemoval || busy) return;
                     const removal = pendingRemoval;
                     await run(async () => {
-                      if (removal.kind === "account") {
+                      if (removal.kind === "facebook") {
+                        await disconnectFacebook({ connectionId: removal.id });
+                      } else if (removal.kind === "account") {
                         await remove({ accountId: removal.id });
                         setAccountDrafts((current) => {
                           const next = { ...current };

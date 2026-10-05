@@ -410,7 +410,8 @@ export function normalizeAccountHandle(
     throw Error("Enter a valid TikTok username.");
   return handle;
 }
-export function accountProfileUrl(handle: string, platform: Platform) {
+export function accountProfileUrl(handle: string, platform: Platform | "facebook") {
+  if (platform === "facebook") return `https://www.facebook.com/${encodeURIComponent(handle)}`;
   return platform === "tiktok"
     ? `https://www.tiktok.com/@${handle}`
     : `https://www.instagram.com/${handle}/`;

@@ -1,3 +1,4 @@
+import { insightDays, insightMetrics, type InsightWindow } from "./instagramInsightWindows";
 import { normalizeProfile } from "./mediaKitModel";
 
 export type InstagramProvider = "SCRAPING" | "META_OFFICIAL";
@@ -88,7 +89,7 @@ export async function fetchOfficialData(instagramUserId: string, token: string, 
   const mediaResponse = await graphRequest(`${instagramUserId}/media`, token, { fields: "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count", limit: "12" });
   const media: Record<string, any>[] = Array.isArray(mediaResponse.data) ? mediaResponse.data.slice(0, 12) : [];
   const until = Math.floor(now / 1000), since = until - 30 * 86400;
-  const insights: { since: number; until: number; fetched_at: number; unavailable: string[]; media: { id: string; views?: number; reach?: number; shares?: number; saved?: number }[]; views?: number; reach?: number; accounts_engaged?: number; total_interactions?: number } = { since, until, fetched_at: now, unavailable: [], media: [] };
+  const insights: { since: number; until: number; fetched_at: number; unavailable: string[]; media: { id: string; views?: number; reach?: number; shares?: number; saved?: number }[]; views?: number; reach?: number; accounts_engaged?: number; total_interactions?: number; likes?: number; comments?: number; shares?: number; saves?: number; windows?: InsightWindow[] } = { since, until, fetched_at: now, unavailable: [], media: [] };
   const metric = async (path: string, name: string, params: Record<string, string>) => {
     if (Date.now() >= deadline) throw Error("Instagram insights refresh timed out.");
     try { return metricTotal(await graphRequest(`${path}/insights`, token, { ...params, metric: name }), name); }
@@ -98,11 +99,25 @@ export async function fetchOfficialData(instagramUserId: string, token: string, 
       throw error;
     }
   };
-  for (const name of ["views", "reach", "accounts_engaged", "total_interactions"] as const) {
-    const value = await metric(instagramUserId, name, { period: "day", metric_type: "total_value", since: String(since), until: String(until) });
-    if (value === undefined) insights.unavailable.push(name);
-    else insights[name] = value;
+  const windows: InsightWindow[] = [];
+  // Request whole ranges directly: unique reach and engaged accounts cannot be summed across days.
+  // Longer ranges are exposed only when Meta actually returns data for them.
+  for (const days of insightDays) {
+    const window: InsightWindow = { days, since: until - days * 86400, until, fetched_at: now, unavailable: [] };
+    for (let offset = 0; offset < insightMetrics.length; offset += 3) {
+      await Promise.all(insightMetrics.slice(offset, offset + 3).map(async name => {
+        const value = await metric(instagramUserId, name, { period: "day", metric_type: "total_value", since: String(window.since), until: String(until) });
+        if (value === undefined) window.unavailable.push(name);
+        else window[name] = value;
+      }));
+    }
+    if (insightMetrics.some(name => window[name] !== undefined)) windows.push(window);
+    if (days === 30) {
+      insights.unavailable = window.unavailable;
+      for (const name of insightMetrics) if (window[name] !== undefined) insights[name] = window[name];
+    }
   }
+  insights.windows = windows;
   for (const item of media) {
     if (typeof item.id !== "string" || !/^\d+$/.test(item.id)) continue;
     const totals: typeof insights.media[number] = { id: item.id };

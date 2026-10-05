@@ -34,6 +34,7 @@ import type * as instagramOfficialActions from "../instagramOfficialActions.js";
 import type * as instagramValidators from "../instagramValidators.js";
 import type * as lib_adminAccess from "../lib/adminAccess.js";
 import type * as lib_facebookPages from "../lib/facebookPages.js";
+import type * as lib_instagramInsightWindows from "../lib/instagramInsightWindows.js";
 import type * as lib_instagramOfficial from "../lib/instagramOfficial.js";
 import type * as lib_invitationAuth from "../lib/invitationAuth.js";
 import type * as lib_invitationEmail from "../lib/invitationEmail.js";
@@ -91,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   instagramValidators: typeof instagramValidators;
   "lib/adminAccess": typeof lib_adminAccess;
   "lib/facebookPages": typeof lib_facebookPages;
+  "lib/instagramInsightWindows": typeof lib_instagramInsightWindows;
   "lib/instagramOfficial": typeof lib_instagramOfficial;
   "lib/invitationAuth": typeof lib_invitationAuth;
   "lib/invitationEmail": typeof lib_invitationEmail;

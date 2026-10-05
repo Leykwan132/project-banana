@@ -1,14 +1,37 @@
 import { v } from "convex/values";
 export const platform = v.union(v.literal("instagram"), v.literal("tiktok"));
 export const instagramProvider = v.union(v.literal("SCRAPING"), v.literal("META_OFFICIAL"));
+export const insightWindow = v.object({
+  days: v.number(), since: v.number(), until: v.number(), fetched_at: v.number(),
+  views: v.optional(v.number()), reach: v.optional(v.number()),
+  accounts_engaged: v.optional(v.number()), total_interactions: v.optional(v.number()),
+  likes: v.optional(v.number()), comments: v.optional(v.number()),
+  shares: v.optional(v.number()), saves: v.optional(v.number()),
+  unavailable: v.array(v.string()),
+});
+export const publicInsightWindow = v.object({
+  days: v.number(), since: v.number(), until: v.number(), updatedAt: v.number(),
+  visibleMetrics: v.array(v.string()),
+  views: v.optional(v.number()), reach: v.optional(v.number()),
+  accountsEngaged: v.optional(v.number()), totalInteractions: v.optional(v.number()),
+  likes: v.optional(v.number()), comments: v.optional(v.number()),
+  shares: v.optional(v.number()), saves: v.optional(v.number()), engagementRate: v.optional(v.number()),
+});
 export const officialInsights = v.object({
   since: v.number(), until: v.number(), fetched_at: v.number(),
   views: v.optional(v.number()), reach: v.optional(v.number()),
   accounts_engaged: v.optional(v.number()), total_interactions: v.optional(v.number()),
+  likes: v.optional(v.number()), comments: v.optional(v.number()),
+  shares: v.optional(v.number()), saves: v.optional(v.number()),
+  windows: v.optional(v.array(insightWindow)),
   unavailable: v.array(v.string()),
   media: v.array(v.object({ id: v.string(), views: v.optional(v.number()), reach: v.optional(v.number()), shares: v.optional(v.number()), saved: v.optional(v.number()) })),
 });
 export const metricVisibility = v.object({
+  views: v.optional(v.boolean()), reach: v.optional(v.boolean()),
+  accountsEngaged: v.optional(v.boolean()), totalInteractions: v.optional(v.boolean()),
+  likes: v.optional(v.boolean()), comments: v.optional(v.boolean()),
+  shares: v.optional(v.boolean()), saves: v.optional(v.boolean()),
   followers: v.boolean(),
   postCount: v.boolean(),
   engagementRate: v.boolean(),
@@ -149,9 +172,10 @@ export const importDoc = v.object({
   ...importFields,
 });
 export const publicAccount = v.object({
+  insightWindows: v.optional(v.array(publicInsightWindow)),
   dataSource: v.optional(instagramProvider),
-  platform,
-  id: v.id("media_kit_accounts"),
+  platform: v.union(platform, v.literal("facebook")),
+  id: v.union(v.id("media_kit_accounts"), v.id("facebook_page_connections")),
   handle: v.string(),
   displayName: v.string(),
   biography: v.string(),
@@ -159,6 +183,11 @@ export const publicAccount = v.object({
   avatarUrl: v.union(v.string(), v.null()),
   updatedAt: v.number(),
   followers: v.optional(v.number()),
+  pageLikes: v.optional(v.number()),
+  mediaViews: v.optional(v.number()),
+  averageReactions: v.optional(v.number()),
+  postSampleSize: v.optional(v.number()),
+  audienceCountry: v.optional(v.array(v.object({ country: v.string(), value: v.number() }))),
   postCount: v.optional(v.number()),
   averageLikes: v.optional(v.number()),
   averageComments: v.optional(v.number()),

@@ -1,3 +1,4 @@
+import { ensureCreatorKit } from "./mediaKits";
 import { query, mutation, internalQuery, internalMutation } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import type { Id, Doc } from "./_generated/dataModel";
@@ -51,7 +52,7 @@ export const saveChoices = internalMutation({
 export const getEditor = query({
   args: { now: v.number() }, returns: v.object({
     configured: v.boolean(), choices: v.array(v.object({ id: v.string(), name: v.string() })),
-    pages: v.array(v.object({ id: v.id("facebook_page_connections"), pageId: v.string(), name: v.string(), status: v.union(v.literal("connected"), v.literal("reconnect_required")), refreshing: v.boolean(), refreshAvailableAt: v.number(), snapshot: v.optional(pageSnapshot), error: v.optional(v.string()) })),
+    pages: v.array(v.object({ id: v.id("facebook_page_connections"), pageId: v.string(), name: v.string(), connectedAt: v.number(), isVisible: v.boolean(), status: v.union(v.literal("connected"), v.literal("reconnect_required")), refreshing: v.boolean(), refreshAvailableAt: v.number(), snapshot: v.optional(pageSnapshot), error: v.optional(v.string()) })),
   }),
   handler: async (ctx, args) => {
     const creator = await owner(ctx);
@@ -60,14 +61,14 @@ export const getEditor = query({
     return {
       configured: Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET && process.env.CONVEX_SITE_URL && process.env.SITE_URL),
       choices: choices && choices.expires_at > args.now ? choices.pages.map(({ id, name }) => ({ id, name })) : [],
-      pages: pages.map(page => ({ id: page._id, pageId: page.page_id, name: page.name, status: page.status, refreshing: Boolean(page.refresh_id && args.now - (page.refresh_started_at ?? 0) < 300000), refreshAvailableAt: page.refresh_available_at, ...(page.snapshot ? { snapshot: page.snapshot } : {}), ...(page.error ? { error: page.error } : {}) })),
+      pages: pages.map(page => ({ id: page._id, pageId: page.page_id, name: page.name, connectedAt: page._creationTime, isVisible: page.is_visible ?? true, status: page.status, refreshing: Boolean(page.refresh_id && args.now - (page.refresh_started_at ?? 0) < 300000), refreshAvailableAt: page.refresh_available_at, ...(page.snapshot ? { snapshot: page.snapshot } : {}), ...(page.error ? { error: page.error } : {}) })),
     };
   },
 });
-async function queueRefresh(ctx: MutationCtx, page: Doc<"facebook_page_connections">) {
+async function queueRefresh(ctx: MutationCtx, page: Doc<"facebook_page_connections">, force = false) {
   if (page.status !== "connected") throw Error("Reconnect Facebook first.");
   if (page.refresh_id && Date.now() - (page.refresh_started_at ?? 0) < 300000) return;
-  if (page.refresh_available_at > Date.now()) throw Error("Page insights can be refreshed later.");
+  if (!force && page.refresh_available_at > Date.now()) throw Error("Page insights can be refreshed later.");
   const refreshId = crypto.randomUUID();
   await ctx.db.patch(page._id, { refresh_id: refreshId, refresh_status: "queued", refresh_started_at: Date.now(), error: undefined });
   await ctx.scheduler.runAfter(0, internal.facebookPageActions.refreshPage, { connectionId: page._id, generation: page.generation, refreshId });
@@ -86,6 +87,7 @@ export const selectPage = mutation({
     const fields = { creator_id: creator._id, page_id: selected.id, name: selected.name, access_token: selected.token, generation: crypto.randomUUID(), status: "connected" as const, refresh_available_at: 0 };
     const id = existing?._id ?? await ctx.db.insert("facebook_page_connections", fields);
     if (existing) await ctx.db.patch(id, { ...fields, refresh_id: undefined, refresh_status: undefined, refresh_started_at: undefined, error: undefined });
+    await ensureCreatorKit(ctx, creator);
     // Keep other choices for selecting multiple Pages, but never return their tokens.
     await ctx.db.patch(choices._id, { pages: choices.pages.filter(page => page.id !== args.pageId) });
     await queueRefresh(ctx, (await ctx.db.get(id))!);
@@ -97,6 +99,25 @@ async function ownedPage(ctx: MutationCtx, id: Id<"facebook_page_connections">) 
   if (!page || page.creator_id !== creator._id) throw Error("Page not found.");
   return page;
 }
+export const ensureKit = mutation({
+  args: {}, returns: v.null(),
+  handler: async ctx => {
+    const creator = await owner(ctx);
+    const pages = await ctx.db.query("facebook_page_connections")
+      .withIndex("by_creator_id", q => q.eq("creator_id", creator._id)).take(1);
+    if (pages.length) await ensureCreatorKit(ctx, creator);
+    return null;
+  },
+});
+export const setVisibility = mutation({
+  args: { connectionId: v.id("facebook_page_connections"), isVisible: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const page = await ownedPage(ctx, args.connectionId);
+    await ctx.db.patch(page._id, { is_visible: args.isVisible });
+    return null;
+  },
+});
 export const disconnect = mutation({
   args: { connectionId: v.id("facebook_page_connections") }, returns: v.null(),
   handler: async (ctx, args) => { await ownedPage(ctx, args.connectionId); await ctx.db.delete(args.connectionId); return null; },
@@ -157,4 +178,15 @@ export const cleanupStates = internalMutation({
 export const configurationStatus = internalQuery({
   args: {}, returns: v.object({ appIdConfigured: v.boolean(), appSecretConfigured: v.boolean(), frontendOrigin: v.union(v.string(), v.null()), callback: v.union(v.string(), v.null()) }),
   handler: async () => ({ appIdConfigured: Boolean(process.env.META_APP_ID), appSecretConfigured: Boolean(process.env.META_APP_SECRET), frontendOrigin: process.env.SITE_URL ? new URL(process.env.SITE_URL).origin : null, callback: process.env.CONVEX_SITE_URL ? facebookCallbackUrl(process.env.CONVEX_SITE_URL) : null }),
+});
+
+export const refreshOnce = internalMutation({
+  args: { connectionId: v.id("facebook_page_connections") }, returns: v.null(),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.get(args.connectionId);
+    const creator = page && await ctx.db.get(page.creator_id);
+    if (!page || !creator || creator.is_deleted) return null;
+    await queueRefresh(ctx, page, true);
+    return null;
+  },
 });

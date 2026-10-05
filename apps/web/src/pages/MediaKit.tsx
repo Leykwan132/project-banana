@@ -16,7 +16,7 @@ export default function MediaKit() {
     };
   }, [kit]);
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-gray-100 px-5 py-8">
+    <main className="flex min-h-dvh flex-col justify-center bg-[#0a0a0a] text-gray-100 px-5 py-8">
       {kit === undefined ? (
         <span className="sr-only" role="status">Loading media kit</span>
       ) : kit === null ? (
