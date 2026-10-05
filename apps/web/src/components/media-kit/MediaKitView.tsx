@@ -60,7 +60,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
 
           </ul>
         )}
-        <h1 className="text-4xl font-semibold tracking-tight">
+        <h1 className="text-[32px] font-semibold tracking-tight">
           {kit.displayName}
         </h1>
         {kit.bio && (
