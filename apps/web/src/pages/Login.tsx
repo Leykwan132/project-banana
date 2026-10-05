@@ -60,7 +60,6 @@ export default function Login({ workspace = 'business' }: { workspace?: Workspac
                     </div>
                 ) : null}
 
-                {workspace === 'creator' && <p className="mb-6 text-sm text-gray-600">New creators join by invitation. Existing creators can sign in with their account.</p>}
                 <div className="flex flex-col gap-2.5">
                     <button
                         onClick={signIn}
