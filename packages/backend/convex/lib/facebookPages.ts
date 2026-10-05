@@ -42,7 +42,7 @@ export async function fetchPageInsights(pageId: string, token: string, now = Dat
   // Closed UTC days avoid presenting an incomplete day as a complete daily total.
   const until = Math.floor(now / 86400000) * 86400, since = until - 30 * 86400;
   const followers = count(profile.followers_count), pageLikes = count(profile.fan_count);
-  const result: { fetched_at: number; since: number; until: number; followers?: number; page_likes?: number; media_views?: number; daily_views: { end_time: string; value: number }[]; unavailable: string[] } = {
+  const result: { fetched_at: number; since: number; until: number; followers?: number; page_likes?: number; media_views?: number; average_likes?: number; average_reactions?: number; engagement_rate?: number; post_sample_size?: number; audience_country?: { country: string; value: number }[]; daily_views: { end_time: string; value: number }[]; unavailable: string[] } = {
     fetched_at: now, since, until, daily_views: [], unavailable: [],
     ...(followers !== undefined ? { followers } : {}), ...(pageLikes !== undefined ? { page_likes: pageLikes } : {}),
   };
@@ -60,5 +60,37 @@ export async function fetchPageInsights(pageId: string, token: string, now = Dat
     if (!(error instanceof MetaApiError && error.code === 100)) throw error;
   }
   if (result.media_views === undefined) result.unavailable.push("media_views");
+  // Post averages use lifetime counts on a bounded sample, not a date window.
+  try {
+    const response = await facebookGraph(`${pageId}/posts`, token, { fields: "id,likes.limit(0).summary(true),reactions.limit(0).summary(true),comments.limit(0).summary(true),shares", limit: "12" });
+    const posts = Array.isArray(response.data) ? response.data.slice(0, 12) : [];
+    if (posts.length) {
+      const likes = posts.map((post: any) => count(post.likes?.summary?.total_count));
+      const reactions = posts.map((post: any) => count(post.reactions?.summary?.total_count));
+      const comments = posts.map((post: any) => count(post.comments?.summary?.total_count));
+      const shares = posts.map((post: any) => post.shares === undefined ? 0 : count(post.shares?.count));
+      result.post_sample_size = posts.length;
+      if (likes.every((value: number | undefined) => value !== undefined)) result.average_likes = likes.reduce((sum: number, value: number) => sum + value, 0) / posts.length;
+      if (reactions.every((value: number | undefined) => value !== undefined)) result.average_reactions = reactions.reduce((sum: number, value: number) => sum + value, 0) / posts.length;
+      if (followers && result.average_reactions !== undefined && comments.every((value: number | undefined) => value !== undefined) && shares.every((value: number | undefined) => value !== undefined)) {
+        result.engagement_rate = (result.average_reactions + comments.reduce((sum: number, value: number) => sum + value, 0) / posts.length + shares.reduce((sum: number, value: number) => sum + value, 0) / posts.length) / followers * 100;
+      }
+    }
+  } catch (error) {
+    if (!(error instanceof MetaApiError && [100, 10, 200].includes(error.code))) throw error;
+  }
+  try {
+    const response = await facebookGraph(`${pageId}/insights`, token, { metric: "page_follows_country", period: "lifetime" });
+    const metric = Array.isArray(response.data) ? response.data.find((item: any) => item.name === "page_follows_country") : undefined;
+    const values = metric?.values;
+    const latest = Array.isArray(values) ? values[values.length - 1]?.value : undefined;
+    if (latest && typeof latest === "object" && !Array.isArray(latest)) {
+      const countries = Object.entries(latest).filter(([country, value]) => /^[A-Z]{2}$/.test(country) && count(value) !== undefined).map(([country, value]) => ({ country, value: value as number }));
+      if (countries.length) result.audience_country = countries.sort((a, b) => b.value - a.value);
+    }
+  } catch (error) {
+    if (!(error instanceof MetaApiError && [100, 10, 200].includes(error.code))) throw error;
+  }
+  for (const key of ["average_likes", "average_reactions", "engagement_rate", "audience_country"] as const) if (result[key] === undefined) result.unavailable.push(key);
   return result;
 }

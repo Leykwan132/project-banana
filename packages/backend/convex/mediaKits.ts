@@ -7,7 +7,7 @@ import {
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id, Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import * as V from "./mediaKitValidators";
 import {
@@ -20,6 +20,7 @@ import {
   contactHref,
   projectAccount,
 } from "./lib/mediaKitModel";
+import { projectInsightWindows } from "./lib/instagramInsightWindows";
 import { scrapePool } from "./workpools";
 import { instagramProvider, accountForProvider } from "./lib/instagramOfficial";
 import type { InstagramProvider } from "./lib/instagramOfficial";
@@ -321,7 +322,10 @@ export const setPublished = mutation({
         .query("media_kit_accounts")
         .withIndex("by_kit_id", (q) => q.eq("kit_id", kit._id))
         .take(5);
-      if (!accounts.some((a) => a.is_visible && accountForProvider(a, instagramProvider()).snapshot))
+      const pages = await ctx.db.query("facebook_page_connections")
+        .withIndex("by_creator_id", q => q.eq("creator_id", kit.creator_id)).take(5);
+      if (!accounts.some((a) => a.is_visible && accountForProvider(a, instagramProvider()).snapshot)
+        && !pages.some(page => (page.is_visible ?? true) && page.snapshot))
         throw Error("Import and show at least one account before publishing.");
     }
     await ctx.db.patch(kit._id, {
@@ -375,6 +379,11 @@ export const enqueueDaily = internalMutation({
   returns: v.union(v.id("media_kit_imports"), v.null()),
   handler: (ctx, args) => queue(ctx, args.accountId, true),
 });
+export const refreshOfficialOnce = internalMutation({
+  args: { accountId: v.id("media_kit_accounts") },
+  returns: v.union(v.id("media_kit_imports"), v.null()),
+  handler: (ctx, args) => queue(ctx, args.accountId, true, "META_OFFICIAL", true),
+});
 export const getPublic = query({
   args: { slug: v.string() },
   returns: v.union(V.publicKit, v.null()),
@@ -399,6 +408,9 @@ export const getPublic = query({
         );
         return {
           ...p,
+          ...((a.platform ?? "instagram") === "instagram" && instagramProvider() === "META_OFFICIAL" && a.official_insights
+            ? { insightWindows: projectInsightWindows(a.official_insights.windows ?? [{ ...a.official_insights, days: Math.round((a.official_insights.until - a.official_insights.since) / 86400) }], a.metric_visibility) }
+            : {}),
           dataSource: a.platform === "tiktok" ? "SCRAPING" as const : instagramProvider(),
           id: a._id,
           handle: a.handle,
@@ -427,6 +439,28 @@ export const getPublic = query({
         };
       }),
     );
+    const pages = await ctx.db.query("facebook_page_connections")
+      .withIndex("by_creator_id", q => q.eq("creator_id", kit.creator_id)).take(5);
+    const facebookAccounts = pages.filter(page => (page.is_visible ?? true) && page.snapshot)
+      .map(page => ({
+        id: page._id,
+        platform: "facebook" as const,
+        handle: page.page_id,
+        displayName: page.name,
+        biography: "",
+        verified: false,
+        avatarUrl: null,
+        updatedAt: page.snapshot!.fetched_at,
+        ...(page.snapshot!.followers !== undefined ? { followers: page.snapshot!.followers } : {}),
+        ...(page.snapshot!.page_likes !== undefined ? { pageLikes: page.snapshot!.page_likes } : {}),
+        ...(page.snapshot!.average_likes !== undefined ? { averageLikes: page.snapshot!.average_likes } : {}),
+        ...(page.snapshot!.average_reactions !== undefined ? { averageReactions: page.snapshot!.average_reactions } : {}),
+        ...(page.snapshot!.engagement_rate !== undefined ? { engagementRate: page.snapshot!.engagement_rate } : {}),
+        ...(page.snapshot!.post_sample_size !== undefined ? { postSampleSize: page.snapshot!.post_sample_size } : {}),
+        ...(page.snapshot!.audience_country !== undefined ? { audienceCountry: page.snapshot!.audience_country } : {}),
+        ...(page.snapshot!.media_views !== undefined ? { mediaViews: page.snapshot!.media_views } : {}),
+      }));
+    const publicAccounts: Infer<typeof V.publicAccount>[] = [...accounts, ...facebookAccounts];
     const primary =
       shown.find((a) => a._id === kit.primary_account_id) ?? shown[0];
     return {
@@ -439,10 +473,10 @@ export const getPublic = query({
         : primary?.snapshot?.avatarStorageId
           ? await ctx.storage.getUrl(primary.snapshot.avatarStorageId)
           : null,
-      accounts,
-      ...(accounts.some((account) => account.followers !== undefined)
+      accounts: publicAccounts,
+      ...(publicAccounts.some((account) => account.followers !== undefined)
         ? {
-            totalAudience: accounts.reduce(
+            totalAudience: publicAccounts.reduce(
               (total, account) => total + (account.followers ?? 0),
               0,
             ),

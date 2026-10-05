@@ -4,11 +4,14 @@ export const pageChoice = v.object({ id: v.string(), name: v.string(), token: v.
 export const pageSnapshot = v.object({
   fetched_at: v.number(), since: v.number(), until: v.number(),
   followers: v.optional(v.number()), page_likes: v.optional(v.number()), media_views: v.optional(v.number()),
+  average_likes: v.optional(v.number()), average_reactions: v.optional(v.number()), engagement_rate: v.optional(v.number()), post_sample_size: v.optional(v.number()),
+  audience_country: v.optional(v.array(v.object({ country: v.string(), value: v.number() }))),
   daily_views: v.array(v.object({ end_time: v.string(), value: v.number() })),
   unavailable: v.array(v.string()),
 });
 export const pageConnectionFields = {
   creator_id: v.id("creators"), page_id: v.string(), name: v.string(), access_token: v.string(),
+  is_visible: v.optional(v.boolean()),
   generation: v.string(), status: v.union(v.literal("connected"), v.literal("reconnect_required")),
   refresh_id: v.optional(v.string()), refresh_status: v.optional(v.union(v.literal("queued"), v.literal("running"))),
   refresh_started_at: v.optional(v.number()), refresh_available_at: v.number(),

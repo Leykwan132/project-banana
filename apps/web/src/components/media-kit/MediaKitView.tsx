@@ -1,7 +1,9 @@
-import { Info, Heart, MessageCircle, Play, ChevronDown } from "lucide-react";
+import { Info, Heart, MessageCircle, Play, ChevronDown, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import luminaIcon from "../../assets/icon.svg";
-import { Card, Button, Tag, TagGroup, Tabs, Modal, Tooltip } from "@heroui/react";
+import { Card, Button, Tabs, Modal, Tooltip } from "@heroui/react";
+import { FacebookStats } from "./FacebookStats";
+import { InstagramStats } from "./InstagramStats";
 import { NicheIcon } from "./NicheIcon";
 import { ContactIcon } from "./ContactIcon";
 import { PlatformIcon } from "./PlatformIcon";
@@ -20,25 +22,25 @@ export function MediaKitView({ kit }: { kit: KitView }) {
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const [selectedPartnership, setSelectedPartnership] = useState<KitView["partnerships"][number] | null>(null);
   return (
-    <div className="mx-auto max-w-3xl space-y-8 text-gray-100">
-      <header className="flex flex-col items-center text-center pt-8 gap-4">
+    <div className="mx-auto w-full max-w-3xl shrink-0 space-y-8 text-gray-100">
+      <header className="flex flex-col items-center text-center">
+        <div className="pb-8">
         {kit.photoUrl ? (
           <img
             src={kit.photoUrl}
             alt=""
-            className="size-24 rounded-full object-cover ring-4 ring-gray-800"
+            className="size-28 sm:size-32 rounded-full object-cover ring-4 ring-gray-800"
           />
         ) : (
-          <div className="size-24 rounded-full bg-gray-800 grid place-items-center text-3xl">
+          <div className="size-28 sm:size-32 rounded-full bg-gray-800 grid place-items-center text-3xl">
             {kit.displayName.slice(0, 1)}
           </div>
         )}
-        <h1 className="text-4xl font-semibold tracking-tight">
-          {kit.displayName}
-        </h1>
+        </div>
+        <div className="flex flex-col items-center gap-2.5">
         {kit.category && (
-          <TagGroup aria-label="Influencer niches">
-            <TagGroup.List className="flex flex-wrap justify-center gap-2">
+          <ul aria-label="Influencer niches" className="flex flex-wrap justify-center gap-2">
+
               {[
                 ...new Set(
                   kit.category
@@ -47,24 +49,26 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     .filter(Boolean),
                 ),
               ].map((niche) => (
-                <Tag
+                <li
                   key={niche}
-                  id={niche}
-                  textValue={niche}
-                  className="rounded-full bg-gray-800 px-3 py-1 text-xs font-normal text-gray-300"
+                  className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2.5 py-0.5 text-[10px] font-normal text-gray-300 [&_svg]:size-3"
                 >
                   <NicheIcon niche={niche} />
                   {niche}
-                </Tag>
+                </li>
               ))}
-            </TagGroup.List>
-          </TagGroup>
+
+          </ul>
         )}
+        <h1 className="text-4xl font-semibold tracking-tight">
+          {kit.displayName}
+        </h1>
         {kit.bio && (
           <p className="max-w-lg whitespace-pre-line text-gray-400 leading-relaxed">
             {kit.bio}
           </p>
         )}
+        </div>
       </header>
       <Tabs
         defaultSelectedKey={
@@ -72,7 +76,9 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             ? "instagram"
             : kit.accounts.some((account) => account.platform === "tiktok")
               ? "tiktok"
-              : "partnerships"
+              : kit.accounts.some((account) => account.platform === "facebook")
+                ? "facebook"
+                : "partnerships"
         }
         className="w-full gap-6"
       >
@@ -84,12 +90,13 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             {[
               { id: "instagram", label: "Instagram" },
               { id: "tiktok", label: "TikTok" },
+              { id: "facebook", label: "Facebook" },
               { id: "partnerships", label: "Partnerships" },
               { id: "rates", label: "Rates" },
             ]
               .filter(
                 (tab) =>
-                  (tab.id !== "instagram" && tab.id !== "tiktok") ||
+                  !["instagram", "tiktok", "facebook"].includes(tab.id) ||
                   kit.accounts.some((account) => account.platform === tab.id),
               )
               .map((tab) => (
@@ -104,6 +111,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
               ))}
           </Tabs.List>
         </Tabs.ListContainer>
+
         <Tabs.Panel id="partnerships" className="w-full">
           {!!kit.partnerships?.length && (
             <section>
@@ -140,7 +148,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             </p>
           )}
         </Tabs.Panel>
-        {(["instagram", "tiktok"] as const)
+        {(["instagram", "tiktok", "facebook"] as const)
           .filter((platform) =>
             kit.accounts.some((account) => account.platform === platform),
           )
@@ -166,24 +174,19 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                     }}
                   >
                     <div className="flex w-full items-center gap-3">
-                      {a.avatarUrl && (
+                      {a.platform !== "instagram" && a.avatarUrl && (
                         <img
                           src={a.avatarUrl}
                           alt=""
                           className="size-11 rounded-full object-cover"
                         />
                       )}
-                      <div>
-                        <a href={accountProfileUrl(a.handle, a.platform)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-sm font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-offset-4">
-                          <PlatformIcon platform={a.platform} size={17} />@{a.handle}
+                      <PlatformIcon platform={a.platform} size={24} />
+                      <div className="flex min-w-0 flex-col justify-center gap-2">
+                        <a href={accountProfileUrl(a.handle, a.platform)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-sm font-semibold leading-none hover:underline focus-visible:outline-2 focus-visible:outline-offset-4">
+                          <span>{a.platform === "facebook" ? a.displayName : `@${a.handle}`}</span>
                         </a>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {[
-                            a.followers !== undefined ? `${number(a.followers)} followers` : null,
-                            a.engagementRate !== undefined ? `${a.engagementRate.toFixed(2)}% engagement` : null,
-                          ].filter(Boolean).join(" · ")}
-                        </p>
-                        {a.platform === "instagram" && <p className="mt-1 text-xs text-gray-400">{a.dataSource === "META_OFFICIAL" ? "Official Instagram data" : "Public profile data"}</p>}
+                        {a.followers !== undefined && <p className="text-xs leading-none text-gray-400">{number(a.followers)} followers</p>}
                       </div>
                       <button
                         type="button"
@@ -200,11 +203,14 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                       <ChevronDown size={18} aria-hidden="true" className={`shrink-0 text-gray-400 transition-transform motion-reduce:transition-none ${expandedAccounts.has(a.id) ? "rotate-180" : ""}`} />
                       </button>
                     </div>
-                    <div id={`account-details-${a.id}`} hidden={!expandedAccounts.has(a.id)} className="space-y-5">
+                    <div id={`account-details-${a.id}`} hidden={!expandedAccounts.has(a.id)} className="space-y-6">
+                      {a.platform === "facebook" ? <FacebookStats account={a} /> : a.insightWindows?.length ? <InstagramStats account={a} /> : (
                       <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-6 sm:grid-cols-3 sm:gap-x-12 sm:gap-y-12">
                         {(
                           [
                             ["followers", "Followers"],
+                            ["pageLikes", "Page likes"],
+                            ["mediaViews", "Media views"],
                             ["postCount", "Lifetime Posts"],
                             ["engagementRate", "Engagement"],
                             ["averageLikes", "Average likes"],
@@ -242,8 +248,16 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                           ),
                         )}
                       </div>
+                      )}
                       {!!a.posts?.length && (
-                        <div className="grid grid-cols-3 gap-2">
+                        <section className="space-y-4" aria-label="Latest videos">
+                          <div className="flex items-center justify-between gap-3">
+                            <h4 className="font-semibold">Latest Video</h4>
+                            <a href={accountProfileUrl(a.handle, a.platform)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-sm text-sm text-gray-400 hover:text-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2">
+                              Show all <ArrowRight size={16} aria-hidden="true" />
+                            </a>
+                          </div>
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
                           {a.posts.slice(0, 3).map((p) => (
                             <a
                               key={p.id}
@@ -274,8 +288,8 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                               )}
                             </a>
                           ))}
-                          <p className="col-span-3 mt-2 text-center text-xs text-gray-400">3 Latest Video</p>
                         </div>
+                        </section>
                       )}
                     </div>
                   </Card>
