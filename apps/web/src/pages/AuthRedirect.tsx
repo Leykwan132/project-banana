@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useWorkspaces } from '../hooks/useWorkspaces';
 import { getLastWorkspace, loginPath, parseWorkspace, resolveWorkspace } from '../lib/workspace';
 import iconDark from "../assets/icon-dark.svg";
+import { RedirectingStatus } from "../components/RedirectingStatus";
 
 export default function AuthRedirect() {
     const { session, loading, membership } = useWorkspaces();
@@ -34,17 +34,7 @@ export default function AuthRedirect() {
                 </header>
 
                 <div className="flex flex-1 items-center justify-center">
-                    <div className="flex max-w-sm flex-col items-center text-center">
-                        <Loader2 className="mb-6 h-8 w-8 animate-spin text-gray-900" />
-                        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-                            {workspace === 'creator' ? 'Switching to Creator' : 'Opening your business workspace'}
-                        </h1>
-                        <p className="mt-2 text-sm text-gray-500">
-                            {workspace === 'creator'
-                                ? 'Checking your account and preparing your creator workspace.'
-                                : 'Checking your account and preparing your business workspace.'}
-                        </p>
-                    </div>
+                    <RedirectingStatus />
                 </div>
 
                 <div className="pb-8 text-center">

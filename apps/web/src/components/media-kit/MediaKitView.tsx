@@ -183,6 +183,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
                             a.engagementRate !== undefined ? `${a.engagementRate.toFixed(2)}% engagement` : null,
                           ].filter(Boolean).join(" · ")}
                         </p>
+                        {a.platform === "instagram" && <p className="mt-1 text-xs text-gray-400">{a.dataSource === "META_OFFICIAL" ? "Official Instagram data" : "Public profile data"}</p>}
                       </div>
                       <button
                         type="button"

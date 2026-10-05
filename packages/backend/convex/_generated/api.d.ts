@@ -8,8 +8,6 @@
  * @module
  */
 
-import type * as mediaKits from "../mediaKits.js";
-import type * as mediaKitActions from "../mediaKitActions.js";
 import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
 import type * as applications from "../applications.js";
@@ -25,12 +23,25 @@ import type * as crons from "../crons.js";
 import type * as dailyScrape from "../dailyScrape.js";
 import type * as emails from "../emails.js";
 import type * as errors from "../errors.js";
+import type * as facebookPageActions from "../facebookPageActions.js";
+import type * as facebookPageValidators from "../facebookPageValidators.js";
+import type * as facebookPages from "../facebookPages.js";
 import type * as financials from "../financials.js";
 import type * as http from "../http.js";
 import type * as instagram from "../instagram.js";
+import type * as instagramConnections from "../instagramConnections.js";
+import type * as instagramOfficialActions from "../instagramOfficialActions.js";
+import type * as instagramValidators from "../instagramValidators.js";
 import type * as lib_adminAccess from "../lib/adminAccess.js";
+import type * as lib_facebookPages from "../lib/facebookPages.js";
+import type * as lib_instagramOfficial from "../lib/instagramOfficial.js";
 import type * as lib_invitationAuth from "../lib/invitationAuth.js";
 import type * as lib_invitationEmail from "../lib/invitationEmail.js";
+import type * as lib_mediaKitImages from "../lib/mediaKitImages.js";
+import type * as lib_mediaKitModel from "../lib/mediaKitModel.js";
+import type * as mediaKitActions from "../mediaKitActions.js";
+import type * as mediaKitValidators from "../mediaKitValidators.js";
+import type * as mediaKits from "../mediaKits.js";
 import type * as migrations from "../migrations.js";
 import type * as notificationConstants from "../notificationConstants.js";
 import type * as notifications from "../notifications.js";
@@ -54,8 +65,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  mediaKits: typeof mediaKits;
-  mediaKitActions: typeof mediaKitActions;
   admin: typeof admin;
   analytics: typeof analytics;
   applications: typeof applications;
@@ -71,12 +80,25 @@ declare const fullApi: ApiFromModules<{
   dailyScrape: typeof dailyScrape;
   emails: typeof emails;
   errors: typeof errors;
+  facebookPageActions: typeof facebookPageActions;
+  facebookPageValidators: typeof facebookPageValidators;
+  facebookPages: typeof facebookPages;
   financials: typeof financials;
   http: typeof http;
   instagram: typeof instagram;
+  instagramConnections: typeof instagramConnections;
+  instagramOfficialActions: typeof instagramOfficialActions;
+  instagramValidators: typeof instagramValidators;
   "lib/adminAccess": typeof lib_adminAccess;
+  "lib/facebookPages": typeof lib_facebookPages;
+  "lib/instagramOfficial": typeof lib_instagramOfficial;
   "lib/invitationAuth": typeof lib_invitationAuth;
   "lib/invitationEmail": typeof lib_invitationEmail;
+  "lib/mediaKitImages": typeof lib_mediaKitImages;
+  "lib/mediaKitModel": typeof lib_mediaKitModel;
+  mediaKitActions: typeof mediaKitActions;
+  mediaKitValidators: typeof mediaKitValidators;
+  mediaKits: typeof mediaKits;
   migrations: typeof migrations;
   notificationConstants: typeof notificationConstants;
   notifications: typeof notifications;
@@ -191,6 +213,7 @@ export declare const components: {
           name: string;
           next?: Array<{ fnHandle: string; name: string }>;
           oneBatchOnly?: boolean;
+          reset?: boolean;
         },
         {
           batchSize?: number;

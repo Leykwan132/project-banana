@@ -1,5 +1,13 @@
 import { v } from "convex/values";
 export const platform = v.union(v.literal("instagram"), v.literal("tiktok"));
+export const instagramProvider = v.union(v.literal("SCRAPING"), v.literal("META_OFFICIAL"));
+export const officialInsights = v.object({
+  since: v.number(), until: v.number(), fetched_at: v.number(),
+  views: v.optional(v.number()), reach: v.optional(v.number()),
+  accounts_engaged: v.optional(v.number()), total_interactions: v.optional(v.number()),
+  unavailable: v.array(v.string()),
+  media: v.array(v.object({ id: v.string(), views: v.optional(v.number()), reach: v.optional(v.number()), shares: v.optional(v.number()), saved: v.optional(v.number()) })),
+});
 export const metricVisibility = v.object({
   followers: v.boolean(),
   postCount: v.boolean(),
@@ -104,6 +112,10 @@ export const accountFields = {
   is_visible: v.boolean(),
   metric_visibility: metricVisibility,
   snapshot: v.optional(snapshot),
+  official_snapshot: v.optional(snapshot),
+  official_success_at: v.optional(v.number()),
+  official_refresh_available_at: v.optional(v.number()),
+  official_insights: v.optional(officialInsights),
   current_import_id: v.optional(v.id("media_kit_imports")),
   last_success_at: v.optional(v.number()),
   refresh_available_at: v.number(),
@@ -112,6 +124,8 @@ export const accountFields = {
 export const importFields = {
   account_id: v.id("media_kit_accounts"),
   generation: v.string(),
+  provider: v.optional(instagramProvider),
+  connection_generation: v.optional(v.string()),
   status: importStatus,
   apify_run_id: v.optional(v.string()),
   started_at: v.number(),
@@ -135,6 +149,7 @@ export const importDoc = v.object({
   ...importFields,
 });
 export const publicAccount = v.object({
+  dataSource: v.optional(instagramProvider),
   platform,
   id: v.id("media_kit_accounts"),
   handle: v.string(),

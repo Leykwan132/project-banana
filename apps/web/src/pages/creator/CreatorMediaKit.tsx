@@ -31,6 +31,9 @@ import { MediaKitSkeleton } from "../../components/media-kit/MediaKitSkeleton";
 import { NicheIcon } from "../../components/media-kit/NicheIcon";
 import { ContactIcon } from "../../components/media-kit/ContactIcon";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
+import { instagramLoginFeedback } from "../../lib/instagramConnection";
+import { facebookLoginFeedback } from "../../lib/facebookConnection";
+import { FacebookPagesSection } from "../../components/media-kit/FacebookPagesSection";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 import type {
@@ -380,6 +383,9 @@ export default function CreatorMediaKit() {
     }
   }, [data, toast]);
   const add = useMutation(api.mediaKits.addAccount);
+  const startInstagramLogin = useMutation(api.instagramConnections.startLogin);
+  const disconnectInstagram = useMutation(api.instagramConnections.disconnect);
+  const refreshAccount = useMutation(api.mediaKits.requestRefresh);
   const save = useMutation(api.mediaKits.saveSettings);
   const uploadLogo = useAction(api.mediaKitActions.uploadBrandLogo);
   const uploadPhoto = useAction(api.mediaKitActions.uploadProfilePhoto);
@@ -419,6 +425,31 @@ export default function CreatorMediaKit() {
     Id<"media_kit_accounts">[]
   >([]);
   const [busy, setBusy] = useState(false);
+  const receivedInstagramResult = useRef(false);
+  useEffect(() => {
+    if (receivedInstagramResult.current) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("instagram") && !url.searchParams.has("facebook")) return;
+    receivedInstagramResult.current = true;
+    const feedback = url.searchParams.has("facebook") ? facebookLoginFeedback(url.searchParams.get("facebook")) : instagramLoginFeedback(url.searchParams.get("instagram"));
+    if (feedback) toast(feedback);
+    setTab("accounts");
+    url.searchParams.delete("instagram");
+    url.searchParams.delete("facebook");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [toast]);
+  const ensureSavedBeforeConnect = () => {
+    const unsavedAccounts = Object.values(accountDrafts).some(draft => {
+      const account = data?.accounts.find(row => row.account._id === draft.accountId)?.account;
+      return account && (account.is_visible !== draft.isVisible || JSON.stringify(account.metric_visibility) !== JSON.stringify(draft.metricVisibility));
+    });
+    if (unsavedAccounts || removedAccounts.length || (settings && savedSettings && JSON.stringify(settings) !== JSON.stringify(savedSettings))) throw Error("Save your changes before connecting a social account.");
+  };
+  const connectInstagram = async (accountId?: Id<"media_kit_accounts">) => {
+    ensureSavedBeforeConnect();
+    const { url } = await startInstagramLogin(accountId ? { accountId } : {});
+    window.location.assign(url);
+  };
 
   useEffect(() => {
     if (data?.kit) {
@@ -1030,6 +1061,10 @@ export default function CreatorMediaKit() {
               )}
             </Tabs.Panel>
             <Tabs.Panel id="accounts" className="min-w-0 w-full">
+              <p className="mb-5 text-sm text-gray-600">
+                Instagram data: {data.provider === "META_OFFICIAL" ? "Official Instagram insights" : "Public profile data"}.
+                {data.provider === "META_OFFICIAL" && " Connect a Business or Creator account to retrieve your insights."}
+              </p>
               <section
                 key={modalOpen ? "new-account" : (detail?.key ?? "list")}
                 className={`space-y-5 ${detail?.section === "accounts" || modalOpen ? "media-kit-detail-enter" : ""}`}
@@ -1079,6 +1114,10 @@ export default function CreatorMediaKit() {
                         setBusy(true);
 
                         try {
+                          if (platform === "instagram" && data.provider === "META_OFFICIAL") {
+                            await connectInstagram();
+                            return;
+                          }
                           const normalizedHandle = normalizeAccountHandle(
                             handle,
                             platform,
@@ -1133,7 +1172,7 @@ export default function CreatorMediaKit() {
                             ))}
                           </div>
                         </fieldset>
-                        <Field
+                        {!(platform === "instagram" && data.provider === "META_OFFICIAL") && <Field
                           label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
                           value={handle}
                           required
@@ -1150,11 +1189,12 @@ export default function CreatorMediaKit() {
                             }
                             return null;
                           }}
-                        />
+                        />}
 
                         <p className="text-xs text-gray-500">
-                          Use a public profile. Your data will import
-                          automatically and refresh every 24 hours.
+                          {platform === "instagram" && data.provider === "META_OFFICIAL"
+                            ? "Sign in to your Instagram Business or Creator account and allow access to insights. Data refreshes every 24 hours."
+                            : "Use a public profile. Your data will import automatically and refresh every 24 hours."}
                         </p>
                       </div>
                       <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5">
@@ -1174,9 +1214,9 @@ export default function CreatorMediaKit() {
                           type="submit"
                           variant="primary"
                           className={primaryButtonClass}
-                          isDisabled={busy || !handle.trim()}
+                          isDisabled={busy || (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : !handle.trim())}
                         >
-                          {busy ? "Confirming…" : "Confirm"}
+                          {busy ? "Confirming…" : platform === "instagram" && data.provider === "META_OFFICIAL" ? "Connect Instagram" : "Confirm"}
                         </Button>
                       </div>
                     </Form>
@@ -1253,6 +1293,7 @@ export default function CreatorMediaKit() {
                     ({ account }) => !removedAccounts.includes(account._id),
                   )
                   .map(({ account, job }) => ({
+                    connectionStatus: data.accounts.find(row => row.account._id === account._id)?.connectionStatus ?? "disconnected",
                     account: {
                       ...account,
                       is_visible:
@@ -1264,7 +1305,7 @@ export default function CreatorMediaKit() {
                     },
                     job,
                   }))
-                  .map(({ account: a, job }) => (
+                  .map(({ account: a, job, connectionStatus }) => (
                     <Form
                       aria-label="Account details"
                       validationBehavior="aria"
@@ -1297,6 +1338,41 @@ export default function CreatorMediaKit() {
                             ? `Updated ${new Date(a.last_success_at).toLocaleString()}`
                             : "No imported data yet"}
                       </p>
+                      {(a.platform ?? "instagram") === "instagram" && (
+                        <div className="space-y-3 rounded-xl border border-gray-200 p-4">
+                          <p className="text-sm font-medium">Official Instagram connection</p>
+                          <p className="text-xs text-gray-600">{connectionStatus === "connected" ? "Connected" : connectionStatus === "reconnect_required" ? "Reconnect to renew insights access" : "Connect a Business or Creator account"}</p>
+                          {!data.instagramConfigured && <p className="text-xs text-red-600">Instagram connection is awaiting configuration.</p>}
+                          <div className="flex flex-wrap gap-2">
+                            <Button type="button" variant="ghost" isDisabled={busy || !data.instagramConfigured} onPress={() => void run(() => connectInstagram(a._id))}>
+                              {connectionStatus === "disconnected" ? "Connect Instagram" : "Reconnect Instagram"}
+                            </Button>
+                            {connectionStatus !== "disconnected" && <Button type="button" variant="ghost" isDisabled={busy} onPress={() => void run(() => disconnectInstagram({ accountId: a._id }), "Instagram disconnected")}>Disconnect</Button>}
+                            {data.provider === "META_OFFICIAL" && connectionStatus === "connected" && <Button type="button" variant="ghost" isDisabled={busy || !!a.current_import_id || Date.now() < a.refresh_available_at} onPress={() => void run(() => refreshAccount({ accountId: a._id }), "Insights update requested")}>Update insights</Button>}
+                          </div>
+                          {a.official_insights && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-600">Official account insights · {new Date(a.official_insights.since * 1000).toLocaleDateString()} – {new Date(a.official_insights.until * 1000).toLocaleDateString()} · Updated {new Date(a.official_insights.fetched_at).toLocaleString()}</p>
+                              <dl className="grid grid-cols-2 gap-3 text-sm">
+                                {([['views', 'Views'], ['reach', 'Reach'], ['accounts_engaged', 'Accounts engaged'], ['total_interactions', 'Interactions']] as const).map(([key, label]) => <div key={key}><dt className="text-xs text-gray-600">{label}</dt><dd className="font-medium">{a.official_insights?.[key]?.toLocaleString() ?? "Unavailable"}</dd></div>)}
+                              </dl>
+                              {a.official_insights.media.length > 0 && (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-xs">
+                                    <caption className="mb-2 text-left text-gray-600">Recent post insights · Lifetime totals</caption>
+                                    <thead><tr>{["Post", "Views", "Reach", "Shares", "Saves"].map(label => <th key={label} className="p-2 font-medium">{label}</th>)}</tr></thead>
+                                    <tbody>{a.official_insights.media.map((media, index) => {
+                                      const post = a.official_snapshot?.posts.find(item => item.id === media.id);
+                                      return <tr key={media.id} className="border-t border-gray-100"><td className="p-2">{post ? <a href={post.url} target="_blank" rel="noopener noreferrer" className="underline">Post {index + 1}</a> : `Post ${index + 1}`}</td>{(["views", "reach", "shares", "saved"] as const).map(key => <td key={key} className="p-2">{media[key]?.toLocaleString() ?? "Unavailable"}</td>)}</tr>;
+                                    })}</tbody>
+                                  </table>
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-500">These account insights are visible only to you. Your public kit follows the display controls below.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {(
                         Object.entries({
                           followers: "Followers",
@@ -1330,6 +1406,7 @@ export default function CreatorMediaKit() {
                     </Form>
                   ))}
                 {!modalOpen && footer("accounts")}
+                {!modalOpen && !detail && <FacebookPagesSection beforeConnect={ensureSavedBeforeConnect} />}
               </section>
             </Tabs.Panel>
             <Tabs.Panel id="partnerships" className="min-w-0 w-full">
