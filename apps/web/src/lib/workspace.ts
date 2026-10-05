@@ -47,9 +47,10 @@ export function rememberWorkspace(userId: string | undefined, workspace: Workspa
     }
 }
 
-export function resolveWorkspace(workspace: Workspace, membership: Membership, lastUsedWorkspace?: Workspace) {
+// The entry page determines the destination; old callers may still pass a saved preference.
+export function resolveWorkspace(workspace: Workspace, membership: Membership, _lastUsedWorkspace?: Workspace) {
     if (membership.businessId && membership.creatorId) {
-        return (lastUsedWorkspace ?? workspace) === 'creator' ? '/creator/campaigns' : '/overview';
+        return workspace === 'creator' ? '/creator/campaigns' : '/overview';
     }
     if (workspace === 'creator') {
         return membership.creatorId ? '/creator/campaigns' : '/workspace-access?workspace=creator';
