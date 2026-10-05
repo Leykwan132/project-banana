@@ -137,7 +137,48 @@ Convex provides `CONVEX_SITE_URL` automatically. Register the production callbac
 returned by the configuration check in Meta, then release the web app and test
 creator authorization. To return to scraping, set `INSTAGRAM_DATA_PROVIDER` to
 `SCRAPING` with the same `--prod` flag. This integration does not require
-`META_WEBHOOK_VERIFY_TOKEN`; Messenger integration is separate and is not included.
+`META_WEBHOOK_VERIFY_TOKEN`.
+
+### Facebook Page insights (requested Messenger connection)
+
+Media Kit → Accounts also offers a private Facebook Pages section. Connect
+Facebook, then choose up to five Pages to fetch current followers, Page likes,
+and media views for a labeled thirty-day window. Views total the daily values
+returned by Meta; missing values remain unavailable. These Page insights are
+private and are not published in the public media kit. Refreshes run daily;
+disconnect removes the Page credentials and its saved insights. Reconnect after
+revoked or expired access. Failures preserve the last successful snapshot.
+
+This uses Facebook Login and the Pages Insights API, rather than Messenger
+conversations. Request `pages_show_list`, `pages_read_engagement`, and
+`read_insights`; the Facebook user needs permission to analyze the selected Page.
+Configure the Facebook Login product and any required app-review/advanced access
+in Meta. Register `${CONVEX_SITE_URL}/oauth/facebook/callback` exactly under
+Facebook Login's valid OAuth redirect URIs. Do not use the Instagram callback here.
+No `pages_messaging` permission, Messenger webhook, or verify token is needed for
+this insights-only connection.
+
+Use the **Meta app's** ID and secret from its basic settings for `META_APP_ID` and
+`META_APP_SECRET`. These are separate from the Instagram Login app credentials.
+From `packages/backend`, configure production without placing secrets in commands:
+
+```sh
+bunx --bun convex env set --prod META_APP_ID
+bunx --bun convex env set --prod META_APP_SECRET
+bunx --bun convex env set --prod META_GRAPH_API_VERSION v25.0
+bunx --bun convex env set --prod SITE_URL https://lumina-app.my
+bunx --bun convex deploy
+bunx --bun convex run --prod facebookPages:configurationStatus '{}'
+```
+
+Register the returned production callback in Meta, release the web app, then test
+Facebook authorization, Page selection, and real insights. For the current
+development deployment, the callback is
+`https://basic-mule-595.convex.site/oauth/facebook/callback`; omit `--prod` for
+development configuration. Optional `META_GRAPH_API_VERSION` defaults to `v25.0`.
+Page credentials are derived during login and do not need a manually supplied
+Page access token environment variable. Pages always use official data because
+there is no existing Page scraper; `INSTAGRAM_DATA_PROVIDER` controls Instagram.
 
 Creators edit `/creator/media-kit`; published kits are anonymous at `/kit/{slug}`.
 The feature adds `media_kits`, `media_kit_accounts`, and `media_kit_imports` (see

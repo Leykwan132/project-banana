@@ -405,5 +405,7 @@ crons.cron(
 
 crons.interval("refresh creator media kits", { hours: 24 }, internal.mediaKitActions.refreshDaily, {});
 crons.interval("cleanup Instagram login states", { hours: 1 }, internal.instagramConnections.cleanupStates, {});
+crons.interval("refresh Facebook Page insights", { hours: 24 }, internal.facebookPages.refreshDailyBatch, { paginationOpts: { numItems: 50, cursor: null } });
+crons.interval("cleanup Facebook login states", { hours: 1 }, internal.facebookPages.cleanupStates, {});
 
 export default crons;

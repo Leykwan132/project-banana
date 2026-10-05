@@ -17,8 +17,16 @@ const missingPostDescriptionValidator = v.object({
 
 import { kitFields, accountFields, importFields } from './mediaKitValidators';
 import { connectionFields, stateFields } from './instagramValidators';
+import { pageChoice, pageConnectionFields } from './facebookPageValidators';
 
 export default defineSchema({
+    facebook_page_connections: defineTable(pageConnectionFields)
+        .index('by_creator_id', ['creator_id'])
+        .index('by_creator_and_page', ['creator_id', 'page_id']),
+    facebook_page_choices: defineTable({ creator_id: v.id('creators'), pages: v.array(pageChoice), expires_at: v.number() })
+        .index('by_creator_id', ['creator_id']).index('by_expires_at', ['expires_at']),
+    facebook_oauth_states: defineTable({ creator_id: v.id('creators'), state_hash: v.string(), expires_at: v.number() })
+        .index('by_state_hash', ['state_hash']).index('by_expires_at', ['expires_at']),
     instagram_connections: defineTable(connectionFields)
         .index('by_account_id', ['account_id'])
         .index('by_instagram_user_id', ['instagram_user_id']),

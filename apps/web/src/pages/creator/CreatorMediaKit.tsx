@@ -32,6 +32,8 @@ import { NicheIcon } from "../../components/media-kit/NicheIcon";
 import { ContactIcon } from "../../components/media-kit/ContactIcon";
 import { PlatformIcon } from "../../components/media-kit/PlatformIcon";
 import { instagramLoginFeedback } from "../../lib/instagramConnection";
+import { facebookLoginFeedback } from "../../lib/facebookConnection";
+import { FacebookPagesSection } from "../../components/media-kit/FacebookPagesSection";
 import type { Id } from "../../../../../packages/backend/convex/_generated/dataModel";
 import { api } from "../../../../../packages/backend/convex/_generated/api";
 import type {
@@ -427,20 +429,24 @@ export default function CreatorMediaKit() {
   useEffect(() => {
     if (receivedInstagramResult.current) return;
     const url = new URL(window.location.href);
-    if (!url.searchParams.has("instagram")) return;
+    if (!url.searchParams.has("instagram") && !url.searchParams.has("facebook")) return;
     receivedInstagramResult.current = true;
-    const feedback = instagramLoginFeedback(url.searchParams.get("instagram"));
+    const feedback = url.searchParams.has("facebook") ? facebookLoginFeedback(url.searchParams.get("facebook")) : instagramLoginFeedback(url.searchParams.get("instagram"));
     if (feedback) toast(feedback);
     setTab("accounts");
     url.searchParams.delete("instagram");
+    url.searchParams.delete("facebook");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
   }, [toast]);
-  const connectInstagram = async (accountId?: Id<"media_kit_accounts">) => {
+  const ensureSavedBeforeConnect = () => {
     const unsavedAccounts = Object.values(accountDrafts).some(draft => {
       const account = data?.accounts.find(row => row.account._id === draft.accountId)?.account;
       return account && (account.is_visible !== draft.isVisible || JSON.stringify(account.metric_visibility) !== JSON.stringify(draft.metricVisibility));
     });
-    if (unsavedAccounts || removedAccounts.length || (settings && savedSettings && JSON.stringify(settings) !== JSON.stringify(savedSettings))) throw Error("Save your changes before connecting Instagram.");
+    if (unsavedAccounts || removedAccounts.length || (settings && savedSettings && JSON.stringify(settings) !== JSON.stringify(savedSettings))) throw Error("Save your changes before connecting a social account.");
+  };
+  const connectInstagram = async (accountId?: Id<"media_kit_accounts">) => {
+    ensureSavedBeforeConnect();
     const { url } = await startInstagramLogin(accountId ? { accountId } : {});
     window.location.assign(url);
   };
@@ -1400,6 +1406,7 @@ export default function CreatorMediaKit() {
                     </Form>
                   ))}
                 {!modalOpen && footer("accounts")}
+                {!modalOpen && !detail && <FacebookPagesSection beforeConnect={ensureSavedBeforeConnect} />}
               </section>
             </Tabs.Panel>
             <Tabs.Panel id="partnerships" className="min-w-0 w-full">
