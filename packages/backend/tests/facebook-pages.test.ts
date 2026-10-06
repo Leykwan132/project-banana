@@ -275,3 +275,39 @@ test("missing reaction summaries do not become zero averages or engagement", asy
     expect(result.unavailable).toContain('average_reactions');
   } finally { globalThis.fetch = oldFetch; }
 });
+
+test("Facebook metric switches hide public values, survive reconnect, and require ownership", async () => {
+  const { getPublic, setPublished } = await import("../convex/mediaKits");
+  const { setMetricVisibility } = await import("../convex/facebookPages");
+  const ctx = mediaKitContext();
+  const id = await connected(ctx);
+  const kit = [...ctx.rows.values()].find((row: any) => row.table === "media_kits");
+  ctx.rows.get(id).snapshot = { fetched_at: 123, since: 1, until: 2, followers: 12, page_likes: 8, engagement_rate: 5, average_likes: 2, average_reactions: 3, audience_country: [{ country: "MY", value: 12 }], daily_views: [], unavailable: [] };
+  await call(setPublished, ctx, { published: true });
+  const metricVisibility = { followers: false, pageLikes: false, engagementRate: false, averageLikes: false, averageReactions: false, audienceCountry: false };
+  await call(setMetricVisibility, ctx, { connectionId: id, metricVisibility });
+  const result = await call(getPublic, ctx, { slug: kit.slug });
+  for (const key of Object.keys(metricVisibility)) expect(result.accounts[0][key]).toBeUndefined();
+  expect(result.totalAudience).toBeUndefined();
+  expect((await call(getEditor, ctx, { now: Date.now() })).pages[0].metricVisibility).toEqual(metricVisibility);
+  await connected(ctx);
+  expect(ctx.rows.get(id).metric_visibility).toEqual(metricVisibility);
+  await call(setMetricVisibility, ctx, { connectionId: id, metricVisibility: { followers: true } });
+  expect((await call(getPublic, ctx, { slug: kit.slug })).accounts[0].followers).toBe(12);
+  ctx.auth.getUserIdentity = async () => ({ subject: "stranger" });
+  await expect(call(setMetricVisibility, ctx, { connectionId: id, metricVisibility })).rejects.toThrow();
+});
+
+test("multiple selected Facebook Pages connect from one authorized choice list", async () => {
+  const ctx = mediaKitContext();
+  await call(saveChoices, ctx, { creatorId: "creator-1", pages: [
+    { id: "123", name: "First Page", token: "FIRST_PRIVATE_TOKEN" },
+    { id: "456", name: "Second Page", token: "SECOND_PRIVATE_TOKEN" },
+    { id: "789", name: "Unselected Page", token: "THIRD_PRIVATE_TOKEN" },
+  ] });
+  for (const pageId of ["123", "456"]) await call(selectPage, ctx, { pageId });
+  const editor = await call(getEditor, ctx, { now: Date.now() });
+  expect(editor.pages.map((page: any) => page.pageId).sort()).toEqual(["123", "456"]);
+  expect(editor.choices.map((page: any) => page.id)).toEqual(["789"]);
+  expect(JSON.stringify(editor)).not.toContain("PRIVATE_TOKEN");
+});

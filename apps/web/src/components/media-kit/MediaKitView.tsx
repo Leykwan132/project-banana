@@ -21,6 +21,17 @@ const number = (n: number) =>
 export function MediaKitView({ kit }: { kit: KitView }) {
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const [selectedPartnership, setSelectedPartnership] = useState<KitView["partnerships"][number] | null>(null);
+  const visibleTabs = [
+    { id: "instagram", label: "Instagram" },
+    { id: "tiktok", label: "TikTok" },
+    { id: "facebook", label: "Facebook" },
+    { id: "partnerships", label: "Partnerships" },
+    { id: "rates", label: "Rates" },
+  ].filter((tab) => {
+    if (tab.id === "partnerships") return kit.partnerships.length > 0;
+    if (tab.id === "rates") return kit.rates.length > 0;
+    return kit.accounts.some((account) => account.platform === tab.id);
+  });
   return (
     <div className="mx-auto w-full max-w-3xl shrink-0 space-y-8 text-gray-100">
       <header className="flex flex-col items-center text-center">
@@ -70,16 +81,8 @@ export function MediaKitView({ kit }: { kit: KitView }) {
         )}
         </div>
       </header>
-      <Tabs
-        defaultSelectedKey={
-          kit.accounts.some((account) => account.platform === "instagram")
-            ? "instagram"
-            : kit.accounts.some((account) => account.platform === "tiktok")
-              ? "tiktok"
-              : kit.accounts.some((account) => account.platform === "facebook")
-                ? "facebook"
-                : "partnerships"
-        }
+      {visibleTabs.length > 0 && <Tabs
+        defaultSelectedKey={visibleTabs[0].id}
         className="w-full gap-6"
       >
         <Tabs.ListContainer className="mx-auto w-fit max-w-full rounded-full bg-[#171717]">
@@ -87,19 +90,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
             aria-label="Explore media kit"
             className="flex min-w-0 w-fit flex-row flex-nowrap rounded-full bg-[#171717] p-1"
           >
-            {[
-              { id: "instagram", label: "Instagram" },
-              { id: "tiktok", label: "TikTok" },
-              { id: "facebook", label: "Facebook" },
-              { id: "partnerships", label: "Partnerships" },
-              { id: "rates", label: "Rates" },
-            ]
-              .filter(
-                (tab) =>
-                  !["instagram", "tiktok", "facebook"].includes(tab.id) ||
-                  kit.accounts.some((account) => account.platform === tab.id),
-              )
-              .map((tab) => (
+            {visibleTabs.map((tab) => (
                 <Tabs.Tab
                   key={tab.id}
                   id={tab.id}
@@ -112,7 +103,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
           </Tabs.List>
         </Tabs.ListContainer>
 
-        <Tabs.Panel id="partnerships" className="w-full">
+        {kit.partnerships.length > 0 && <Tabs.Panel id="partnerships" className="w-full">
           {!!kit.partnerships?.length && (
             <section>
               <h2 className="mb-4 font-semibold">Past partnerships</h2>
@@ -142,12 +133,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
               </div>
             </section>
           )}
-          {!kit.partnerships.length && (
-            <p className="rounded-2xl bg-gray-800 p-6 text-center text-sm text-gray-400">
-              No partnerships to showcase yet.
-            </p>
-          )}
-        </Tabs.Panel>
+        </Tabs.Panel>}
         {(["instagram", "tiktok", "facebook"] as const)
           .filter((platform) =>
             kit.accounts.some((account) => account.platform === platform),
@@ -304,7 +290,7 @@ export function MediaKitView({ kit }: { kit: KitView }) {
               )}
             </Tabs.Panel>
           ))}
-        <Tabs.Panel id="rates" className="w-full">
+        {kit.rates.length > 0 && <Tabs.Panel id="rates" className="w-full">
           {!!kit.rates.length && (
             <section>
               <h2 className="font-semibold mb-4">Rates</h2>
@@ -336,13 +322,8 @@ export function MediaKitView({ kit }: { kit: KitView }) {
               </div>
             </section>
           )}
-          {!kit.rates.length && (
-            <p className="rounded-2xl bg-gray-800 p-6 text-center text-sm text-gray-400">
-              No public rates yet.
-            </p>
-          )}
-        </Tabs.Panel>
-      </Tabs>
+        </Tabs.Panel>}
+      </Tabs>}
       {!!kit.contacts.length && (
         <nav
           aria-label="Contact methods"
