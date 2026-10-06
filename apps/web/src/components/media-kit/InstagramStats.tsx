@@ -31,9 +31,9 @@ export function Stat({ label, value, icon: Icon, help }: { label: string; value:
 }
 
 export function InstagramStats({ account }: { account: Account }) {
-  const [selectedDays, setSelectedDays] = useState(30);
+  const [selectedDays, setSelectedDays] = useState(7);
   const windows = account.insightWindows ?? [];
-  const selected = windows.find(window => window.days === selectedDays) ?? windows.find(window => window.days === 30) ?? windows[0];
+  const selected = windows.find(window => window.days === selectedDays) ?? windows.find(window => window.days === 7) ?? windows[0];
   if (!selected) return null;
   return <section aria-label="Instagram account statistics" className="space-y-5 pt-5">
     <h4 className="font-semibold">Page Statistics</h4>

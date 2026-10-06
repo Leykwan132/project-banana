@@ -342,6 +342,8 @@ export default function CreatorMediaKit() {
   }, [data, toast]);
   const add = useMutation(api.mediaKits.addAccount);
   const startInstagramLogin = useMutation(api.instagramConnections.startLogin);
+  const selectFacebookPage = useMutation(api.facebookPages.selectPage);
+  const [selectedFacebookPages, setSelectedFacebookPages] = useState<string[]>([]);
   const startFacebookLogin = useMutation(api.facebookPages.startLogin);
   const setFacebookVisibility = useMutation(api.facebookPages.setVisibility);
   const disconnectFacebook = useMutation(api.facebookPages.disconnect);
@@ -354,6 +356,7 @@ export default function CreatorMediaKit() {
   const remove = useMutation(api.mediaKits.removeAccount);
   const [handle, setHandle] = useState("");
   const [platform, setPlatform] = useState<Platform | "facebook">("instagram");
+  const choosingFacebookPages = platform === "facebook" && !!facebookData?.choices.length;
   const [openingLogin, setOpeningLogin] = useState<{ platform: "instagram" | "facebook"; accountId?: Id<"media_kit_accounts"> } | null>(null);
   const navigationPending = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -1084,7 +1087,7 @@ export default function CreatorMediaKit() {
                       >
                         <ArrowLeft size={18} />
                       </Button>
-                      <h3 className="font-medium">Add account</h3>
+                      <h3 className="font-medium">{choosingFacebookPages ? "Choose your Pages" : "Add account"}</h3>
                     </div>
                     <Form
                       validationBehavior="aria"
@@ -1095,6 +1098,20 @@ export default function CreatorMediaKit() {
 
                         try {
                           if (platform === "facebook") {
+                            if (choosingFacebookPages) {
+                              const choices = facebookData?.choices ?? [];
+                              const selected = selectedFacebookPages.filter(id => choices.some(page => page.id === id));
+                              if (!selected.length) return;
+                              for (const pageId of selected) {
+                                await selectFacebookPage({ pageId });
+                                setSelectedFacebookPages(current => current.filter(id => id !== pageId));
+                              }
+                              setModalOpen(false);
+                              setPlatform("instagram");
+                              setTab("accounts");
+                              toast({ title: "Facebook Pages connected", color: "success" });
+                              return;
+                            }
                             await openSocialLogin("facebook");
                             return;
                           }
@@ -1129,7 +1146,7 @@ export default function CreatorMediaKit() {
                       }}
                     >
                       <div className="space-y-5">
-                        <fieldset disabled={busy}>
+                        {!choosingFacebookPages && <fieldset disabled={busy}>
                           <legend className="mb-3 text-sm text-gray-600">
                             Choose a platform
                           </legend>
@@ -1155,7 +1172,7 @@ export default function CreatorMediaKit() {
                               </label>
                             ))}
                           </div>
-                        </fieldset>
+                        </fieldset>}
                         {platform !== "facebook" && !(platform === "instagram" && data.provider === "META_OFFICIAL") && <Field
                           label={`${platform === "instagram" ? "Instagram" : "TikTok"} username or profile URL`}
                           value={handle}
@@ -1175,7 +1192,7 @@ export default function CreatorMediaKit() {
                           }}
                         />}
 
-                        {platform === "facebook" ? <FacebookPagesSection mode="add" data={facebookData} now={facebookNow} onSelected={() => { setModalOpen(false); setPlatform("instagram"); }} /> : <p className="text-xs text-gray-500">
+                        {platform === "facebook" ? <FacebookPagesSection mode="add" data={facebookData} now={facebookNow} selectedPageIds={selectedFacebookPages} onSelectionChange={setSelectedFacebookPages} isSelecting={busy} /> : <p className="text-xs text-gray-500">
                           {platform === "instagram" && data.provider === "META_OFFICIAL"
                             ? "Sign in to your Instagram Business or Creator account and allow access to insights. Data refreshes every 24 hours."
                             : "Use a public profile. Your data will import automatically and refresh every 24 hours."}
@@ -1188,6 +1205,7 @@ export default function CreatorMediaKit() {
                           isDisabled={busy}
                           onPress={() => {
                             setModalOpen(false);
+                            setSelectedFacebookPages([]);
                             setHandle("");
                             setPlatform("instagram");
                           }}
@@ -1198,11 +1216,11 @@ export default function CreatorMediaKit() {
                           type="submit"
                           variant="primary"
                           className={primaryButtonClass}
-                          isDisabled={busy || (platform === "facebook" ? !facebookConfigured : (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : data.accounts.length >= 5 || !handle.trim()))}
+                          isDisabled={busy || (platform === "facebook" ? !facebookConfigured || (choosingFacebookPages && !selectedFacebookPages.some(id => facebookData?.choices.some(page => page.id === id))) : (platform === "instagram" && data.provider === "META_OFFICIAL" ? !data.instagramConfigured : data.accounts.length >= 5 || !handle.trim()))}
                           aria-busy={!!openingLogin && !openingLogin.accountId}
                         >
                           {openingLogin && !openingLogin.accountId && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
-                          {openingLogin && !openingLogin.accountId ? `Opening ${openingLogin.platform === "facebook" ? "Facebook" : "Instagram"}…` : busy ? "Confirming…" : platform === "facebook" ? "Connect Facebook" : platform === "instagram" && data.provider === "META_OFFICIAL" ? "Connect Instagram" : "Confirm"}
+                          {openingLogin && !openingLogin.accountId ? `Opening ${openingLogin.platform === "facebook" ? "Facebook" : "Instagram"}…` : busy ? choosingFacebookPages ? "Connecting…" : "Confirming…" : platform === "facebook" ? choosingFacebookPages ? "Connect" : "Connect Facebook" : platform === "instagram" && data.provider === "META_OFFICIAL" ? "Connect Instagram" : "Confirm"}
                         </Button>
                       </div>
                     </Form>
@@ -1303,7 +1321,7 @@ export default function CreatorMediaKit() {
                           : "hidden"
                       }
                     >
-                      <div className="flex justify-between gap-2">
+                      <div className="space-y-1 border-b border-gray-100 pb-5">
                         <h3 className="flex min-w-0 items-center gap-2 font-medium">
                           <PlatformIcon platform={a.platform ?? "instagram"} />
                           <span className="truncate">@{a.handle}</span>
@@ -1311,10 +1329,10 @@ export default function CreatorMediaKit() {
                             {a.platform === "tiktok" ? "TikTok" : "Instagram"}
                           </span>
                         </h3>
+                        <p className="text-xs text-gray-500">
+                          {connectionAge(a.created_at)}
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        {connectionAge(a.created_at)}
-                      </p>
                       {(
                         Object.entries({
                           ...((a.platform ?? "instagram") === "instagram" && data.provider === "META_OFFICIAL" ? {
@@ -1364,7 +1382,8 @@ export default function CreatorMediaKit() {
                     now={facebookNow}
                     selectedPageId={detail?.key.startsWith("facebook:") ? detail.key.slice(9) : undefined}
                     onOpen={(id) => setDetail({ section: "accounts", key: `facebook:${id}` })}
-                    onDisconnected={leaveDetail}
+                    onDelete={(page) => setPendingRemoval({ kind: "facebook", id: page.id, name: page.name })}
+                    onReconnect={() => void openSocialLogin("facebook")}
                   />
                 )}
                 {!modalOpen && !detail?.key.startsWith("facebook:") && footer("accounts")}
@@ -2095,15 +2114,21 @@ export default function CreatorMediaKit() {
               <Modal.CloseTrigger isDisabled={busy} />
               <Modal.Header>
                 <Modal.Heading>
-                  {`Remove ${pendingRemoval?.kind ?? "item"}?`}
+                  {`Remove ${pendingRemoval?.kind === "facebook" ? "account" : pendingRemoval?.kind ?? "item"}?`}
                 </Modal.Heading>
               </Modal.Header>
               <Modal.Body>
                 <p className="text-sm text-gray-600">
-                  {pendingRemoval && pendingRemoval.kind !== "account" ? (
+                  {pendingRemoval?.kind === "facebook" ? (
+                    <>
+                      Remove Facebook Page <strong>{pendingRemoval.name}</strong> from your media
+                      kit? Its automatic refreshes will stop and its saved insights will be removed.
+                      You can add it again later.
+                    </>
+                  ) : pendingRemoval && pendingRemoval.kind !== "account" ? (
                     <>
                       Remove <strong>{pendingRemoval.name}</strong> from your
-                      media kit? {pendingRemoval.kind === "facebook" ? "Its saved insights and connection will be removed." : "Save this section to update your public page."}
+                      media kit? Save this section to update your public page.
                     </>
                   ) : (
                     <>
@@ -2171,12 +2196,12 @@ export default function CreatorMediaKit() {
                       }
                       setDetail(null);
                       setPendingRemoval(null);
-                    }, `${removal.kind.charAt(0).toUpperCase() + removal.kind.slice(1)} removed`);
+                    }, removal.kind === "facebook" ? "Account removed" : `${removal.kind.charAt(0).toUpperCase() + removal.kind.slice(1)} removed`);
                   }}
                 >
                   {busy
                     ? "Removing…"
-                    : `Remove ${pendingRemoval?.kind ?? "item"}`}
+                    : `Remove ${pendingRemoval?.kind === "facebook" ? "account" : pendingRemoval?.kind ?? "item"}`}
                 </Button>
               </Modal.Footer>
             </Modal.Dialog>

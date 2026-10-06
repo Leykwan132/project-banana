@@ -7,7 +7,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { hashState } from "./lib/instagramOfficial";
 import { facebookAuthorizationUrl, facebookCallbackUrl } from "./lib/facebookPages";
-import { pageChoice, pageSnapshot, pageConnectionDoc, refreshArgs } from "./facebookPageValidators";
+import { pageChoice, pageMetricVisibility, pageSnapshot, pageConnectionDoc, refreshArgs } from "./facebookPageValidators";
 
 async function owner(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -52,7 +52,7 @@ export const saveChoices = internalMutation({
 export const getEditor = query({
   args: { now: v.number() }, returns: v.object({
     configured: v.boolean(), choices: v.array(v.object({ id: v.string(), name: v.string() })),
-    pages: v.array(v.object({ id: v.id("facebook_page_connections"), pageId: v.string(), name: v.string(), connectedAt: v.number(), isVisible: v.boolean(), status: v.union(v.literal("connected"), v.literal("reconnect_required")), refreshing: v.boolean(), refreshAvailableAt: v.number(), snapshot: v.optional(pageSnapshot), error: v.optional(v.string()) })),
+    pages: v.array(v.object({ id: v.id("facebook_page_connections"), pageId: v.string(), name: v.string(), connectedAt: v.number(), isVisible: v.boolean(), metricVisibility: pageMetricVisibility, status: v.union(v.literal("connected"), v.literal("reconnect_required")), refreshing: v.boolean(), refreshAvailableAt: v.number(), snapshot: v.optional(pageSnapshot), error: v.optional(v.string()) })),
   }),
   handler: async (ctx, args) => {
     const creator = await owner(ctx);
@@ -61,7 +61,7 @@ export const getEditor = query({
     return {
       configured: Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET && process.env.CONVEX_SITE_URL && process.env.SITE_URL),
       choices: choices && choices.expires_at > args.now ? choices.pages.map(({ id, name }) => ({ id, name })) : [],
-      pages: pages.map(page => ({ id: page._id, pageId: page.page_id, name: page.name, connectedAt: page._creationTime, isVisible: page.is_visible ?? true, status: page.status, refreshing: Boolean(page.refresh_id && args.now - (page.refresh_started_at ?? 0) < 300000), refreshAvailableAt: page.refresh_available_at, ...(page.snapshot ? { snapshot: page.snapshot } : {}), ...(page.error ? { error: page.error } : {}) })),
+      pages: pages.map(page => ({ id: page._id, pageId: page.page_id, name: page.name, connectedAt: page._creationTime, isVisible: page.is_visible ?? true, metricVisibility: page.metric_visibility ?? {}, status: page.status, refreshing: Boolean(page.refresh_id && args.now - (page.refresh_started_at ?? 0) < 300000), refreshAvailableAt: page.refresh_available_at, ...(page.snapshot ? { snapshot: page.snapshot } : {}), ...(page.error ? { error: page.error } : {}) })),
     };
   },
 });
@@ -115,6 +115,15 @@ export const setVisibility = mutation({
   handler: async (ctx, args) => {
     const page = await ownedPage(ctx, args.connectionId);
     await ctx.db.patch(page._id, { is_visible: args.isVisible });
+    return null;
+  },
+});
+export const setMetricVisibility = mutation({
+  args: { connectionId: v.id("facebook_page_connections"), metricVisibility: pageMetricVisibility },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const page = await ownedPage(ctx, args.connectionId);
+    await ctx.db.patch(page._id, { metric_visibility: args.metricVisibility });
     return null;
   },
 });
